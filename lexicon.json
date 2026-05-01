@@ -1,0 +1,42 @@
+{
+  "GOD": {
+    "className": "I",
+    "render": "GOD"
+  },
+  "LORD": {
+    "className": "I",
+    "render": "LORD"
+  },
+  "JESUS": {
+    "className": "I",
+    "render": "JESUS"
+  },
+  "CHRIST": {
+    "className": "I",
+    "render": "CHRIST"
+  },
+  "SPIRIT": {
+    "className": "I",
+    "render": "SPIRIT"
+  },
+  "HOLY": {
+    "className": "I",
+    "render": "HOLY"
+  },
+  "YAHWEH": {
+    "className": "I",
+    "render": "YAHWEH"
+  },
+  "FATHER": {
+    "className": "I",
+    "render": "FATHER"
+  },
+  "SAVIOR": {
+    "className": "I",
+    "render": "SAVIOR"
+  },
+  "MESSIAH": {
+    "className": "I",
+    "render": "MESSIAH"
+  }
+}

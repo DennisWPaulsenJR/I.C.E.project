@@ -1,0 +1,64 @@
+/*GOD IS GOOD*/
+.ice-sacred-reference {
+  border-radius: 2px;
+  background: rgba(221, 170, 221, 0.14);
+}
+
+.I {
+  font-size: 1.1rem !important;
+  font-family: sans-serif;
+  color: #DAD;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.II {
+  font-size: 1rem !important;
+  font-family: sans-serif;
+  color: #DAD;
+  font-weight: bold;
+}
+
+.III {
+  font-size: .8rem !important;
+  font-family: sans-serif;
+  color: #DDAADD;
+  font-weight: bold;
+}
+
+.capture-summary {
+  margin-top: 12px;
+}
+
+.capture-summary h4 {
+  margin: 0 0 8px;
+}
+
+.capture-summary p {
+  margin: 0 0 8px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.capture-summary dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.capture-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.capture-summary dt,
+.capture-summary dd {
+  margin: 0;
+}
+
+.capture-status {
+  min-height: 1rem;
+  margin: 8px 0 0;
+  font-size: .8rem;
+}

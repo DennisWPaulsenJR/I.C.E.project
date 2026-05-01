@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biblical Highlighter</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      width: 240px;
+      padding: 12px;
+      font-family: sans-serif;
+    }
+
+    h3 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0;
+    }
+
+    button {
+      margin-top: 12px;
+      width: 100%;
+      padding: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h3>Biblical Highlighter</h3>
+
+  <label>
+    <input type="checkbox" id="enabled">
+    Enable Highlighting
+  </label>
+
+  <label>
+    <input type="checkbox" id="strictMode">
+    Strict Context Mode
+  </label>
+
+  <label>
+    <input type="checkbox" id="highlightPronouns">
+    Highlight Pronouns
+  </label>
+
+  <button id="rerun">Re-run On This Page</button>
+
+  <hr>
+
+  <button id="capture">Capture Page Text</button>
+
+  <section id="captureSummary" class="capture-summary" hidden>
+    <h4>Latest Capture</h4>
+    <p id="captureTitle"></p>
+    <dl>
+      <div>
+        <dt>Words</dt>
+        <dd id="captureWords">0</dd>
+      </div>
+      <div>
+        <dt>Characters</dt>
+        <dd id="captureCharacters">0</dd>
+      </div>
+      <div>
+        <dt>Divine refs</dt>
+        <dd id="captureDivineRefs">0</dd>
+      </div>
+    </dl>
+  </section>
+
+  <button id="copyCapture" disabled>Copy Captured Text</button>
+  <button id="clearCapture" disabled>Clear Capture</button>
+  <p id="captureStatus" class="capture-status" role="status"></p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

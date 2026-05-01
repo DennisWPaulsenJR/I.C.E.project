@@ -1,0 +1,50 @@
+{
+  "HOLY SPIRIT": {
+    "className": "I",
+    "render": "HOLY SPIRIT"
+  },
+  "SPIRIT OF GOD": {
+    "className": "I",
+    "render": "SPIRIT OF GOD"
+  },
+  "SON OF GOD": {
+    "className": "I",
+    "render": "SON OF GOD"
+  },
+  "THE SON OF GOD": {
+    "className": "I",
+    "render": "THE SON OF GOD"
+  },
+  "SON OF MAN": {
+    "className": "I",
+    "render": "SON OF MAN"
+  },
+  "LORD JESUS CHRIST": {
+    "className": "I",
+    "render": "LORD JESUS CHRIST"
+  },
+  "JESUS CHRIST": {
+    "className": "I",
+    "render": "JESUS CHRIST"
+  },
+  "ANGEL OF THE LORD": {
+    "className": "I",
+    "render": "ANGEL OF THE LORD"
+  },
+  "LAMB OF GOD": {
+    "className": "I",
+    "render": "LAMB OF GOD"
+  },
+  "KING OF KINGS": {
+    "className": "I",
+    "render": "KING OF KINGS"
+  },
+  "LORD OF HOSTS": {
+    "className": "I",
+    "render": "LORD OF HOSTS"
+  },
+  "SPIRIT OF TRUTH": {
+    "className": "I",
+    "render": "SPIRIT OF TRUTH"
+  }
+}

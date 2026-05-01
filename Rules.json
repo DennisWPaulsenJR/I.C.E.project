@@ -1,0 +1,11 @@
+{
+  "LORD": {
+    "DIVINEThreshold": 2
+  },
+  "SPIRIT": {
+    "DIVINEThreshold": 3
+  },
+  "PRONOUNS": {
+    "DIVINEThreshold": 3
+  }
+}
