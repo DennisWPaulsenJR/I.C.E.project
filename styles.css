@@ -1,5 +1,5 @@
 /*GOD IS GOOD*/
-.ice-sacred-reference {
+.ice-sacred-reference:not(.ice-no-highlight) {
   border-radius: 2px;
   background: rgba(221, 170, 221, 0.14);
 }
@@ -68,6 +68,11 @@
   font-size: .85rem;
 }
 
+.formatter-status {
+  margin: 8px 0 0;
+  font-size: .85rem;
+}
+
 .timeline-count {
   margin: 8px 0 0;
   font-size: .85rem;
@@ -77,11 +82,24 @@
   margin: 8px 0 0;
   padding-left: 18px;
   font-size: .8rem;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .timeline-snippets li {
   margin-bottom: 6px;
   overflow-wrap: anywhere;
+}
+
+.timeline-snippets strong,
+.timeline-snippets span,
+.event-snippets span {
+  display: block;
+}
+
+.timeline-snippets p,
+.event-snippets p {
+  margin: 2px 0 0;
 }
 
 .event-count {
@@ -93,6 +111,8 @@
   margin: 8px 0 0;
   padding-left: 18px;
   font-size: .8rem;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .event-snippets li {

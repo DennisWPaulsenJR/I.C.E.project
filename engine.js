@@ -22,6 +22,16 @@
     "theirs"
   ];
 
+  const ELEVATABLE_PRONOUNS = new Set(["he", "him", "his"]);
+  const DIVINE_PRONOUN_REFERENCES = [
+    "HOLY SPIRIT",
+    "THE LORD",
+    "JESUS",
+    "CHRIST",
+    "GOD"
+  ];
+  const DEFAULT_PRONOUN_REFERENCE_WINDOW = 1;
+
   const STRICT_REFERENCES = new Set([
     "GOD",
     "CHRIST",
@@ -129,8 +139,13 @@
       const normalizedSettings = {
         strictMode: true,
         highlightPronouns: false,
+        pronounReferenceWindow: DEFAULT_PRONOUN_REFERENCE_WINDOW,
         ...settings
       };
+      const sentenceContexts = this.buildSentenceContexts(text);
+      const pronounReferenceWindow = this.normalizePronounReferenceWindow(
+        normalizedSettings.pronounReferenceWindow
+      );
 
       this.pattern.lastIndex = 0;
 
@@ -141,9 +156,21 @@
         const entry = this.entryByTerm.get(key);
         const isPronoun = PRONOUNS.includes(raw.toLowerCase());
 
-        if (isPronoun && !normalizedSettings.highlightPronouns) continue;
         if (isPronoun) {
-          matches.push(this.createMatch(match, raw, entry, true));
+          const elevated = this.shouldElevatePronoun(
+            raw,
+            match.index,
+            sentenceContexts,
+            pronounReferenceWindow
+          );
+
+          if (!normalizedSettings.highlightPronouns && !elevated) continue;
+
+          matches.push(this.createMatch(match, raw, entry, true, {
+            render: elevated ? raw.toUpperCase() : raw,
+            visualHighlight: normalizedSettings.highlightPronouns,
+            elevated
+          }));
           continue;
         }
 
@@ -163,15 +190,72 @@
       }).filter((match) => !match.isPronoun).length;
     }
 
-    createMatch(match, raw, entry, isPronoun) {
+    createMatch(match, raw, entry, isPronoun, options = {}) {
       return {
         start: match.index,
         end: match.index + raw.length,
         text: raw,
-        render: entry?.render || raw,
+        render: options.render || entry?.render || raw,
         className: entry?.className || (isPronoun ? "III" : "II"),
-        isPronoun
+        isPronoun,
+        visualHighlight: options.visualHighlight ?? true,
+        elevated: Boolean(options.elevated)
       };
+    }
+
+    buildSentenceContexts(text) {
+      const sentences = [];
+      const pattern = /[^.!?]+[.!?]*|\S+/g;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        const sentenceText = match[0];
+        sentences.push({
+          start: match.index,
+          end: match.index + sentenceText.length,
+          hasDivineReference: this.hasDivinePronounReference(sentenceText)
+        });
+      }
+
+      return sentences;
+    }
+
+    hasDivinePronounReference(text) {
+      const normalized = text.toUpperCase();
+      return DIVINE_PRONOUN_REFERENCES.some((reference) =>
+        new RegExp(`\\b${escapeRegExp(reference)}\\b`, "i").test(normalized)
+      );
+    }
+
+    normalizePronounReferenceWindow(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return DEFAULT_PRONOUN_REFERENCE_WINDOW;
+      return Math.min(2, Math.max(1, Math.round(numeric)));
+    }
+
+    sentenceIndexForPosition(sentenceContexts, position) {
+      return sentenceContexts.findIndex((sentence) =>
+        position >= sentence.start && position < sentence.end
+      );
+    }
+
+    shouldElevatePronoun(raw, position, sentenceContexts, referenceWindow) {
+      const normalized = raw.toLowerCase();
+      if (!ELEVATABLE_PRONOUNS.has(normalized)) return false;
+      if (/^[A-Z]/.test(raw)) return true;
+
+      const sentenceIndex = this.sentenceIndexForPosition(sentenceContexts, position);
+      if (sentenceIndex < 0) return false;
+
+      for (let offset = 0; offset <= referenceWindow; offset++) {
+        const candidate = sentenceContexts[sentenceIndex - offset];
+        if (candidate?.hasDivineReference) return true;
+      }
+
+      // Future: replace this local heuristic with AI-based pronoun resolution
+      // and entity tracking across paragraphs when cross-sentence context is
+      // promoted beyond the Phase 3.6 formatter.
+      return false;
     }
 
     isStrictReference(key) {

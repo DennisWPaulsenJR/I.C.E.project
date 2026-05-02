@@ -8,8 +8,10 @@
   <style>
     body {
       width: 240px;
+      max-height: 580px;
       padding: 12px;
       font-family: sans-serif;
+      overflow-y: auto;
     }
 
     h3 {
@@ -73,20 +75,23 @@
   </section>
 
   <button id="copyCapture" disabled>Copy Captured Text</button>
-  <button id="saveCapture" disabled>Save Capture</button>
   <p class="history-count">Saved captures: <span id="historyCount">0</span></p>
   <button id="clearHistory" disabled>Clear History</button>
+
+  <p class="formatter-status">Last format matches: <span id="formatterMatchCount">0</span></p>
 
   <hr>
 
   <button id="extractTimeline" disabled>Extract Timeline</button>
   <p class="timeline-count">Timeline items: <span id="timelineCount">0</span></p>
   <ul id="timelineSnippets" class="timeline-snippets"></ul>
+  <button id="copyTimelineItems" disabled>Copy Timeline Items</button>
   <button id="clearTimeline" disabled>Clear Timeline</button>
 
   <button id="extractEvents" disabled>Extract Events</button>
   <p class="event-count">Event candidates: <span id="eventCount">0</span></p>
   <ul id="eventSnippets" class="event-snippets"></ul>
+  <button id="copyEventItems" disabled>Copy Event Items</button>
   <button id="clearEvents" disabled>Clear Events</button>
 
   <button id="clearCapture" disabled>Clear Capture</button>

@@ -40,6 +40,7 @@
   ]);
   const FORMATTER_CLASS = "ice-sacred-reference";
   const SETTINGS_KEYS = Object.keys(DEFAULT_SETTINGS);
+  const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
 
   let engine;
   let settings = { ...DEFAULT_SETTINGS };
@@ -80,7 +81,11 @@
 
   function createFormattedNode(match) {
     const span = document.createElement("span");
-    span.className = `${FORMATTER_CLASS} ${match.className}`;
+    span.className = [
+      FORMATTER_CLASS,
+      match.className,
+      match.visualHighlight === false ? "ice-no-highlight" : ""
+    ].filter(Boolean).join(" ");
     span.dataset.iceFormatted = "true";
     span.dataset.originalText = match.text;
     span.textContent = match.render;
@@ -127,8 +132,27 @@
     }
   }
 
+  function persistFormatterStatus(matchCount, status) {
+    chrome.storage.local.set({
+      [FORMATTER_STATUS_KEY]: {
+        status,
+        matchCount,
+        title: document.title || "",
+        url: location.href,
+        strictMode: settings.strictMode,
+        highlightPronouns: settings.highlightPronouns,
+        formattedAt: new Date().toISOString()
+      }
+    });
+  }
+
   function applyFormatting(root = document.body) {
-    if (!engine || !settings.enabled || !root) return;
+    if (!engine || !root) return 0;
+
+    if (!settings.enabled) {
+      persistFormatterStatus(0, "disabled");
+      return 0;
+    }
 
     let matchCount = 0;
 
@@ -146,6 +170,9 @@
       strictMode: settings.strictMode,
       highlightPronouns: settings.highlightPronouns
     });
+
+    persistFormatterStatus(matchCount, "formatted");
+    return matchCount;
   }
 
   function scheduleApply(root = document.body) {
