@@ -5,7 +5,8 @@
   const DEFAULT_SETTINGS = {
     enabled: true,
     strictMode: true,
-    highlightPronouns: false
+    highlightPronouns: false,
+    autoCaptureOnPageLoad: true
   };
 
   const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "INPUT", "TEXTAREA", "CODE", "PRE"]);
@@ -40,7 +41,14 @@
   ]);
   const FORMATTER_CLASS = "ice-sacred-reference";
   const SETTINGS_KEYS = Object.keys(DEFAULT_SETTINGS);
+  const FORMATTER_SETTING_KEYS = [
+    "enabled",
+    "strictMode",
+    "highlightPronouns"
+  ];
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
+  const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
+  const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
 
   let engine;
   let settings = { ...DEFAULT_SETTINGS };
@@ -48,6 +56,7 @@
   let initPromise;
   let scheduled = false;
   let isApplying = false;
+  let autoCaptureCompleted = false;
 
   function shouldSkipNode(node) {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
@@ -144,6 +153,70 @@
         formattedAt: new Date().toISOString()
       }
     });
+  }
+
+  function textHash(text) {
+    let hash = 2166136261;
+
+    for (let i = 0; i < text.length; i++) {
+      hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    }
+
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function captureAllowedForPage() {
+    return /^(https?:|file:)/.test(location.protocol);
+  }
+
+  async function getCaptureHistory() {
+    const data = await chrome.storage.local.get(CAPTURE_HISTORY_KEY);
+    return Array.isArray(data[CAPTURE_HISTORY_KEY])
+      ? data[CAPTURE_HISTORY_KEY]
+      : [];
+  }
+
+  function createHistoryEntry(capture) {
+    const hash = textHash(capture.text || "");
+    const capturedAt = capture.capturedAt || new Date().toISOString();
+
+    return {
+      id: `${Date.now()}-${hash}`,
+      title: capture.title || "",
+      url: capture.url || "",
+      capturedAt,
+      wordCount: capture.wordCount || 0,
+      charCount: capture.characterCount || capture.charCount || 0,
+      divineReferenceCount: capture.divineReferenceCount || 0,
+      text: capture.text || "",
+      textHash: hash
+    };
+  }
+
+  async function persistCapture(capture) {
+    if (!capture?.text) {
+      return { saved: false, duplicate: false };
+    }
+
+    const entry = createHistoryEntry(capture);
+    const history = await getCaptureHistory();
+    const duplicate = history.some((item) =>
+      item.url === entry.url && item.textHash === entry.textHash
+    );
+
+    await chrome.storage.local.set({
+      [CAPTURE_STORAGE_KEY]: capture
+    });
+
+    if (duplicate) {
+      return { saved: false, duplicate: true };
+    }
+
+    await chrome.storage.local.set({
+      [CAPTURE_HISTORY_KEY]: [entry, ...history]
+    });
+
+    return { saved: true, duplicate: false };
   }
 
   function applyFormatting(root = document.body) {
@@ -297,9 +370,7 @@
     return text ? text.split(/\s+/).filter(Boolean).length : 0;
   }
 
-  async function capturePageText() {
-    await initPromise;
-
+  function buildCapturePageText() {
     const capturedText = collectReadableText();
 
     // Phase 2 foundation: this local capture object is the future input for a
@@ -316,6 +387,40 @@
     };
   }
 
+  async function capturePageText() {
+    await initPromise;
+    return buildCapturePageText();
+  }
+
+  async function maybeAutoCapture(reason, options = {}) {
+    const force = Boolean(options.force);
+    const bypassAutoSetting = Boolean(options.bypassAutoSetting);
+
+    if (!settings.enabled) return;
+    if (!settings.autoCaptureOnPageLoad && !bypassAutoSetting) return;
+    if (!captureAllowedForPage()) return;
+    if (autoCaptureCompleted && !force) return;
+
+    autoCaptureCompleted = true;
+
+    try {
+      const capture = buildCapturePageText();
+      const result = await persistCapture(capture);
+
+      console.debug("I.C.E. capture persisted", {
+        reason,
+        saved: result.saved,
+        duplicate: result.duplicate,
+        wordCount: capture.wordCount
+      });
+    } catch (error) {
+      console.debug("I.C.E. auto capture skipped", {
+        reason,
+        error: error.message
+      });
+    }
+  }
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "sync") return;
     if (!SETTINGS_KEYS.some((key) => changes[key])) return;
@@ -326,12 +431,18 @@
 
     console.debug("I.C.E. settings changed", { ...settings });
 
-    reprocessPage();
+    if (FORMATTER_SETTING_KEYS.some((key) => changes[key])) {
+      reprocessPage();
+    }
   });
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "ICE_RERUN_FORMATTER") {
       rerunFormatter()
+        .then(() => maybeAutoCapture("manual-rerun", {
+          force: true,
+          bypassAutoSetting: true
+        }))
         .then(() => sendResponse({ ok: true }))
         .catch((error) => sendResponse({ ok: false, error: error.message }));
 
@@ -356,6 +467,7 @@
     await loadSettings();
     applyFormatting();
     observePage();
+    maybeAutoCapture("page-load");
 
     // Phase 2 capture foundation lives in capturePageText(). Future document
     // library, timeline extraction, and historical analysis should consume the

@@ -49,6 +49,11 @@
     Highlight Pronouns
   </label>
 
+  <label>
+    <input type="checkbox" id="autoCaptureOnPageLoad">
+    Auto capture on page load
+  </label>
+
   <button id="rerun">Re-run On This Page</button>
 
   <hr>
@@ -99,6 +104,12 @@
   <ul id="orderedEventSnippets" class="ordered-event-snippets"></ul>
   <button id="copyOrderedEvents" disabled>Copy Ordered Events</button>
   <button id="clearOrderedEvents" disabled>Clear Ordered Events</button>
+
+  <button id="buildActorTimelines" disabled>Build Actor Timelines</button>
+  <p class="actor-count">Actor timelines: <span id="actorTimelineCount">0</span></p>
+  <ul id="actorTimelineSnippets" class="actor-timeline-snippets"></ul>
+  <button id="copyActorTimelines" disabled>Copy Actor Timelines</button>
+  <button id="clearActorTimelines" disabled>Clear Actor Timelines</button>
 
   <button id="clearCapture" disabled>Clear Capture</button>
   <p id="captureStatus" class="capture-status" role="status"></p>

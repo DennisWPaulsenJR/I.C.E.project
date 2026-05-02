@@ -75,7 +75,8 @@
 
 .timeline-count,
 .event-count,
-.ordered-count {
+.ordered-count,
+.actor-count {
   padding-top: 8px;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
 }
@@ -119,8 +120,14 @@
   font-size: .85rem;
 }
 
+.actor-count {
+  margin: 8px 0 0;
+  font-size: .85rem;
+}
+
 .event-snippets,
-.ordered-event-snippets {
+.ordered-event-snippets,
+.actor-timeline-snippets {
   margin: 8px 0 0;
   padding-left: 18px;
   font-size: .8rem;
@@ -129,7 +136,8 @@
 }
 
 .event-snippets li,
-.ordered-event-snippets li {
+.ordered-event-snippets li,
+.actor-timeline-snippets li {
   margin-bottom: 6px;
   overflow-wrap: anywhere;
 }
@@ -140,4 +148,13 @@
 
 .ordered-event-snippets span {
   display: block;
+}
+
+.actor-timeline-snippets strong {
+  display: block;
+}
+
+.actor-timeline-snippets ol {
+  margin: 4px 0 0;
+  padding-left: 16px;
 }

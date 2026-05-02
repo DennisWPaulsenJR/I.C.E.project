@@ -1,7 +1,8 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   strictMode: true,
-  highlightPronouns: false
+  highlightPronouns: false,
+  autoCaptureOnPageLoad: true
 };
 
 chrome.runtime.onInstalled.addListener(async () => {

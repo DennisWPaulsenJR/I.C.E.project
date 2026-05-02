@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const TIMELINE_STORAGE_KEY = "ICE_TIMELINE_ITEMS";
   const EVENT_STORAGE_KEY = "ICE_EVENT_ITEMS";
   const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
+  const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const ACTION_INDICATORS = [
     "born",
@@ -63,6 +64,90 @@ document.addEventListener("DOMContentLoaded", async () => {
     subsequently: 14,
     finally: 20
   };
+  const ACTOR_NORMALIZATIONS = new Map([
+    ["jesus", "JESUS"],
+    ["christ", "JESUS"],
+    ["jesus christ", "JESUS"],
+    ["the young child", "JESUS"],
+    ["young child", "JESUS"],
+    ["the child", "JESUS"],
+    ["child", "JESUS"],
+    ["lord", "THE LORD"],
+    ["the lord", "THE LORD"],
+    ["herod", "Herod"],
+    ["joseph", "Joseph"],
+    ["mary", "Mary"],
+    ["wise men", "Wise men"],
+    ["the wise men", "Wise men"],
+    ["angel", "Angel"],
+    ["the angel", "Angel"],
+    ["angel of the lord", "Angel of the Lord"],
+    ["the angel of the lord", "Angel of the Lord"],
+    ["king", "King"],
+    ["the king", "King"],
+    ["people", "People"],
+    ["the people", "People"],
+    ["priests", "Priests"],
+    ["chief priests", "Chief priests"],
+    ["chief priests and scribes", "Chief priests and scribes"],
+    ["the chief priests and scribes", "Chief priests and scribes"],
+    ["scribes", "Scribes"]
+  ]);
+  const SUBJECT_FALLBACK_STOP_WORDS = new Set([
+    "a",
+    "an",
+    "and",
+    "as",
+    "but",
+    "departed",
+    "for",
+    "from",
+    "he",
+    "her",
+    "him",
+    "his",
+    "it",
+    "its",
+    "of",
+    "said",
+    "saying",
+    "she",
+    "that",
+    "the",
+    "their",
+    "them",
+    "they",
+    "this",
+    "to",
+    "was",
+    "were",
+    "when",
+    "where"
+  ]);
+  const INVALID_ACTOR_NAMES = new Set([
+    "And",
+    "Said",
+    "Saying",
+    "When",
+    "Were",
+    "Were Departed"
+  ]);
+  const PLURAL_ACTOR_NAMES = new Set([
+    "Wise men",
+    "Chief priests",
+    "Chief priests and scribes",
+    "Priests",
+    "Scribes",
+    "People"
+  ]);
+  const ACTOR_SOURCE_PATTERN = "(Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people)";
+  const LEADING_ACTOR_PATTERN = new RegExp(
+    `^(?:\\d+[:.)]?\\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
+    "i"
+  );
+  const PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she|they)\b/i;
+  const PLURAL_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(they)\b/i;
+  const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she)\b/i;
   const MONTH_PATTERN = [
     "January",
     "February",
@@ -97,7 +182,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const defaults = {
     enabled: true,
     strictMode: true,
-    highlightPronouns: false
+    highlightPronouns: false,
+    autoCaptureOnPageLoad: true
   };
 
   const settings = await chrome.storage.sync.get(defaults);
@@ -257,6 +343,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       orderedItems.length === 0;
     document.getElementById("copyOrderedEvents").disabled =
       orderedItems.length === 0;
+    document.getElementById("buildActorTimelines").disabled =
+      orderedItems.length === 0;
     snippets.textContent = "";
 
     for (const item of orderedItems.slice(0, 5)) {
@@ -268,6 +356,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       reason.textContent = item.orderingReason;
 
       li.append(eventText, reason);
+      snippets.appendChild(li);
+    }
+  }
+
+  function renderActorTimelines(timelines) {
+    const actorTimelines = Array.isArray(timelines) ? timelines : [];
+    const snippets = document.getElementById("actorTimelineSnippets");
+
+    document.getElementById("actorTimelineCount").textContent =
+      actorTimelines.length;
+    document.getElementById("clearActorTimelines").disabled =
+      actorTimelines.length === 0;
+    document.getElementById("copyActorTimelines").disabled =
+      actorTimelines.length === 0;
+    snippets.textContent = "";
+
+    // Phase 4.5 MVP preview only. Future work should add pronoun-to-actor
+    // linking, cross-document actor merging, relationship graphing, and
+    // movement/location tracking on a larger presentation page.
+    for (const timeline of actorTimelines.slice(0, 3)) {
+      const li = document.createElement("li");
+      const actor = document.createElement("strong");
+      const actions = document.createElement("ol");
+
+      actor.textContent = timeline.actorName;
+
+      for (const action of timeline.orderedActions.slice(0, 3)) {
+        const actionItem = document.createElement("li");
+        actionItem.textContent =
+          `${action.sequenceOrder}. ${trimText(action.eventText, 90)}`;
+        actions.appendChild(actionItem);
+      }
+
+      li.append(actor, actions);
       snippets.appendChild(li);
     }
   }
@@ -346,6 +468,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadOrderedEvents() {
     renderOrderedEvents(await getOrderedEvents());
+  }
+
+  async function getActorTimelines() {
+    const data = await chrome.storage.local.get(ACTOR_TIMELINES_KEY);
+    return Array.isArray(data[ACTOR_TIMELINES_KEY])
+      ? data[ACTOR_TIMELINES_KEY]
+      : [];
+  }
+
+  async function loadActorTimelines() {
+    renderActorTimelines(await getActorTimelines());
   }
 
   async function loadLatestCapture() {
@@ -842,13 +975,241 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     renderOrderedEvents(orderedEvents);
+    await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
+    renderActorTimelines([]);
     setCaptureStatus(`Ordered ${orderedEvents.length} event(s).`);
   }
 
   async function clearOrderedEvents() {
-    await chrome.storage.local.remove(ORDERED_EVENTS_KEY);
+    await chrome.storage.local.remove([
+      ORDERED_EVENTS_KEY,
+      ACTOR_TIMELINES_KEY
+    ]);
     renderOrderedEvents([]);
+    renderActorTimelines([]);
     setCaptureStatus("Ordered events cleared.");
+  }
+
+  function normalizeActorName(actorText) {
+    const normalized = normalizeWhitespace(actorText)
+      .replace(/[^\w\s]/g, "")
+      .toLowerCase();
+
+    if (!normalized) return "";
+
+    const actorName = ACTOR_NORMALIZATIONS.get(normalized) ||
+      normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+    return INVALID_ACTOR_NAMES.has(actorName) ? "" : actorName;
+  }
+
+  function isPluralActor(actorName) {
+    return PLURAL_ACTOR_NAMES.has(actorName);
+  }
+
+  function stripLeadingSentenceNoise(sentence) {
+    return normalizeWhitespace(sentence)
+      .replace(/^(?:\d+[:.)]?\s*)?/, "")
+      .replace(/^(?:and|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
+      .replace(/^(?:after that|before that|before this|before then),?\s+/i, "");
+  }
+
+  function leadingSubjectActor(sentence) {
+    const normalized = stripLeadingSentenceNoise(sentence);
+    const leadingActor = normalized.match(LEADING_ACTOR_PATTERN);
+    if (leadingActor) return leadingActor[1];
+    if (PRONOUN_SUBJECT_PATTERN.test(normalized)) return "";
+
+    const earlyClause = normalized
+      .split(/[,:;]/)[0]
+      .replace(/\b(?:of|from|unto|to|for|by)\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?\b/g, "")
+      .slice(0, 80);
+    const properMatch = earlyClause.match(
+      /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/
+    );
+
+    return properMatch ? properMatch[1] : "";
+  }
+
+  function pronounSubjectActor(sentence, actorMemory) {
+    const normalized = stripLeadingSentenceNoise(sentence);
+
+    if (PLURAL_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
+      return actorMemory.previousPluralActor || "";
+    }
+
+    if (SINGULAR_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
+      return actorMemory.previousSingularActor || "";
+    }
+
+    return "";
+  }
+
+  function fallbackSubjectActor(sentence) {
+    const normalized = stripLeadingSentenceNoise(sentence);
+    const nearStart = normalized.slice(0, 80);
+    const roleMatch = nearStart.match(
+      /^(?:the\s+)?(child|king|people|priests|scribes|angel|wise men)\b/i
+    );
+
+    if (roleMatch) return roleMatch[0];
+
+    const subjectMatches = nearStart.matchAll(
+      /\b([A-Za-z][A-Za-z'-]{2,})(?:\s+([A-Za-z][A-Za-z'-]{2,}))?/g
+    );
+
+    for (const subjectMatch of subjectMatches) {
+      const words = [subjectMatch[1], subjectMatch[2]]
+        .filter(Boolean)
+        .filter((word) =>
+          !SUBJECT_FALLBACK_STOP_WORDS.has(word.toLowerCase())
+        );
+
+      if (words.length > 0) return words.join(" ");
+    }
+
+    return "";
+  }
+
+  function explicitContextActor(eventItem) {
+    const text = normalizeWhitespace(eventItem.eventText || "");
+
+    if (/\bchief priests and scribes\b/i.test(text)) {
+      return "Chief priests and scribes";
+    }
+
+    if (/\bwise men\b/i.test(text)) {
+      return "Wise men";
+    }
+
+    if (/\bangel of the Lord\b/i.test(text)) {
+      return "Angel of the Lord";
+    }
+
+    if (/\bJoseph\b/i.test(text)) {
+      return "Joseph";
+    }
+
+    return "";
+  }
+
+  function actorForEvent(eventItem, actorMemory) {
+    const text = eventItem.eventText || "";
+    const pronounActor = pronounSubjectActor(text, actorMemory);
+    if (pronounActor) return normalizeActorName(pronounActor);
+    if (PRONOUN_SUBJECT_PATTERN.test(stripLeadingSentenceNoise(text))) {
+      return "Unknown actor";
+    }
+
+    const actor = leadingSubjectActor(text) ||
+      explicitContextActor(eventItem) ||
+      fallbackSubjectActor(text);
+
+    return normalizeActorName(actor) || "Unknown actor";
+  }
+
+  function updateActorMemoryFromEvent(actorMemory, actorName, eventText) {
+    if (actorName !== "Unknown actor") {
+      if (isPluralActor(actorName)) {
+        actorMemory.previousPluralActor = actorName;
+      } else {
+        actorMemory.previousSingularActor = actorName;
+      }
+    }
+
+    // Mentions like "gathered chief priests and scribes" establish the next
+    // likely plural referent for "they said" without making them the actor of
+    // Herod's gathering action.
+    if (/\bchief priests and scribes\b/i.test(eventText)) {
+      actorMemory.previousPluralActor = "Chief priests and scribes";
+    } else if (/\bwise men\b/i.test(eventText)) {
+      actorMemory.previousPluralActor = "Wise men";
+    }
+
+    // When the angel addresses Joseph, the next "he arose" is usually Joseph,
+    // not the angel. Future dependency parsing should replace this heuristic.
+    if (/\bangel of the Lord\b/i.test(eventText) && /\bJoseph\b/i.test(eventText)) {
+      actorMemory.previousSingularActor = "Joseph";
+    }
+  }
+
+  function createActorTimelines(orderedEvents) {
+    const grouped = new Map();
+    const actorMemoryBySource = new Map();
+    const sourceOrderedEvents = [...orderedEvents].sort((a, b) => {
+      const sourceA = a.sourceCaptureId || a.sourceUrl || "";
+      const sourceB = b.sourceCaptureId || b.sourceUrl || "";
+      if (sourceA !== sourceB) return sourceA.localeCompare(sourceB);
+      return Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0);
+    });
+
+    for (const eventItem of sourceOrderedEvents) {
+      const sourceKey = eventItem.sourceCaptureId ||
+        eventItem.sourceUrl ||
+        "unknown-source";
+      const actorMemory = actorMemoryBySource.get(sourceKey) || {
+        previousSingularActor: "",
+        previousPluralActor: ""
+      };
+      const actorName = actorForEvent(
+        eventItem,
+        actorMemory
+      );
+      const action = {
+        sequenceOrder: eventItem.sequenceOrder,
+        eventText: trimText(eventItem.eventText || "", 180),
+        orderingReason: eventItem.orderingReason || ""
+      };
+
+      if (!grouped.has(actorName)) grouped.set(actorName, []);
+      grouped.get(actorName).push(action);
+
+      updateActorMemoryFromEvent(actorMemory, actorName, eventItem.eventText || "");
+      actorMemoryBySource.set(sourceKey, actorMemory);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([actorName, orderedActions]) => ({
+        actorName,
+        orderedActions: orderedActions.sort((a, b) =>
+          Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0)
+        )
+      }))
+      .sort((a, b) => {
+        const firstA = Number(a.orderedActions[0]?.sequenceOrder || 0);
+        const firstB = Number(b.orderedActions[0]?.sequenceOrder || 0);
+        return firstA - firstB || a.actorName.localeCompare(b.actorName);
+      });
+  }
+
+  async function buildActorTimelines() {
+    const orderedEvents = await getOrderedEvents();
+
+    if (orderedEvents.length === 0) {
+      setCaptureStatus("No ordered events to group.");
+      return;
+    }
+
+    // Phase 4.5 local actor/action grouping. This intentionally avoids
+    // advanced NLP, backend calls, and AI. The current memory keeps singular
+    // and plural actors separate so "they" does not inherit Herod when a plural
+    // actor like wise men is nearby; richer actor resolution belongs in future
+    // dependency parsing, AI actor resolution, pronoun linking, and
+    // cross-document entity merging work.
+    const actorTimelines = createActorTimelines(orderedEvents);
+
+    await chrome.storage.local.set({
+      [ACTOR_TIMELINES_KEY]: actorTimelines
+    });
+
+    renderActorTimelines(actorTimelines);
+    setCaptureStatus(`Built ${actorTimelines.length} actor timeline(s).`);
+  }
+
+  async function clearActorTimelines() {
+    await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
+    renderActorTimelines([]);
+    setCaptureStatus("Actor timelines cleared.");
   }
 
   function formatEventItemsForCopy(items) {
@@ -889,6 +1250,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Ordered events copied.");
   }
 
+  function formatActorTimelinesForCopy(timelines) {
+    return timelines.map((timeline) => {
+      const actions = timeline.orderedActions.map((action) => [
+        `${action.sequenceOrder}. ${action.eventText || ""}`,
+        action.orderingReason ? `Reason: ${action.orderingReason}` : ""
+      ].filter(Boolean).map(cleanCopiedText).join("\n"));
+
+      return [
+        `Actor: ${timeline.actorName}`,
+        actions.join("\n")
+      ].filter(Boolean).join("\n");
+    }).join("\n\n");
+  }
+
+  async function copyActorTimelines() {
+    const timelines = await getActorTimelines();
+
+    if (timelines.length === 0) return;
+
+    await navigator.clipboard.writeText(formatActorTimelinesForCopy(timelines));
+    setCaptureStatus("Actor timelines copied.");
+  }
+
   document.getElementById("enabled")
     .addEventListener("change", () => saveSetting("enabled"));
 
@@ -897,6 +1281,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("highlightPronouns")
     .addEventListener("change", () => saveSetting("highlightPronouns"));
+
+  document.getElementById("autoCaptureOnPageLoad")
+    .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
 
   document.getElementById("rerun")
     .addEventListener("click", async () => {
@@ -996,6 +1383,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
+  document.getElementById("buildActorTimelines")
+    .addEventListener("click", () => {
+      buildActorTimelines().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyActorTimelines")
+    .addEventListener("click", () => {
+      copyActorTimelines().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearActorTimelines")
+    .addEventListener("click", () => {
+      clearActorTimelines().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
   document.getElementById("clearCapture")
     .addEventListener("click", () => {
       clearLatestCapture().catch((error) => {
@@ -1010,5 +1418,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadTimelineItems();
   await loadEventItems();
   await loadOrderedEvents();
+  await loadActorTimelines();
   await loadFormatterStatus();
 });
