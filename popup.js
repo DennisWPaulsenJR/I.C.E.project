@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
   const TIMELINE_STORAGE_KEY = "ICE_TIMELINE_ITEMS";
   const EVENT_STORAGE_KEY = "ICE_EVENT_ITEMS";
+  const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const ACTION_INDICATORS = [
     "born",
@@ -35,9 +36,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ORDERING_CUES = [
     "first",
     "then",
-    "after",
+    "after that",
     "afterward",
-    "before",
+    "before that",
+    "before this",
+    "before then",
     "later",
     "next",
     "finally",
@@ -47,10 +50,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     `\\b(${ACTION_INDICATORS.join("|")})\\b`,
     "i"
   );
-  const ORDERING_PATTERN = new RegExp(
-    `\\b(${ORDERING_CUES.join("|")})\\b`,
-    "i"
-  );
+  const ORDERING_WEIGHTS = {
+    first: -20,
+    "before that": -10,
+    "before this": -10,
+    "before then": -10,
+    then: 2,
+    "after that": 4,
+    afterward: 6,
+    next: 8,
+    later: 12,
+    subsequently: 14,
+    finally: 20
+  };
   const MONTH_PATTERN = [
     "January",
     "February",
@@ -215,6 +227,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("eventCount").textContent = eventItems.length;
     document.getElementById("clearEvents").disabled = eventItems.length === 0;
     document.getElementById("copyEventItems").disabled = eventItems.length === 0;
+    document.getElementById("orderEvents").disabled = eventItems.length === 0;
     snippets.textContent = "";
 
     // Phase 3.5 read-only event review. Future work should add event ordering,
@@ -231,6 +244,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         : shortTitle(item.sourceTitle);
 
       li.append(eventText, meta);
+      snippets.appendChild(li);
+    }
+  }
+
+  function renderOrderedEvents(items) {
+    const orderedItems = Array.isArray(items) ? items : [];
+    const snippets = document.getElementById("orderedEventSnippets");
+
+    document.getElementById("orderedEventCount").textContent = orderedItems.length;
+    document.getElementById("clearOrderedEvents").disabled =
+      orderedItems.length === 0;
+    document.getElementById("copyOrderedEvents").disabled =
+      orderedItems.length === 0;
+    snippets.textContent = "";
+
+    for (const item of orderedItems.slice(0, 5)) {
+      const li = document.createElement("li");
+      const eventText = document.createElement("p");
+      const reason = document.createElement("span");
+
+      eventText.textContent = `${item.sequenceOrder}. ${trimText(item.eventText)}`;
+      reason.textContent = item.orderingReason;
+
+      li.append(eventText, reason);
       snippets.appendChild(li);
     }
   }
@@ -298,6 +335,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadEventItems() {
     renderEvents(await getEventItems());
+  }
+
+  async function getOrderedEvents() {
+    const data = await chrome.storage.local.get(ORDERED_EVENTS_KEY);
+    return Array.isArray(data[ORDERED_EVENTS_KEY])
+      ? data[ORDERED_EVENTS_KEY]
+      : [];
+  }
+
+  async function loadOrderedEvents() {
+    renderOrderedEvents(await getOrderedEvents());
   }
 
   async function loadLatestCapture() {
@@ -386,6 +434,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return (text || "").replace(/\s+/g, " ").trim();
   }
 
+  function cleanCopiedText(text) {
+    return normalizeWhitespace(text)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
   function splitSentences(text) {
     const protectedText = normalizeWhitespace(text)
       .replace(/\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\./gi, "$1<dot>");
@@ -467,8 +521,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Math.min(0.95, Number(confidence.toFixed(2)));
   }
 
+  function detectOrderingCue(sentence) {
+    const normalized = normalizeWhitespace(sentence).toLowerCase();
+    const startCue = normalized.match(
+      /^(?:\d+[:.)]\s*)?(first|then|afterward|later|next|finally|subsequently)\b/
+    );
+    const startPhrase = normalized.match(
+      /^(?:\d+[:.)]\s*)?(after that|before that|before this|before then)\b/
+    );
+    const clauseCue = normalized.match(
+      /(?:^|[.;:]\s+|\s(?:and|but)\s+)(then|afterward|later|next|finally|subsequently)\b/
+    );
+    const clausePhrase = normalized.match(
+      /(?:^|[.;:]\s+|\s(?:and|but)\s+)(after that|before that|before this|before then)\b/
+    );
+
+    if (startPhrase) return startPhrase[1];
+    if (startCue) return startCue[1];
+    if (clausePhrase && clausePhrase.index <= 40) return clausePhrase[1];
+    if (clauseCue && clauseCue.index <= 40) return clauseCue[1];
+
+    return "";
+  }
+
   function createEventItem(capture, sentence, sequenceIndex) {
-    const orderingMatch = sentence.match(ORDERING_PATTERN);
+    const orderingCue = detectOrderingCue(sentence);
     const actionMatch = sentence.match(ACTION_PATTERN);
     const date = findDateInSentence(sentence);
     const eventText = normalizeWhitespace(sentence);
@@ -488,10 +565,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       sequenceIndex,
       detectedDateText: date.detectedDateText,
       normalizedYear: date.normalizedYear,
-      orderingCue: orderingMatch?.[1]?.toLowerCase() || "",
+      orderingCue,
       confidence: confidenceForEvent(
         Boolean(actionMatch),
-        Boolean(orderingMatch),
+        Boolean(orderingCue),
         Boolean(date.detectedDateText)
       ),
       extractedAt: new Date().toISOString()
@@ -507,12 +584,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!normalized) return;
 
       const hasAction = ACTION_PATTERN.test(normalized);
-      const hasOrderingCue = ORDERING_PATTERN.test(normalized);
+      const hasOrderingCue = Boolean(detectOrderingCue(normalized));
 
       if (!hasAction && !hasOrderingCue) return;
 
       ACTION_PATTERN.lastIndex = 0;
-      ORDERING_PATTERN.lastIndex = 0;
       items.push(createEventItem(capture, normalized, index));
     });
 
@@ -618,7 +694,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `Source: ${item.sourceTitle || "Untitled source"}`,
       `URL: ${item.sourceUrl || ""}`,
       `Context: ${item.contextSnippet || ""}`
-    ].join("\n")).join("\n\n");
+    ].map(cleanCopiedText).join("\n")).join("\n\n");
   }
 
   async function copyTimelineItems() {
@@ -672,6 +748,109 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Events cleared.");
   }
 
+  function sourceIndexForEvent(eventItem, index) {
+    const baseIndex = Number.isFinite(Number(eventItem.sequenceIndex))
+      ? Number(eventItem.sequenceIndex)
+      : index;
+
+    return baseIndex;
+  }
+
+  function hasNormalizedYear(eventItem) {
+    return eventItem.normalizedYear !== null &&
+      eventItem.normalizedYear !== "" &&
+      Number.isFinite(Number(eventItem.normalizedYear));
+  }
+
+  function orderingScore(eventItem, index) {
+    const sourceIndex = sourceIndexForEvent(eventItem, index);
+    const cueWeight = ORDERING_WEIGHTS[eventItem.orderingCue] ?? 0;
+
+    return (sourceIndex * 100) + cueWeight;
+  }
+
+  function orderingReasonForEvent(eventItem) {
+    if (hasNormalizedYear(eventItem)) {
+      return `date/year ${eventItem.normalizedYear}`;
+    }
+
+    if (eventItem.orderingCue) {
+      return `ordering cue "${eventItem.orderingCue}"`;
+    }
+
+    return `source sequence ${eventItem.sequenceIndex ?? 0}`;
+  }
+
+  function createOrderedEvents(eventItems) {
+    const grouped = new Map();
+
+    for (const item of eventItems) {
+      const key = item.sourceCaptureId || item.sourceUrl || "unknown-source";
+      const existing = grouped.get(key) || [];
+      existing.push(item);
+      grouped.set(key, existing);
+    }
+
+    const ordered = [];
+
+    for (const group of grouped.values()) {
+      const indexedGroup = group.map((item, index) => ({ item, index }));
+      const sorted = indexedGroup.sort((a, b) => {
+        const aHasYear = hasNormalizedYear(a.item);
+        const bHasYear = hasNormalizedYear(b.item);
+
+        if (aHasYear && bHasYear &&
+          Number(a.item.normalizedYear) !== Number(b.item.normalizedYear)) {
+          return Number(a.item.normalizedYear) - Number(b.item.normalizedYear);
+        }
+
+        const aScore = orderingScore(a.item, a.index);
+        const bScore = orderingScore(b.item, b.index);
+
+        if (aScore !== bScore) return aScore - bScore;
+        return sourceIndexForEvent(a.item, a.index) -
+          sourceIndexForEvent(b.item, b.index);
+      });
+
+      sorted.forEach(({ item }, index) => {
+        ordered.push({
+          ...item,
+          sequenceOrder: index + 1,
+          orderingReason: orderingReasonForEvent(item),
+          orderedAt: new Date().toISOString()
+        });
+      });
+    }
+
+    return ordered;
+  }
+
+  async function orderEvents() {
+    const eventItems = await getEventItems();
+
+    if (eventItems.length === 0) {
+      setCaptureStatus("No event candidates to order.");
+      return;
+    }
+
+    // Phase 4 MVP: this assigns local sequence order only. Phase 4.5 actor
+    // grouping remains roadmap-only and should not be implemented here.
+    const orderedEvents = createOrderedEvents(eventItems);
+
+    await chrome.storage.local.set({
+      [ORDERED_EVENTS_KEY]: orderedEvents
+    });
+
+    renderOrderedEvents(orderedEvents);
+    setCaptureStatus(`Ordered ${orderedEvents.length} event(s).`);
+  }
+
+  async function clearOrderedEvents() {
+    await chrome.storage.local.remove(ORDERED_EVENTS_KEY);
+    renderOrderedEvents([]);
+    setCaptureStatus("Ordered events cleared.");
+  }
+
   function formatEventItemsForCopy(items) {
     return items.map((item, index) => [
       `${index + 1}. ${item.eventText || ""}`,
@@ -679,7 +858,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `URL: ${item.sourceUrl || ""}`,
       item.orderingCue ? `Ordering cue: ${item.orderingCue}` : "",
       item.detectedDateText ? `Date: ${item.detectedDateText}` : ""
-    ].filter(Boolean).join("\n")).join("\n\n");
+    ].filter(Boolean).map(cleanCopiedText).join("\n")).join("\n\n");
   }
 
   async function copyEventItems() {
@@ -689,6 +868,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await navigator.clipboard.writeText(formatEventItemsForCopy(items));
     setCaptureStatus("Event items copied.");
+  }
+
+  function formatOrderedEventsForCopy(items) {
+    return items.map((item) => [
+      `${item.sequenceOrder}. ${item.eventText || ""}`,
+      `Reason: ${item.orderingReason || ""}`,
+      `Source: ${item.sourceTitle || "Untitled source"}`,
+      `URL: ${item.sourceUrl || ""}`,
+      item.detectedDateText ? `Date: ${item.detectedDateText}` : ""
+    ].filter(Boolean).map(cleanCopiedText).join("\n")).join("\n\n");
+  }
+
+  async function copyOrderedEvents() {
+    const items = await getOrderedEvents();
+
+    if (items.length === 0) return;
+
+    await navigator.clipboard.writeText(formatOrderedEventsForCopy(items));
+    setCaptureStatus("Ordered events copied.");
   }
 
   document.getElementById("enabled")
@@ -777,6 +975,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
+  document.getElementById("orderEvents")
+    .addEventListener("click", () => {
+      orderEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearOrderedEvents")
+    .addEventListener("click", () => {
+      clearOrderedEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyOrderedEvents")
+    .addEventListener("click", () => {
+      copyOrderedEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
   document.getElementById("clearCapture")
     .addEventListener("click", () => {
       clearLatestCapture().catch((error) => {
@@ -790,5 +1009,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadCaptureHistory();
   await loadTimelineItems();
   await loadEventItems();
+  await loadOrderedEvents();
   await loadFormatterStatus();
 });
