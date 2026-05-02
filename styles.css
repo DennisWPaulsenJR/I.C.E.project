@@ -67,3 +67,35 @@
   margin: 8px 0 0;
   font-size: .85rem;
 }
+
+.timeline-count {
+  margin: 8px 0 0;
+  font-size: .85rem;
+}
+
+.timeline-snippets {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: .8rem;
+}
+
+.timeline-snippets li {
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+.event-count {
+  margin: 8px 0 0;
+  font-size: .85rem;
+}
+
+.event-snippets {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: .8rem;
+}
+
+.event-snippets li {
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
