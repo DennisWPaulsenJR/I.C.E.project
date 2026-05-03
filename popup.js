@@ -3,9 +3,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
   const TIMELINE_STORAGE_KEY = "ICE_TIMELINE_ITEMS";
   const EVENT_STORAGE_KEY = "ICE_EVENT_ITEMS";
+  const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
   const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
   const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
+  const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
   const ACTION_INDICATORS = [
     "born",
     "died",
@@ -51,6 +53,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     `\\b(${ACTION_INDICATORS.join("|")})\\b`,
     "i"
   );
+  const PRINCIPLE_INDICATORS = [
+    "fulfilled",
+    "written",
+    "prophet",
+    "commanded",
+    "warned",
+    "worship",
+    "revelation",
+    "dream",
+    "blessing",
+    "law",
+    "mercy",
+    "obedience",
+    "faith",
+    "covenant",
+    "kingdom",
+    "righteousness",
+    "salvation"
+  ];
+  const PRINCIPLE_PATTERN = new RegExp(
+    `\\b(${PRINCIPLE_INDICATORS.join("|")})\\b`,
+    "i"
+  );
+  const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
   const ORDERING_WEIGHTS = {
     first: -20,
     "before that": -10,
@@ -77,6 +103,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     ["herod", "Herod"],
     ["joseph", "Joseph"],
     ["mary", "Mary"],
+    ["john", "John the Baptist"],
+    ["john the baptist", "John the Baptist"],
+    ["pharisees", "Pharisees"],
+    ["sadducees", "Sadducees"],
+    ["pharisees and sadducees", "Pharisees and Sadducees"],
+    ["people", "People / multitudes"],
+    ["the people", "People / multitudes"],
+    ["multitudes", "People / multitudes"],
+    ["jerusalem", "People / multitudes"],
+    ["judaea", "People / multitudes"],
+    ["jud\u00e6a", "People / multitudes"],
+    ["jordan", "People / multitudes"],
+    ["father", "Father"],
+    ["spirit", "Spirit of GOD"],
+    ["spirit of god", "Spirit of GOD"],
+    ["the spirit of god", "Spirit of GOD"],
     ["wise men", "Wise men"],
     ["the wise men", "Wise men"],
     ["angel", "Angel"],
@@ -138,9 +180,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Chief priests and scribes",
     "Priests",
     "Scribes",
-    "People"
+    "People",
+    "People / multitudes",
+    "Pharisees",
+    "Sadducees",
+    "Pharisees and Sadducees"
   ]);
-  const ACTOR_SOURCE_PATTERN = "(Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people)";
+  const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
   const LEADING_ACTOR_PATTERN = new RegExp(
     `^(?:\\d+[:.)]?\\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
     "i"
@@ -205,12 +251,52 @@ document.addEventListener("DOMContentLoaded", async () => {
       await chrome.tabs.sendMessage(tabId, {
         type: "ICE_RERUN_FORMATTER"
       });
+      return true;
     } catch (_error) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["engine.js", "content.js"]
-      });
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["engine.js", "content.js"]
+        });
+        return true;
+      } catch (_scriptError) {
+        return false;
+      }
     }
+  }
+
+  async function runPipeline(reason) {
+    const response = await chrome.runtime.sendMessage({
+      type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
+      reason
+    });
+
+    if (!response?.ok) {
+      throw new Error(response?.error || "Analysis pipeline failed.");
+    }
+
+    return response.status;
+  }
+
+  async function runFullAnalysisFromPopup() {
+    setCaptureStatus("Running full analysis...");
+
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
+
+    if (tab?.id) {
+      const pageUpdated = await rerunOnActiveTab(tab.id);
+      if (!pageUpdated) {
+        await runPipeline("popup-full-analysis-restricted-page");
+      }
+    } else {
+      await runPipeline("popup-full-analysis");
+    }
+
+    await loadAllSummaries();
+    setCaptureStatus("Full analysis complete.");
   }
 
   async function sendMessageToActiveTab(message) {
@@ -271,6 +357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("clearHistory").disabled = count === 0;
     document.getElementById("extractTimeline").disabled = count === 0;
     document.getElementById("extractEvents").disabled = count === 0;
+    document.getElementById("extractPrinciples").disabled = count === 0;
   }
 
   function renderFormatterStatus(status) {
@@ -332,6 +419,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.append(eventText, meta);
       snippets.appendChild(li);
     }
+  }
+
+  function renderPrinciples(items) {
+    const principleItems = Array.isArray(items) ? items : [];
+
+    document.getElementById("principleCount").textContent =
+      principleItems.length;
+    document.getElementById("copyPrinciples").disabled =
+      principleItems.length === 0;
+    document.getElementById("clearPrinciples").disabled =
+      principleItems.length === 0;
   }
 
   function renderOrderedEvents(items) {
@@ -437,6 +535,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderFormatterStatus(data[FORMATTER_STATUS_KEY]);
   }
 
+  async function loadAnalysisStatus() {
+    const data = await chrome.storage.local.get(ANALYSIS_STATUS_KEY);
+    const status = data[ANALYSIS_STATUS_KEY];
+
+    document.getElementById("analysisStatus").textContent = status
+      ? "Ready"
+      : "Not run";
+    document.getElementById("lastAnalysisAt").textContent =
+      status?.analyzedAt || "Never";
+  }
+
   async function getTimelineItems() {
     const data = await chrome.storage.local.get(TIMELINE_STORAGE_KEY);
     return Array.isArray(data[TIMELINE_STORAGE_KEY])
@@ -457,6 +566,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadEventItems() {
     renderEvents(await getEventItems());
+  }
+
+  async function getPrincipleItems() {
+    const data = await chrome.storage.local.get(PRINCIPLE_STORAGE_KEY);
+    return Array.isArray(data[PRINCIPLE_STORAGE_KEY])
+      ? data[PRINCIPLE_STORAGE_KEY]
+      : [];
+  }
+
+  async function loadPrincipleItems() {
+    renderPrinciples(await getPrincipleItems());
   }
 
   async function getOrderedEvents() {
@@ -534,7 +654,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     await saveLatestCapture(response.capture);
 
     const result = await saveCaptureToHistory(response.capture);
+    await runPipeline("manual-capture");
     renderHistoryCount(result.history);
+    await loadAllSummaries();
     setCaptureStatus(result.duplicate
       ? "Captured; duplicate already saved."
       : "Captured and saved."
@@ -561,6 +683,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     await chrome.storage.local.remove(CAPTURE_HISTORY_KEY);
     renderHistoryCount([]);
     setCaptureStatus("History cleared.");
+  }
+
+  async function clearPageData() {
+    await chrome.storage.local.remove([
+      CAPTURE_STORAGE_KEY,
+      CAPTURE_HISTORY_KEY,
+      TIMELINE_STORAGE_KEY,
+      EVENT_STORAGE_KEY,
+      ORDERED_EVENTS_KEY,
+      ACTOR_TIMELINES_KEY,
+      PRINCIPLE_STORAGE_KEY,
+      ANALYSIS_STATUS_KEY
+    ]);
+
+    await loadAllSummaries();
+    setCaptureStatus("Page data cleared.");
   }
 
   function normalizeWhitespace(text) {
@@ -881,6 +1019,168 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Events cleared.");
   }
 
+  function principleTypeForSentence(sentence) {
+    if (/\bfulfilled|that it might be fulfilled\b/i.test(sentence)) {
+      return "fulfillment";
+    }
+
+    if (/\bprophet|written|called a Nazarene|that shall rule\b/i.test(sentence)) {
+      return "prophecy";
+    }
+
+    if (/\bcommanded|law|obedience\b/i.test(sentence)) {
+      return "commandment";
+    }
+
+    if (/\bworship\b/i.test(sentence)) {
+      return "worship";
+    }
+
+    if (/\bwarned\b/i.test(sentence)) {
+      return "warning";
+    }
+
+    if (/\brevelation|dream\b/i.test(sentence)) {
+      return "revelation";
+    }
+
+    if (/\bcovenant\b/i.test(sentence)) {
+      return "covenant";
+    }
+
+    if (/\bkingdom|righteousness|salvation|mercy|faith|blessing\b/i.test(sentence)) {
+      return "doctrine";
+    }
+
+    return "unknown";
+  }
+
+  function createPrincipleItem(capture, sentence, sequenceIndex) {
+    const principleText = normalizeWhitespace(sentence);
+    const sourceCaptureId = capture.id || "";
+    const hashInput = [
+      sourceCaptureId,
+      sequenceIndex,
+      principleText
+    ].join("|");
+
+    return {
+      id: `${Date.now()}-${textHash(hashInput)}`,
+      sourceCaptureId,
+      sourceTitle: capture.title || "",
+      sourceUrl: capture.url || "",
+      principleText,
+      principleType: principleTypeForSentence(principleText),
+      contextSnippet: trimText(principleText, 220),
+      extractedAt: new Date().toISOString()
+    };
+  }
+
+  function extractPrincipleItemsFromCapture(capture) {
+    const sentences = splitSentences(capture.text || "");
+    const items = [];
+
+    sentences.forEach((sentence, index) => {
+      const normalized = normalizeWhitespace(sentence);
+      if (!normalized) return;
+
+      if (!PRINCIPLE_PATTERN.test(normalized) &&
+        !PURPOSE_PRINCIPLE_PATTERN.test(normalized)) {
+        return;
+      }
+
+      items.push(createPrincipleItem(capture, normalized, index));
+    });
+
+    return items;
+  }
+
+  async function principleCaptureSources() {
+    const history = await getCaptureHistory();
+    const data = await chrome.storage.local.get(CAPTURE_STORAGE_KEY);
+    const latest = data[CAPTURE_STORAGE_KEY];
+    const sources = [];
+    const seen = new Set();
+
+    for (const capture of [latest, ...history]) {
+      if (!capture?.text) continue;
+
+      const key = [
+        capture.id || "",
+        capture.url || "",
+        textHash(capture.text || "")
+      ].join("|");
+
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sources.push(capture);
+    }
+
+    return sources;
+  }
+
+  async function extractPrinciples() {
+    const captures = await principleCaptureSources();
+
+    if (captures.length === 0) {
+      setCaptureStatus("No captures to extract principles.");
+      return;
+    }
+
+    const seen = new Set();
+    const principleItems = [];
+
+    for (const capture of captures) {
+      for (const item of extractPrincipleItemsFromCapture(capture)) {
+        const key = [
+          item.sourceCaptureId,
+          item.principleType,
+          item.principleText
+        ].join("|");
+
+        if (seen.has(key)) continue;
+        seen.add(key);
+        principleItems.push(item);
+      }
+    }
+
+    // Phase 5.1 local principle/teaching candidates. Future work should add
+    // doctrine taxonomy, prophecy/fulfillment linking, theme clustering,
+    // scripture/conference-talk comparison, speaker/author doctrine mapping,
+    // user-curated notes, and future-event reasoning with source-grounded
+    // confidence.
+    await chrome.storage.local.set({
+      [PRINCIPLE_STORAGE_KEY]: principleItems
+    });
+
+    renderPrinciples(principleItems);
+    setCaptureStatus(`Extracted ${principleItems.length} principle item(s).`);
+  }
+
+  async function clearPrinciples() {
+    await chrome.storage.local.remove(PRINCIPLE_STORAGE_KEY);
+    renderPrinciples([]);
+    setCaptureStatus("Principles cleared.");
+  }
+
+  function formatPrinciplesForCopy(items) {
+    return items.map((item, index) => [
+      `${index + 1}. ${item.principleType || "unknown"}`,
+      item.principleText || "",
+      `Source: ${item.sourceTitle || "Untitled source"}`,
+      `URL: ${item.sourceUrl || ""}`
+    ].filter(Boolean).map(cleanCopiedText).join("\n")).join("\n\n");
+  }
+
+  async function copyPrinciples() {
+    const items = await getPrincipleItems();
+
+    if (items.length === 0) return;
+
+    await navigator.clipboard.writeText(formatPrinciplesForCopy(items));
+    setCaptureStatus("Principles copied.");
+  }
+
   function sourceIndexForEvent(eventItem, index) {
     const baseIndex = Number.isFinite(Number(eventItem.sequenceIndex))
       ? Number(eventItem.sequenceIndex)
@@ -1049,7 +1349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalized = stripLeadingSentenceNoise(sentence);
     const nearStart = normalized.slice(0, 80);
     const roleMatch = nearStart.match(
-      /^(?:the\s+)?(child|king|people|priests|scribes|angel|wise men)\b/i
+      /^(?:the\s+)?(child|king|people|multitudes|priests|scribes|angel|wise men|pharisees|sadducees)\b/i
     );
 
     if (roleMatch) return roleMatch[0];
@@ -1074,6 +1374,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   function explicitContextActor(eventItem) {
     const text = normalizeWhitespace(eventItem.eventText || "");
 
+    if (/\bvoice from heaven\b/i.test(text) || /\bmy beloved Son\b/i.test(text)) {
+      return "Father";
+    }
+
+    if (/\bSpirit of God\b/i.test(text) || /\bSpirit\b.*\bdescending\b/i.test(text)) {
+      return "Spirit of GOD";
+    }
+
+    if (/\bJohn(?: the Baptist)?\b/i.test(text)) {
+      return "John the Baptist";
+    }
+
+    if (/\bPharisees and Sadducees\b/i.test(text)) {
+      return "Pharisees and Sadducees";
+    }
+
+    if (/\bPharisees\b/i.test(text) && /\bSadducees\b/i.test(text)) {
+      return "Pharisees and Sadducees";
+    }
+
+    if (/\b(?:Jerusalem|Jud(?:a|\u00e6)ea|Jordan|people|multitudes)\b/i.test(text) &&
+      /\b(?:went out|come|came|were baptized|baptized|confessing)\b/i.test(text)) {
+      return "People / multitudes";
+    }
+
     if (/\bchief priests and scribes\b/i.test(text)) {
       return "Chief priests and scribes";
     }
@@ -1093,8 +1418,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "";
   }
 
+  function sourceActorOverride(eventItem) {
+    const text = normalizeWhitespace(eventItem.eventText || "");
+
+    if (/\bvoice from heaven\b/i.test(text) || /\bmy beloved Son\b/i.test(text)) {
+      return "Father";
+    }
+
+    if (/\bSpirit of God\b/i.test(text) || /\bSpirit\b.*\bdescending\b/i.test(text)) {
+      return "Spirit of GOD";
+    }
+
+    return "";
+  }
+
   function actorForEvent(eventItem, actorMemory) {
     const text = eventItem.eventText || "";
+    const sourceActor = sourceActorOverride(eventItem);
+    if (sourceActor) return sourceActor;
+
     const pronounActor = pronounSubjectActor(text, actorMemory);
     if (pronounActor) return normalizeActorName(pronounActor);
     if (PRONOUN_SUBJECT_PATTERN.test(stripLeadingSentenceNoise(text))) {
@@ -1122,6 +1464,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Herod's gathering action.
     if (/\bchief priests and scribes\b/i.test(eventText)) {
       actorMemory.previousPluralActor = "Chief priests and scribes";
+    } else if (/\bPharisees\b/i.test(eventText) && /\bSadducees\b/i.test(eventText)) {
+      actorMemory.previousPluralActor = "Pharisees and Sadducees";
+    } else if (/\b(?:Jerusalem|Jud(?:a|\u00e6)ea|Jordan|people|multitudes)\b/i.test(eventText)) {
+      actorMemory.previousPluralActor = "People / multitudes";
     } else if (/\bwise men\b/i.test(eventText)) {
       actorMemory.previousPluralActor = "Wise men";
     }
@@ -1135,6 +1481,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function createActorTimelines(orderedEvents) {
     const grouped = new Map();
+    const seenByActor = new Map();
     const actorMemoryBySource = new Map();
     const sourceOrderedEvents = [...orderedEvents].sort((a, b) => {
       const sourceA = a.sourceCaptureId || a.sourceUrl || "";
@@ -1156,13 +1503,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         actorMemory
       );
       const action = {
+        sourceEventId: eventItem.id || "",
         sequenceOrder: eventItem.sequenceOrder,
         eventText: trimText(eventItem.eventText || "", 180),
         orderingReason: eventItem.orderingReason || ""
       };
+      const actionKey = [
+        action.sourceEventId,
+        action.sequenceOrder ?? "",
+        normalizeWhitespace(action.eventText)
+      ].join("|");
 
       if (!grouped.has(actorName)) grouped.set(actorName, []);
-      grouped.get(actorName).push(action);
+      if (!seenByActor.has(actorName)) seenByActor.set(actorName, new Set());
+
+      if (!seenByActor.get(actorName).has(actionKey)) {
+        seenByActor.get(actorName).add(actionKey);
+        grouped.get(actorName).push(action);
+      }
 
       updateActorMemoryFromEvent(actorMemory, actorName, eventItem.eventText || "");
       actorMemoryBySource.set(sourceKey, actorMemory);
@@ -1182,6 +1540,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
   }
 
+  function dedupeActorTimelines(actorTimelines) {
+    return actorTimelines.map((timeline) => {
+      const seen = new Set();
+      const orderedActions = [];
+
+      for (const action of timeline.orderedActions || []) {
+        const key = [
+          timeline.actorName || "",
+          action.sequenceOrder ?? "",
+          normalizeWhitespace(action.eventText || "").toLowerCase()
+        ].join("|");
+
+        if (seen.has(key)) continue;
+        seen.add(key);
+        orderedActions.push(action);
+      }
+
+      return {
+        ...timeline,
+        orderedActions
+      };
+    });
+  }
+
   async function buildActorTimelines() {
     const orderedEvents = await getOrderedEvents();
 
@@ -1196,7 +1578,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // actor like wise men is nearby; richer actor resolution belongs in future
     // dependency parsing, AI actor resolution, pronoun linking, and
     // cross-document entity merging work.
-    const actorTimelines = createActorTimelines(orderedEvents);
+    const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
 
     await chrome.storage.local.set({
       [ACTOR_TIMELINES_KEY]: actorTimelines
@@ -1285,18 +1667,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("autoCaptureOnPageLoad")
     .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
 
-  document.getElementById("rerun")
-    .addEventListener("click", async () => {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
+  document.getElementById("runFullAnalysis")
+    .addEventListener("click", () => {
+      runFullAnalysisFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
       });
+    });
 
-      if (tab?.id) {
-        await rerunOnActiveTab(tab.id);
-      }
+  document.getElementById("openStudyPanel")
+    .addEventListener("click", () => {
+      chrome.tabs.create({
+        url: chrome.runtime.getURL("study.html")
+      });
+    });
 
-      window.close();
+  document.getElementById("clearPageData")
+    .addEventListener("click", () => {
+      clearPageData().catch((error) => {
+        setCaptureStatus(error.message);
+      });
     });
 
   document.getElementById("capture")
@@ -1362,6 +1751,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
+  document.getElementById("extractPrinciples")
+    .addEventListener("click", () => {
+      extractPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyPrinciples")
+    .addEventListener("click", () => {
+      copyPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearPrinciples")
+    .addEventListener("click", () => {
+      clearPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
   document.getElementById("orderEvents")
     .addEventListener("click", () => {
       orderEvents().catch((error) => {
@@ -1411,13 +1821,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
-  // Phase 2 foundation: latest capture stays local for the future document
-  // library, timeline extraction, and historical analysis flows.
-  await loadLatestCapture();
-  await loadCaptureHistory();
-  await loadTimelineItems();
-  await loadEventItems();
-  await loadOrderedEvents();
-  await loadActorTimelines();
-  await loadFormatterStatus();
+  async function loadAllSummaries() {
+    await loadLatestCapture();
+    await loadCaptureHistory();
+    await loadTimelineItems();
+    await loadEventItems();
+    await loadPrincipleItems();
+    await loadOrderedEvents();
+    await loadActorTimelines();
+    await loadFormatterStatus();
+    await loadAnalysisStatus();
+  }
+
+  // Phase 5.2 summary surface: the popup stays focused on primary controls
+  // while the automatic local pipeline feeds the Study Panel.
+  await loadAllSummaries();
 });

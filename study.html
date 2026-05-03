@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I.C.E. Study Panel</title>
+  <link rel="stylesheet" href="study.css">
+</head>
+<body>
+  <header class="study-header">
+    <div>
+      <h1>I.C.E. Study Panel</h1>
+      <p>Context from the current capture and local extracted study data.</p>
+    </div>
+    <label class="search-control">
+      <span>Search / Filter</span>
+      <input id="searchInput" type="search" placeholder="JESUS, Herod, Joseph, Egypt">
+    </label>
+    <button id="refreshStudyData" class="refresh-button">Refresh Study Data</button>
+  </header>
+
+  <main class="study-shell">
+    <section class="diagnostic-panel" id="diagnosticPanel">
+      <div>Captures: <span id="diagnosticCaptures">0</span></div>
+      <div>Timeline: <span id="diagnosticTimeline">0</span></div>
+      <div>Events: <span id="diagnosticEvents">0</span></div>
+      <div>Ordered Events: <span id="diagnosticOrderedEvents">0</span></div>
+      <div>Actor Timelines: <span id="diagnosticActors">0</span></div>
+      <div>Principles: <span id="diagnosticPrinciples">0</span></div>
+      <div>Last analysis: <span id="diagnosticLastAnalysis">Never</span></div>
+    </section>
+    <p id="diagnosticMessage" class="diagnostic-message" hidden></p>
+
+    <section class="study-section" id="currentPageSection">
+      <div class="section-heading">
+        <h2>Current Page Summary</h2>
+        <span id="currentPageCount" class="count-label">0</span>
+      </div>
+      <div id="currentPageSummary" class="card-grid"></div>
+    </section>
+
+    <section class="study-section" id="actorsSection">
+      <div class="section-heading">
+        <h2>Detected Actors</h2>
+        <span id="actorCount" class="count-label">0</span>
+      </div>
+      <div id="actorCards" class="card-grid"></div>
+    </section>
+
+    <section class="study-section" id="orderedEventsSection">
+      <div class="section-heading">
+        <h2>Ordered Events</h2>
+        <span id="orderedEventCount" class="count-label">0</span>
+      </div>
+      <div id="orderedEventCards" class="card-grid"></div>
+    </section>
+
+    <section class="study-section" id="principlesSection">
+      <div class="section-heading">
+        <h2>Principles / Teachings</h2>
+        <span id="principleCount" class="count-label">0</span>
+      </div>
+      <div id="principleCards" class="card-grid"></div>
+    </section>
+
+    <section class="study-section" id="timelineSection">
+      <div class="section-heading">
+        <h2>Timeline Items</h2>
+        <span id="timelineCount" class="count-label">0</span>
+      </div>
+      <div id="timelineCards" class="card-grid"></div>
+    </section>
+  </main>
+
+  <script src="study.js"></script>
+</body>
+</html>

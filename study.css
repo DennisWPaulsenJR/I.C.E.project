@@ -1,0 +1,158 @@
+:root {
+  color: #17202a;
+  background: #f7f8fb;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.study-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #d8dde6;
+}
+
+.study-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.study-header p {
+  margin: 6px 0 0;
+  color: #5f6b7a;
+}
+
+.search-control {
+  display: grid;
+  gap: 6px;
+  min-width: min(360px, 100%);
+  font-size: .85rem;
+  color: #445064;
+}
+
+.search-control input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #b9c2cf;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.refresh-button {
+  padding: 10px 12px;
+  border: 1px solid #25364d;
+  border-radius: 6px;
+  background: #25364d;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.study-shell {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.diagnostic-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #445064;
+  font-size: .85rem;
+}
+
+.diagnostic-message {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #d8a100;
+  border-radius: 8px;
+  background: #fff8dc;
+  color: #5d4700;
+}
+
+.study-section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.count-label {
+  color: #5f6b7a;
+  font-size: .85rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.study-card {
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.study-card h3 {
+  margin: 0 0 8px;
+  font-size: .98rem;
+}
+
+.study-card p {
+  margin: 6px 0 0;
+  color: #2f3a48;
+  line-height: 1.35;
+}
+
+.study-card .meta {
+  display: block;
+  margin-top: 8px;
+  color: #687587;
+  font-size: .78rem;
+}
+
+.empty-state {
+  color: #687587;
+  font-size: .9rem;
+}
+
+@media (max-width: 720px) {
+  .study-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .study-shell {
+    padding: 16px;
+  }
+}

@@ -413,6 +413,11 @@
         duplicate: result.duplicate,
         wordCount: capture.wordCount
       });
+
+      await chrome.runtime.sendMessage({
+        type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
+        reason
+      });
     } catch (error) {
       console.debug("I.C.E. auto capture skipped", {
         reason,

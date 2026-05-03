@@ -73,8 +73,36 @@
   font-size: .85rem;
 }
 
+.analysis-summary {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: .82rem;
+}
+
+.analysis-summary p {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.advanced-qa {
+  margin-top: 8px;
+  font-size: .85rem;
+}
+
+.advanced-qa summary {
+  cursor: pointer;
+}
+
 .timeline-count,
 .event-count,
+.principle-count,
 .ordered-count,
 .actor-count {
   padding-top: 8px;
@@ -111,6 +139,11 @@
 }
 
 .event-count {
+  margin: 8px 0 0;
+  font-size: .85rem;
+}
+
+.principle-count {
   margin: 8px 0 0;
   font-size: .85rem;
 }

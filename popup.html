@@ -54,11 +54,22 @@
     Auto capture on page load
   </label>
 
-  <button id="rerun">Re-run On This Page</button>
+  <button id="runFullAnalysis">Run Full Analysis</button>
+  <button id="openStudyPanel">Open Study Panel</button>
+  <button id="clearPageData">Clear Page Data</button>
 
   <hr>
 
-  <button id="capture">Capture Page Text</button>
+  <section class="analysis-summary">
+    <p>Capture status: <span id="analysisStatus">Not run</span></p>
+    <p>Saved captures: <span id="historyCount">0</span></p>
+    <p>Timeline items: <span id="timelineCount">0</span></p>
+    <p>Event candidates: <span id="eventCount">0</span></p>
+    <p>Ordered events: <span id="orderedEventCount">0</span></p>
+    <p>Actor timelines: <span id="actorTimelineCount">0</span></p>
+    <p>Principles: <span id="principleCount">0</span></p>
+    <p>Last analysis: <span id="lastAnalysisAt">Never</span></p>
+  </section>
 
   <section id="captureSummary" class="capture-summary" hidden>
     <h4>Latest Capture</h4>
@@ -79,39 +90,36 @@
     </dl>
   </section>
 
-  <button id="copyCapture" disabled>Copy Captured Text</button>
-  <p class="history-count">Saved captures: <span id="historyCount">0</span></p>
-  <button id="clearHistory" disabled>Clear History</button>
-
   <p class="formatter-status">Last format matches: <span id="formatterMatchCount">0</span></p>
 
   <hr>
 
-  <button id="extractTimeline" disabled>Extract Timeline</button>
-  <p class="timeline-count">Timeline items: <span id="timelineCount">0</span></p>
-  <ul id="timelineSnippets" class="timeline-snippets"></ul>
-  <button id="copyTimelineItems" disabled>Copy Timeline Items</button>
-  <button id="clearTimeline" disabled>Clear Timeline</button>
-
-  <button id="extractEvents" disabled>Extract Events</button>
-  <p class="event-count">Event candidates: <span id="eventCount">0</span></p>
-  <ul id="eventSnippets" class="event-snippets"></ul>
-  <button id="copyEventItems" disabled>Copy Event Items</button>
-  <button id="clearEvents" disabled>Clear Events</button>
-
-  <button id="orderEvents" disabled>Order Events</button>
-  <p class="ordered-count">Ordered events: <span id="orderedEventCount">0</span></p>
-  <ul id="orderedEventSnippets" class="ordered-event-snippets"></ul>
-  <button id="copyOrderedEvents" disabled>Copy Ordered Events</button>
-  <button id="clearOrderedEvents" disabled>Clear Ordered Events</button>
-
-  <button id="buildActorTimelines" disabled>Build Actor Timelines</button>
-  <p class="actor-count">Actor timelines: <span id="actorTimelineCount">0</span></p>
-  <ul id="actorTimelineSnippets" class="actor-timeline-snippets"></ul>
-  <button id="copyActorTimelines" disabled>Copy Actor Timelines</button>
-  <button id="clearActorTimelines" disabled>Clear Actor Timelines</button>
-
-  <button id="clearCapture" disabled>Clear Capture</button>
+  <details class="advanced-qa">
+    <summary>Advanced / QA</summary>
+    <button id="capture">Capture Page Text</button>
+    <button id="copyCapture" disabled>Copy Captured Text</button>
+    <button id="clearHistory" disabled>Clear History</button>
+    <button id="extractTimeline" disabled>Extract Timeline</button>
+    <ul id="timelineSnippets" class="timeline-snippets"></ul>
+    <button id="copyTimelineItems" disabled>Copy Timeline Items</button>
+    <button id="clearTimeline" disabled>Clear Timeline</button>
+    <button id="extractEvents" disabled>Extract Events</button>
+    <ul id="eventSnippets" class="event-snippets"></ul>
+    <button id="copyEventItems" disabled>Copy Event Items</button>
+    <button id="clearEvents" disabled>Clear Events</button>
+    <button id="extractPrinciples" disabled>Extract Principles</button>
+    <button id="copyPrinciples" disabled>Copy Principles</button>
+    <button id="clearPrinciples" disabled>Clear Principles</button>
+    <button id="orderEvents" disabled>Order Events</button>
+    <ul id="orderedEventSnippets" class="ordered-event-snippets"></ul>
+    <button id="copyOrderedEvents" disabled>Copy Ordered Events</button>
+    <button id="clearOrderedEvents" disabled>Clear Ordered Events</button>
+    <button id="buildActorTimelines" disabled>Build Actor Timelines</button>
+    <ul id="actorTimelineSnippets" class="actor-timeline-snippets"></ul>
+    <button id="copyActorTimelines" disabled>Copy Actor Timelines</button>
+    <button id="clearActorTimelines" disabled>Clear Actor Timelines</button>
+    <button id="clearCapture" disabled>Clear Capture</button>
+  </details>
   <p id="captureStatus" class="capture-status" role="status"></p>
 
   <script src="popup.js"></script>
