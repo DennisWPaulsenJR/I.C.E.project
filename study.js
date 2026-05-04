@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     orderedEvents: "ICE_ORDERED_EVENTS",
     actorTimelines: "ICE_ACTOR_TIMELINES",
     principleItems: "ICE_PRINCIPLE_ITEMS",
+    prophecyLinks: "ICE_PROPHECY_LINKS",
     analysisStatus: "ICE_ANALYSIS_STATUS"
   };
   const DISPLAY_LIMIT = 5;
@@ -270,6 +271,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No principle or teaching items match.");
   }
 
+  function renderProphecyLinks(term) {
+    const container = document.getElementById("prophecyLinkCards");
+    const count = document.getElementById("prophecyLinkCount");
+    const links = Array.isArray(studyData.prophecyLinks)
+      ? studyData.prophecyLinks
+      : [];
+    const filtered = links.filter((item) =>
+      itemMatches(item, [
+        "prophecyText",
+        "fulfillmentText",
+        "contextSnippet",
+        "confidence",
+        "linkType"
+      ], term)
+    );
+
+    renderLimited(container, filtered, count, (item) => createCard(
+      item.confidence || "prophecy-fulfillment",
+      `${trimText(item.prophecyText, 110)} -> ${trimText(item.fulfillmentText, 110)}`,
+      item.linkType || "prophecy-fulfillment"
+    ), "No prophecy / fulfillment links match.");
+  }
+
   function renderStudy() {
     try {
       const term = normalizeText(document.getElementById("searchInput").value)
@@ -280,6 +304,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderActors(term);
       renderOrderedEvents(term);
       renderPrinciples(term);
+      renderProphecyLinks(term);
       renderTimeline(term);
     } catch (error) {
       showDiagnosticMessage(`Study Panel render error: ${error.message}`);
@@ -310,6 +335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       orderedEvents: countItems(studyData.orderedEvents),
       actorTimelines: countItems(studyData.actorTimelines),
       principles: countItems(studyData.principleItems),
+      prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
     });
   }
@@ -322,8 +348,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const orderedCount = countItems(studyData.orderedEvents);
     const actorCount = countItems(studyData.actorTimelines);
     const principleCount = countItems(studyData.principleItems);
+    const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + principleCount;
+      orderedCount + actorCount + principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -332,6 +359,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticOrderedEvents").textContent = orderedCount;
     document.getElementById("diagnosticActors").textContent = actorCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
+    document.getElementById("diagnosticProphecyLinks").textContent =
+      prophecyLinkCount;
     document.getElementById("diagnosticLastAnalysis").textContent =
       studyData.analysisStatus?.analyzedAt || "Never";
 

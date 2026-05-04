@@ -28,8 +28,26 @@
     "THE LORD",
     "JESUS",
     "CHRIST",
-    "GOD"
+    "GOD",
+    "FATHER"
   ];
+  const FATHER_REFERENCES = new Set([
+    "FATHER",
+    "THE FATHER",
+    "HEAVENLY FATHER",
+    "GOD THE FATHER"
+  ]);
+  const STRICT_FATHER_REFERENCES = new Set([
+    "THE FATHER",
+    "HEAVENLY FATHER",
+    "GOD THE FATHER"
+  ]);
+  const CLEAR_DIVINE_FATHER_CONTEXT =
+    /\b(GOD|CHRIST|JESUS|HOLY SPIRIT|SPIRIT OF GOD|THE LORD|LORD GOD|SON OF GOD|MY BELOVED SON|VOICE FROM HEAVEN|HEAVENLY)\b/i;
+  const RELIGIOUS_FATHER_CONTEXT =
+    /\b(GOD|CHRIST|JESUS|HOLY SPIRIT|SPIRIT OF GOD|THE LORD|LORD GOD|SON OF GOD|MY BELOVED SON|VOICE FROM HEAVEN|HEAVENLY|PROPHET|SCRIPTURE|BAPTIZ|KINGDOM|RIGHTEOUSNESS|SALVATION|WORSHIP)\b/i;
+  const GENERIC_FATHER_CONTEXT =
+    /\b(his father|her father|their father|father herod|father abraham|father david|father joseph)\b/i;
   const DEFAULT_PRONOUN_REFERENCE_WINDOW = 1;
 
   const STRICT_REFERENCES = new Set([
@@ -43,7 +61,10 @@
     "LORD JESUS",
     "THE LORD",
     "SON OF GOD",
-    "MESSIAH"
+    "MESSIAH",
+    "THE FATHER",
+    "HEAVENLY FATHER",
+    "GOD THE FATHER"
   ]);
 
   const PHASE_1_REFERENCES = [
@@ -174,8 +195,7 @@
           continue;
         }
 
-        if (normalizedSettings.strictMode && !this.isStrictReference(key)) continue;
-        if (!normalizedSettings.strictMode && !this.isLooseReference(raw, key)) continue;
+        if (!this.isReferenceAllowed(raw, key, text, match.index, normalizedSettings)) continue;
 
         matches.push(this.createMatch(match, raw, entry, false));
       }
@@ -256,6 +276,56 @@
       // and entity tracking across paragraphs when cross-sentence context is
       // promoted beyond the Phase 3.6 formatter.
       return false;
+    }
+
+    isReferenceAllowed(raw, key, text, position, settings) {
+      if (this.isFatherReference(key)) {
+        return this.isDivineFatherReference(raw, key, text, position, settings.strictMode);
+      }
+
+      if (settings.strictMode) return this.isStrictReference(key);
+      return this.isLooseReference(raw, key);
+    }
+
+    isFatherReference(key) {
+      return FATHER_REFERENCES.has(key);
+    }
+
+    isDivineFatherReference(raw, key, text, position, strictMode) {
+      const sentence = this.sentenceForPosition(text, position);
+      const normalizedSentence = sentence.toUpperCase();
+
+      if (GENERIC_FATHER_CONTEXT.test(sentence)) return false;
+      if (STRICT_FATHER_REFERENCES.has(key)) return true;
+      if (/\bfather\b/i.test(raw) && /\b(his|her|their)\s+$/i.test(
+        text.slice(Math.max(0, position - 12), position)
+      )) {
+        return false;
+      }
+
+      if (strictMode) {
+        return CLEAR_DIVINE_FATHER_CONTEXT.test(normalizedSentence);
+      }
+
+      return RELIGIOUS_FATHER_CONTEXT.test(normalizedSentence) ||
+        RELIGIOUS_FATHER_CONTEXT.test(this.nearbyText(text, position));
+    }
+
+    sentenceForPosition(text, position) {
+      const start = Math.max(
+        text.lastIndexOf(".", position - 1),
+        text.lastIndexOf("!", position - 1),
+        text.lastIndexOf("?", position - 1)
+      ) + 1;
+      const nextStops = [".", "!", "?"]
+        .map((mark) => text.indexOf(mark, position))
+        .filter((index) => index >= 0);
+      const end = nextStops.length > 0 ? Math.min(...nextStops) + 1 : text.length;
+      return text.slice(start, end);
+    }
+
+    nearbyText(text, position) {
+      return text.slice(Math.max(0, position - 240), Math.min(text.length, position + 240));
     }
 
     isStrictReference(key) {

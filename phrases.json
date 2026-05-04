@@ -46,5 +46,17 @@
   "SPIRIT OF TRUTH": {
     "className": "I",
     "render": "SPIRIT OF TRUTH"
+  },
+  "HEAVENLY FATHER": {
+    "className": "I",
+    "render": "HEAVENLY FATHER"
+  },
+  "GOD THE FATHER": {
+    "className": "I",
+    "render": "GOD THE FATHER"
+  },
+  "THE FATHER": {
+    "className": "I",
+    "render": "THE FATHER"
   }
 }

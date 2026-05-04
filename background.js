@@ -11,12 +11,15 @@ const EVENT_STORAGE_KEY = "ICE_EVENT_ITEMS";
 const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
 const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
 const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
+const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
+const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
+const FULFILLMENT_CANDIDATE_PATTERN = /\b(that it might be fulfilled|was fulfilled|to fulf(?:il|ill))\b/i;
 const FULL_DATE_PATTERN = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan\.?|Feb\.?|Mar\.?|Apr\.?|Jun\.?|Jul\.?|Aug\.?|Sep\.?|Sept\.?|Oct\.?|Nov\.?|Dec\.?)\s+\d{1,2},\s+(\d{3,4})\b/gi;
 const YEAR_PATTERN = /\b(1[5-9]\d{2}|20\d{2})\b/g;
 const ORDERING_WEIGHTS = {
@@ -532,6 +535,88 @@ function dedupePrincipleItems(items) {
   return deduped;
 }
 
+function principleSequence(item, index) {
+  const idText = String(item.id || "");
+  const sequenceMatch = idText.match(/\|(\d+)\|/);
+
+  return sequenceMatch ? Number(sequenceMatch[1]) : index;
+}
+
+function createProphecyLink(prophecy, fulfillment, distance) {
+  const sourceCaptureId = fulfillment.sourceCaptureId || prophecy.sourceCaptureId || "";
+  const prophecyText = prophecy.principleText || "";
+  const fulfillmentText = fulfillment.principleText || "";
+  const contextSnippet = trimText([
+    prophecy.contextSnippet || prophecyText,
+    fulfillment.contextSnippet || fulfillmentText
+  ].filter(Boolean).join(" "), 260);
+
+  return {
+    id: `${Date.now()}-${textHash(`${sourceCaptureId}|${prophecyText}|${fulfillmentText}`)}`,
+    sourceCaptureId,
+    prophecyText,
+    fulfillmentText,
+    contextSnippet,
+    linkType: "prophecy-fulfillment",
+    confidence: distance <= 2 ? "explicit" : "probable"
+  };
+}
+
+function createProphecyLinks(principleItems) {
+  const grouped = new Map();
+  const links = [];
+  const seen = new Set();
+
+  for (const item of principleItems || []) {
+    const sourceKey = item.sourceCaptureId || item.sourceUrl || "unknown-source";
+    grouped.set(sourceKey, [...(grouped.get(sourceKey) || []), item]);
+  }
+
+  for (const group of grouped.values()) {
+    const indexed = group.map((item, index) => ({
+      item,
+      sequence: principleSequence(item, index)
+    }));
+    const prophecies = indexed.filter(({ item }) =>
+      PROPHECY_CANDIDATE_PATTERN.test(item.principleText || "")
+    );
+    const fulfillments = indexed.filter(({ item }) =>
+      FULFILLMENT_CANDIDATE_PATTERN.test(item.principleText || "")
+    );
+
+    for (const fulfillment of fulfillments) {
+      const nearest = prophecies
+        .map((prophecy) => ({
+          ...prophecy,
+          distance: Math.abs(prophecy.sequence - fulfillment.sequence)
+        }))
+        .sort((a, b) => a.distance - b.distance)[0];
+
+      if (!nearest) continue;
+
+      const link = createProphecyLink(
+        nearest.item,
+        fulfillment.item,
+        nearest.distance
+      );
+      const key = [
+        link.sourceCaptureId,
+        normalizeWhitespace(link.prophecyText).toLowerCase(),
+        normalizeWhitespace(link.fulfillmentText).toLowerCase()
+      ].join("|");
+
+      if (seen.has(key)) continue;
+      seen.add(key);
+      links.push(link);
+    }
+  }
+
+  // Phase 5.3 local-only MVP. Future work should add cross-document linking,
+  // scripture reference matching, theme clustering, and stronger confidence
+  // scoring without adding AI/backend calls here.
+  return links;
+}
+
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -574,6 +659,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
     }
 
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
+    const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
     const status = {
@@ -584,6 +670,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       orderedEventCount: orderedEvents.length,
       actorTimelineCount: actorTimelines.length,
       principleCount: dedupedPrincipleItems.length,
+      prophecyLinkCount: prophecyLinks.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -593,6 +680,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ORDERED_EVENTS_KEY]: orderedEvents,
       [ACTOR_TIMELINES_KEY]: actorTimelines,
       [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems,
+      [PROPHECY_LINKS_KEY]: prophecyLinks,
       [ANALYSIS_STATUS_KEY]: status
     });
 
