@@ -188,12 +188,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   ]);
   const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
   const LEADING_ACTOR_PATTERN = new RegExp(
-    `^(?:\\d+[:.)]?\\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
+    `^(?:\\d+[:.)]?\\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
     "i"
   );
-  const PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she|they)\b/i;
-  const PLURAL_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(they)\b/i;
-  const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she)\b/i;
+  const POST_VERB_ACTOR_PATTERN = new RegExp(
+    `^(?:cometh|came|comes|went|goeth|went out|came out)\\s+(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
+    "i"
+  );
+  const PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she|they)\b/i;
+  const PLURAL_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(they)\b/i;
+  const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she)\b/i;
   const MONTH_PATTERN = [
     "January",
     "February",
@@ -1095,6 +1099,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     return items;
   }
 
+  function principleDedupKey(item) {
+    return [
+      item.sourceUrl || item.sourceTitle || "",
+      normalizeWhitespace(item.principleText || "").toLowerCase(),
+      item.principleType || "unknown"
+    ].join("|");
+  }
+
+  function dedupePrincipleItems(items) {
+    const seen = new Set();
+    const deduped = [];
+
+    for (const item of items || []) {
+      const key = principleDedupKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    return deduped;
+  }
+
   async function principleCaptureSources() {
     const history = await getCaptureHistory();
     const data = await chrome.storage.local.get(CAPTURE_STORAGE_KEY);
@@ -1132,11 +1158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     for (const capture of captures) {
       for (const item of extractPrincipleItemsFromCapture(capture)) {
-        const key = [
-          item.sourceCaptureId,
-          item.principleType,
-          item.principleText
-        ].join("|");
+        const key = principleDedupKey(item);
 
         if (seen.has(key)) continue;
         seen.add(key);
@@ -1149,12 +1171,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     // scripture/conference-talk comparison, speaker/author doctrine mapping,
     // user-curated notes, and future-event reasoning with source-grounded
     // confidence.
+    const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
+
     await chrome.storage.local.set({
-      [PRINCIPLE_STORAGE_KEY]: principleItems
+      [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems
     });
 
-    renderPrinciples(principleItems);
-    setCaptureStatus(`Extracted ${principleItems.length} principle item(s).`);
+    renderPrinciples(dedupedPrincipleItems);
+    setCaptureStatus(`Extracted ${dedupedPrincipleItems.length} principle item(s).`);
   }
 
   async function clearPrinciples() {
@@ -1164,7 +1188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function formatPrinciplesForCopy(items) {
-    return items.map((item, index) => [
+    return dedupePrincipleItems(items).map((item, index) => [
       `${index + 1}. ${item.principleType || "unknown"}`,
       item.principleText || "",
       `Source: ${item.sourceTitle || "Untitled source"}`,
@@ -1307,10 +1331,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     return PLURAL_ACTOR_NAMES.has(actorName);
   }
 
-  function stripLeadingSentenceNoise(sentence) {
+  function stripSourceHeading(sentence) {
+    // Roadmap: Source Metadata should track book/source title, author, speaker,
+    // compiler, translator/version, organization/source collection, date/year,
+    // source type, referenced scripture links, and context notes separately
+    // from Detected Actors. Matthew as author/source belongs there unless
+    // Matthew is actually acting inside the captured text.
     return normalizeWhitespace(sentence)
+      .replace(/^(?:Matthew|Mark|Luke|John)\s+\d+\b[:.)]?\s*/i, "");
+  }
+
+  function stripLeadingSentenceNoise(sentence) {
+    return stripSourceHeading(sentence)
       .replace(/^(?:\d+[:.)]?\s*)?/, "")
-      .replace(/^(?:and|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
+      .replace(/^(?:and|but|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
       .replace(/^(?:after that|before that|before this|before then),?\s+/i, "");
   }
 
@@ -1318,6 +1352,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalized = stripLeadingSentenceNoise(sentence);
     const leadingActor = normalized.match(LEADING_ACTOR_PATTERN);
     if (leadingActor) return leadingActor[1];
+    const postVerbActor = normalized.match(POST_VERB_ACTOR_PATTERN);
+    if (postVerbActor) return postVerbActor[1];
     if (PRONOUN_SUBJECT_PATTERN.test(normalized)) return "";
 
     const earlyClause = normalized

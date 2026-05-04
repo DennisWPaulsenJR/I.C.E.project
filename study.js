@@ -66,6 +66,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function principleDedupKey(item) {
+    return [
+      item.sourceUrl || item.sourceTitle || "",
+      normalizeText(item.principleText || "").toLowerCase(),
+      item.principleType || "unknown"
+    ].join("|");
+  }
+
+  function dedupePrincipleItems(items) {
+    const seen = new Set();
+    const deduped = [];
+
+    for (const item of items || []) {
+      const key = principleDedupKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    return deduped;
+  }
+
   function createCard(title, body, meta = "") {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
@@ -229,7 +251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("principleCards");
     const count = document.getElementById("principleCount");
     const principles = Array.isArray(studyData.principleItems)
-      ? studyData.principleItems
+      ? dedupePrincipleItems(studyData.principleItems)
       : [];
     const filtered = principles.filter((item) =>
       itemMatches(item, [
@@ -347,7 +369,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // taxonomy, prophecy/fulfillment linking, theme clustering,
   // scripture/conference-talk comparison, speaker/author doctrine mapping,
   // user-curated principle notes, and future-event reasoning with
-  // source-grounded confidence.
+  // source-grounded confidence. Source Metadata should become a parallel
+  // context layer for book/source title, author, speaker, compiler,
+  // translator/version, organization/source collection, date/year, source type,
+  // referenced scripture links, and context notes; it should not pollute
+  // Detected Actors unless the person/entity acts inside the captured text.
   await refreshStudyData();
 
   document.getElementById("searchInput").addEventListener("input", renderStudy);

@@ -79,12 +79,16 @@ const PLURAL_ACTOR_NAMES = new Set([
 ]);
 const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|wise men|the wise men|the angel of the Lord|angel of the Lord|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
 const LEADING_ACTOR_PATTERN = new RegExp(
-  `^(?:\\d+[:.)]?\\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
+  `^(?:\\d+[:.)]?\\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
   "i"
 );
-const PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she|they)\b/i;
-const PLURAL_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(they)\b/i;
-const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she)\b/i;
+const POST_VERB_ACTOR_PATTERN = new RegExp(
+  `^(?:cometh|came|comes|went|goeth|went out|came out)\\s+(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
+  "i"
+);
+const PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she|they)\b/i;
+const PLURAL_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(they)\b/i;
+const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\s+)*(he|she)\b/i;
 
 let lastPipelineStartedAt = 0;
 let pipelinePromise = null;
@@ -308,10 +312,19 @@ function normalizeActorName(actorText) {
     normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function stripLeadingSentenceNoise(sentence) {
+function stripSourceHeading(sentence) {
+  // Roadmap: Source Metadata should track book/source title, author, speaker,
+  // compiler, translator/version, collection owner, date/year, source type,
+  // referenced scripture links, and context notes separately from actors.
+  // "Matthew 3" is source/chapter context, not a narrative actor.
   return normalizeWhitespace(sentence)
+    .replace(/^(?:Matthew|Mark|Luke|John)\s+\d+\b[:.)]?\s*/i, "");
+}
+
+function stripLeadingSentenceNoise(sentence) {
+  return stripSourceHeading(sentence)
     .replace(/^(?:\d+[:.)]?\s*)?/, "")
-    .replace(/^(?:and|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
+    .replace(/^(?:and|but|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
     .replace(/^(?:after that|before that|before this|before then),?\s+/i, "");
 }
 
@@ -319,6 +332,8 @@ function leadingSubjectActor(sentence) {
   const normalized = stripLeadingSentenceNoise(sentence);
   const leadingActor = normalized.match(LEADING_ACTOR_PATTERN);
   if (leadingActor) return normalizeActorName(leadingActor[1]);
+  const postVerbActor = normalized.match(POST_VERB_ACTOR_PATTERN);
+  if (postVerbActor) return normalizeActorName(postVerbActor[1]);
   if (PRONOUN_SUBJECT_PATTERN.test(normalized)) return "";
   return "";
 }
@@ -495,6 +510,28 @@ function extractPrincipleItemsFromCapture(capture) {
     }));
 }
 
+function principleDedupKey(item) {
+  return [
+    item.sourceUrl || item.sourceTitle || "",
+    normalizeWhitespace(item.principleText || "").toLowerCase(),
+    item.principleType || "unknown"
+  ].join("|");
+}
+
+function dedupePrincipleItems(items) {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const item of items || []) {
+    const key = principleDedupKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -528,7 +565,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
         }
       }
       for (const item of extractPrincipleItemsFromCapture(capture)) {
-        const key = `${item.sourceCaptureId}|${item.principleType}|${item.principleText}`;
+        const key = principleDedupKey(item);
         if (!seenPrinciples.has(key)) {
           seenPrinciples.add(key);
           principleItems.push(item);
@@ -536,6 +573,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       }
     }
 
+    const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const orderedEvents = createOrderedEvents(eventItems);
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
     const status = {
@@ -545,7 +583,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       eventCount: eventItems.length,
       orderedEventCount: orderedEvents.length,
       actorTimelineCount: actorTimelines.length,
-      principleCount: principleItems.length,
+      principleCount: dedupedPrincipleItems.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -554,7 +592,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [EVENT_STORAGE_KEY]: eventItems,
       [ORDERED_EVENTS_KEY]: orderedEvents,
       [ACTOR_TIMELINES_KEY]: actorTimelines,
-      [PRINCIPLE_STORAGE_KEY]: principleItems,
+      [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems,
       [ANALYSIS_STATUS_KEY]: status
     });
 
