@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
   const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
   const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
+  const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
   const ACTION_INDICATORS = [
@@ -606,6 +607,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderActorTimelines(await getActorTimelines());
   }
 
+  async function loadInteractionCount() {
+    const data = await chrome.storage.local.get(INTERACTION_GRAPH_KEY);
+    const interactions = Array.isArray(data[INTERACTION_GRAPH_KEY])
+      ? data[INTERACTION_GRAPH_KEY]
+      : [];
+
+    document.getElementById("interactionCount").textContent =
+      interactions.length;
+  }
+
   async function loadLatestCapture() {
     const data = await chrome.storage.local.get(CAPTURE_STORAGE_KEY);
     renderCapture(data[CAPTURE_STORAGE_KEY]);
@@ -700,6 +711,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ACTOR_TIMELINES_KEY,
       PRINCIPLE_STORAGE_KEY,
       PROPHECY_LINKS_KEY,
+      INTERACTION_GRAPH_KEY,
       ANALYSIS_STATUS_KEY
     ]);
 
@@ -1303,16 +1315,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderOrderedEvents(orderedEvents);
     await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
     renderActorTimelines([]);
+    await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
+    await loadInteractionCount();
     setCaptureStatus(`Ordered ${orderedEvents.length} event(s).`);
   }
 
   async function clearOrderedEvents() {
     await chrome.storage.local.remove([
       ORDERED_EVENTS_KEY,
-      ACTOR_TIMELINES_KEY
+      ACTOR_TIMELINES_KEY,
+      INTERACTION_GRAPH_KEY
     ]);
     renderOrderedEvents([]);
     renderActorTimelines([]);
+    await loadInteractionCount();
     setCaptureStatus("Ordered events cleared.");
   }
 
@@ -1621,14 +1637,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     await chrome.storage.local.set({
       [ACTOR_TIMELINES_KEY]: actorTimelines
     });
+    await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
 
     renderActorTimelines(actorTimelines);
+    await loadInteractionCount();
     setCaptureStatus(`Built ${actorTimelines.length} actor timeline(s).`);
   }
 
   async function clearActorTimelines() {
-    await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
+    await chrome.storage.local.remove([
+      ACTOR_TIMELINES_KEY,
+      INTERACTION_GRAPH_KEY
+    ]);
     renderActorTimelines([]);
+    await loadInteractionCount();
     setCaptureStatus("Actor timelines cleared.");
   }
 
@@ -1867,6 +1889,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadPrincipleItems();
     await loadOrderedEvents();
     await loadActorTimelines();
+    await loadInteractionCount();
     await loadFormatterStatus();
     await loadAnalysisStatus();
   }

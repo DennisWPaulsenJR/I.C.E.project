@@ -12,6 +12,7 @@ const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
 const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
 const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
 const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
+const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
@@ -20,6 +21,9 @@ const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
 const FULFILLMENT_CANDIDATE_PATTERN = /\b(that it might be fulfilled|was fulfilled|to fulf(?:il|ill))\b/i;
+const SOURCE_HEADING_PATTERN = /^(?:Matthew|Mark|Luke|John)\s+\d+\b/i;
+const SUMMARY_SEPARATOR_PATTERN = /[\u2014\u2013]/;
+const CHAPTER_SUMMARY_PATTERN = /^(?:Matthew|Mark|Luke|John)?\s*\d*\s*Chapter\s+\d+\b/i;
 const FULL_DATE_PATTERN = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan\.?|Feb\.?|Mar\.?|Apr\.?|Jun\.?|Jul\.?|Aug\.?|Sep\.?|Sept\.?|Oct\.?|Nov\.?|Dec\.?)\s+\d{1,2},\s+(\d{3,4})\b/gi;
 const YEAR_PATTERN = /\b(1[5-9]\d{2}|20\d{2})\b/g;
 const ORDERING_WEIGHTS = {
@@ -147,22 +151,15 @@ async function captureSources() {
   const history = Array.isArray(data[CAPTURE_HISTORY_KEY])
     ? data[CAPTURE_HISTORY_KEY]
     : [];
-  const seen = new Set();
-  const sources = [];
 
-  for (const capture of [latest, ...history]) {
-    if (!capture?.text) continue;
-    const key = [
-      capture.id || "",
-      capture.url || "",
-      textHash(capture.text || "")
-    ].join("|");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    sources.push(capture);
-  }
+  // The full analysis pipeline powers the current Study Panel context, so it
+  // must not mix older saved captures into the latest page's timeline/events.
+  // Capture history remains preserved locally for future document-library and
+  // cross-document analysis flows.
+  if (latest?.text) return [latest];
 
-  return sources;
+  const fallbackCapture = history.find((capture) => capture?.text);
+  return fallbackCapture ? [fallbackCapture] : [];
 }
 
 function createTimelineItem(capture, detectedDateText, normalizedYear, contextSnippet) {
@@ -247,6 +244,9 @@ function createEventItem(capture, sentence, sequenceIndex) {
     sourceTitle: capture.title || "",
     sourceUrl: capture.url || "",
     eventText,
+    eventType: isSourceSummarySentence(eventText, sequenceIndex)
+      ? "source_summary"
+      : "narrative_event",
     sequenceIndex,
     detectedDateText: date.detectedDateText,
     normalizedYear: date.normalizedYear,
@@ -256,10 +256,33 @@ function createEventItem(capture, sentence, sequenceIndex) {
   };
 }
 
+function isSourceSummarySentence(sentence, sequenceIndex = 0) {
+  const text = normalizeWhitespace(sentence);
+  const stripped = stripSourceHeading(text);
+  const numericIndex = Number(sequenceIndex);
+
+  if (!text) return false;
+  if (CHAPTER_SUMMARY_PATTERN.test(text)) return true;
+  if (SOURCE_HEADING_PATTERN.test(text) && /Chapter\s+\d+\b/i.test(text)) {
+    return true;
+  }
+  if (Number.isFinite(numericIndex) && numericIndex <= 1 &&
+    text === stripped &&
+    SUMMARY_SEPARATOR_PATTERN.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
 function extractEventItemsFromCapture(capture) {
   return splitSentences(capture.text || "")
     .map((sentence, index) => ({ sentence: normalizeWhitespace(sentence), index }))
-    .filter(({ sentence }) => sentence && (ACTION_PATTERN.test(sentence) || detectOrderingCue(sentence)))
+    .filter(({ sentence, index }) =>
+      sentence &&
+      !isSourceSummarySentence(sentence, index) &&
+      (ACTION_PATTERN.test(sentence) || detectOrderingCue(sentence))
+    )
     .map(({ sentence, index }) => createEventItem(capture, sentence, index));
 }
 
@@ -277,6 +300,10 @@ function orderingScore(eventItem, index) {
 function createOrderedEvents(eventItems) {
   const grouped = new Map();
   for (const item of eventItems) {
+    if (item.eventType === "source_summary" ||
+      isSourceSummarySentence(item.eventText || "", item.sequenceIndex)) {
+      continue;
+    }
     const key = item.sourceCaptureId || item.sourceUrl || "unknown-source";
     grouped.set(key, [...(grouped.get(key) || []), item]);
   }
@@ -485,6 +512,194 @@ function dedupeActorTimelines(actorTimelines) {
   });
 }
 
+function actorSetFromTimelines(actorTimelines) {
+  const actorsByEvent = new Map();
+
+  for (const timeline of actorTimelines || []) {
+    const actorName = timeline.actorName || "";
+    if (!actorName || actorName === "Unknown actor") continue;
+
+    for (const action of timeline.orderedActions || []) {
+      const eventId = action.sourceEventId || "";
+      if (!eventId) continue;
+      if (!actorsByEvent.has(eventId)) actorsByEvent.set(eventId, new Set());
+      actorsByEvent.get(eventId).add(actorName);
+    }
+  }
+
+  return actorsByEvent;
+}
+
+function isSummaryLikeEvent(eventItem) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+
+  if (!text) return true;
+  if (eventItem.eventType === "source_summary") return true;
+  if (isSourceSummarySentence(text, eventItem.sequenceIndex)) return true;
+
+  return false;
+}
+
+function pairKey(actorA, actorB) {
+  return [actorA, actorB].sort((a, b) => a.localeCompare(b)).join("|");
+}
+
+function normalizedActorPair(actorA, actorB) {
+  return [actorA, actorB]
+    .map((actor) => normalizeWhitespace(actor).toLowerCase())
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function interactionDedupKey(item) {
+  const [actorA, actorB] = normalizedActorPair(item.actorA || "", item.actorB || "");
+
+  return [
+    item.sourceUrl || item.sourceTitle || item.sourceCaptureId || "",
+    actorA,
+    actorB,
+    normalizeWhitespace(item.interactionType || "").toLowerCase(),
+    normalizeWhitespace(item.sourceSnippet || "").toLowerCase()
+  ].join("|");
+}
+
+function createInteractionItem(eventItem, actorA, actorB, interactionType, confidence) {
+  const [orderedActorA, orderedActorB] = pairKey(actorA, actorB).split("|");
+  const key = [
+    eventItem.sourceCaptureId || eventItem.sourceUrl || "",
+    eventItem.id || "",
+    orderedActorA,
+    orderedActorB,
+    interactionType
+  ].join("|");
+
+  return {
+    key,
+    item: {
+      id: `${Date.now()}-${textHash(key)}`,
+      sourceCaptureId: eventItem.sourceCaptureId || "",
+      sourceTitle: eventItem.sourceTitle || "",
+      sourceUrl: eventItem.sourceUrl || "",
+      actorA: orderedActorA,
+      actorB: orderedActorB,
+      interactionType,
+      sourceEventId: eventItem.id || "",
+      sourceSnippet: trimText(eventItem.eventText || "", 220),
+      sequenceOrder: eventItem.sequenceOrder,
+      confidence
+    }
+  };
+}
+
+function dedupeInteractionGraph(interactions) {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const item of interactions || []) {
+    const key = interactionDedupKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+function eventPrimaryActors(eventItem, actorsByEvent) {
+  return new Set(actorsByEvent.get(eventItem.id || "") || []);
+}
+
+function interactionCandidatesForEvent(eventItem, actorsByEvent) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  const primaryActors = eventPrimaryActors(eventItem, actorsByEvent);
+  const candidates = [];
+  const push = (actorA, actorB, interactionType, confidence) => {
+    if (!actorA || !actorB || actorA === actorB) return;
+    candidates.push(createInteractionItem(
+      eventItem,
+      actorA,
+      actorB,
+      interactionType,
+      confidence
+    ));
+  };
+
+  if (/\bJesus\b/i.test(text) && /\bJohn\b/i.test(text) &&
+    /\bbaptiz/i.test(text)) {
+    push("JESUS", "John the Baptist", "baptism", "explicit");
+  }
+
+  if (/\bSpirit of God\b/i.test(text) &&
+    /\b(descending|lighting)\b/i.test(text) &&
+    /\b(upon him|upon Jesus|like a dove)\b/i.test(text)) {
+    push("JESUS", "Spirit of GOD", "divine manifestation", "probable");
+  }
+
+  if (/\bvoice from heaven\b/i.test(text) &&
+    /\bmy beloved Son\b/i.test(text)) {
+    push("Father", "JESUS", "divine proclamation", "inferred-source");
+  }
+
+  if (/\bJohn(?: the Baptist)?\b/i.test(text) &&
+    (/\bPharisees and Sadducees\b/i.test(text) ||
+      (/\bPharisees\b/i.test(text) && /\bSadducees\b/i.test(text))) &&
+    /\b(warned|said|saying|come|came)\b/i.test(text)) {
+    push("John the Baptist", "Pharisees and Sadducees", "warning", "explicit");
+  }
+
+  if ((primaryActors.has("Herod") || /\bHerod\b|\bthe king\b/i.test(text)) &&
+    /\b(wise men|them)\b/i.test(text) &&
+    /\b(sent|called|inquired|demanded)\b/i.test(text)) {
+    push("Herod", "Wise men", "royal summons", "explicit");
+  }
+
+  if (/\bwise men\b/i.test(text) &&
+    /\b(young child|the child|Jesus|Christ)\b/i.test(text) &&
+    /\b(worshipped|worshiped|found|saw)\b/i.test(text)) {
+    push("JESUS", "Wise men", "worship", "explicit");
+  }
+
+  if (/\bangel of the Lord\b/i.test(text) &&
+    /\bJoseph\b/i.test(text) &&
+    /\b(appeared|appeareth|warned|commanded|saying)\b/i.test(text)) {
+    push("Angel of the Lord", "Joseph", "divine message", "explicit");
+  }
+
+  if (/\bJoseph\b/i.test(text) &&
+    /\b(young child|the child|Jesus|Christ)\b/i.test(text) &&
+    /\b(took|departed|returned|came|arose)\b/i.test(text)) {
+    push("JESUS", "Joseph", "caregiving movement", "explicit");
+  }
+
+  if (/\bJoseph\b/i.test(text) &&
+    /\b(Mary|mother)\b/i.test(text) &&
+    /\b(took|departed|returned|came|arose)\b/i.test(text)) {
+    push("Joseph", "Mary", "family movement", "explicit");
+  }
+
+  return candidates;
+}
+
+function createInteractionGraph(orderedEvents, actorTimelines) {
+  const actorsByEvent = actorSetFromTimelines(actorTimelines);
+  const interactions = [];
+  const seen = new Set();
+
+  for (const eventItem of orderedEvents || []) {
+    if (isSummaryLikeEvent(eventItem)) continue;
+
+    for (const candidate of interactionCandidatesForEvent(eventItem, actorsByEvent)) {
+      if (seen.has(candidate.key)) continue;
+      seen.add(candidate.key);
+      interactions.push(candidate.item);
+    }
+  }
+
+  // Phase 5.4 local-only MVP. Future work should add relationship graph
+  // visualization, interaction/conversation counts, influence mapping,
+  // doctrine relationship analysis, and cross-document interaction networks.
+  return interactions;
+}
+
 function principleTypeForSentence(sentence) {
   if (/\bfulfilled|that it might be fulfilled\b/i.test(sentence)) return "fulfillment";
   if (/\bprophet|written|called a Nazarene|that shall rule\b/i.test(sentence)) return "prophecy";
@@ -662,6 +877,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
+    const interactionGraph = createInteractionGraph(orderedEvents, actorTimelines);
+    const dedupedInteractionGraph = dedupeInteractionGraph(interactionGraph);
     const status = {
       reason,
       captureCount: captures.length,
@@ -671,6 +888,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       actorTimelineCount: actorTimelines.length,
       principleCount: dedupedPrincipleItems.length,
       prophecyLinkCount: prophecyLinks.length,
+      interactionCount: dedupedInteractionGraph.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -681,6 +899,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ACTOR_TIMELINES_KEY]: actorTimelines,
       [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems,
       [PROPHECY_LINKS_KEY]: prophecyLinks,
+      [INTERACTION_GRAPH_KEY]: dedupedInteractionGraph,
       [ANALYSIS_STATUS_KEY]: status
     });
 

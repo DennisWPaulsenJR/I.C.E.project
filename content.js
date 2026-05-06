@@ -13,8 +13,11 @@
   const CAPTURE_SKIP_TAGS = new Set([
     ...SKIP_TAGS,
     "NAV",
+    "HEADER",
+    "ASIDE",
     "FOOTER",
     "FORM",
+    "IFRAME",
     "BUTTON",
     "SELECT",
     "OPTION",
@@ -39,6 +42,31 @@
     "P",
     "SECTION"
   ]);
+  const CAPTURE_ROOT_SELECTORS = [
+    "article",
+    "main",
+    "[role='main']",
+    ".body-block",
+    ".scripture-block",
+    ".content",
+    "#content"
+  ];
+  const CAPTURE_EXCLUDE_SELECTOR = [
+    "header",
+    "nav",
+    "aside",
+    "footer",
+    "form",
+    "button",
+    "select",
+    "input",
+    "textarea",
+    "iframe",
+    "[role='navigation']",
+    "[role='banner']",
+    "[role='contentinfo']",
+    "[aria-hidden='true']"
+  ].join(",");
   const FORMATTER_CLASS = "ice-sacred-reference";
   const SETTINGS_KEYS = Object.keys(DEFAULT_SETTINGS);
   const FORMATTER_SETTING_KEYS = [
@@ -57,6 +85,115 @@
   let scheduled = false;
   let isApplying = false;
   let autoCaptureCompleted = false;
+  let contextDebugLogged = false;
+
+  function logContextUnavailableOnce() {
+    if (contextDebugLogged) return;
+    contextDebugLogged = true;
+    console.debug("I.C.E. extension context unavailable; reload page after extension update.");
+  }
+
+  function isExtensionContextValid() {
+    try {
+      return Boolean(
+        globalThis.chrome &&
+        chrome.runtime &&
+        chrome.runtime.id &&
+        chrome.storage &&
+        chrome.storage.local &&
+        chrome.storage.sync
+      );
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  async function safeStorageLocalGet(keys) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return {};
+    }
+
+    try {
+      return await chrome.storage.local.get(keys);
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return {};
+    }
+  }
+
+  async function safeStorageLocalSet(data) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return false;
+    }
+
+    try {
+      await chrome.storage.local.set(data);
+      return true;
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return false;
+    }
+  }
+
+  async function safeStorageSyncGet(defaults) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return defaults || {};
+    }
+
+    try {
+      return await chrome.storage.sync.get(defaults);
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return defaults || {};
+    }
+  }
+
+  async function safeRuntimeSendMessage(message) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return null;
+    }
+
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return null;
+    }
+  }
+
+  function safeAddStorageListener(callback) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return false;
+    }
+
+    try {
+      chrome.storage.onChanged.addListener(callback);
+      return true;
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return false;
+    }
+  }
+
+  function safeAddRuntimeMessageListener(callback) {
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return false;
+    }
+
+    try {
+      chrome.runtime.onMessage.addListener(callback);
+      return true;
+    } catch (_error) {
+      logContextUnavailableOnce();
+      return false;
+    }
+  }
 
   function shouldSkipNode(node) {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
@@ -142,7 +279,7 @@
   }
 
   function persistFormatterStatus(matchCount, status) {
-    chrome.storage.local.set({
+    safeStorageLocalSet({
       [FORMATTER_STATUS_KEY]: {
         status,
         matchCount,
@@ -170,7 +307,7 @@
   }
 
   async function getCaptureHistory() {
-    const data = await chrome.storage.local.get(CAPTURE_HISTORY_KEY);
+    const data = await safeStorageLocalGet(CAPTURE_HISTORY_KEY);
     return Array.isArray(data[CAPTURE_HISTORY_KEY])
       ? data[CAPTURE_HISTORY_KEY]
       : [];
@@ -204,19 +341,20 @@
       item.url === entry.url && item.textHash === entry.textHash
     );
 
-    await chrome.storage.local.set({
+    const latestSaved = await safeStorageLocalSet({
       [CAPTURE_STORAGE_KEY]: capture
     });
+    if (!latestSaved) return { saved: false, duplicate };
 
     if (duplicate) {
       return { saved: false, duplicate: true };
     }
 
-    await chrome.storage.local.set({
+    const historySaved = await safeStorageLocalSet({
       [CAPTURE_HISTORY_KEY]: [entry, ...history]
     });
 
-    return { saved: true, duplicate: false };
+    return { saved: historySaved, duplicate: false };
   }
 
   function applyFormatting(root = document.body) {
@@ -288,7 +426,7 @@
   async function loadSettings() {
     settings = {
       ...DEFAULT_SETTINGS,
-      ...(await chrome.storage.sync.get(DEFAULT_SETTINGS))
+      ...(await safeStorageSyncGet(DEFAULT_SETTINGS))
     };
   }
 
@@ -346,6 +484,7 @@
       if (node.nodeType !== Node.ELEMENT_NODE) return;
 
       if (CAPTURE_SKIP_TAGS.has(node.tagName)) return;
+      if (node.closest?.(CAPTURE_EXCLUDE_SELECTOR)) return;
       if (node.isContentEditable || isHiddenForCapture(node)) return;
 
       if (node.classList?.contains(FORMATTER_CLASS)) {
@@ -366,12 +505,37 @@
     return normalizeCapturedText(chunks.join(" "));
   }
 
+  function textLengthForCaptureRoot(root) {
+    return collectReadableText(root).length;
+  }
+
+  function findCaptureRoot() {
+    for (const selector of CAPTURE_ROOT_SELECTORS) {
+      const candidates = Array.from(document.querySelectorAll(selector))
+        .filter((element) =>
+          element &&
+          !element.closest?.(CAPTURE_EXCLUDE_SELECTOR) &&
+          !isHiddenForCapture(element)
+        )
+        .map((element) => ({
+          element,
+          length: textLengthForCaptureRoot(element)
+        }))
+        .filter((candidate) => candidate.length >= 120)
+        .sort((a, b) => b.length - a.length);
+
+      if (candidates[0]) return candidates[0].element;
+    }
+
+    return document.body;
+  }
+
   function wordCount(text) {
     return text ? text.split(/\s+/).filter(Boolean).length : 0;
   }
 
   function buildCapturePageText() {
-    const capturedText = collectReadableText();
+    const capturedText = collectReadableText(findCaptureRoot());
 
     // Phase 2 foundation: this local capture object is the future input for a
     // document library, timeline extraction, and historical analysis. No
@@ -399,6 +563,10 @@
     if (!settings.enabled) return;
     if (!settings.autoCaptureOnPageLoad && !bypassAutoSetting) return;
     if (!captureAllowedForPage()) return;
+    if (!isExtensionContextValid()) {
+      logContextUnavailableOnce();
+      return;
+    }
     if (autoCaptureCompleted && !force) return;
 
     autoCaptureCompleted = true;
@@ -414,7 +582,7 @@
         wordCount: capture.wordCount
       });
 
-      await chrome.runtime.sendMessage({
+      await safeRuntimeSendMessage({
         type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
         reason
       });
@@ -426,7 +594,7 @@
     }
   }
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  safeAddStorageListener((changes, areaName) => {
     if (areaName !== "sync") return;
     if (!SETTINGS_KEYS.some((key) => changes[key])) return;
 
@@ -441,7 +609,7 @@
     }
   });
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  safeAddRuntimeMessageListener((message, _sender, sendResponse) => {
     if (message?.type === "ICE_RERUN_FORMATTER") {
       rerunFormatter()
         .then(() => maybeAutoCapture("manual-rerun", {
@@ -469,10 +637,16 @@
     if (!document.body) return;
 
     engine = await window.ICESacredFormatterEngine.create();
-    await loadSettings();
+    if (isExtensionContextValid()) {
+      await loadSettings();
+    } else {
+      logContextUnavailableOnce();
+    }
     applyFormatting();
     observePage();
-    maybeAutoCapture("page-load");
+    if (isExtensionContextValid()) {
+      maybeAutoCapture("page-load");
+    }
 
     // Phase 2 capture foundation lives in capturePageText(). Future document
     // library, timeline extraction, and historical analysis should consume the
@@ -480,6 +654,10 @@
   }
 
   initPromise = init().catch((error) => {
+    if (/Extension context invalidated/i.test(error?.message || "")) {
+      logContextUnavailableOnce();
+      return;
+    }
     console.error("I.C.E. formatter failed to initialize", error);
   });
 })();

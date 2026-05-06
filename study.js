@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     eventItems: "ICE_EVENT_ITEMS",
     orderedEvents: "ICE_ORDERED_EVENTS",
     actorTimelines: "ICE_ACTOR_TIMELINES",
+    interactionGraph: "ICE_INTERACTION_GRAPH",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
     analysisStatus: "ICE_ANALYSIS_STATUS"
@@ -22,6 +23,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalized = normalizeText(text);
     if (normalized.length <= maxLength) return normalized;
     return `${normalized.slice(0, maxLength - 3).trim()}...`;
+  }
+
+  function renderDivineDisplayText(text) {
+    return normalizeText(text)
+      .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT")
+      .replace(/\bThe Lord\b/gi, "THE LORD")
+      .replace(/\bJesus Christ\b/gi, "JESUS CHRIST")
+      .replace(/\bJesus\b/gi, "JESUS")
+      .replace(/\bChrist\b/gi, "CHRIST")
+      .replace(/\bGod\b/gi, "GOD")
+      .replace(/\bFather\b/g, "FATHER");
   }
 
   function includesTerm(value, term) {
@@ -89,21 +101,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     return deduped;
   }
 
+  function interactionDedupKey(item) {
+    const actors = [
+      normalizeText(item.actorA || "").toLowerCase(),
+      normalizeText(item.actorB || "").toLowerCase()
+    ].sort((a, b) => a.localeCompare(b));
+
+    return [
+      item.sourceUrl || item.sourceTitle || item.sourceCaptureId || "",
+      actors[0],
+      actors[1],
+      normalizeText(item.interactionType || "").toLowerCase(),
+      normalizeText(item.sourceSnippet || "").toLowerCase()
+    ].join("|");
+  }
+
+  function dedupeInteractions(items) {
+    const seen = new Set();
+    const deduped = [];
+
+    for (const item of items || []) {
+      const key = interactionDedupKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+
+    return deduped;
+  }
+
   function createCard(title, body, meta = "") {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
     const content = document.createElement("p");
 
     card.className = "study-card";
-    heading.textContent = title || "Untitled";
-    content.textContent = body || "No detail available.";
+    heading.textContent = renderDivineDisplayText(title || "Untitled");
+    content.textContent = renderDivineDisplayText(body || "No detail available.");
 
     card.append(heading, content);
 
     if (meta) {
       const metaText = document.createElement("span");
       metaText.className = "meta";
-      metaText.textContent = meta;
+      metaText.textContent = renderDivineDisplayText(meta);
       card.appendChild(metaText);
     }
 
@@ -226,6 +267,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No ordered events match.");
   }
 
+  function renderInteractions(term) {
+    const container = document.getElementById("interactionCards");
+    const count = document.getElementById("interactionCount");
+    const interactions = Array.isArray(studyData.interactionGraph)
+      ? dedupeInteractions(studyData.interactionGraph)
+      : [];
+    const filtered = interactions.filter((item) =>
+      itemMatches(item, [
+        "actorA",
+        "actorB",
+        "interactionType",
+        "sourceSnippet",
+        "confidence"
+      ], term)
+    );
+
+    renderLimited(container, filtered, count, (item) => createCard(
+      `${item.actorA || "Unknown"} <-> ${item.actorB || "Unknown"}`,
+      trimText(item.sourceSnippet, 180),
+      `${item.interactionType || "interaction"} | ${item.confidence || "probable"}`
+    ), "No character interactions match.", "interaction");
+  }
+
   function renderTimeline(term) {
     const container = document.getElementById("timelineCards");
     const count = document.getElementById("timelineCount");
@@ -303,6 +367,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderCurrentPage(term);
       renderActors(term);
       renderOrderedEvents(term);
+      renderInteractions(term);
       renderPrinciples(term);
       renderProphecyLinks(term);
       renderTimeline(term);
@@ -334,6 +399,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       events: countItems(studyData.eventItems),
       orderedEvents: countItems(studyData.orderedEvents),
       actorTimelines: countItems(studyData.actorTimelines),
+      interactions: dedupeInteractions(studyData.interactionGraph).length,
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -347,10 +413,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const eventCount = countItems(studyData.eventItems);
     const orderedCount = countItems(studyData.orderedEvents);
     const actorCount = countItems(studyData.actorTimelines);
+    const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + principleCount + prophecyLinkCount;
+      orderedCount + actorCount + interactionCount + principleCount +
+      prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -358,6 +426,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticEvents").textContent = eventCount;
     document.getElementById("diagnosticOrderedEvents").textContent = orderedCount;
     document.getElementById("diagnosticActors").textContent = actorCount;
+    document.getElementById("diagnosticInteractions").textContent =
+      interactionCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;
