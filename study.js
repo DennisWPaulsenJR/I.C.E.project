@@ -206,7 +206,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.appendChild(createCard(
       capture.title || "Current capture",
       trimText(capture.text, 220),
-      `${capture.wordCount || 0} words | ${capture.characterCount || 0} chars | ${capture.divineReferenceCount || 0} divine refs`
+      [
+        capture.url || "",
+        `${capture.wordCount || 0} words`,
+        `${capture.characterCount || 0} chars`,
+        `${capture.divineReferenceCount || 0} divine refs`
+      ].filter(Boolean).join(" | ")
     ));
 
     if (history.length > 0) {
@@ -461,6 +466,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Phase 5 foundation: this page is the future contextual research surface.
+  // Current Page Capture is a captured text preview only. Future Source
+  // Metadata and Chapter Summary / Source Summary sections should display
+  // extracted document metadata separately from Narrative Events.
   // Later phases can attach scripture/conference-talk source collections,
   // cross-document character indexes, reference linking, side panel hover
   // integration, and report/presentation builder features without crowding the
@@ -477,4 +485,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("searchInput").addEventListener("input", renderStudy);
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
+  window.addEventListener("focus", refreshStudyData);
+  window.addEventListener("pageshow", refreshStudyData);
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local") return;
+    const watchedKeys = new Set(Object.values(STORAGE_KEYS));
+    if (Object.keys(changes).some((key) => watchedKeys.has(key))) {
+      refreshStudyData();
+    }
+  });
 });

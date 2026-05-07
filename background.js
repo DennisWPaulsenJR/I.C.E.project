@@ -353,9 +353,9 @@ function stripSourceHeading(sentence) {
 
 function stripLeadingSentenceNoise(sentence) {
   return stripSourceHeading(sentence)
-    .replace(/^(?:\d+[:.)]?\s*)?/, "")
-    .replace(/^(?:and|but|then|afterward|later|next|finally|subsequently|now|when),?\s+/i, "")
-    .replace(/^(?:after that|before that|before this|before then),?\s+/i, "");
+    .replace(/^(?:(?:\d+[:.)]?)|(?:\u00b6)|[\s:.)-])+/, "")
+    .replace(/^(?:(?:and|but|then|afterward|later|next|finally|subsequently|now|when),?\s+|(?:after that|before that|before this|before then),?\s+)+/i, "")
+    .replace(/^(?:(?:\d+[:.)]?)|(?:\u00b6)|[\s:.)-])+/, "");
 }
 
 function leadingSubjectActor(sentence) {
@@ -413,12 +413,39 @@ function sourceActorOverride(eventItem) {
   return "";
 }
 
+function inferredNarrativeContinuityActor(text, actorMemory) {
+  const normalized = stripLeadingSentenceNoise(text);
+
+  // Inferred narrative continuity: Matthew 3 uses "he saw... he said" in a
+  // baptism scene where the active speaker is John the Baptist. This is not an
+  // explicit name match; future dependency parsing should replace it.
+  if (/^he\b/i.test(normalized) &&
+    /\bPharisees\b/i.test(normalized) &&
+    /\bSadducees\b/i.test(normalized) &&
+    /\bbaptism\b/i.test(normalized) &&
+    /\bsaid unto them\b/i.test(normalized)) {
+    return actorMemory.previousSingularActor || "John the Baptist";
+  }
+
+  // Subject/object role placeholder: in "Then he suffered him," John performs
+  // the action and JESUS is the target/object. Future pronoun antecedent
+  // resolution and actor-target action modeling should replace this rule.
+  if (/^he suffered him\b/i.test(normalized)) {
+    return "John the Baptist";
+  }
+
+  return "";
+}
+
 function actorForEvent(eventItem, actorMemory) {
   const text = eventItem.eventText || "";
   const normalized = stripLeadingSentenceNoise(text);
   const sourceActor = sourceActorOverride(eventItem);
 
   if (sourceActor) return sourceActor;
+
+  const inferredActor = inferredNarrativeContinuityActor(text, actorMemory);
+  if (inferredActor) return inferredActor;
 
   if (PLURAL_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
     return actorMemory.previousPluralActor || "Unknown actor";
@@ -586,6 +613,13 @@ function createInteractionItem(eventItem, actorA, actorB, interactionType, confi
       sourceSnippet: trimText(eventItem.eventText || "", 220),
       sequenceOrder: eventItem.sequenceOrder,
       confidence
+      // Roadmap: relationship/source grounding should eventually include
+      // evidenceType, evidenceSnippet, sourceReference, linkedSources, and
+      // confirmedBy. Reserve "confirmed" for relationships directly stated by
+      // source text or verified by linked metadata/source references. Current
+      // Phase 5.5 values intentionally stay local: explicit direct text,
+      // inferred-source for source-grounded inference, probable for likely
+      // scene witnesses, and possible for weaker audience inference.
     }
   };
 }
@@ -606,6 +640,58 @@ function dedupeInteractionGraph(interactions) {
 
 function eventPrimaryActors(eventItem, actorsByEvent) {
   return new Set(actorsByEvent.get(eventItem.id || "") || []);
+}
+
+function mentionedActorsForEvent(eventItem) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  const actors = new Set();
+
+  if (/\bJesus\b|\bChrist\b|\byoung child\b|\bthe child\b|\bmy beloved Son\b/i.test(text)) {
+    actors.add("JESUS");
+  }
+  if (/\bJohn(?: the Baptist)?\b/i.test(text)) actors.add("John the Baptist");
+  if (/\bSpirit of God\b|\bSpirit\b.*\bdescending\b/i.test(text)) {
+    actors.add("Spirit of GOD");
+  }
+  if (/\bvoice from heaven\b|\bmy beloved Son\b|\bFather\b/i.test(text)) {
+    actors.add("Father");
+  }
+  if (/\bPharisees and Sadducees\b/i.test(text) ||
+    (/\bPharisees\b/i.test(text) && /\bSadducees\b/i.test(text))) {
+    actors.add("Pharisees and Sadducees");
+  }
+  if (/\bpeople\b|\bmultitudes\b|\bJerusalem\b|\bJud(?:a|\u00e6)ea\b|\bJordan\b/i.test(text)) {
+    actors.add("People / multitudes");
+  }
+  if (/\bwise men\b/i.test(text)) actors.add("Wise men");
+  if (/\bHerod\b|\bthe king\b/i.test(text)) actors.add("Herod");
+  if (/\bJoseph\b/i.test(text)) actors.add("Joseph");
+  if (/\bMary\b|\bmother\b/i.test(text)) actors.add("Mary");
+  if (/\bangel of the Lord\b/i.test(text)) actors.add("Angel of the Lord");
+
+  return actors;
+}
+
+function sceneParticipantsForEvent(eventItem, actorsByEvent, sceneMemory) {
+  const participants = new Set(sceneMemory.participants || []);
+
+  for (const actor of eventPrimaryActors(eventItem, actorsByEvent)) {
+    if (actor && actor !== "Unknown actor") participants.add(actor);
+  }
+
+  for (const actor of mentionedActorsForEvent(eventItem)) {
+    if (actor && actor !== "Unknown actor") participants.add(actor);
+  }
+
+  return participants;
+}
+
+function updateSceneMemory(sceneMemory, eventItem, actorsByEvent) {
+  for (const actor of sceneParticipantsForEvent(eventItem, actorsByEvent, {
+    participants: []
+  })) {
+    sceneMemory.participants.add(actor);
+  }
 }
 
 function interactionCandidatesForEvent(eventItem, actorsByEvent) {
@@ -679,24 +765,84 @@ function interactionCandidatesForEvent(eventItem, actorsByEvent) {
   return candidates;
 }
 
+function witnessCandidatesForEvent(eventItem, actorsByEvent, sceneMemory) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  const participants = sceneParticipantsForEvent(eventItem, actorsByEvent, sceneMemory);
+  const candidates = [];
+  const push = (actorA, actorB, interactionType, confidence) => {
+    if (!actorA || !actorB || actorA === actorB) return;
+    candidates.push(createInteractionItem(
+      eventItem,
+      actorA,
+      actorB,
+      interactionType,
+      confidence
+    ));
+  };
+
+  if (/\bvoice from heaven\b/i.test(text) &&
+    /\bmy beloved Son\b/i.test(text)) {
+    if (participants.has("John the Baptist")) {
+      push("Father", "John the Baptist", "witnessed proclamation", "probable");
+    }
+    if (participants.has("People / multitudes")) {
+      push("Father", "People / multitudes", "witnessed proclamation", "possible");
+    }
+  }
+
+  if ((/\bheavens? (?:opened|were opened)\b/i.test(text) ||
+    /\bsaw the Spirit\b/i.test(text) ||
+    /\bSpirit of God\b.*\bdescending\b/i.test(text)) &&
+    participants.has("John the Baptist")) {
+    push("Spirit of GOD", "John the Baptist", "witnessed manifestation", "probable");
+  }
+
+  if (/\bappeared unto\b|\bappeareth to\b/i.test(text)) {
+    if (participants.has("Joseph") && /\bangel of the Lord\b/i.test(text)) {
+      push("Angel of the Lord", "Joseph", "witnessed manifestation", "probable");
+    }
+  }
+
+  // Phase 5.5 witness/audience MVP. Future work should track scene
+  // participants explicitly, separate direct vs inferred witness edges,
+  // model audience/public-private events, and keep inferred links visibly
+  // lower-confidence than direct interactions.
+  return candidates;
+}
+
 function createInteractionGraph(orderedEvents, actorTimelines) {
   const actorsByEvent = actorSetFromTimelines(actorTimelines);
   const interactions = [];
   const seen = new Set();
+  const sceneMemoryBySource = new Map();
 
   for (const eventItem of orderedEvents || []) {
     if (isSummaryLikeEvent(eventItem)) continue;
+    const sourceKey = eventItem.sourceCaptureId || eventItem.sourceUrl || "unknown-source";
+    const sceneMemory = sceneMemoryBySource.get(sourceKey) || {
+      participants: new Set()
+    };
 
-    for (const candidate of interactionCandidatesForEvent(eventItem, actorsByEvent)) {
+    for (const candidate of [
+      ...interactionCandidatesForEvent(eventItem, actorsByEvent),
+      ...witnessCandidatesForEvent(eventItem, actorsByEvent, sceneMemory)
+    ]) {
       if (seen.has(candidate.key)) continue;
       seen.add(candidate.key);
       interactions.push(candidate.item);
     }
+
+    updateSceneMemory(sceneMemory, eventItem, actorsByEvent);
+    sceneMemoryBySource.set(sourceKey, sceneMemory);
   }
 
-  // Phase 5.4 local-only MVP. Future work should add relationship graph
+  // Phase 5.4/5.5 local-only MVP. Future work should add relationship graph
   // visualization, interaction/conversation counts, influence mapping,
-  // doctrine relationship analysis, and cross-document interaction networks.
+  // doctrine relationship analysis, scene participant tracking, public/private
+  // event classification, and cross-document interaction networks. Later
+  // source grounding can link Conference Talks, scripture references, sermons,
+  // and other documents so relationships can show where they were confirmed,
+  // inferred, or merely witnessed by scene context.
   return interactions;
 }
 
