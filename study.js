@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     orderedEvents: "ICE_ORDERED_EVENTS",
     actorTimelines: "ICE_ACTOR_TIMELINES",
     interactionGraph: "ICE_INTERACTION_GRAPH",
+    sceneModels: "ICE_SCENE_MODELS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
     analysisStatus: "ICE_ANALYSIS_STATUS"
@@ -272,6 +273,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No ordered events match.");
   }
 
+  function formatSceneWitnesses(scene) {
+    const witnesses = Array.isArray(scene.witnesses) ? scene.witnesses : [];
+    if (witnesses.length === 0) return "Witnesses: none detected";
+    return `Witnesses: ${witnesses.map((item) =>
+      `${item.witness || "Unknown"} (${item.confidence || "possible"})`
+    ).join(", ")}`;
+  }
+
+  function renderScenes(term) {
+    const container = document.getElementById("sceneCards");
+    const count = document.getElementById("sceneCount");
+    const scenes = Array.isArray(studyData.sceneModels)
+      ? studyData.sceneModels
+      : [];
+    const filtered = scenes.filter((scene) =>
+      includesTerm([
+        scene.sceneTitle,
+        scene.sceneType,
+        scene.summarySnippet,
+        (scene.participants || []).join(" "),
+        (scene.witnesses || []).map((item) => item.witness).join(" "),
+        scene.confidence
+      ].join(" "), term)
+    );
+
+    renderLimited(container, filtered, count, (scene) => {
+      const participants = (scene.participants || []).join(", ") ||
+        "No participants detected";
+      const body = [
+        trimText(scene.summarySnippet, 160),
+        `Participants: ${participants}`,
+        formatSceneWitnesses(scene)
+      ].filter(Boolean).join(" ");
+
+      return createCard(
+        scene.sceneTitle || "Scene",
+        body,
+        `${scene.sceneType || "scene"} | ${scene.confidence || "possible"}`
+      );
+    }, "No scenes match.", "scene");
+  }
+
   function renderInteractions(term) {
     const container = document.getElementById("interactionCards");
     const count = document.getElementById("interactionCount");
@@ -371,6 +414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderDiagnostics();
       renderCurrentPage(term);
       renderActors(term);
+      renderScenes(term);
       renderOrderedEvents(term);
       renderInteractions(term);
       renderPrinciples(term);
@@ -405,6 +449,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       orderedEvents: countItems(studyData.orderedEvents),
       actorTimelines: countItems(studyData.actorTimelines),
       interactions: dedupeInteractions(studyData.interactionGraph).length,
+      scenes: countItems(studyData.sceneModels),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -419,10 +464,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const orderedCount = countItems(studyData.orderedEvents);
     const actorCount = countItems(studyData.actorTimelines);
     const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
+    const sceneCount = countItems(studyData.sceneModels);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + principleCount +
+      orderedCount + actorCount + interactionCount + sceneCount + principleCount +
       prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -433,6 +479,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticActors").textContent = actorCount;
     document.getElementById("diagnosticInteractions").textContent =
       interactionCount;
+    document.getElementById("diagnosticScenes").textContent = sceneCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;

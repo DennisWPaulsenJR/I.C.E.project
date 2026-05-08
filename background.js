@@ -13,10 +13,11 @@ const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
 const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
 const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
 const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
+const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
-const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected)\b/i;
+const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -978,6 +979,258 @@ function createProphecyLinks(principleItems) {
   return links;
 }
 
+function sceneClassificationForEvent(eventItem) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+
+  if (/\bvoice from heaven\b|\bSpirit of God\b.*\bdescending\b|\bheavens? (?:opened|were opened)\b/i.test(text)) {
+    return {
+      sceneType: "divine manifestation",
+      sceneTitle: "Baptism / divine manifestation scene"
+    };
+  }
+
+  if (/\bJesus\b/i.test(text) && /\bJohn\b/i.test(text) && /\bbaptiz/i.test(text)) {
+    return {
+      sceneType: "baptism",
+      sceneTitle: "JESUS comes to John for baptism"
+    };
+  }
+
+  if (/\bhe suffered him\b/i.test(stripLeadingSentenceNoise(text)) ||
+    /\bJesus\b.*\bbaptized\b/i.test(text)) {
+    return {
+      sceneType: "baptism",
+      sceneTitle: "JESUS comes to John for baptism"
+    };
+  }
+
+  if (/\bPharisees\b/i.test(text) && /\bSadducees\b/i.test(text)) {
+    return {
+      sceneType: "warning",
+      sceneTitle: "John warns Pharisees and Sadducees"
+    };
+  }
+
+  if (/\bpreach(?:ed|ing)?\b|\brepent\b|\bkingdom of heaven\b/i.test(text)) {
+    return {
+      sceneType: "preaching",
+      sceneTitle: "John preaching repentance"
+    };
+  }
+
+  if (/\bprophet\b|\bfulfilled\b|\bit is written\b|\bspoken\b/i.test(text)) {
+    return {
+      sceneType: "prophecy",
+      sceneTitle: "Prophecy and fulfillment context"
+    };
+  }
+
+  if (/\bwilderness\b/i.test(text)) {
+    return {
+      sceneType: "wilderness",
+      sceneTitle: "Wilderness setting"
+    };
+  }
+
+  if (/\bJordan\b/i.test(text)) {
+    return {
+      sceneType: "Jordan",
+      sceneTitle: "Jordan scene"
+    };
+  }
+
+  return {
+    sceneType: "narrative",
+    sceneTitle: "Narrative scene"
+  };
+}
+
+function sceneKeyForEvent(eventItem) {
+  const classification = sceneClassificationForEvent(eventItem);
+  return `${eventItem.sourceCaptureId || eventItem.sourceUrl || "unknown-source"}|${classification.sceneTitle}`;
+}
+
+function sceneKeyWithProximity(eventItem, scenesByKey) {
+  const baseKey = sceneKeyForEvent(eventItem);
+  const sequenceOrder = Number(eventItem.sequenceOrder || 0);
+  const candidates = Array.from(scenesByKey.entries())
+    .filter(([key]) => key === baseKey || key.startsWith(`${baseKey}|`))
+    .sort((a, b) =>
+      Number(b[1].sequenceEnd || 0) - Number(a[1].sequenceEnd || 0)
+    );
+  const existing = candidates[0]?.[1];
+
+  if (!existing || sequenceOrder - Number(existing.sequenceEnd || 0) <= 3) {
+    return candidates[0]?.[0] || baseKey;
+  }
+
+  return `${baseKey}|${sequenceOrder}`;
+}
+
+function actorNamesByEvent(actorTimelines) {
+  const byEvent = new Map();
+
+  for (const timeline of actorTimelines || []) {
+    if (!timeline.actorName || timeline.actorName === "Unknown actor") continue;
+    for (const action of timeline.orderedActions || []) {
+      if (!action.sourceEventId) continue;
+      if (!byEvent.has(action.sourceEventId)) byEvent.set(action.sourceEventId, new Set());
+      byEvent.get(action.sourceEventId).add(timeline.actorName);
+    }
+  }
+
+  return byEvent;
+}
+
+function sceneMatchesText(scene, text) {
+  const haystack = normalizeWhitespace([
+    scene.sceneTitle,
+    scene.sceneType,
+    scene.summarySnippet
+  ].join(" ")).toLowerCase();
+  const normalized = normalizeWhitespace(text).toLowerCase();
+
+  if (!normalized) return false;
+  return normalized.split(/\s+/).some((word) =>
+    word.length > 4 && haystack.includes(word)
+  );
+}
+
+function attachSceneRelatedData(scene, interactions, principleItems, prophecyLinks) {
+  const sourceKey = scene.sourceCaptureId || "";
+  const inRange = (item) =>
+    (item.sourceCaptureId || "") === sourceKey &&
+    Number(item.sequenceOrder || 0) >= scene.sequenceStart &&
+    Number(item.sequenceOrder || 0) <= scene.sequenceEnd;
+
+  const sceneInteractions = (interactions || []).filter(inRange);
+  const witnessTypes = new Set(["witnessed proclamation", "witnessed manifestation"]);
+  const directInteractions = sceneInteractions
+    .filter((item) => !witnessTypes.has(item.interactionType));
+
+  scene.interactions = directInteractions.map((item) => ({
+      actorA: item.actorA,
+      actorB: item.actorB,
+      interactionType: item.interactionType,
+      confidence: item.confidence
+    }));
+  scene.witnesses = sceneInteractions
+    .filter((item) => witnessTypes.has(item.interactionType))
+    .map((item) => {
+      const actors = [item.actorA, item.actorB];
+      const source = item.interactionType === "witnessed proclamation"
+        ? actors.find((actor) => actor === "Father") || item.actorA
+        : actors.find((actor) => actor === "Spirit of GOD" ||
+            actor === "Angel of the Lord") || item.actorA;
+      const witness = actors.find((actor) => actor !== source) || item.actorB;
+
+      return {
+        witness,
+        source,
+        interactionType: item.interactionType,
+        confidence: item.confidence
+      };
+    });
+
+  for (const interaction of directInteractions) {
+    for (const actor of [interaction.actorA, interaction.actorB]) {
+      if (actor && actor !== "Unknown actor") scene.participants.add(actor);
+    }
+  }
+
+  scene.principles = (principleItems || [])
+    .filter((item) =>
+      (item.sourceCaptureId || "") === sourceKey &&
+      sceneMatchesText(scene, item.principleText || item.contextSnippet || "")
+    )
+    .slice(0, 4)
+    .map((item) => ({
+      principleType: item.principleType || "unknown",
+      principleText: trimText(item.principleText || item.contextSnippet || "", 160)
+    }));
+
+  scene.prophecyLinks = (prophecyLinks || [])
+    .filter((item) =>
+      (item.sourceCaptureId || "") === sourceKey &&
+      (sceneMatchesText(scene, item.prophecyText || "") ||
+        sceneMatchesText(scene, item.fulfillmentText || ""))
+    )
+    .slice(0, 3)
+    .map((item) => ({
+      linkType: item.linkType || "prophecy-fulfillment",
+      confidence: item.confidence || "probable",
+      prophecyText: trimText(item.prophecyText || "", 120),
+      fulfillmentText: trimText(item.fulfillmentText || "", 120)
+    }));
+
+  scene.participants = Array.from(scene.participants).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  return scene;
+}
+
+function createSceneModels(orderedEvents, actorTimelines, interactions, principleItems, prophecyLinks) {
+  const actorByEvent = actorNamesByEvent(actorTimelines);
+  const scenesByKey = new Map();
+
+  for (const eventItem of orderedEvents || []) {
+    if (isSummaryLikeEvent(eventItem)) continue;
+
+    const classification = sceneClassificationForEvent(eventItem);
+    const key = sceneKeyWithProximity(eventItem, scenesByKey);
+    const existing = scenesByKey.get(key);
+    const sourceCaptureId = eventItem.sourceCaptureId || "";
+    const sequenceOrder = Number(eventItem.sequenceOrder || 0);
+    const eventActors = actorByEvent.get(eventItem.id || "") || new Set();
+    const mentionedActors = mentionedActorsForEvent(eventItem);
+
+    const scene = existing || {
+      id: `${Date.now()}-${textHash(key)}`,
+      sourceCaptureId,
+      sceneTitle: classification.sceneTitle,
+      sceneType: classification.sceneType,
+      sequenceStart: sequenceOrder,
+      sequenceEnd: sequenceOrder,
+      participants: new Set(),
+      witnesses: [],
+      interactions: [],
+      principles: [],
+      prophecyLinks: [],
+      summarySnippet: "",
+      confidence: classification.sceneType === "narrative" ? "possible" : "probable",
+      eventTexts: []
+    };
+
+    scene.sequenceStart = Math.min(scene.sequenceStart || sequenceOrder, sequenceOrder);
+    scene.sequenceEnd = Math.max(scene.sequenceEnd || sequenceOrder, sequenceOrder);
+    scene.eventTexts.push(eventItem.eventText || "");
+    scene.summarySnippet = trimText(scene.eventTexts.join(" "), 240);
+
+    for (const actor of eventActors) scene.participants.add(actor);
+    for (const actor of mentionedActors) scene.participants.add(actor);
+
+    scenesByKey.set(key, scene);
+  }
+
+  // Future: original-language ambiguity, scene-level source metadata,
+  // public/private scene classification, cross-document scene comparison, and
+  // conference-talk reference linking should enrich this scene layer without
+  // moving heavy analysis into the popup.
+  return Array.from(scenesByKey.values())
+    .map((scene) => attachSceneRelatedData(
+      scene,
+      interactions,
+      principleItems,
+      prophecyLinks
+    ))
+    .map(({ eventTexts, ...scene }) => scene)
+    .sort((a, b) =>
+      Number(a.sequenceStart || 0) - Number(b.sequenceStart || 0) ||
+      a.sceneTitle.localeCompare(b.sceneTitle)
+    );
+}
+
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -1025,6 +1278,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
     const interactionGraph = createInteractionGraph(orderedEvents, actorTimelines);
     const dedupedInteractionGraph = dedupeInteractionGraph(interactionGraph);
+    const sceneModels = createSceneModels(
+      orderedEvents,
+      actorTimelines,
+      dedupedInteractionGraph,
+      dedupedPrincipleItems,
+      prophecyLinks
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -1035,6 +1295,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleCount: dedupedPrincipleItems.length,
       prophecyLinkCount: prophecyLinks.length,
       interactionCount: dedupedInteractionGraph.length,
+      sceneCount: sceneModels.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -1046,6 +1307,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems,
       [PROPHECY_LINKS_KEY]: prophecyLinks,
       [INTERACTION_GRAPH_KEY]: dedupedInteractionGraph,
+      [SCENE_MODELS_KEY]: sceneModels,
       [ANALYSIS_STATUS_KEY]: status
     });
 
