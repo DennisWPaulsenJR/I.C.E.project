@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     interactionGraph: "ICE_INTERACTION_GRAPH",
     sceneModels: "ICE_SCENE_MODELS",
     semanticEvents: "ICE_SEMANTIC_EVENTS",
+    semanticFlowChains: "ICE_SEMANTIC_FLOW_CHAINS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -58,6 +59,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function countItems(value) {
     return Array.isArray(value) ? value.length : 0;
+  }
+
+  function displayConfidence(value) {
+    return value === "inferred-source" ? "attributed" : value;
   }
 
   function dedupeActorActions(actor) {
@@ -285,7 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.explicitDate ? `Date: ${context.explicitDate}` : "",
       context.inferredDate ? `Inferred date: ${context.inferredDate}` : "",
       context.timeRange ? `Range: ${context.timeRange}` : "",
-      context.confidence ? `Confidence: ${context.confidence}` : ""
+      context.confidence ? `Confidence: ${displayConfidence(context.confidence)}` : ""
     ].filter(Boolean).join("\n");
   }
 
@@ -324,7 +329,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.sourceUrl || ""
     ));
   }
-  function addEntityRole(groups, groupName, name, confidence = "probable") {
+  function addEntityRole(groups, groupName, name, confidence = "probable", metadata = {}) {
     const cleanName = normalizeText(name || "");
     if (!cleanName) return;
     if (!groups[groupName]) groups[groupName] = new Map();
@@ -332,7 +337,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!groups[groupName].has(key)) {
       groups[groupName].set(key, {
         name: cleanName,
-        confidence
+        confidence,
+        actorReason: metadata.actorReason || metadata.evidence || "",
+        semanticEventReference: metadata.semanticEventReference || "",
+        eventType: metadata.eventType || "",
+        anchorText: metadata.anchorText || ""
       });
     }
   }
@@ -398,7 +407,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         groups,
         normalizeEntityRoleGroup(item.roleGroup),
         item.entityName || "",
-        item.confidence || "probable"
+        item.confidence || "probable",
+        item
       );
     }
 
@@ -477,6 +487,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     })));
   }
 
+  function createEntityRoleCard(group) {
+    const card = document.createElement("article");
+    const heading = document.createElement("h3");
+    const list = document.createElement("div");
+    const visible = group.entities.slice(0, group.groupName === "Lineage Persons" ? 8 : 5);
+    const hidden = group.entities.length - visible.length;
+
+    card.className = "study-card";
+    heading.textContent = renderDivineDisplayText(group.groupName || "Entity roles");
+    list.className = "entity-role-list";
+
+    for (const item of visible) {
+      const roleItem = document.createElement("div");
+      const name = document.createElement("div");
+      const confidence = displayConfidence(item.confidence || "probable");
+
+      roleItem.className = "entity-role-item";
+      name.className = "entity-role-name";
+      name.textContent = renderDivineDisplayText(`${item.name} (${confidence})`);
+      roleItem.appendChild(name);
+
+      if (item.actorReason) {
+        const reason = document.createElement("div");
+        reason.className = "entity-role-reason";
+        reason.textContent = renderDivineDisplayText(`- ${item.actorReason}`);
+        roleItem.appendChild(reason);
+      }
+
+      if (item.anchorText && item.actorReason && item.anchorText !== item.actorReason) {
+        const anchor = document.createElement("div");
+        anchor.className = "entity-role-anchor";
+        anchor.textContent = renderDivineDisplayText(`- source phrase: ${trimText(item.anchorText, 70)}`);
+        roleItem.appendChild(anchor);
+      }
+
+      list.appendChild(roleItem);
+    }
+
+    if (hidden > 0) {
+      const hiddenNote = document.createElement("p");
+      hiddenNote.className = "empty-state";
+      hiddenNote.textContent = `${hidden} more hidden; future full lineage/entity view.`;
+      list.appendChild(hiddenNote);
+    }
+
+    const metaText = document.createElement("span");
+    metaText.className = "meta";
+    metaText.textContent = group.groupName === "Lineage Persons"
+      ? "lineage graph / family tree foundation"
+      : "role grouping; direct actor timelines remain separate";
+
+    card.append(heading, list, metaText);
+    return card;
+  }
   function renderEntityRoles(term) {
     const container = document.getElementById("entityRoleCards");
     const count = document.getElementById("entityRoleCount");
@@ -511,22 +575,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     for (const group of filtered.slice(0, Math.max(DISPLAY_LIMIT, 7))) {
-      const visible = group.entities.slice(0, group.groupName === "Lineage Persons" ? 8 : 5);
-      const hidden = group.entities.length - visible.length;
-      const body = visible
-        .map((item) => `${item.name} (${item.confidence || "probable"})`)
-        .join(", ");
-      const suffix = hidden > 0
-        ? `\n${hidden} more hidden; future full lineage/entity view.`
-        : "";
-
-      container.appendChild(createCard(
-        group.groupName,
-        `${body}${suffix}`,
-        group.groupName === "Lineage Persons"
-          ? "lineage graph / family tree foundation"
-          : "role grouping; direct actor timelines remain separate"
-      ));
+      container.appendChild(createEntityRoleCard(group));
     }
   }
   function renderActors(term) {
@@ -584,21 +633,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function formatRoleValue(label, role) {
     if (!roleName(role)) return "";
-    return `${label}: ${role.actorName} (${role.confidence || "probable"})`;
+    return `${label}: ${role.actorName} (${displayConfidence(role.confidence || "probable")})`;
   }
 
   function formatRoleList(label, roles) {
     const values = asArray(roles)
       .filter((role) => roleName(role))
       .slice(0, 3)
-      .map((role) => `${role.actorName} (${role.confidence || "probable"})`);
+      .map((role) => `${role.actorName} (${displayConfidence(role.confidence || "probable")})`);
 
     return values.length ? `${label}: ${values.join(", ")}` : "";
   }
 
   function formatPrincipleFocus(principleFocus) {
     if (!principleFocus?.principleText) return "";
-    return `Principle: ${trimText(principleFocus.principleText, 90)} (${principleFocus.confidence || "probable"})`;
+    return `Principle: ${trimText(principleFocus.principleText, 90)} (${displayConfidence(principleFocus.confidence || "probable")})`;
   }
 
   function formatAuthorityChain(authorityChain) {
@@ -654,7 +703,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const witnesses = Array.isArray(scene.witnesses) ? scene.witnesses : [];
     if (witnesses.length === 0) return "Witnesses: none detected";
     return `Witnesses: ${witnesses.map((item) =>
-      `${item.witness || "Unknown"} (${item.confidence || "possible"})`
+      `${item.witness || "Unknown"} (${displayConfidence(item.confidence || "possible")})`
     ).join(", ")}`;
   }
 
@@ -689,7 +738,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return createCard(
         scene.sceneTitle || "Scene",
         body,
-        `${scene.sceneType || "scene"} | ${scene.confidence || "possible"}`
+        `${scene.sceneType || "scene"} | ${displayConfidence(scene.confidence || "possible")}`
       );
     }, "No scenes match.", "scene");
   }
@@ -713,7 +762,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderLimited(container, filtered, count, (item) => createCard(
       `${item.actorA || "Unknown"} <-> ${item.actorB || "Unknown"}`,
       trimText(item.sourceSnippet, 180),
-      `${item.interactionType || "interaction"} | ${item.confidence || "probable"}`
+      `${item.interactionType || "interaction"} | ${displayConfidence(item.confidence || "probable")}`
     ), "No character interactions match.", "interaction");
   }
 
@@ -739,6 +788,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No timeline items match.");
   }
 
+  function renderSemanticFlowChains(term) {
+    const container = document.getElementById("semanticFlowChainCards");
+    const count = document.getElementById("semanticFlowChainCount");
+    const chains = Array.isArray(studyData.semanticFlowChains)
+      ? studyData.semanticFlowChains
+      : [];
+    const filtered = chains.filter((chain) => includesTerm([
+      chain.chainTitle,
+      chain.chainType,
+      chain.summary,
+      asArray(chain.authorityChain).join(" "),
+      asArray(chain.nodes).map((node) => [
+        node.actor,
+        node.action,
+        node.target,
+        node.eventType,
+        node.anchorText
+      ].join(" ")).join(" "),
+      asArray(chain.relationships).map((item) => item.relationType).join(" "),
+      chain.confidence
+    ].join(" "), term));
+
+    renderLimited(container, filtered, count, (chain) => {
+      const nodePreview = asArray(chain.nodes)
+        .slice(0, 5)
+        .map((node) => `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${node.target ? ` -> ${node.target}` : ""}`)
+        .join("\n");
+      const hidden = asArray(chain.nodes).length > 5
+        ? `\n${asArray(chain.nodes).length - 5} more node(s) hidden.`
+        : "";
+      const authority = asArray(chain.authorityChain).length
+        ? `Authority: ${asArray(chain.authorityChain).join(" -> ")}`
+        : "";
+      const body = [
+        trimText(chain.summary, 170),
+        authority,
+        nodePreview ? `Nodes:\n${nodePreview}${hidden}` : ""
+      ].filter(Boolean).join("\n");
+      const meta = [chain.chainType, displayConfidence(chain.confidence)]
+        .filter(Boolean)
+        .join(" | ");
+
+      return createCard(chain.chainTitle || "Semantic flow chain", body, meta);
+    }, "No semantic flow chains match.", "semantic flow chain");
+  }
   function renderSemanticEvents(term) {
     const container = document.getElementById("semanticEventCards");
     const count = document.getElementById("semanticEventCount");
@@ -764,13 +858,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderLimited(container, filtered, count, (item) => {
       const target = item.target || item.recipient || item.concerning || "";
       const arrow = target ? ` -> ${target}` : "";
-      const title = `${item.actor || "Unknown"} -> ${item.action || "acts"}${arrow}`;
+      const title = `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${arrow}`;
+      const anchor = item.anchorText || item.sourceSnippet || "";
       const body = [
         trimText(item.normalizedMeaning || item.sourceSnippet, 130),
+        anchor ? `Source phrase: ${trimText(anchor, 90)}${item.verseNumber ? ` (v${item.verseNumber})` : ""}` : "",
+        item.narratorRole ? `Narrator: ${item.narratorRole}` : "",
         item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
-        item.sourceSnippet ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
+        item.sourceSnippet && item.sourceSnippet !== anchor ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
       ].filter(Boolean).join("\n");
-      const meta = [item.eventType, item.semanticCategory, item.confidence]
+      const meta = [item.eventType, item.semanticCategory, displayConfidence(item.confidence)]
         .filter(Boolean)
         .join(" | ");
 
@@ -817,7 +914,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
 
     renderLimited(container, filtered, count, (item) => createCard(
-      item.confidence || "prophecy-fulfillment",
+      displayConfidence(item.confidence || "prophecy-fulfillment"),
       `${trimText(item.prophecyText, 110)} -> ${trimText(item.fulfillmentText, 110)}`,
       item.linkType || "prophecy-fulfillment"
     ), "No prophecy / fulfillment links match.");
@@ -835,6 +932,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderActors(term);
       renderScenes(term);
       renderSemanticEvents(term);
+      renderSemanticFlowChains(term);
       renderOrderedEvents(term);
       renderInteractions(term);
       renderPrinciples(term);
@@ -871,6 +969,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       interactions: dedupeInteractions(studyData.interactionGraph).length,
       scenes: countItems(studyData.sceneModels),
       semanticEvents: countItems(studyData.semanticEvents),
+      semanticFlowChains: countItems(studyData.semanticFlowChains),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -887,10 +986,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
     const sceneCount = countItems(studyData.sceneModels);
     const semanticEventCount = countItems(studyData.semanticEvents);
+    const semanticFlowChainCount = countItems(studyData.semanticFlowChains);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount +
+      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount +
       principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -903,6 +1003,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       interactionCount;
     document.getElementById("diagnosticScenes").textContent = sceneCount;
     document.getElementById("diagnosticSemanticEvents").textContent = semanticEventCount;
+    document.getElementById("diagnosticSemanticFlowChains").textContent = semanticFlowChainCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;

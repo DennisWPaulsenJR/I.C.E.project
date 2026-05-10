@@ -16,12 +16,13 @@ const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
+const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
 const GENEALOGY_PATTERN = /\b(?:begat|generation(?:s)? of|genealogy|lineage)\b/i;
-const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|fear not)\b/i;
+const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|fear not|fulfilled|spoken of the Lord by the prophet)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -365,10 +366,37 @@ function extractLineagePersons(sentence) {
   return people;
 }
 
+function inferVerseNumberFromText(text, fallback = "") {
+  const match = normalizeWhitespace(text || "").match(/^(?:\u00b6\s*)?(\d{1,3})\b/);
+  return match?.[1] || fallback || "";
+}
+
+function anchorHintsForPhrase(sourceSnippet, anchorText) {
+  const source = normalizeWhitespace(sourceSnippet || "");
+  const anchor = normalizeWhitespace(anchorText || "");
+  if (!source || !anchor) {
+    return { phraseStartHint: -1, phraseEndHint: -1, anchorConfidence: "possible" };
+  }
+
+  const index = source.toLowerCase().indexOf(anchor.toLowerCase());
+  if (index === -1) {
+    return { phraseStartHint: -1, phraseEndHint: -1, anchorConfidence: "probable" };
+  }
+
+  return {
+    phraseStartHint: index,
+    phraseEndHint: index + anchor.length,
+    anchorConfidence: "explicit"
+  };
+}
+
 function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
   const sourceCaptureId = capture?.id || "";
   const originalText = normalizeWhitespace(config.originalText || sourceSnippet || "");
   const normalizedMeaning = normalizeWhitespace(config.normalizedMeaning || originalText);
+  const anchorText = normalizeWhitespace(config.anchorText || originalText);
+  const fullSourceSnippet = normalizeWhitespace(sourceSnippet || originalText);
+  const anchorHints = anchorHintsForPhrase(fullSourceSnippet, anchorText);
   const key = [
     sourceCaptureId,
     sequenceIndex,
@@ -386,6 +414,8 @@ function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
     sourceUrl: capture?.url || "",
     sourceContext: buildSourceContext(capture || {}),
     sourceSequenceIndex: sequenceIndex,
+    sentenceIndex: sequenceIndex,
+    verseNumber: config.verseNumber || inferVerseNumberFromText(fullSourceSnippet),
     originalText,
     normalizedMeaning,
     actor: config.actor || "",
@@ -396,14 +426,21 @@ function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
     participants: config.participants || [],
     relationshipType: config.relationshipType || "",
     authorityChain: config.authorityChain || [],
+    narrator: config.narrator || "",
+    narratorRole: config.narratorRole || "",
+    quotedSpeaker: config.quotedSpeaker || "",
+    quotedProphet: config.quotedProphet || "",
     eventType: config.eventType || "semantic_event",
     semanticCategory: config.semanticCategory || "unknown",
     confidence: config.confidence || "probable",
-    sourceSnippet: trimText(sourceSnippet || originalText, 260),
+    anchorText,
+    phraseStartHint: config.phraseStartHint ?? anchorHints.phraseStartHint,
+    phraseEndHint: config.phraseEndHint ?? anchorHints.phraseEndHint,
+    anchorConfidence: config.anchorConfidence || anchorHints.anchorConfidence,
+    sourceSnippet: trimText(config.sourceSnippet || anchorText || sourceSnippet || originalText, 260),
     interpretationNotes: config.interpretationNotes || ""
   };
 }
-
 // Phase 5.9 semantic decomposition groundwork. These small subEvents preserve
 // the original sentence while recording a normalized semantic reading. Future
 // work can replace these narrow patterns with subject/object role tracking,
@@ -425,6 +462,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bJoseph\b.*\bthought\b|\bwhile he thought on these things\b/i.test(text)) {
     push({
       originalText: "Joseph thought on these things",
+      anchorText: "thought on these things",
       normalizedMeaning: "Joseph considered these things",
       actor: "Joseph",
       action: "thought / considered",
@@ -437,6 +475,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bangel of (?:THE LORD|the Lord)\b.*\bappeared\b/i.test(text)) {
     push({
       originalText: "the angel of THE LORD appeared unto him",
+      anchorText: "the angel of THE LORD appeared unto him",
       normalizedMeaning: "Angel of THE LORD appeared to Joseph",
       actor: "Angel of THE LORD",
       action: "appeared",
@@ -454,6 +493,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bangel of (?:THE LORD|the Lord)\b.*\bsaying\b.*\bJoseph\b/i.test(text)) {
     push({
       originalText: "the angel of THE LORD ... saying, Joseph",
+      anchorText: "saying, Joseph",
       normalizedMeaning: "Angel of THE LORD spoke to Joseph",
       actor: "Angel of THE LORD",
       action: "spoke",
@@ -471,6 +511,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bfear not to take unto thee Mary\b|\btake unto thee Mary thy wife\b/i.test(text)) {
     push({
       originalText: "fear not to take unto thee Mary thy wife",
+      anchorText: "fear not to take unto thee Mary thy wife",
       normalizedMeaning: "Joseph received instruction concerning Mary",
       actor: "Angel of THE LORD",
       action: "instructed",
@@ -489,6 +530,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\btook unto him his wife\b|\btake unto thee Mary thy wife\b/i.test(text)) {
     push({
       originalText: /\btook unto him his wife\b/i.test(text) ? "Joseph took unto him his wife" : "take unto thee Mary thy wife",
+      anchorText: /\btook unto him his wife\b/i.test(text) ? "took unto him his wife" : "take unto thee Mary thy wife",
       normalizedMeaning: "Joseph accepted Mary as wife",
       actor: "Joseph",
       action: "took / accepted as wife",
@@ -505,6 +547,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bknew her not\b/i.test(text)) {
     push({
       originalText: "he knew her not",
+      anchorText: "knew her not",
       normalizedMeaning: "Joseph abstained from sexual relations with Mary",
       actor: "Joseph",
       action: "abstained",
@@ -522,6 +565,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bbrought forth\b.*\bson\b/i.test(text)) {
     push({
       originalText: "she brought forth her firstborn son",
+      anchorText: "brought forth her firstborn son",
       normalizedMeaning: "Mary brought forth a son",
       actor: "Mary",
       action: "brought forth",
@@ -537,6 +581,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\bcalled his name JESUS\b|\bcalled his name Jesus\b/i.test(text)) {
     push({
       originalText: "called his name JESUS",
+      anchorText: "called his name JESUS",
       normalizedMeaning: "Joseph named him JESUS",
       actor: "Joseph",
       action: "named",
@@ -545,6 +590,25 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
       relationshipType: "namer_named",
       eventType: "naming_event",
       semanticCategory: "naming_identity",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bNow all this was done\b|\bthat it might be fulfilled\b|\bspoken of the Lord by the prophet\b/i.test(text)) {
+    push({
+      originalText: "Now all this was done, that it might be fulfilled",
+      anchorText: /\bthat it might be fulfilled\b/i.test(text) ? "that it might be fulfilled" : "Now all this was done",
+      normalizedMeaning: "Scripture narrator frames the event as fulfillment of prophetic speech",
+      actor: "Scripture narrator",
+      action: "narrates fulfillment",
+      eventType: "passive_fulfillment_narration",
+      semanticCategory: "prophecy_fulfillment_context",
+      participants: ["Scripture narrator", "Quoted prophet"],
+      relationshipType: "fulfillment_narration",
+      narrator: "Scripture narrator",
+      narratorRole: "passive fulfillment narration",
+      quotedSpeaker: /\bspoken of the Lord\b/i.test(text) ? "THE LORD" : "",
+      quotedProphet: /\bprophet\b/i.test(text) ? "Quoted prophet" : "",
       confidence: "explicit"
     });
   }
@@ -697,6 +761,10 @@ function leadingSubjectActor(sentence) {
 
 function explicitContextActor(eventItem) {
   const text = normalizeWhitespace(eventItem.eventText || "");
+
+  if (/\bNow all this was done\b|\bthat it might be fulfilled\b/i.test(text)) {
+    return "Scripture narrator";
+  }
 
   if (/\bvoice from heaven\b/i.test(text) || /\bmy beloved Son\b/i.test(text)) {
     return "Father";
@@ -1090,9 +1158,13 @@ function interactionCandidatesForEvent(eventItem, actorsByEvent) {
     push("Angel of the Lord", "Joseph", "divine message", "explicit");
   }
 
+  // Matthew 2 caregiving/travel scenes can create Joseph <-> JESUS movement
+  // relationships, but Matthew 1 naming/birth/marital language should remain
+  // semantic events rather than a direct interaction edge.
   if (/\bJoseph\b/i.test(text) &&
-    /\b(young child|the child|Jesus|Christ)\b/i.test(text) &&
-    /\b(took|departed|returned|came|arose)\b/i.test(text)) {
+    /\b(young child|the child)\b/i.test(text) &&
+    /\b(took|departed|returned|came|arose)\b/i.test(text) &&
+    !/\b(called his name|brought forth|knew her not|wife)\b/i.test(text)) {
     push("JESUS", "Joseph", "caregiving movement", "explicit");
   }
 
@@ -1851,7 +1923,7 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
     );
 }
 
-function createEntityRoleItem(sourceContext, roleGroup, entityName, confidence = "probable", evidence = "") {
+function createEntityRoleItem(sourceContext, roleGroup, entityName, confidence = "probable", evidence = "", metadata = {}) {
   const normalizedName = normalizeWhitespace(entityName || "");
   if (!normalizedName) return null;
   const context = sourceContext || {};
@@ -1871,12 +1943,16 @@ function createEntityRoleItem(sourceContext, roleGroup, entityName, confidence =
     roleGroup,
     entityName: normalizedName,
     confidence,
-    evidence: trimText(evidence, 160)
+    evidence: trimText(evidence, 160),
+    actorReason: metadata.actorReason || "",
+    semanticEventReference: metadata.semanticEventReference || "",
+    eventType: metadata.eventType || "",
+    anchorText: metadata.anchorText || ""
   };
 }
 
-function addEntityRoleItem(items, seen, sourceContext, roleGroup, entityName, confidence, evidence) {
-  const item = createEntityRoleItem(sourceContext, roleGroup, entityName, confidence, evidence);
+function addEntityRoleItem(items, seen, sourceContext, roleGroup, entityName, confidence, evidence, metadata = {}) {
+  const item = createEntityRoleItem(sourceContext, roleGroup, entityName, confidence, evidence, metadata);
   if (!item) return;
   const key = [
     item.sourceCaptureId,
@@ -1914,6 +1990,12 @@ function createLineageSemanticEvent(eventItem, pair, pairIndex) {
     sourceUrl: eventItem.sourceUrl || "",
     sourceContext: eventItem.sourceContext,
     sequenceOrder: Number(eventItem.sequenceIndex ?? 0) + (pairIndex + 1) / 100,
+    verseNumber: inferVerseNumberFromText(eventItem.eventText || ""),
+    sentenceIndex: eventItem.sequenceIndex,
+    anchorText: `${parent} begat ${child}`,
+    phraseStartHint: anchorHintsForPhrase(eventItem.eventText || "", `${parent} begat ${child}`).phraseStartHint,
+    phraseEndHint: anchorHintsForPhrase(eventItem.eventText || "", `${parent} begat ${child}`).phraseEndHint,
+    anchorConfidence: anchorHintsForPhrase(eventItem.eventText || "", `${parent} begat ${child}`).anchorConfidence,
     eventType: "lineage_birth",
     semanticCategory: "lineage",
     actor: parent,
@@ -1987,13 +2069,157 @@ function createSemanticEvents(eventItems, orderedEvents) {
   // instead of forcing flattened doctrinal conclusions.
   return semanticEvents.sort((a, b) => Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0));
 }
-function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels) {
+function semanticFlowNode(eventItem) {
+  return {
+    semanticEventId: eventItem.id || "",
+    actor: eventItem.actor || eventItem.narrator || "",
+    action: eventItem.action || "",
+    target: eventItem.target || eventItem.recipient || eventItem.concerning || "",
+    eventType: eventItem.eventType || "semantic_event",
+    anchorText: eventItem.anchorText || eventItem.sourceSnippet || "",
+    verseNumber: eventItem.verseNumber || "",
+    confidence: eventItem.confidence || "probable"
+  };
+}
+
+function semanticFlowRelationship(fromEvent, toEvent, relationType, confidence = "probable") {
+  if (!fromEvent || !toEvent) return null;
+  return {
+    fromEventId: fromEvent.id || "",
+    toEventId: toEvent.id || "",
+    relationType,
+    confidence,
+    evidenceSnippet: trimText([
+      fromEvent.anchorText || fromEvent.sourceSnippet || "",
+      toEvent.anchorText || toEvent.sourceSnippet || ""
+    ].filter(Boolean).join(" -> "), 220)
+  };
+}
+
+function findSemanticEvent(events, eventTypes) {
+  return (events || []).find((item) => eventTypes.includes(item.eventType));
+}
+
+function createSemanticFlowChains(semanticEvents, sceneModels, interactions, entityRoleItems, prophecyLinks) {
+  const grouped = new Map();
+  for (const item of semanticEvents || []) {
+    const key = item.sourceCaptureId || item.sourceUrl || item.sourceTitle || "unknown-source";
+    grouped.set(key, [...(grouped.get(key) || []), item]);
+  }
+
+  const chains = [];
+  for (const [sourceKey, sourceEvents] of grouped.entries()) {
+    const ordered = [...sourceEvents].sort((a, b) => Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0));
+    const appearance = findSemanticEvent(ordered, ["divine_messenger_appearance"]);
+    const speech = findSemanticEvent(ordered, ["divine_message_speech"]);
+    const instruction = findSemanticEvent(ordered, ["instruction_concerning_person"]);
+    const covenant = findSemanticEvent(ordered, ["covenant_family_union"]);
+    const birth = findSemanticEvent(ordered, ["birth_event"]);
+    const naming = findSemanticEvent(ordered, ["naming_event"]);
+    const fulfillment = findSemanticEvent(ordered, ["passive_fulfillment_narration"]);
+    const nodes = [appearance, speech, instruction, covenant, birth, naming, fulfillment]
+      .filter(Boolean);
+
+    if (nodes.length < 2) continue;
+
+    const relationships = [
+      semanticFlowRelationship(appearance, speech || instruction, "authority_delegates_message", "inferred-source"),
+      semanticFlowRelationship(speech, instruction, "message_instructs_recipient", "explicit"),
+      semanticFlowRelationship(instruction, covenant, "recipient_obeys_instruction", "probable"),
+      semanticFlowRelationship(instruction, covenant, "instruction_concerns_person", "explicit"),
+      semanticFlowRelationship(covenant, birth, "covenant_union_occurs", "probable"),
+      semanticFlowRelationship(birth, naming, "name_given", "explicit"),
+      semanticFlowRelationship(naming || birth || covenant, fulfillment, "fulfillment_identified_by_narrator", "explicit")
+    ].filter(Boolean);
+
+    const authorityChain = appearance?.authorityChain?.length
+      ? appearance.authorityChain
+      : instruction?.authorityChain || [];
+    const sequenceValues = nodes
+      .map((node) => Number(node.sequenceOrder || 0))
+      .filter((value) => Number.isFinite(value));
+    const sourceContext = nodes.find((node) => node.sourceContext)?.sourceContext || {};
+    const key = [sourceKey, "authority-message-response-fulfillment", nodes.map((node) => node.id).join("|")].join("|");
+
+    chains.push({
+      id: `${Date.now()}-${textHash(key)}`,
+      sourceCaptureId: nodes[0]?.sourceCaptureId || "",
+      sourceContext,
+      chainType: "authority-message-response-fulfillment",
+      chainTitle: "THE LORD -> Angel of THE LORD -> Joseph response -> fulfillment",
+      sequenceStart: sequenceValues.length ? Math.min(...sequenceValues) : null,
+      sequenceEnd: sequenceValues.length ? Math.max(...sequenceValues) : null,
+      nodes: nodes.map(semanticFlowNode),
+      relationships,
+      authorityChain,
+      summary: "THE LORD acts through Angel of THE LORD; Joseph receives instruction, takes Mary as wife, Mary brings forth a son, Joseph names Him JESUS, and the narrator identifies fulfillment.",
+      confidence: relationships.some((item) => item.confidence === "inferred-source") ? "inferred-source" : "probable"
+    });
+  }
+
+  // Current-page semantic flow chains are a compact bridge toward graph views.
+  // Future graph visualization can connect authority, message, instruction,
+  // response, fulfillment, lineage, doctrine, and source-grounded evidence
+  // without creating false direct interactions such as JESUS -> Joseph in
+  // Matthew 1, where JESUS is named child/result rather than message authority.
+  return chains;
+}
+function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
+  const normalizedActor = normalizeWhitespace(actorName || "").toLowerCase();
+  const meaningfulEvents = (semanticEvents || [])
+    .filter((item) => normalizeWhitespace(item.actor || "").toLowerCase() === normalizedActor)
+    .filter((item) => !["lineage_birth"].includes(item.eventType || ""));
+  const preferredOrder = [
+    "divine_messenger_appearance",
+    "divine_message_speech",
+    "instruction_concerning_person",
+    "passive_fulfillment_narration",
+    "covenant_family_union",
+    "naming_event",
+    "birth_event"
+  ];
+
+  const sorted = meaningfulEvents.sort((left, right) =>
+    (preferredOrder.indexOf(left.eventType) === -1 ? 99 : preferredOrder.indexOf(left.eventType)) -
+    (preferredOrder.indexOf(right.eventType) === -1 ? 99 : preferredOrder.indexOf(right.eventType)) ||
+    Number(left.sequenceOrder || 0) - Number(right.sequenceOrder || 0)
+  );
+  const event = sorted[0];
+  if (!event) return null;
+
+  let actorReason = event.action || event.normalizedMeaning || event.eventType || "semantic action";
+  if (/angel of the lord/i.test(actorName || "")) {
+    actorReason = Array.from(new Set(sorted
+      .filter((item) => [
+        "divine_messenger_appearance",
+        "divine_message_speech",
+        "instruction_concerning_person"
+      ].includes(item.eventType || ""))
+      .map((item) => item.action)
+      .filter(Boolean)))
+      .slice(0, 3)
+      .join(" / ") || actorReason;
+  } else if (event.eventType === "covenant_family_union") {
+    actorReason = "took / accepted Mary as wife";
+  } else if (event.eventType === "passive_fulfillment_narration") {
+    actorReason = "narrates fulfillment";
+  }
+
+  return {
+    actorReason,
+    semanticEventReference: event.id || "",
+    eventType: event.eventType || "",
+    anchorText: event.anchorText || ""
+  };
+}
+function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels, semanticEvents = []) {
   const items = [];
   const seen = new Set();
   const fallbackContext = buildSourceContext(captures.find((capture) => capture?.text) || {});
 
   for (const actor of actorTimelines || []) {
     if (!actor.actorName || actor.actorName === "Unknown actor") continue;
+    const directReason = directActorReasonFromSemanticEvents(actor.actorName, semanticEvents);
     addEntityRoleItem(
       items,
       seen,
@@ -2001,7 +2227,8 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
       "Direct Actors",
       actor.actorName,
       "explicit",
-      "direct actor timeline"
+      directReason?.actorReason || "direct actor timeline",
+      directReason || {}
     );
   }
 
@@ -2129,7 +2356,15 @@ async function runFullAnalysisPipeline(reason = "manual") {
       captures,
       eventItems,
       actorTimelines,
-      sceneModels
+      sceneModels,
+      semanticEvents
+    );
+    const semanticFlowChains = createSemanticFlowChains(
+      semanticEvents,
+      sceneModels,
+      dedupedInteractionGraph,
+      entityRoleItems,
+      prophecyLinks
     );
     const status = {
       reason,
@@ -2144,6 +2379,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sceneCount: sceneModels.length,
       entityRoleCount: entityRoleItems.length,
       semanticEventCount: semanticEvents.length,
+      semanticFlowChainCount: semanticFlowChains.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -2158,6 +2394,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SCENE_MODELS_KEY]: sceneModels,
       [ENTITY_ROLE_ITEMS_KEY]: entityRoleItems,
       [SEMANTIC_EVENTS_KEY]: semanticEvents,
+      [SEMANTIC_FLOW_CHAINS_KEY]: semanticFlowChains,
       [ANALYSIS_STATUS_KEY]: status
     });
 
