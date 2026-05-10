@@ -273,6 +273,76 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No ordered events match.");
   }
 
+  function roleName(role) {
+    return role?.actorName || "";
+  }
+
+  function formatRoleValue(label, role) {
+    if (!roleName(role)) return "";
+    return `${label}: ${role.actorName} (${role.confidence || "probable"})`;
+  }
+
+  function formatRoleList(label, roles) {
+    const values = asArray(roles)
+      .filter((role) => roleName(role))
+      .slice(0, 3)
+      .map((role) => `${role.actorName} (${role.confidence || "probable"})`);
+
+    return values.length ? `${label}: ${values.join(", ")}` : "";
+  }
+
+  function formatPrincipleFocus(principleFocus) {
+    if (!principleFocus?.principleText) return "";
+    return `Principle: ${trimText(principleFocus.principleText, 90)} (${principleFocus.confidence || "probable"})`;
+  }
+
+  function formatAuthorityChain(authorityChain) {
+    const chain = asArray(authorityChain)
+      .filter((role) => roleName(role))
+      .map((role) => role.actorName);
+
+    return chain.length > 1 ? `Authority: ${chain.join(" -> ")}` : "";
+  }
+  function sceneRoleSearchText(scene) {
+    return [
+      roleName(scene.primaryActor),
+      roleName(scene.speaker),
+      roleName(scene.listener),
+      roleName(scene.recipient),
+      roleName(scene.target),
+      roleName(scene.divineManifestation),
+      roleName(scene.sourceAuthority),
+      roleName(scene.orchestrator),
+      asArray(scene.authorityChain).map(roleName).join(" "),
+      asArray(scene.secondaryActors).map(roleName).join(" "),
+      asArray(scene.witness).map(roleName).join(" "),
+      asArray(scene.audience).map(roleName).join(" "),
+      scene.principleFocus?.principleText || ""
+    ].join(" ");
+  }
+
+  function formatSceneRoles(scene) {
+    const recipientName = roleName(scene.recipient);
+    const targetName = roleName(scene.target);
+
+    return [
+      formatRoleValue("Primary", scene.primaryActor),
+      formatRoleList("Secondary", scene.secondaryActors),
+      formatRoleValue("Speaker", scene.speaker),
+      formatRoleValue("Listener", scene.listener),
+      recipientName && recipientName !== targetName
+        ? formatRoleValue("Recipient", scene.recipient)
+        : "",
+      formatRoleValue("Target", scene.target),
+      formatRoleValue("Manifestation", scene.divineManifestation),
+      formatRoleValue("Source", scene.sourceAuthority),
+      formatAuthorityChain(scene.authorityChain),
+      formatRoleList("Witness", scene.witness),
+      formatRoleList("Audience", scene.audience),
+      formatPrincipleFocus(scene.principleFocus)
+    ].filter(Boolean).slice(0, 8).join("\n");
+  }
+
   function formatSceneWitnesses(scene) {
     const witnesses = Array.isArray(scene.witnesses) ? scene.witnesses : [];
     if (witnesses.length === 0) return "Witnesses: none detected";
@@ -294,7 +364,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         scene.summarySnippet,
         (scene.participants || []).join(" "),
         (scene.witnesses || []).map((item) => item.witness).join(" "),
-        scene.confidence
+        scene.confidence,
+        sceneRoleSearchText(scene)
       ].join(" "), term)
     );
 
@@ -302,10 +373,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       const participants = (scene.participants || []).join(", ") ||
         "No participants detected";
       const body = [
-        trimText(scene.summarySnippet, 160),
+        trimText(scene.summarySnippet, 140),
+        formatSceneRoles(scene),
         `Participants: ${participants}`,
         formatSceneWitnesses(scene)
-      ].filter(Boolean).join(" ");
+      ].filter(Boolean).join("\n");
 
       return createCard(
         scene.sceneTitle || "Scene",

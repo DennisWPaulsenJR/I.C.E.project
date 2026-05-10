@@ -18,6 +18,7 @@ const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
+const GENEALOGY_PATTERN = /\b(?:begat|generation(?:s)? of|genealogy|lineage)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -247,7 +248,9 @@ function createEventItem(capture, sentence, sequenceIndex) {
     eventText,
     eventType: isSourceSummarySentence(eventText, sequenceIndex)
       ? "source_summary"
-      : "narrative_event",
+      : GENEALOGY_PATTERN.test(eventText)
+        ? "lineage_record"
+        : "narrative_event",
     sequenceIndex,
     detectedDateText: date.detectedDateText,
     normalizedYear: date.normalizedYear,
@@ -282,7 +285,8 @@ function extractEventItemsFromCapture(capture) {
     .filter(({ sentence, index }) =>
       sentence &&
       !isSourceSummarySentence(sentence, index) &&
-      (ACTION_PATTERN.test(sentence) || detectOrderingCue(sentence))
+      (ACTION_PATTERN.test(sentence) || GENEALOGY_PATTERN.test(sentence) ||
+        detectOrderingCue(sentence))
     )
     .map(({ sentence, index }) => createEventItem(capture, sentence, index));
 }
@@ -302,6 +306,7 @@ function createOrderedEvents(eventItems) {
   const grouped = new Map();
   for (const item of eventItems) {
     if (item.eventType === "source_summary" ||
+      item.eventType === "lineage_record" ||
       isSourceSummarySentence(item.eventText || "", item.sequenceIndex)) {
       continue;
     }
@@ -378,6 +383,16 @@ function explicitContextActor(eventItem) {
 
   if (/\bSpirit of God\b/i.test(text) || /\bSpirit\b.*\bdescending\b/i.test(text)) {
     return "Spirit of GOD";
+  }
+
+  // Matthew 1 divine-message scene: the sentence may begin with Joseph's
+  // internal action, but the main event is the angel appearing and speaking.
+  // Future sub-event parsing should split Joseph thought / angel appeared /
+  // angel spoke into separate actor-target records.
+  if (/\bangel of the Lord\b/i.test(text) &&
+    /\bJoseph\b/i.test(text) &&
+    /\b(appeared|appeareth|saying|fear not)\b/i.test(text)) {
+    return "Angel of the Lord";
   }
 
   if (/\bJohn(?: the Baptist)?\b/i.test(text)) {
@@ -665,7 +680,7 @@ function mentionedActorsForEvent(eventItem) {
     actors.add("People / multitudes");
   }
   if (/\bwise men\b/i.test(text)) actors.add("Wise men");
-  if (/\bHerod\b|\bthe king\b/i.test(text)) actors.add("Herod");
+  if (/\bHerod\b/i.test(text)) actors.add("Herod");
   if (/\bJoseph\b/i.test(text)) actors.add("Joseph");
   if (/\bMary\b|\bmother\b/i.test(text)) actors.add("Mary");
   if (/\bangel of the Lord\b/i.test(text)) actors.add("Angel of the Lord");
@@ -733,7 +748,7 @@ function interactionCandidatesForEvent(eventItem, actorsByEvent) {
     push("John the Baptist", "Pharisees and Sadducees", "warning", "explicit");
   }
 
-  if ((primaryActors.has("Herod") || /\bHerod\b|\bthe king\b/i.test(text)) &&
+  if ((primaryActors.has("Herod") || /\bHerod\b/i.test(text)) &&
     /\b(wise men|them)\b/i.test(text) &&
     /\b(sent|called|inquired|demanded)\b/i.test(text)) {
     push("Herod", "Wise men", "royal summons", "explicit");
@@ -798,11 +813,6 @@ function witnessCandidatesForEvent(eventItem, actorsByEvent, sceneMemory) {
     push("Spirit of GOD", "John the Baptist", "witnessed manifestation", "probable");
   }
 
-  if (/\bappeared unto\b|\bappeareth to\b/i.test(text)) {
-    if (participants.has("Joseph") && /\bangel of the Lord\b/i.test(text)) {
-      push("Angel of the Lord", "Joseph", "witnessed manifestation", "probable");
-    }
-  }
 
   // Phase 5.5 witness/audience MVP. Future work should track scene
   // participants explicitly, separate direct vs inferred witness edges,
@@ -904,10 +914,27 @@ function principleSequence(item, index) {
   return sequenceMatch ? Number(sequenceMatch[1]) : index;
 }
 
+function principleTextKey(item) {
+  return normalizeWhitespace(item?.principleText || "").toLowerCase();
+}
+
+function isSamePrincipleItem(left, right) {
+  if (!left || !right) return false;
+  if (left.id && right.id && left.id === right.id) return true;
+  return principleTextKey(left) && principleTextKey(left) === principleTextKey(right);
+}
+
 function createProphecyLink(prophecy, fulfillment, distance) {
+  if (isSamePrincipleItem(prophecy, fulfillment)) return null;
+
   const sourceCaptureId = fulfillment.sourceCaptureId || prophecy.sourceCaptureId || "";
   const prophecyText = prophecy.principleText || "";
   const fulfillmentText = fulfillment.principleText || "";
+  if (normalizeWhitespace(prophecyText).toLowerCase() ===
+    normalizeWhitespace(fulfillmentText).toLowerCase()) {
+    return null;
+  }
+
   const contextSnippet = trimText([
     prophecy.contextSnippet || prophecyText,
     fulfillment.contextSnippet || fulfillmentText
@@ -921,6 +948,21 @@ function createProphecyLink(prophecy, fulfillment, distance) {
     contextSnippet,
     linkType: "prophecy-fulfillment",
     confidence: distance <= 2 ? "explicit" : "probable"
+  };
+}
+
+function createSelfContainedFulfillmentLink(item) {
+  const text = item.principleText || "";
+  const sourceCaptureId = item.sourceCaptureId || "";
+
+  return {
+    id: `${Date.now()}-${textHash(`${sourceCaptureId}|self-contained|${text}`)}`,
+    sourceCaptureId,
+    prophecyText: "",
+    fulfillmentText: text,
+    contextSnippet: trimText(item.contextSnippet || text, 260),
+    linkType: "self-contained fulfillment",
+    confidence: "explicit"
   };
 }
 
@@ -947,7 +989,21 @@ function createProphecyLinks(principleItems) {
     );
 
     for (const fulfillment of fulfillments) {
+      if (PROPHECY_CANDIDATE_PATTERN.test(fulfillment.item.principleText || "")) {
+        const selfContained = createSelfContainedFulfillmentLink(fulfillment.item);
+        const selfKey = [
+          selfContained.sourceCaptureId,
+          selfContained.linkType,
+          normalizeWhitespace(selfContained.fulfillmentText).toLowerCase()
+        ].join("|");
+        if (!seen.has(selfKey)) {
+          seen.add(selfKey);
+          links.push(selfContained);
+        }
+      }
+
       const nearest = prophecies
+        .filter((prophecy) => !isSamePrincipleItem(prophecy.item, fulfillment.item))
         .map((prophecy) => ({
           ...prophecy,
           distance: Math.abs(prophecy.sequence - fulfillment.sequence)
@@ -961,6 +1017,8 @@ function createProphecyLinks(principleItems) {
         fulfillment.item,
         nearest.distance
       );
+      if (!link) continue;
+
       const key = [
         link.sourceCaptureId,
         normalizeWhitespace(link.prophecyText).toLowerCase(),
@@ -1170,6 +1228,224 @@ function attachSceneRelatedData(scene, interactions, principleItems, prophecyLin
   return scene;
 }
 
+function roleValue(actorName, confidence = "probable", reason = "") {
+  if (!actorName) return null;
+  return {
+    actorName,
+    confidence,
+    reason
+  };
+}
+
+function uniqueRoleList(items) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const item of items || []) {
+    const actorName = item?.actorName || item?.witness || item;
+    if (!actorName) continue;
+    const key = normalizeWhitespace(actorName).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(typeof item === "string" ? roleValue(item) : item);
+  }
+
+  return unique;
+}
+
+function actorNameFromRole(role) {
+  return role?.actorName || "";
+}
+
+function mostFrequentSceneActor(scene) {
+  const counts = new Map();
+
+  for (const actor of scene.eventActors || []) {
+    if (!actor || actor === "Unknown actor") continue;
+    counts.set(actor, (counts.get(actor) || 0) + 2);
+  }
+
+  for (const actor of scene.participants || []) {
+    if (!actor || actor === "Unknown actor") continue;
+    counts.set(actor, (counts.get(actor) || 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "";
+}
+
+function sceneHasActor(scene, actorName) {
+  const participants = scene.participants instanceof Set
+    ? Array.from(scene.participants)
+    : scene.participants || [];
+
+  return participants.some((actor) => actor === actorName);
+}
+
+function interactionHasActor(interaction, actorName) {
+  return interaction.actorA === actorName || interaction.actorB === actorName;
+}
+
+function otherInteractionActor(interaction, actorName) {
+  if (interaction.actorA === actorName) return interaction.actorB;
+  if (interaction.actorB === actorName) return interaction.actorA;
+  return "";
+}
+
+function preferredPrincipleFocus(scene) {
+  const principles = scene.principles || [];
+  const focused = principles.find((item) =>
+    /\bfulfil(?:l)? all righteousness\b|\brighteousness\b|\bkingdom of heaven\b/i
+      .test(item.principleText || "")
+  ) || principles[0];
+
+  if (!focused) return null;
+  return {
+    principleType: focused.principleType || "unknown",
+    principleText: trimText(focused.principleText || "", 120),
+    confidence: "probable"
+  };
+}
+
+function deriveSceneRoles(scene) {
+  const directInteractions = scene.interactions || [];
+  const witnessItems = scene.witnesses || [];
+  const secondaryActors = [];
+  let primaryActor = roleValue(mostFrequentSceneActor(scene), "probable", "dominant scene actor");
+  let speaker = null;
+  let listener = null;
+  let recipient = null;
+  let target = null;
+  let divineManifestation = null;
+  let sourceAuthority = null;
+  let orchestrator = null;
+  let authorityChain = [];
+  let audience = [];
+
+  const baptism = directInteractions.find((item) =>
+    item.interactionType === "baptism"
+  );
+  const proclamation = directInteractions.find((item) =>
+    item.interactionType === "divine proclamation"
+  );
+  const manifestation = directInteractions.find((item) =>
+    item.interactionType === "divine manifestation"
+  );
+  const warning = directInteractions.find((item) =>
+    item.interactionType === "warning"
+  );
+  const divineMessage = directInteractions.find((item) =>
+    item.interactionType === "divine message"
+  );
+
+  if (divineMessage && interactionHasActor(divineMessage, "Angel of the Lord")) {
+    const messageRecipient = otherInteractionActor(divineMessage, "Angel of the Lord");
+    primaryActor = roleValue("Angel of the Lord", divineMessage.confidence || "explicit", "divine message actor");
+    if (messageRecipient) {
+      secondaryActors.push(roleValue(messageRecipient, divineMessage.confidence || "explicit", "message participant"));
+      recipient = roleValue(messageRecipient, divineMessage.confidence || "explicit", "message recipient");
+      target = roleValue(messageRecipient, divineMessage.confidence || "explicit", "message target");
+      listener = roleValue(messageRecipient, divineMessage.confidence || "explicit", "message listener");
+    }
+    speaker = roleValue("Angel of the Lord", divineMessage.confidence || "explicit", "message speaker");
+    sourceAuthority = roleValue("THE LORD", "inferred-source", "Angel of the Lord source authority");
+    orchestrator = roleValue("THE LORD", "inferred-source", "higher-order authority for divine messenger");
+    authorityChain = uniqueRoleList([
+      sourceAuthority,
+      roleValue("Angel of the Lord", divineMessage.confidence || "explicit", "direct messenger"),
+      messageRecipient ? roleValue(messageRecipient, divineMessage.confidence || "explicit", "message recipient") : null
+    ]);
+  }
+
+  if (scene.sceneType === "baptism" || baptism) {
+    primaryActor = roleValue("JESUS", "explicit", "baptism scene focus");
+    secondaryActors.push(roleValue("John the Baptist", "explicit", "baptism participant"));
+    target = roleValue("JESUS", "explicit", "baptism recipient");
+  }
+
+  if (scene.sceneType === "divine manifestation" || proclamation || manifestation) {
+    primaryActor = roleValue("JESUS", "inferred-source", "divine manifestation target");
+    secondaryActors.push(roleValue("John the Baptist", "probable", "nearby baptism participant"));
+  }
+
+  if (proclamation) {
+    speaker = roleValue("Father", proclamation.confidence || "inferred-source", "voice from heaven");
+    recipient = roleValue("JESUS", proclamation.confidence || "inferred-source", "beloved Son addressed");
+    target = roleValue("JESUS", proclamation.confidence || "inferred-source", "proclamation target");
+  }
+
+  if (manifestation) {
+    divineManifestation = roleValue(
+      "Spirit of GOD",
+      manifestation.confidence || "probable",
+      "Spirit descending manifestation"
+    );
+  }
+
+  if (warning || scene.sceneType === "warning") {
+    primaryActor = roleValue("John the Baptist", "probable", "warning speaker");
+    speaker = speaker || roleValue("John the Baptist", "probable", "warning speaker");
+    listener = roleValue("Pharisees and Sadducees", "probable", "warning audience");
+    target = target || roleValue("Pharisees and Sadducees", "probable", "warning target");
+  }
+
+  if (scene.sceneType === "preaching") {
+    primaryActor = roleValue("John the Baptist", "probable", "preaching scene subject");
+    speaker = speaker || roleValue("John the Baptist", "probable", "preacher");
+    if (sceneHasActor(scene, "People / multitudes")) {
+      audience.push(roleValue("People / multitudes", "probable", "public preaching audience"));
+    }
+  }
+
+  for (const interaction of directInteractions) {
+    if (interaction.interactionType === "said" || interaction.interactionType === "answered") {
+      speaker = speaker || roleValue(interaction.actorA, interaction.confidence || "probable", "speech interaction");
+      listener = listener || roleValue(interaction.actorB, interaction.confidence || "probable", "speech listener");
+    }
+
+    if (primaryActor && interactionHasActor(interaction, actorNameFromRole(primaryActor))) {
+      const otherActor = otherInteractionActor(interaction, actorNameFromRole(primaryActor));
+      if (otherActor) {
+        secondaryActors.push(roleValue(
+          otherActor,
+          interaction.confidence || "probable",
+          `${interaction.interactionType || "interaction"} participant`
+        ));
+      }
+    }
+  }
+
+  const witness = uniqueRoleList(witnessItems.map((item) =>
+    roleValue(item.witness, item.confidence || "possible", item.interactionType)
+  ));
+  audience = uniqueRoleList([
+    ...audience,
+    ...witness
+      .filter((item) => item.actorName === "People / multitudes")
+      .map((item) => roleValue(item.actorName, item.confidence, "witnessed audience"))
+  ]);
+
+  const primaryName = actorNameFromRole(primaryActor);
+  const secondary = uniqueRoleList(secondaryActors)
+    .filter((item) => item.actorName !== primaryName);
+
+  return {
+    primaryActor,
+    secondaryActors: secondary,
+    speaker,
+    listener,
+    recipient,
+    target,
+    witness,
+    audience,
+    divineManifestation,
+    sourceAuthority,
+    orchestrator,
+    authorityChain,
+    principleFocus: preferredPrincipleFocus(scene)
+  };
+}
+
 function createSceneModels(orderedEvents, actorTimelines, interactions, principleItems, prophecyLinks) {
   const actorByEvent = actorNamesByEvent(actorTimelines);
   const scenesByKey = new Map();
@@ -1199,6 +1475,7 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
       prophecyLinks: [],
       summarySnippet: "",
       confidence: classification.sceneType === "narrative" ? "possible" : "probable",
+      eventActors: [],
       eventTexts: []
     };
 
@@ -1209,6 +1486,7 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
 
     for (const actor of eventActors) scene.participants.add(actor);
     for (const actor of mentionedActors) scene.participants.add(actor);
+    scene.eventActors.push(...eventActors);
 
     scenesByKey.set(key, scene);
   }
@@ -1216,7 +1494,12 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
   // Future: original-language ambiguity, scene-level source metadata,
   // public/private scene classification, cross-document scene comparison, and
   // conference-talk reference linking should enrich this scene layer without
-  // moving heavy analysis into the popup.
+  // moving heavy analysis into the popup. Authority/source chains should keep
+  // direct actors, messengers, recipients, and orchestrators distinct instead
+  // of collapsing divine messengers into GOD/THE LORD. Future Semantic Tree / Semantic
+  // Markup can wrap these role assignments as paths such as G.C.S(JESUS said
+  // unto John), C.A.L(John baptized JESUS at Jordan), G.W.P(FATHER proclaimed
+  // JESUS), and D.P("fulfil all righteousness").
   return Array.from(scenesByKey.values())
     .map((scene) => attachSceneRelatedData(
       scene,
@@ -1224,7 +1507,11 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
       principleItems,
       prophecyLinks
     ))
-    .map(({ eventTexts, ...scene }) => scene)
+    .map((scene) => ({
+      ...scene,
+      ...deriveSceneRoles(scene)
+    }))
+    .map(({ eventActors, eventTexts, ...scene }) => scene)
     .sort((a, b) =>
       Number(a.sequenceStart || 0) - Number(b.sequenceStart || 0) ||
       a.sceneTitle.localeCompare(b.sceneTitle)
