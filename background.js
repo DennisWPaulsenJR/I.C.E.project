@@ -15,11 +15,13 @@ const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
 const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
+const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
 const GENEALOGY_PATTERN = /\b(?:begat|generation(?:s)? of|genealogy|lineage)\b/i;
+const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|fear not)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -362,6 +364,194 @@ function extractLineagePersons(sentence) {
 
   return people;
 }
+
+function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
+  const sourceCaptureId = capture?.id || "";
+  const originalText = normalizeWhitespace(config.originalText || sourceSnippet || "");
+  const normalizedMeaning = normalizeWhitespace(config.normalizedMeaning || originalText);
+  const key = [
+    sourceCaptureId,
+    sequenceIndex,
+    config.eventType || "semantic_event",
+    config.actor || "",
+    config.action || "",
+    config.target || "",
+    normalizedMeaning
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId,
+    sourceTitle: capture?.title || "",
+    sourceUrl: capture?.url || "",
+    sourceContext: buildSourceContext(capture || {}),
+    sourceSequenceIndex: sequenceIndex,
+    originalText,
+    normalizedMeaning,
+    actor: config.actor || "",
+    action: config.action || "",
+    target: config.target || "",
+    recipient: config.recipient || "",
+    concerning: config.concerning || "",
+    participants: config.participants || [],
+    relationshipType: config.relationshipType || "",
+    authorityChain: config.authorityChain || [],
+    eventType: config.eventType || "semantic_event",
+    semanticCategory: config.semanticCategory || "unknown",
+    confidence: config.confidence || "probable",
+    sourceSnippet: trimText(sourceSnippet || originalText, 260),
+    interpretationNotes: config.interpretationNotes || ""
+  };
+}
+
+// Phase 5.9 semantic decomposition groundwork. These small subEvents preserve
+// the original sentence while recording a normalized semantic reading. Future
+// work can replace these narrow patterns with subject/object role tracking,
+// pronoun resolution, original-language ambiguity notes, and doctrine/profile
+// aware semantic categories without flattening complex passages into one event.
+// Pronoun/rendering roadmap: pronoun meaning should flow from pronoun -> entity
+// resolution -> hierarchy classification -> render profile, not capitalization
+// alone. Joseph-linked HIM/HIS remains human; CHRIST/GOD-linked pronouns may be
+// glorified only when semantic confidence and user rendering settings support it.
+// Original-language roadmap only: future reference layers may research STEPBible
+// Data (https://stepbible.github.io/STEPBible-Data/), STEPBible, SWORD/CrossWire,
+// API.Bible, and Bible SDK licensing for Greek/Hebrew, Strong's, morphology,
+// transliteration, lexical meaning, and idiom resolution such as "knew her not".
+function createSemanticSubEvents(capture, sentence, sequenceIndex) {
+  const text = normalizeWhitespace(sentence);
+  const subEvents = [];
+  const push = (config) => subEvents.push(createSemanticSubEvent(capture, sequenceIndex, text, config));
+
+  if (/\bJoseph\b.*\bthought\b|\bwhile he thought on these things\b/i.test(text)) {
+    push({
+      originalText: "Joseph thought on these things",
+      normalizedMeaning: "Joseph considered these things",
+      actor: "Joseph",
+      action: "thought / considered",
+      eventType: "reflection_consideration",
+      semanticCategory: "thought",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bangel of (?:THE LORD|the Lord)\b.*\bappeared\b/i.test(text)) {
+    push({
+      originalText: "the angel of THE LORD appeared unto him",
+      normalizedMeaning: "Angel of THE LORD appeared to Joseph",
+      actor: "Angel of THE LORD",
+      action: "appeared",
+      target: "Joseph",
+      recipient: "Joseph",
+      participants: ["Angel of THE LORD", "Joseph"],
+      relationshipType: "messenger_appearance",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "divine_messenger_appearance",
+      semanticCategory: "appearance",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bangel of (?:THE LORD|the Lord)\b.*\bsaying\b.*\bJoseph\b/i.test(text)) {
+    push({
+      originalText: "the angel of THE LORD ... saying, Joseph",
+      normalizedMeaning: "Angel of THE LORD spoke to Joseph",
+      actor: "Angel of THE LORD",
+      action: "spoke",
+      recipient: "Joseph",
+      target: "Joseph",
+      participants: ["Angel of THE LORD", "Joseph"],
+      relationshipType: "speaker_recipient",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "divine_message_speech",
+      semanticCategory: "speech",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bfear not to take unto thee Mary\b|\btake unto thee Mary thy wife\b/i.test(text)) {
+    push({
+      originalText: "fear not to take unto thee Mary thy wife",
+      normalizedMeaning: "Joseph received instruction concerning Mary",
+      actor: "Angel of THE LORD",
+      action: "instructed",
+      recipient: "Joseph",
+      concerning: "Mary",
+      target: "Joseph",
+      participants: ["Angel of THE LORD", "Joseph", "Mary"],
+      relationshipType: "instruction_recipient_concerning",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "instruction_concerning_person",
+      semanticCategory: "instruction",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\btook unto him his wife\b|\btake unto thee Mary thy wife\b/i.test(text)) {
+    push({
+      originalText: /\btook unto him his wife\b/i.test(text) ? "Joseph took unto him his wife" : "take unto thee Mary thy wife",
+      normalizedMeaning: "Joseph accepted Mary as wife",
+      actor: "Joseph",
+      action: "took / accepted as wife",
+      target: "Mary",
+      concerning: "Mary",
+      participants: ["Joseph", "Mary"],
+      relationshipType: "marital_covenant",
+      eventType: "covenant_family_union",
+      semanticCategory: "covenant_family_relationship",
+      confidence: /\btook unto him his wife\b/i.test(text) ? "explicit" : "probable"
+    });
+  }
+
+  if (/\bknew her not\b/i.test(text)) {
+    push({
+      originalText: "he knew her not",
+      normalizedMeaning: "Joseph abstained from sexual relations with Mary",
+      actor: "Joseph",
+      action: "abstained",
+      target: "Mary",
+      concerning: "Mary",
+      participants: ["Joseph", "Mary"],
+      relationshipType: "abstinence_within_marital_context",
+      eventType: "abstinence_or_no_intercourse_relations",
+      semanticCategory: "physical_sexual_relations",
+      confidence: "traditional/contextual interpretation",
+      interpretationNotes: "Roadmap: contextual idioms like 'knew her not' must distinguish knowledge, relational familiarity, sexual relations, and abstinence/no sexual relations while preserving the original text."
+    });
+  }
+
+  if (/\bbrought forth\b.*\bson\b/i.test(text)) {
+    push({
+      originalText: "she brought forth her firstborn son",
+      normalizedMeaning: "Mary brought forth a son",
+      actor: "Mary",
+      action: "brought forth",
+      target: "JESUS",
+      participants: ["Mary", "JESUS"],
+      relationshipType: "mother_son_birth",
+      eventType: "birth_event",
+      semanticCategory: "family_birth",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bcalled his name JESUS\b|\bcalled his name Jesus\b/i.test(text)) {
+    push({
+      originalText: "called his name JESUS",
+      normalizedMeaning: "Joseph named him JESUS",
+      actor: "Joseph",
+      action: "named",
+      target: "JESUS",
+      participants: ["Joseph", "JESUS"],
+      relationshipType: "namer_named",
+      eventType: "naming_event",
+      semanticCategory: "naming_identity",
+      confidence: "explicit"
+    });
+  }
+
+  return subEvents;
+}
+
 function createEventItem(capture, sentence, sequenceIndex) {
   const date = findDateInSentence(sentence);
   const eventText = normalizeWhitespace(sentence);
@@ -386,6 +576,7 @@ function createEventItem(capture, sentence, sequenceIndex) {
     confidence: 0.7,
     lineagePersons: isLineageRecord ? extractLineagePersons(eventText) : [],
     lineagePairs: isLineageRecord ? extractLineagePairs(eventText) : [],
+    subEvents: createSemanticSubEvents(capture, eventText, sequenceIndex),
     extractedAt: new Date().toISOString()
   };
 }
@@ -416,7 +607,7 @@ function extractEventItemsFromCapture(capture) {
       sentence &&
       !isSourceSummarySentence(sentence, index) &&
       (ACTION_PATTERN.test(sentence) || GENEALOGY_PATTERN.test(sentence) ||
-        detectOrderingCue(sentence))
+        SEMANTIC_DECOMPOSITION_PATTERN.test(sentence) || detectOrderingCue(sentence))
     )
     .map(({ sentence, index }) => createEventItem(capture, sentence, index));
 }
@@ -1710,6 +1901,92 @@ function addRoleFromRoleValue(items, seen, sourceContext, roleGroup, role, fallb
   );
 }
 
+function createLineageSemanticEvent(eventItem, pair, pairIndex) {
+  const sourceCaptureId = eventItem.sourceCaptureId || "";
+  const parent = pair.parent || "";
+  const child = pair.child || "";
+  const key = [sourceCaptureId, eventItem.sequenceIndex ?? "", pairIndex, parent, child, "lineage_birth"].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId,
+    sourceTitle: eventItem.sourceTitle || "",
+    sourceUrl: eventItem.sourceUrl || "",
+    sourceContext: eventItem.sourceContext,
+    sequenceOrder: Number(eventItem.sequenceIndex ?? 0) + (pairIndex + 1) / 100,
+    eventType: "lineage_birth",
+    semanticCategory: "lineage",
+    actor: parent,
+    action: "begat",
+    target: child,
+    recipient: "",
+    concerning: "",
+    participants: [parent, child].filter(Boolean),
+    relationshipType: "father_son",
+    authorityChain: [],
+    sourceSnippet: trimText(eventItem.eventText || "", 260),
+    normalizedMeaning: `${parent} begat ${child}`,
+    confidence: pair.confidence || "explicit"
+  };
+}
+
+function semanticEventDedupKey(item) {
+  return [
+    item.sourceCaptureId || item.sourceUrl || item.sourceTitle || "",
+    item.eventType || "",
+    item.semanticCategory || "",
+    item.actor || "",
+    item.action || "",
+    item.target || "",
+    normalizeWhitespace(item.normalizedMeaning || item.sourceSnippet || "").toLowerCase()
+  ].join("|");
+}
+
+function createSemanticEvents(eventItems, orderedEvents) {
+  const sequenceByEventId = new Map(
+    (orderedEvents || []).map((item) => [item.id, item.sequenceOrder])
+  );
+  const semanticEvents = [];
+  const seen = new Set();
+
+  const push = (item) => {
+    if (!item) return;
+    const key = semanticEventDedupKey(item);
+    if (seen.has(key)) return;
+    seen.add(key);
+    semanticEvents.push(item);
+  };
+
+  for (const eventItem of eventItems || []) {
+    if (eventItem.eventType === "source_summary" || isSourceSummarySentence(eventItem.eventText || "", eventItem.sequenceIndex)) {
+      continue;
+    }
+
+    if (eventItem.eventType === "lineage_record") {
+      (eventItem.lineagePairs || []).forEach((pair, index) => {
+        push(createLineageSemanticEvent(eventItem, pair, index));
+      });
+      continue;
+    }
+
+    for (const subEvent of eventItem.subEvents || []) {
+      push({
+        ...subEvent,
+        sourceContext: subEvent.sourceContext || eventItem.sourceContext,
+        sequenceOrder: sequenceByEventId.get(eventItem.id) || Number(eventItem.sequenceIndex || 0) + 1,
+        sourceSnippet: subEvent.sourceSnippet || trimText(eventItem.eventText || "", 260)
+      });
+    }
+  }
+
+  // ICE_SEMANTIC_EVENTS is intentionally a current-page derived index for now.
+  // Future architecture can scale this sourceContext-aware shape across Bible,
+  // conference talks, sermons, interfaith corpora, relationship graphs,
+  // doctrine graphs, and query layers without making the popup do heavy corpus
+  // work. Comparative layers should preserve tradition-specific differences
+  // instead of forcing flattened doctrinal conclusions.
+  return semanticEvents.sort((a, b) => Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0));
+}
 function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels) {
   const items = [];
   const seen = new Set();
@@ -1838,6 +2115,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
+    const semanticEvents = createSemanticEvents(eventItems, orderedEvents);
     const interactionGraph = createInteractionGraph(orderedEvents, actorTimelines);
     const dedupedInteractionGraph = dedupeInteractionGraph(interactionGraph);
     const sceneModels = createSceneModels(
@@ -1865,6 +2143,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       interactionCount: dedupedInteractionGraph.length,
       sceneCount: sceneModels.length,
       entityRoleCount: entityRoleItems.length,
+      semanticEventCount: semanticEvents.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -1878,6 +2157,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [INTERACTION_GRAPH_KEY]: dedupedInteractionGraph,
       [SCENE_MODELS_KEY]: sceneModels,
       [ENTITY_ROLE_ITEMS_KEY]: entityRoleItems,
+      [SEMANTIC_EVENTS_KEY]: semanticEvents,
       [ANALYSIS_STATUS_KEY]: status
     });
 

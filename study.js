@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     actorTimelines: "ICE_ACTOR_TIMELINES",
     interactionGraph: "ICE_INTERACTION_GRAPH",
     sceneModels: "ICE_SCENE_MODELS",
+    semanticEvents: "ICE_SEMANTIC_EVENTS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -738,6 +739,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No timeline items match.");
   }
 
+  function renderSemanticEvents(term) {
+    const container = document.getElementById("semanticEventCards");
+    const count = document.getElementById("semanticEventCount");
+    const semanticEvents = Array.isArray(studyData.semanticEvents)
+      ? studyData.semanticEvents
+      : [];
+    const filtered = semanticEvents.filter((item) => includesTerm([
+      item.actor,
+      item.action,
+      item.target,
+      item.recipient,
+      item.concerning,
+      asArray(item.participants).join(" "),
+      asArray(item.authorityChain).join(" "),
+      item.eventType,
+      item.semanticCategory,
+      item.relationshipType,
+      item.normalizedMeaning,
+      item.sourceSnippet,
+      item.confidence
+    ].join(" "), term));
+
+    renderLimited(container, filtered, count, (item) => {
+      const target = item.target || item.recipient || item.concerning || "";
+      const arrow = target ? ` -> ${target}` : "";
+      const title = `${item.actor || "Unknown"} -> ${item.action || "acts"}${arrow}`;
+      const body = [
+        trimText(item.normalizedMeaning || item.sourceSnippet, 130),
+        item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
+        item.sourceSnippet ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
+      ].filter(Boolean).join("\n");
+      const meta = [item.eventType, item.semanticCategory, item.confidence]
+        .filter(Boolean)
+        .join(" | ");
+
+      return createCard(title, body, meta);
+    }, "No semantic events match.", "semantic event");
+  }
   function renderPrinciples(term) {
     const container = document.getElementById("principleCards");
     const count = document.getElementById("principleCount");
@@ -795,6 +834,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderEntityRoles(term);
       renderActors(term);
       renderScenes(term);
+      renderSemanticEvents(term);
       renderOrderedEvents(term);
       renderInteractions(term);
       renderPrinciples(term);
@@ -830,6 +870,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       actorTimelines: countItems(studyData.actorTimelines),
       interactions: dedupeInteractions(studyData.interactionGraph).length,
       scenes: countItems(studyData.sceneModels),
+      semanticEvents: countItems(studyData.semanticEvents),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -845,11 +886,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const actorCount = countItems(studyData.actorTimelines);
     const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
     const sceneCount = countItems(studyData.sceneModels);
+    const semanticEventCount = countItems(studyData.semanticEvents);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + principleCount +
-      prophecyLinkCount;
+      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount +
+      principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -860,6 +902,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticInteractions").textContent =
       interactionCount;
     document.getElementById("diagnosticScenes").textContent = sceneCount;
+    document.getElementById("diagnosticSemanticEvents").textContent = semanticEventCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;
