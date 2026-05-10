@@ -14,6 +14,7 @@ const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
 const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
 const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
+const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const PIPELINE_THROTTLE_MS = 3500;
 
@@ -164,6 +165,87 @@ async function captureSources() {
   return fallbackCapture ? [fallbackCapture] : [];
 }
 
+function parseScriptureBookAndChapter(capture) {
+  const title = normalizeWhitespace(capture.title || "");
+  const url = normalizeWhitespace(capture.url || "");
+  const combined = `${title} ${url}`;
+  let book = "";
+  let chapter = "";
+
+  const titleMatch = title.match(/\b(Matthew|Mark|Luke|John)\s+(\d+)\b/i);
+  const urlMatch = url.match(/\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(matt|mark|luke|john)\/(\d+)\b/i);
+
+  if (titleMatch) {
+    book = titleMatch[1].replace(/\b\w/g, (letter) => letter.toUpperCase());
+    chapter = titleMatch[2];
+  } else if (urlMatch) {
+    const urlBooks = {
+      matt: "Matthew",
+      mark: "Mark",
+      luke: "Luke",
+      john: "John"
+    };
+    book = urlBooks[urlMatch[1].toLowerCase()] || "";
+    chapter = urlMatch[2];
+  } else if (/\bMatthew\b/i.test(combined)) {
+    book = "Matthew";
+  }
+
+  return { book, chapter };
+}
+
+// Phase 5.8 source hierarchy foundation. Future source metadata can expand
+// this lightweight context into Old Testament / New Testament / Book of
+// Mormon / Conference Talks collections, speaker/date metadata, source and
+// historical chronology, cross-document references, and semantic parent/child
+// trees: Corpus -> Collection -> Source -> Chapter -> Scene -> Event -> Action.
+function buildSourceContext(capture) {
+  const { book, chapter } = parseScriptureBookAndChapter(capture || {});
+  const url = capture?.url || "";
+  const title = capture?.title || "";
+  const looksScripture = /\b(Matthew|Mark|Luke|John)\b/i.test(`${title} ${url}`) ||
+    /\/scriptures\//i.test(url);
+
+  return {
+    sourceCaptureId: capture?.id || "",
+    sourceTitle: title,
+    sourceUrl: url,
+    sourceType: looksScripture ? "scripture" : "unknown",
+    collection: looksScripture ? "scripture" : "unknown",
+    book,
+    chapter,
+    section: "",
+    explicitDate: "",
+    inferredDate: "",
+    timeRange: "",
+    confidence: looksScripture ? "probable" : "possible"
+  };
+}
+
+function sourceContextKey(context) {
+  return [
+    context?.sourceCaptureId || "",
+    context?.sourceUrl || "",
+    context?.book || "",
+    context?.chapter || ""
+  ].join("|");
+}
+
+function uniqueSourceContexts(items) {
+  const seen = new Set();
+  const contexts = [];
+
+  for (const item of items || []) {
+    const context = item?.sourceContext;
+    if (!context) continue;
+    const key = sourceContextKey(context);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    contexts.push(context);
+  }
+
+  return contexts;
+}
 function createTimelineItem(capture, detectedDateText, normalizedYear, contextSnippet) {
   const sourceCaptureId = capture.id || "";
   return {
@@ -171,6 +253,7 @@ function createTimelineItem(capture, detectedDateText, normalizedYear, contextSn
     sourceCaptureId,
     sourceTitle: capture.title || "",
     sourceUrl: capture.url || "",
+    sourceContext: buildSourceContext(capture),
     detectedDateText,
     normalizedYear,
     contextSnippet,
@@ -236,19 +319,64 @@ function detectOrderingCue(sentence) {
   return "";
 }
 
+function normalizeLineagePerson(name) {
+  return normalizeWhitespace(name)
+    .replace(/^the\s+/i, "")
+    .replace(/[^A-Za-z\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function extractLineagePairs(sentence) {
+  const pairs = [];
+  const lineagePattern = /\b([A-Z][A-Za-z]+)\s+begat\s+([A-Z][A-Za-z]+)\b/g;
+  let match;
+
+  while ((match = lineagePattern.exec(sentence)) !== null) {
+    const parent = normalizeLineagePerson(match[1]);
+    const child = normalizeLineagePerson(match[2]);
+    if (!parent || !child) continue;
+    pairs.push({
+      parent,
+      child,
+      confidence: "explicit"
+    });
+  }
+
+  return pairs;
+}
+
+function extractLineagePersons(sentence) {
+  const people = [];
+  const seen = new Set();
+
+  for (const pair of extractLineagePairs(sentence)) {
+    for (const name of [pair.parent, pair.child]) {
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      people.push(name);
+    }
+  }
+
+  return people;
+}
 function createEventItem(capture, sentence, sequenceIndex) {
   const date = findDateInSentence(sentence);
   const eventText = normalizeWhitespace(sentence);
   const sourceCaptureId = capture.id || "";
+  const isLineageRecord = GENEALOGY_PATTERN.test(eventText);
   return {
     id: `${Date.now()}-${textHash(`${sourceCaptureId}|${sequenceIndex}|${eventText}`)}`,
     sourceCaptureId,
     sourceTitle: capture.title || "",
     sourceUrl: capture.url || "",
+    sourceContext: buildSourceContext(capture),
     eventText,
     eventType: isSourceSummarySentence(eventText, sequenceIndex)
       ? "source_summary"
-      : GENEALOGY_PATTERN.test(eventText)
+      : isLineageRecord
         ? "lineage_record"
         : "narrative_event",
     sequenceIndex,
@@ -256,6 +384,8 @@ function createEventItem(capture, sentence, sequenceIndex) {
     normalizedYear: date.normalizedYear,
     orderingCue: detectOrderingCue(sentence),
     confidence: 0.7,
+    lineagePersons: isLineageRecord ? extractLineagePersons(eventText) : [],
+    lineagePairs: isLineageRecord ? extractLineagePairs(eventText) : [],
     extractedAt: new Date().toISOString()
   };
 }
@@ -503,7 +633,8 @@ function createActorTimelines(orderedEvents) {
         sourceEventId: item.id || "",
         sequenceOrder: item.sequenceOrder,
         eventText: trimText(item.eventText || "", 180),
-        orderingReason: item.orderingReason || ""
+        orderingReason: item.orderingReason || "",
+        sourceContext: item.sourceContext
       });
     }
     if (actorName !== "Unknown actor") {
@@ -527,6 +658,7 @@ function createActorTimelines(orderedEvents) {
 
   return Array.from(grouped.entries()).map(([actorName, orderedActions]) => ({
     actorName,
+    sourceContexts: uniqueSourceContexts(orderedActions),
     orderedActions
   }));
 }
@@ -622,6 +754,7 @@ function createInteractionItem(eventItem, actorA, actorB, interactionType, confi
       sourceCaptureId: eventItem.sourceCaptureId || "",
       sourceTitle: eventItem.sourceTitle || "",
       sourceUrl: eventItem.sourceUrl || "",
+      sourceContext: eventItem.sourceContext,
       actorA: orderedActorA,
       actorB: orderedActorB,
       interactionType,
@@ -878,6 +1011,7 @@ function extractPrincipleItemsFromCapture(capture) {
       sourceCaptureId: capture.id || "",
       sourceTitle: capture.title || "",
       sourceUrl: capture.url || "",
+      sourceContext: buildSourceContext(capture),
       principleText: sentence,
       principleType: principleTypeForSentence(sentence),
       contextSnippet: trimText(sentence, 220),
@@ -943,6 +1077,7 @@ function createProphecyLink(prophecy, fulfillment, distance) {
   return {
     id: `${Date.now()}-${textHash(`${sourceCaptureId}|${prophecyText}|${fulfillmentText}`)}`,
     sourceCaptureId,
+    sourceContext: fulfillment.sourceContext || prophecy.sourceContext,
     prophecyText,
     fulfillmentText,
     contextSnippet,
@@ -958,6 +1093,7 @@ function createSelfContainedFulfillmentLink(item) {
   return {
     id: `${Date.now()}-${textHash(`${sourceCaptureId}|self-contained|${text}`)}`,
     sourceCaptureId,
+    sourceContext: item.sourceContext,
     prophecyText: "",
     fulfillmentText: text,
     contextSnippet: trimText(item.contextSnippet || text, 260),
@@ -1317,6 +1453,7 @@ function deriveSceneRoles(scene) {
   let recipient = null;
   let target = null;
   let divineManifestation = null;
+  let concerning = null;
   let sourceAuthority = null;
   let orchestrator = null;
   let authorityChain = [];
@@ -1348,6 +1485,9 @@ function deriveSceneRoles(scene) {
       listener = roleValue(messageRecipient, divineMessage.confidence || "explicit", "message listener");
     }
     speaker = roleValue("Angel of the Lord", divineMessage.confidence || "explicit", "message speaker");
+    if (/\btake unto thee Mary\b|\bMary thy wife\b/i.test(scene.summarySnippet || "")) {
+      concerning = roleValue("Mary", "explicit", "instruction concerning");
+    }
     sourceAuthority = roleValue("THE LORD", "inferred-source", "Angel of the Lord source authority");
     orchestrator = roleValue("THE LORD", "inferred-source", "higher-order authority for divine messenger");
     authorityChain = uniqueRoleList([
@@ -1439,6 +1579,7 @@ function deriveSceneRoles(scene) {
     witness,
     audience,
     divineManifestation,
+    concerning,
     sourceAuthority,
     orchestrator,
     authorityChain,
@@ -1464,6 +1605,7 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
     const scene = existing || {
       id: `${Date.now()}-${textHash(key)}`,
       sourceCaptureId,
+      sourceContext: eventItem.sourceContext,
       sceneTitle: classification.sceneTitle,
       sceneType: classification.sceneType,
       sequenceStart: sequenceOrder,
@@ -1518,6 +1660,139 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
     );
 }
 
+function createEntityRoleItem(sourceContext, roleGroup, entityName, confidence = "probable", evidence = "") {
+  const normalizedName = normalizeWhitespace(entityName || "");
+  if (!normalizedName) return null;
+  const context = sourceContext || {};
+  const key = [
+    context.sourceCaptureId || "",
+    roleGroup,
+    normalizedName.toLowerCase(),
+    evidence
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: context.sourceCaptureId || "",
+    sourceTitle: context.sourceTitle || "",
+    sourceUrl: context.sourceUrl || "",
+    sourceContext: context,
+    roleGroup,
+    entityName: normalizedName,
+    confidence,
+    evidence: trimText(evidence, 160)
+  };
+}
+
+function addEntityRoleItem(items, seen, sourceContext, roleGroup, entityName, confidence, evidence) {
+  const item = createEntityRoleItem(sourceContext, roleGroup, entityName, confidence, evidence);
+  if (!item) return;
+  const key = [
+    item.sourceCaptureId,
+    item.roleGroup,
+    item.entityName.toLowerCase()
+  ].join("|");
+  if (seen.has(key)) return;
+  seen.add(key);
+  items.push(item);
+}
+
+function addRoleFromRoleValue(items, seen, sourceContext, roleGroup, role, fallbackConfidence = "probable", evidence = "") {
+  if (!role?.actorName) return;
+  addEntityRoleItem(
+    items,
+    seen,
+    sourceContext,
+    roleGroup,
+    role.actorName,
+    role.confidence || fallbackConfidence,
+    evidence || role.reason || ""
+  );
+}
+
+function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels) {
+  const items = [];
+  const seen = new Set();
+  const fallbackContext = buildSourceContext(captures.find((capture) => capture?.text) || {});
+
+  for (const actor of actorTimelines || []) {
+    if (!actor.actorName || actor.actorName === "Unknown actor") continue;
+    addEntityRoleItem(
+      items,
+      seen,
+      actor.sourceContexts?.[0] || fallbackContext,
+      "Direct Actors",
+      actor.actorName,
+      "explicit",
+      "direct actor timeline"
+    );
+  }
+
+  for (const scene of sceneModels || []) {
+    const context = scene.sourceContext || fallbackContext;
+    addRoleFromRoleValue(items, seen, context, "Source Authorities", scene.sourceAuthority, "inferred-source");
+    addRoleFromRoleValue(items, seen, context, "Source Authorities", scene.orchestrator, "inferred-source");
+    addRoleFromRoleValue(items, seen, context, "Recipients / Targets", scene.recipient, "explicit");
+    addRoleFromRoleValue(items, seen, context, "Recipients / Targets", scene.target, "explicit");
+    addRoleFromRoleValue(items, seen, context, "Recipients / Targets", scene.listener, "explicit");
+    addRoleFromRoleValue(items, seen, context, "Instruction Concerning", scene.concerning, "explicit");
+
+    for (const name of scene.participants || []) {
+      addEntityRoleItem(items, seen, context, "Participants", name, scene.confidence || "probable", scene.sceneTitle || "scene participant");
+    }
+
+    for (const role of [scene.primaryActor, scene.divineManifestation, ...(scene.authorityChain || [])]) {
+      if (/\b(JESUS|CHRIST|GOD|LORD|Father|Spirit)\b/i.test(role?.actorName || "")) {
+        addRoleFromRoleValue(items, seen, context, "Divine / Glorified Entities", role, "probable");
+      }
+    }
+  }
+
+  for (const capture of captures || []) {
+    const captureText = normalizeWhitespace(capture?.text || "");
+    const context = buildSourceContext(capture || {});
+
+    if (/\bJesus Christ\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "JESUS CHRIST", "explicit", "captured divine title");
+    } else if (/\bJesus\b|\bChrist\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "JESUS", "explicit", "captured divine title");
+    }
+    if (/\bTHE LORD\b|\bthe Lord\b|\bLord\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "THE LORD", "probable", "captured divine title");
+    }
+    if (/\bMary\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Participants", "Mary", "probable", "captured person mention");
+    }
+    if (/\bJoseph\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Recipients / Targets", "Joseph", "probable", "captured person mention");
+    }
+    if (/\bfear not to take unto thee Mary\b|\btake unto thee Mary\b|\bMary thy wife\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Instruction Recipients", "Joseph", "explicit", "fear not to take unto thee Mary thy wife");
+      addEntityRoleItem(items, seen, context, "Instruction Concerning", "Mary", "explicit", "fear not to take unto thee Mary thy wife");
+      addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Mary", "explicit", "Mary thy wife");
+      addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Joseph", "probable", "take unto thee Mary thy wife");
+    }
+    if (/\bMary\b/i.test(captureText) && /\bmother\b|\bwife\b|\bespoused\b|\btake unto thee\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Mary", "probable", "family/covenant context");
+    }
+    if (/\bJesus Christ\b/i.test(captureText) && /\bgeneration\b|\bbegat\b|\bson of David\b|\bson of Abraham\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Lineage Focus", "JESUS CHRIST", "explicit", "generation of JESUS CHRIST");
+    }
+  }
+
+  for (const item of eventItems || []) {
+    if (item.eventType !== "lineage_record") continue;
+    for (const name of item.lineagePersons || []) {
+      addEntityRoleItem(items, seen, item.sourceContext || fallbackContext, "Lineage Persons", name, "explicit", "begat lineage record");
+    }
+  }
+
+  // Entity role records are a lightweight bridge toward a semantic entity
+  // registry, lineage graph, family tree view, fulfillment/revelation lineage
+  // context, covenant lineage, and source-authority chain views. They should
+  // not turn every entity into a direct actor timeline owner.
+  return items;
+}
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -1572,6 +1847,12 @@ async function runFullAnalysisPipeline(reason = "manual") {
       dedupedPrincipleItems,
       prophecyLinks
     );
+    const entityRoleItems = createEntityRoleItems(
+      captures,
+      eventItems,
+      actorTimelines,
+      sceneModels
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -1583,6 +1864,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       prophecyLinkCount: prophecyLinks.length,
       interactionCount: dedupedInteractionGraph.length,
       sceneCount: sceneModels.length,
+      entityRoleCount: entityRoleItems.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -1595,6 +1877,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [PROPHECY_LINKS_KEY]: prophecyLinks,
       [INTERACTION_GRAPH_KEY]: dedupedInteractionGraph,
       [SCENE_MODELS_KEY]: sceneModels,
+      [ENTITY_ROLE_ITEMS_KEY]: entityRoleItems,
       [ANALYSIS_STATUS_KEY]: status
     });
 
