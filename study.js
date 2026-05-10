@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     sceneModels: "ICE_SCENE_MODELS",
     semanticEvents: "ICE_SEMANTIC_EVENTS",
     semanticFlowChains: "ICE_SEMANTIC_FLOW_CHAINS",
+    entityRegistry: "ICE_ENTITY_REGISTRY",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -346,6 +347,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function displayEntityRoleReason(reason) {
+    if (normalizeText(reason).toLowerCase() === "captured divine title") {
+      return "attains divine title";
+    }
+    return reason || "";
+  }
   function entityNamesFromRoles(roles) {
     return asArray(roles)
       .map((role) => roleName(role))
@@ -511,7 +518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.actorReason) {
         const reason = document.createElement("div");
         reason.className = "entity-role-reason";
-        reason.textContent = renderDivineDisplayText(`- ${item.actorReason}`);
+        reason.textContent = renderDivineDisplayText(`- ${displayEntityRoleReason(item.actorReason)}`);
         roleItem.appendChild(reason);
       }
 
@@ -577,6 +584,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const group of filtered.slice(0, Math.max(DISPLAY_LIMIT, 7))) {
       container.appendChild(createEntityRoleCard(group));
     }
+  }
+  function renderEntityRegistry(term) {
+    const container = document.getElementById("entityRegistryCards");
+    const count = document.getElementById("entityRegistryCount");
+    const registry = Array.isArray(studyData.entityRegistry)
+      ? studyData.entityRegistry
+      : [];
+    const filtered = registry.filter((entity) => includesTerm([
+      entity.canonicalName,
+      entity.displayName,
+      entity.entityType,
+      asArray(entity.roleTypes).join(" "),
+      asArray(entity.aliases).join(" "),
+      asArray(entity.relationships).map((relationship) => [
+        relationship.relationshipType,
+        relationship.target,
+        relationship.source
+      ].join(" ")).join(" ")
+    ].join(" "), term));
+
+    renderLimited(container, filtered, count, (entity) => {
+      const roleTypes = asArray(entity.roleTypes);
+      const aliases = asArray(entity.aliases);
+      const mentions = asArray(entity.mentions);
+      const relationships = asArray(entity.relationships);
+      const rolesPreview = roleTypes.slice(0, 5).join(", ") || "No roles yet";
+      const roleOverflow = roleTypes.length > 5
+        ? `; ${roleTypes.length - 5} more role(s)`
+        : "";
+      const aliasPreview = aliases.slice(0, 3).join(", ");
+
+      return createCard(
+        entity.displayName || entity.canonicalName || "Entity",
+        [
+          `Type: ${entity.entityType || "entity"}`,
+          `Roles: ${rolesPreview}${roleOverflow}`,
+          `Mentions: ${mentions.length}`,
+          `Relationships: ${relationships.length}`
+        ].join(" "),
+        aliasPreview ? `Aliases: ${aliasPreview}` : "derived graph node"
+      );
+    }, "No entity registry entries match.", "entity");
   }
   function renderActors(term) {
     const container = document.getElementById("actorCards");
@@ -929,6 +978,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderCurrentPage(term);
       renderSourceContext(term);
       renderEntityRoles(term);
+      renderEntityRegistry(term);
       renderActors(term);
       renderScenes(term);
       renderSemanticEvents(term);
@@ -970,6 +1020,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       scenes: countItems(studyData.sceneModels),
       semanticEvents: countItems(studyData.semanticEvents),
       semanticFlowChains: countItems(studyData.semanticFlowChains),
+      entityRegistry: countItems(studyData.entityRegistry),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -987,10 +1038,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sceneCount = countItems(studyData.sceneModels);
     const semanticEventCount = countItems(studyData.semanticEvents);
     const semanticFlowChainCount = countItems(studyData.semanticFlowChains);
+    const entityRegistryCount = countItems(studyData.entityRegistry);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount +
+      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount +
       principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -1004,6 +1056,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticScenes").textContent = sceneCount;
     document.getElementById("diagnosticSemanticEvents").textContent = semanticEventCount;
     document.getElementById("diagnosticSemanticFlowChains").textContent = semanticFlowChainCount;
+    document.getElementById("diagnosticEntityRegistry").textContent = entityRegistryCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;
@@ -1052,9 +1105,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // translator/version, organization/source collection, date/year, source type,
   // referenced scripture links, and context notes; it should not pollute
   // Detected Actors unless the person/entity acts inside the captured text.
-  // Future entity work should grow into a semantic entity registry, lineage
-  // graph, family tree view, fulfillment/revelation lineage context, covenant
-  // lineage, and source-authority chain views without overcrowding this panel.
+  // Entity Registry is now a compact derived graph-node preview. Future work
+  // can add cross-page identity, aliases, original-language references,
+  // tradition-specific interpretations, lineage/family graphs, and visual
+  // persona profiles without overcrowding this quick study panel.
   await refreshStudyData();
 
   document.getElementById("searchInput").addEventListener("input", renderStudy);

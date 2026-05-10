@@ -15,6 +15,7 @@ const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
 const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
+const ENTITY_REGISTRY_KEY = "ICE_ENTITY_REGISTRY";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -2297,6 +2298,251 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
   // not turn every entity into a direct actor timeline owner.
   return items;
 }
+function canonicalEntityName(name) {
+  const clean = normalizeWhitespace(name || "");
+  const normalized = clean.toLowerCase();
+  const aliases = new Map([
+    ["the lord", "THE LORD"],
+    ["lord", "THE LORD"],
+    ["angel of the lord", "Angel of THE LORD"],
+    ["jesus", "JESUS CHRIST"],
+    ["christ", "JESUS CHRIST"],
+    ["jesus christ", "JESUS CHRIST"],
+    ["scripture narrator", "Scripture narrator"],
+    ["quoted prophet", "Quoted prophet"]
+  ]);
+
+  return aliases.get(normalized) || clean;
+}
+
+function entityRoleTypeFromGroup(roleGroup) {
+  const normalized = normalizeWhitespace(roleGroup || "").toLowerCase();
+  const map = new Map([
+    ["direct actors", "directActor"],
+    ["source authorities", "sourceAuthority"],
+    ["recipients / targets", "recipient"],
+    ["instruction recipients", "instructionRecipient"],
+    ["instruction concerning", "instructionConcerning"],
+    ["covenant / family participants", "covenantFamilyParticipant"],
+    ["participants", "participant"],
+    ["divine / glorified entities", "divineGlorifiedEntity"],
+    ["lineage focus", "lineageFocus"],
+    ["lineage persons", "lineagePerson"]
+  ]);
+
+  return map.get(normalized) || normalized.replace(/\s+/g, "_") || "mentioned";
+}
+
+function inferEntityType(name, roleTypes = []) {
+  const canonical = canonicalEntityName(name);
+  const roleSet = new Set(roleTypes || []);
+
+  if (canonical === "THE LORD") return "divine_authority";
+  if (canonical === "Angel of THE LORD") return "divine_messenger";
+  if (canonical === "JESUS CHRIST" || canonical === "JESUS") return "divine";
+  if (/narrator/i.test(canonical)) return "narrator";
+  if (roleSet.has("lineagePerson") && !["Joseph", "Mary"].includes(canonical)) return "lineage_person";
+  if (["Joseph", "Mary"].includes(canonical)) return "human";
+  if (roleSet.has("sourceAuthority")) return "source_authority";
+  return "entity";
+}
+
+function createEmptyEntityRecord(name, sourceContext = {}) {
+  const canonicalName = canonicalEntityName(name);
+  const key = canonicalName.toLowerCase();
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    canonicalName,
+    displayName: canonicalName,
+    entityType: "entity",
+    roleTypes: [],
+    aliases: [],
+    sourceCaptureIds: [],
+    sourceContexts: [],
+    mentions: [],
+    relationships: [],
+    confidence: "probable"
+  };
+}
+
+function addUniqueValue(list, value, keyFn = (item) => item) {
+  if (!value) return;
+  const key = keyFn(value);
+  if (list.some((item) => keyFn(item) === key)) return;
+  list.push(value);
+}
+
+function registryRecordFor(registry, name, sourceContext = {}) {
+  const canonicalName = canonicalEntityName(name);
+  if (!canonicalName) return null;
+  const key = canonicalName.toLowerCase();
+  if (!registry.has(key)) registry.set(key, createEmptyEntityRecord(canonicalName, sourceContext));
+  const record = registry.get(key);
+  if (name && name !== canonicalName) addUniqueValue(record.aliases, name);
+  if (sourceContext?.sourceCaptureId) addUniqueValue(record.sourceCaptureIds, sourceContext.sourceCaptureId);
+  if (sourceContext?.sourceCaptureId || sourceContext?.sourceUrl) {
+    addUniqueValue(record.sourceContexts, sourceContext, (item) => [
+      item.sourceCaptureId || "",
+      item.sourceUrl || "",
+      item.book || "",
+      item.chapter || ""
+    ].join("|"));
+  }
+  return record;
+}
+
+function addEntityMention(record, mention) {
+  addUniqueValue(record.mentions, mention, (item) => [
+    item.sourceCaptureId || "",
+    item.roleType || "",
+    item.semanticEventId || "",
+    item.anchorText || item.evidence || ""
+  ].join("|"));
+}
+
+function addEntityRelationship(record, relationship) {
+  addUniqueValue(record.relationships, relationship, (item) => [
+    item.relationshipType || "",
+    item.target || "",
+    item.sourceEventId || "",
+    item.evidence || ""
+  ].join("|"));
+}
+
+function addRoleType(record, roleType) {
+  addUniqueValue(record.roleTypes, roleType);
+}
+
+function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChains, interactions, sceneModels) {
+  const registry = new Map();
+
+  for (const item of entityRoleItems || []) {
+    const record = registryRecordFor(registry, item.entityName, item.sourceContext || {});
+    if (!record) continue;
+    const roleType = entityRoleTypeFromGroup(item.roleGroup);
+    addRoleType(record, roleType);
+    addEntityMention(record, {
+      sourceCaptureId: item.sourceCaptureId || "",
+      roleType,
+      evidence: item.evidence || item.actorReason || "",
+      anchorText: item.anchorText || "",
+      semanticEventId: item.semanticEventReference || "",
+      confidence: item.confidence || "probable"
+    });
+    if (item.confidence === "explicit") record.confidence = "explicit";
+  }
+
+  for (const event of semanticEvents || []) {
+    const participants = [event.actor, event.target, event.recipient, event.concerning, ...(event.participants || [])]
+      .filter(Boolean);
+    for (const name of participants) {
+      const record = registryRecordFor(registry, name, event.sourceContext || {});
+      if (!record) continue;
+      if (name === event.actor) addRoleType(record, "semanticActor");
+      if (name === event.target) addRoleType(record, "semanticTarget");
+      if (name === event.recipient) addRoleType(record, "recipient");
+      if (name === event.concerning) addRoleType(record, "concerningEntity");
+      if (event.eventType === "lineage_birth") {
+        addRoleType(record, name === event.actor ? "lineageAncestor" : "lineageDescendant");
+      }
+      if (event.eventType === "naming_event" && name === event.target) addRoleType(record, "namedChild");
+      addEntityMention(record, {
+        sourceCaptureId: event.sourceCaptureId || "",
+        roleType: name === event.actor ? "semanticActor" : "semanticParticipant",
+        evidence: event.normalizedMeaning || event.eventType || "semantic event",
+        anchorText: event.anchorText || "",
+        semanticEventId: event.id || "",
+        confidence: event.confidence || "probable"
+      });
+    }
+
+    if (event.actor && (event.target || event.recipient || event.concerning)) {
+      const actorRecord = registryRecordFor(registry, event.actor, event.sourceContext || {});
+      const target = canonicalEntityName(event.target || event.recipient || event.concerning);
+      if (actorRecord && target) {
+        addEntityRelationship(actorRecord, {
+          relationshipType: event.relationshipType || event.eventType || "semantic_relation",
+          target,
+          sourceEventId: event.id || "",
+          evidence: event.anchorText || event.normalizedMeaning || "",
+          confidence: event.confidence || "probable"
+        });
+      }
+    }
+  }
+
+  for (const chain of semanticFlowChains || []) {
+    const authorityChain = (chain.authorityChain || []).map(canonicalEntityName).filter(Boolean);
+    for (let index = 0; index < authorityChain.length; index += 1) {
+      const record = registryRecordFor(registry, authorityChain[index], chain.sourceContext || {});
+      if (!record) continue;
+      addRoleType(record, index === 0 ? "authoritativeCharacter" : "authorityChainParticipant");
+      if (index + 1 < authorityChain.length) {
+        addEntityRelationship(record, {
+          relationshipType: index === 0 ? "authoritySource" : "authorityChainLink",
+          target: authorityChain[index + 1],
+          sourceEventId: chain.id || "",
+          evidence: chain.chainTitle || chain.summary || "authority chain",
+          confidence: chain.confidence || "probable"
+        });
+      }
+    }
+  }
+
+  for (const item of interactions || []) {
+    const actorA = registryRecordFor(registry, item.actorA, item.sourceContext || {});
+    const actorBName = canonicalEntityName(item.actorB || "");
+    if (actorA && actorBName) {
+      addEntityRelationship(actorA, {
+        relationshipType: item.interactionType || "interaction",
+        target: actorBName,
+        sourceEventId: item.sourceEventId || "",
+        evidence: item.sourceSnippet || "",
+        confidence: item.confidence || "probable"
+      });
+    }
+    const actorB = registryRecordFor(registry, item.actorB, item.sourceContext || {});
+    const actorAName = canonicalEntityName(item.actorA || "");
+    if (actorB && actorAName) {
+      addEntityRelationship(actorB, {
+        relationshipType: item.interactionType || "interaction",
+        target: actorAName,
+        sourceEventId: item.sourceEventId || "",
+        evidence: item.sourceSnippet || "",
+        confidence: item.confidence || "probable"
+      });
+    }
+  }
+
+  for (const scene of sceneModels || []) {
+    for (const name of scene.participants || []) {
+      const record = registryRecordFor(registry, name, scene.sourceContext || {});
+      if (!record) continue;
+      addRoleType(record, "sceneParticipant");
+    }
+  }
+
+  const records = Array.from(registry.values()).map((record) => ({
+    ...record,
+    entityType: inferEntityType(record.canonicalName, record.roleTypes),
+    roleTypes: record.roleTypes.sort((a, b) => a.localeCompare(b)),
+    aliases: record.aliases.sort((a, b) => a.localeCompare(b)),
+    sourceCaptureIds: record.sourceCaptureIds.sort((a, b) => a.localeCompare(b)),
+    confidence: record.confidence || "probable"
+  }));
+
+  // Phase 6.0 foundation: registry nodes remain current-page derived for now.
+  // Future work can merge cross-page identities, aliases, original-language
+  // references, tradition-specific interpretations, source-authority chains,
+  // lineage/family graphs, and visual/persona profiles without replacing the
+  // existing Detected Entities / Roles section yet.
+  return records.sort((a, b) => {
+    const typeRank = ["divine_authority", "divine_messenger", "divine", "narrator", "human", "lineage_person", "entity"];
+    return (typeRank.indexOf(a.entityType) === -1 ? 99 : typeRank.indexOf(a.entityType)) -
+      (typeRank.indexOf(b.entityType) === -1 ? 99 : typeRank.indexOf(b.entityType)) ||
+      a.canonicalName.localeCompare(b.canonicalName);
+  });
+}
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -2366,6 +2612,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRoleItems,
       prophecyLinks
     );
+    const entityRegistry = createEntityRegistry(
+      entityRoleItems,
+      semanticEvents,
+      semanticFlowChains,
+      dedupedInteractionGraph,
+      sceneModels
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -2380,6 +2633,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRoleCount: entityRoleItems.length,
       semanticEventCount: semanticEvents.length,
       semanticFlowChainCount: semanticFlowChains.length,
+      entityRegistryCount: entityRegistry.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -2395,6 +2649,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ENTITY_ROLE_ITEMS_KEY]: entityRoleItems,
       [SEMANTIC_EVENTS_KEY]: semanticEvents,
       [SEMANTIC_FLOW_CHAINS_KEY]: semanticFlowChains,
+      [ENTITY_REGISTRY_KEY]: entityRegistry,
       [ANALYSIS_STATUS_KEY]: status
     });
 
