@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     semanticFlowChains: "ICE_SEMANTIC_FLOW_CHAINS",
     entityRegistry: "ICE_ENTITY_REGISTRY",
     relationshipGraph: "ICE_RELATIONSHIP_GRAPH",
+    canonicalIdentities: "ICE_CANONICAL_IDENTITIES",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -65,7 +66,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function displayConfidence(value) {
     if (value === "inferred-source") return "attributed";
-    if (value === "traditional-attribution") return "traditional attribution";
+    if (value === "traditional-attribution") return "believed";
     return value;
   }
 
@@ -266,11 +267,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       sourceUrl: url,
       sourceType: looksScripture ? "scripture" : "unknown",
       collection: looksScripture ? "scripture" : "unknown",
+      sourceCollection: looksScripture ? "scripture" : "unknown",
       book,
       chapter,
       section: "",
       author: "",
       traditionalAuthor,
+      speaker: "",
+      compiler: "",
+      translator: "",
       authorConfidence: traditionalAuthor ? "traditional-attribution" : "",
       authorBasis: traditionalAuthor ? "book/source metadata" : "",
       explicitDate: "",
@@ -299,18 +304,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   function formatSourceContext(context) {
     return [
       context.collection ? `Collection: ${context.collection}` : "",
+      context.sourceCollection && context.sourceCollection !== context.collection ? `Source Collection: ${context.sourceCollection}` : "",
       context.sourceType ? `Type: ${context.sourceType}` : "",
       context.book ? `Book: ${context.book}` : "",
       context.chapter ? `Chapter: ${context.chapter}` : "",
       context.section ? `Section: ${context.section}` : "",
       context.author ? `Author: ${context.author}` : "",
       context.traditionalAuthor ? `Believed Author: ${context.traditionalAuthor}` : "",
-      context.authorConfidence ? `Author Confidence: ${displayConfidence(context.authorConfidence)}` : "",
+      context.authorConfidence ? `Confidence: ${displayConfidence(context.authorConfidence)}` : "",
       context.authorBasis ? `Author Basis: ${context.authorBasis}` : "",
+      context.speaker ? `Speaker: ${context.speaker}` : "",
+      context.compiler ? `Compiler: ${context.compiler}` : "",
+      context.translator ? `Translator: ${context.translator}` : "",
       context.explicitDate ? `Date: ${context.explicitDate}` : "",
       context.inferredDate ? `Inferred date: ${context.inferredDate}` : "",
       context.timeRange ? `Range: ${context.timeRange}` : "",
-      context.confidence ? `Confidence: ${displayConfidence(context.confidence)}` : ""
+      context.confidence ? `Source Confidence: ${displayConfidence(context.confidence)}` : ""
     ].filter(Boolean).join("\n");
   }
 
@@ -329,6 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const searchable = [
       context.collection,
+      context.sourceCollection,
       context.sourceType,
       context.book,
       context.chapter,
@@ -337,6 +347,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.traditionalAuthor,
       context.authorConfidence,
       context.authorBasis,
+      context.speaker,
+      context.compiler,
+      context.translator,
       context.sourceTitle,
       context.sourceUrl,
       context.confidence
@@ -370,9 +383,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function displayEntityRoleReason(reason) {
-    if (normalizeText(reason).toLowerCase() === "captured divine title") {
-      return "attains divine title";
+  function displayEntityRoleReason(reason, item = {}) {
+    const covenantParts = normalizeText(reason)
+      .split(";")
+      .map((part) => part.trim())
+      .filter((part) => /^(instruction|response|concerning|covenant relation):/i.test(part));
+    if (covenantParts.length > 0) return covenantParts.join("\n- ");
+    const normalizedReason = normalizeText(reason).toLowerCase();
+    const normalizedName = normalizeText(item.name).toLowerCase();
+    if (normalizedReason === "took / accepted mary as wife") {
+      return "accepted / took Mary as wife";
+    }
+    if (normalizedName === "matthew" && normalizedReason === "believed author") {
+      return "author";
+    }
+    if (normalizedName === "scripture narrator" && normalizedReason === "narrates fulfillment") {
+      return "narrative voice identifying fulfillment";
+    }
+    if (normalizedReason === "captured divine title") {
+      return "source title: JESUS CHRIST; narrative identity: JESUS / child; retrospective identity: CHRIST";
     }
     return reason || "";
   }
@@ -404,6 +433,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ENTITY_GROUP_ORDER = [
     "Direct Actors",
     "Source Authorities",
+    "Source Metadata Entities",
     "Recipients / Targets",
     "Instruction Recipients",
     "Instruction Concerning",
@@ -453,6 +483,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const groups = {};
+
+    const sourceContext = findSourceContext();
+    if (sourceContext?.traditionalAuthor) {
+      addEntityRole(
+        groups,
+        "Source Metadata Entities",
+        sourceContext.traditionalAuthor,
+        sourceContext.authorConfidence || "traditional-attribution",
+        {
+          actorReason: "believed author",
+          evidence: sourceContext.authorBasis || "book/source metadata",
+          eventType: "source_metadata",
+          anchorText: sourceContext.authorBasis || "book/source metadata"
+        }
+      );
+    }
 
     for (const actor of asArray(studyData.actorTimelines)) {
       addEntityRole(groups, "Direct Actors", actor.actorName, "explicit");
@@ -517,11 +563,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     })));
   }
 
+  function entityRoleDisplayRank(item, groupName) {
+    const name = normalizeText(item?.name || "").toLowerCase();
+    const reason = normalizeText(item?.actorReason || item?.evidence || "").toLowerCase();
+
+    if (groupName === "Divine / Glorified Entities") {
+      if (name === "the lord" || reason.includes("source authority")) return 10;
+      if (name === "angel of the lord" || reason.includes("messenger")) return 20;
+      if (name === "jesus christ" || name === "jesus" || reason.includes("lineage focus") || reason.includes("attains divine title")) return 30;
+      return 40;
+    }
+
+    if (groupName === "Source Authorities") {
+      if (name === "the lord") return 10;
+      return 20;
+    }
+
+    if (groupName === "Source Metadata Entities") {
+      if (reason.includes("believed author") || reason.includes("traditional")) return 10;
+      return 20;
+    }
+
+    return 50;
+  }
+
+  function sortEntityRoleItemsForDisplay(items, groupName) {
+    return [...items].sort((left, right) =>
+      entityRoleDisplayRank(left, groupName) - entityRoleDisplayRank(right, groupName) ||
+      normalizeText(left.name).localeCompare(normalizeText(right.name))
+    );
+  }
   function createEntityRoleCard(group) {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
     const list = document.createElement("div");
-    const visible = group.entities.slice(0, group.groupName === "Lineage Persons" ? 8 : 5);
+    const sortedEntities = sortEntityRoleItemsForDisplay(group.entities, group.groupName);
+    const visible = sortedEntities.slice(0, group.groupName === "Lineage Persons" ? 8 : 5);
     const hidden = group.entities.length - visible.length;
 
     card.className = "study-card";
@@ -541,7 +618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.actorReason) {
         const reason = document.createElement("div");
         reason.className = "entity-role-reason";
-        reason.textContent = renderDivineDisplayText(`- ${displayEntityRoleReason(item.actorReason)}`);
+        reason.textContent = renderDivineDisplayText(`- ${displayEntityRoleReason(item.actorReason, item)}`);
         roleItem.appendChild(reason);
       }
 
@@ -612,6 +689,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Future display modes can offer Source / Authority Order, chronological
   // mention order, Christ-centered / redemptive order, entity type order,
   // and lineage order without changing stored semantic registry data.
+  // Future identity-scope modeling should distinguish explicit source title,
+  // current narrative identity, retrospective identity, and character awareness.
   function entityRegistryDisplayRank(entity) {
     const type = entity?.entityType || "entity";
     const roles = new Set(asArray(entity?.roleTypes));
@@ -623,6 +702,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (type === "divine" && (roles.has("namedChild") || roles.has("lineageFocus") || roles.has("divineGlorifiedEntity"))) return 50;
     if (type === "divine") return 55;
     if (type === "narrator") return 60;
+    if (type === "traditional_author" || type === "source_author") return 65;
     if (type === "lineage_person") return 70;
     return 90;
   }
@@ -726,6 +806,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
       edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
     ), "No relationship graph edges match.", "relationship");
+  }
+  function renderCanonicalIdentities(term) {
+    const container = document.getElementById("canonicalIdentityCards");
+    const count = document.getElementById("canonicalIdentityCount");
+    const identities = Array.isArray(studyData.canonicalIdentities)
+      ? studyData.canonicalIdentities
+      : [];
+    const filtered = identities.filter((identity) => includesTerm([
+      identity.canonicalName,
+      identity.entityType,
+      identity.identityScope,
+      asArray(identity.aliases).join(" "),
+      asArray(identity.surfaceForms).join(" "),
+      asArray(identity.evidencePhrases).join(" "),
+      identity.confidence,
+      identity.notes
+    ].join(" "), term));
+
+    renderLimited(container, filtered, count, (identity) => {
+      const aliases = asArray(identity.aliases).slice(0, 5).join(", ") || "No aliases yet";
+      const surfaces = asArray(identity.surfaceForms).slice(0, 4).join(", ");
+      return createCard(
+        identity.canonicalName || "Canonical identity",
+        [
+          `Aliases: ${aliases}`,
+          `Identity scope: ${identity.identityScope || "source-mentioned"}`,
+          surfaces ? `Surface forms: ${surfaces}` : ""
+        ].filter(Boolean).join("\n"),
+        `${identity.entityType || "entity"} | ${displayConfidence(identity.confidence || "probable")}`
+      );
+    }, "No canonical identities match.", "identity");
   }
   function renderActors(term) {
     const container = document.getElementById("actorCards");
@@ -1080,6 +1191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderEntityRoles(term);
       renderEntityRegistry(term);
       renderRelationshipGraph(term);
+      renderCanonicalIdentities(term);
       renderActors(term);
       renderScenes(term);
       renderSemanticEvents(term);
@@ -1123,6 +1235,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       semanticFlowChains: countItems(studyData.semanticFlowChains),
       entityRegistry: countItems(studyData.entityRegistry),
       relationshipGraph: countItems(studyData.relationshipGraph),
+      canonicalIdentities: countItems(studyData.canonicalIdentities),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -1142,10 +1255,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const semanticFlowChainCount = countItems(studyData.semanticFlowChains);
     const entityRegistryCount = countItems(studyData.entityRegistry);
     const relationshipGraphCount = countItems(studyData.relationshipGraph);
+    const canonicalIdentityCount = countItems(studyData.canonicalIdentities);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount +
+      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount +
       principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -1161,6 +1275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticSemanticFlowChains").textContent = semanticFlowChainCount;
     document.getElementById("diagnosticEntityRegistry").textContent = entityRegistryCount;
     document.getElementById("diagnosticRelationshipGraph").textContent = relationshipGraphCount;
+    document.getElementById("diagnosticCanonicalIdentities").textContent = canonicalIdentityCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;

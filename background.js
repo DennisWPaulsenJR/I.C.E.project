@@ -17,6 +17,7 @@ const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
 const ENTITY_REGISTRY_KEY = "ICE_ENTITY_REGISTRY";
 const RELATIONSHIP_GRAPH_KEY = "ICE_RELATIONSHIP_GRAPH";
+const CANONICAL_IDENTITIES_KEY = "ICE_CANONICAL_IDENTITIES";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -226,11 +227,15 @@ function buildSourceContext(capture) {
     sourceUrl: url,
     sourceType: looksScripture ? "scripture" : "unknown",
     collection: looksScripture ? "scripture" : "unknown",
+    sourceCollection: looksScripture ? "scripture" : "unknown",
     book,
     chapter,
     section: "",
     author: "",
     traditionalAuthor,
+    speaker: "",
+    compiler: "",
+    translator: "",
     authorConfidence: traditionalAuthor ? "traditional-attribution" : "",
     authorBasis: traditionalAuthor ? "book/source metadata" : "",
     explicitDate: "",
@@ -545,7 +550,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   if (/\btook unto him his wife\b|\btake unto thee Mary thy wife\b/i.test(text)) {
     push({
       originalText: /\btook unto him his wife\b/i.test(text) ? "Joseph took unto him his wife" : "take unto thee Mary thy wife",
-      anchorText: /\btook unto him his wife\b/i.test(text) ? "took unto him his wife" : "take unto thee Mary thy wife",
+      anchorText: /\btook unto him his wife\b/i.test(text) ? "and took unto him his wife" : "take unto thee Mary thy wife",
       normalizedMeaning: "Joseph accepted Mary as wife",
       actor: "Joseph",
       action: "took / accepted as wife",
@@ -2035,6 +2040,7 @@ function semanticEventDedupKey(item) {
     item.actor || "",
     item.action || "",
     item.target || "",
+    normalizeWhitespace(item.anchorText || "").toLowerCase(),
     normalizeWhitespace(item.normalizedMeaning || item.sourceSnippet || "").toLowerCase()
   ].join("|");
 }
@@ -2216,6 +2222,13 @@ function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
       .join(" / ") || actorReason;
   } else if (event.eventType === "covenant_family_union") {
     actorReason = "took / accepted Mary as wife";
+    if (/take unto thee Mary thy wife/i.test(event.anchorText || "")) {
+      const explicitCovenant = sorted.find((item) =>
+        item.eventType === "covenant_family_union" &&
+        /and took unto him his wife|took unto him his wife/i.test(item.anchorText || "")
+      );
+      if (explicitCovenant) event.anchorText = explicitCovenant.anchorText;
+    }
   } else if (event.eventType === "passive_fulfillment_narration") {
     actorReason = "narrates fulfillment";
   }
@@ -2270,6 +2283,22 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
   for (const capture of captures || []) {
     const captureText = normalizeWhitespace(capture?.text || "");
     const context = buildSourceContext(capture || {});
+    if (context.traditionalAuthor) {
+      addEntityRoleItem(
+        items,
+        seen,
+        context,
+        "Source Metadata Entities",
+        context.traditionalAuthor,
+        context.authorConfidence || "traditional-attribution",
+        "believed author",
+        {
+          actorReason: "believed author",
+          eventType: "source_metadata",
+          anchorText: context.authorBasis || "book/source metadata"
+        }
+      );
+    }
 
     if (/\bJesus Christ\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "JESUS CHRIST", "explicit", "captured divine title");
@@ -2288,8 +2317,37 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
     if (/\bfear not to take unto thee Mary\b|\btake unto thee Mary\b|\bMary thy wife\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Instruction Recipients", "Joseph", "explicit", "fear not to take unto thee Mary thy wife");
       addEntityRoleItem(items, seen, context, "Instruction Concerning", "Mary", "explicit", "fear not to take unto thee Mary thy wife");
-      addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Mary", "explicit", "Mary thy wife");
-      addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Joseph", "probable", "take unto thee Mary thy wife");
+      addEntityRoleItem(
+        items,
+        seen,
+        context,
+        "Covenant / Family Participants",
+        "Mary",
+        "explicit",
+        "Mary thy wife",
+        {
+          actorReason: "concerning: Mary thy wife; covenant relation: wife",
+          eventType: "covenant_family_union",
+          anchorText: "Mary thy wife"
+        }
+      );
+      const josephCovenantPhrase = /\btook unto him his wife\b/i.test(captureText)
+        ? "instruction: take unto thee Mary thy wife; response: and took unto him his wife"
+        : "instruction: take unto thee Mary thy wife";
+      addEntityRoleItem(
+        items,
+        seen,
+        context,
+        "Covenant / Family Participants",
+        "Joseph",
+        "probable",
+        josephCovenantPhrase,
+        {
+          actorReason: josephCovenantPhrase,
+          eventType: "covenant_family_union",
+          anchorText: /\btook unto him his wife\b/i.test(captureText) ? "and took unto him his wife" : "take unto thee Mary thy wife"
+        }
+      );
     }
     if (/\bMary\b/i.test(captureText) && /\bmother\b|\bwife\b|\bespoused\b|\btake unto thee\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Covenant / Family Participants", "Mary", "probable", "family/covenant context");
@@ -2341,6 +2399,7 @@ function entityRoleTypeFromGroup(roleGroup) {
     ["participants", "participant"],
     ["divine / glorified entities", "divineGlorifiedEntity"],
     ["lineage focus", "lineageFocus"],
+    ["source metadata entities", "sourceMetadata"],
     ["lineage persons", "lineagePerson"]
   ]);
 
@@ -2355,6 +2414,8 @@ function inferEntityType(name, roleTypes = []) {
   if (canonical === "Angel of THE LORD") return "divine_messenger";
   if (canonical === "JESUS CHRIST" || canonical === "JESUS") return "divine";
   if (/narrator/i.test(canonical)) return "narrator";
+  if (roleSet.has("traditionalAuthor")) return "traditional_author";
+  if (roleSet.has("sourceMetadata")) return "source_author";
   if (roleSet.has("lineagePerson") && !["Joseph", "Mary"].includes(canonical)) return "lineage_person";
   if (["Joseph", "Mary"].includes(canonical)) return "human";
   if (roleSet.has("sourceAuthority")) return "source_authority";
@@ -2443,6 +2504,17 @@ function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChain
       semanticEventId: item.semanticEventReference || "",
       confidence: item.confidence || "probable"
     });
+    if (roleType === "sourceMetadata" && item.confidence === "traditional-attribution") {
+      addRoleType(record, "traditionalAuthor");
+      record.confidence = "traditional-attribution";
+      addEntityRelationship(record, {
+        relationshipType: "traditional_attribution",
+        target: item.sourceContext?.book ? `Book: ${item.sourceContext.book}` : item.sourceTitle || "source",
+        sourceEventId: item.id || "",
+        evidence: item.evidence || item.sourceContext?.authorBasis || "book/source metadata",
+        confidence: item.confidence
+      });
+    }
     if (item.confidence === "explicit") record.confidence = "explicit";
   }
 
@@ -2551,11 +2623,150 @@ function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChain
   // lineage/family graphs, and visual/persona profiles without replacing the
   // existing Detected Entities / Roles section yet.
   return records.sort((a, b) => {
-    const typeRank = ["divine_authority", "divine_messenger", "divine", "narrator", "human", "lineage_person", "entity"];
+    const typeRank = ["divine_authority", "divine_messenger", "divine", "narrator", "traditional_author", "source_author", "human", "lineage_person", "entity"];
     return (typeRank.indexOf(a.entityType) === -1 ? 99 : typeRank.indexOf(a.entityType)) -
       (typeRank.indexOf(b.entityType) === -1 ? 99 : typeRank.indexOf(b.entityType)) ||
       a.canonicalName.localeCompare(b.canonicalName);
   });
+}
+function identityScopeForCanonicalName(canonicalName) {
+  if (canonicalName === "JESUS CHRIST") {
+    return "source-explicit / narrative-progressive / retrospective";
+  }
+  if (canonicalName === "THE LORD") return "source-explicit divine authority";
+  if (canonicalName === "Angel of THE LORD") return "source-explicit divine messenger";
+  return "source-mentioned";
+}
+
+function createCanonicalIdentityRecord(canonicalName, entityType = "entity") {
+  const key = canonicalName.toLowerCase();
+  return {
+    id: `${Date.now()}-${textHash(`canonical|${key}`)}`,
+    canonicalName,
+    aliases: [],
+    surfaceForms: [],
+    entityType,
+    identityScope: identityScopeForCanonicalName(canonicalName),
+    sourceContexts: [],
+    evidencePhrases: [],
+    confidence: "probable",
+    notes: ""
+  };
+}
+
+function identityRecordFor(identities, name, entityType = "entity") {
+  const canonicalName = canonicalEntityName(name || "");
+  if (!canonicalName) return null;
+  const key = canonicalName.toLowerCase();
+  if (!identities.has(key)) identities.set(key, createCanonicalIdentityRecord(canonicalName, entityType));
+  const record = identities.get(key);
+  if (entityType && record.entityType === "entity") record.entityType = entityType;
+  return record;
+}
+
+function addIdentitySurface(record, surface) {
+  const clean = normalizeWhitespace(surface || "");
+  if (!clean) return;
+  addUniqueValue(record.surfaceForms, clean, (item) => item.toLowerCase());
+  if (canonicalEntityName(clean) !== record.canonicalName) {
+    addUniqueValue(record.aliases, clean, (item) => item.toLowerCase());
+  }
+}
+
+function addIdentityContext(record, sourceContext) {
+  if (!sourceContext) return;
+  addUniqueValue(record.sourceContexts, sourceContext, (item) => [
+    item.sourceCaptureId || "",
+    item.sourceUrl || "",
+    item.book || "",
+    item.chapter || ""
+  ].join("|"));
+}
+
+function addIdentityEvidence(record, evidence) {
+  const clean = normalizeWhitespace(evidence || "");
+  if (!clean) return;
+  addUniqueValue(record.evidencePhrases, clean, (item) => item.toLowerCase());
+}
+
+function enrichKnownIdentity(record) {
+  if (record.canonicalName === "JESUS CHRIST") {
+    for (const alias of ["JESUS", "child", "firstborn son", "CHRIST"]) addIdentitySurface(record, alias);
+    record.identityScope = "source title: JESUS CHRIST; narrative identity: JESUS / child; retrospective identity: CHRIST";
+    record.notes = "Preserves source-explicit, narrative-time, and retrospective/tradition-aware identity distinctions.";
+    record.confidence = record.confidence === "explicit" ? "explicit" : record.confidence;
+  }
+  if (record.canonicalName === "THE LORD") {
+    for (const alias of ["Lord", "THE LORD"]) addIdentitySurface(record, alias);
+    record.entityType = "divine_authority";
+    record.identityScope = "source-explicit divine authority";
+  }
+  if (record.canonicalName === "Angel of THE LORD") {
+    for (const alias of ["angel of THE LORD", "angel of the Lord"]) addIdentitySurface(record, alias);
+    record.entityType = "divine_messenger";
+    record.identityScope = "source-explicit divine messenger";
+  }
+}
+
+function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEvents, entityRoleItems) {
+  const identities = new Map();
+
+  for (const entity of entityRegistry || []) {
+    const record = identityRecordFor(identities, entity.canonicalName, entity.entityType || "entity");
+    if (!record) continue;
+    addIdentitySurface(record, entity.displayName || entity.canonicalName);
+    for (const alias of entity.aliases || []) addIdentitySurface(record, alias);
+    for (const context of entity.sourceContexts || []) addIdentityContext(record, context);
+    for (const mention of entity.mentions || []) addIdentityEvidence(record, mention.anchorText || mention.evidence || "");
+    if (entity.confidence === "explicit" || entity.confidence === "traditional-attribution") record.confidence = entity.confidence;
+  }
+
+  for (const event of semanticEvents || []) {
+    for (const surface of [event.actor, event.target, event.recipient, event.concerning, ...(event.participants || [])]) {
+      const record = identityRecordFor(identities, surface, inferEntityType(surface, []));
+      if (!record) continue;
+      addIdentitySurface(record, surface);
+      addIdentityContext(record, event.sourceContext || {});
+      addIdentityEvidence(record, event.anchorText || event.sourceSnippet || event.normalizedMeaning || "");
+      if (event.confidence === "explicit") record.confidence = "explicit";
+    }
+  }
+
+  for (const role of entityRoleItems || []) {
+    const record = identityRecordFor(identities, role.entityName, inferEntityType(role.entityName, [entityRoleTypeFromGroup(role.roleGroup)]));
+    if (!record) continue;
+    addIdentitySurface(record, role.entityName);
+    addIdentityContext(record, role.sourceContext || {});
+    addIdentityEvidence(record, role.anchorText || role.evidence || "");
+    if (role.confidence === "explicit" || role.confidence === "traditional-attribution") record.confidence = role.confidence;
+  }
+
+  for (const edge of relationshipGraph || []) {
+    for (const surface of [edge.fromEntity, edge.toEntity]) {
+      const record = identityRecordFor(identities, surface, inferEntityType(surface, []));
+      if (!record) continue;
+      addIdentitySurface(record, surface);
+      addIdentityContext(record, edge.sourceContext || {});
+      addIdentityEvidence(record, edge.evidencePhrase || "");
+    }
+  }
+
+  for (const record of identities.values()) enrichKnownIdentity(record);
+
+  // Phase 6.3 canonical identities stay conservative: aliases do not erase
+  // source/time identity scope. Future work can add stronger alias evidence,
+  // original-language names, tradition-aware identity layers, and character
+  // awareness by scope without collapsing identities too aggressively.
+  return Array.from(identities.values()).sort((left, right) =>
+    entityRegistryDisplayRankLike(left) - entityRegistryDisplayRankLike(right) ||
+    left.canonicalName.localeCompare(right.canonicalName)
+  );
+}
+
+function entityRegistryDisplayRankLike(entity) {
+  const typeRank = ["divine_authority", "divine_messenger", "divine", "narrator", "traditional_author", "source_author", "human", "lineage_person", "entity"];
+  const index = typeRank.indexOf(entity.entityType || "entity");
+  return index === -1 ? 99 : index;
 }
 function relationshipGraphTypeForSemanticEvent(eventItem) {
   const eventType = eventItem?.eventType || "";
@@ -2617,6 +2828,26 @@ function relationshipDedupType(edge) {
   return edge.relationshipType;
 }
 
+function relationshipEvidenceRank(edge) {
+  const evidence = normalizeWhitespace(edge.evidencePhrase || "").toLowerCase();
+  if (edge.relationshipType === "source_authority" && /angel of the lord appeared/.test(evidence)) return 10;
+  if (edge.relationshipType === "delegated_authority" && /saying,? joseph/.test(evidence)) return 10;
+  if (edge.relationshipType === "divine_message" && /saying,? joseph/.test(evidence)) return 10;
+  if (/appeared/.test(evidence)) return 20;
+  if (/saying|fear not|instruct/.test(evidence)) return 30;
+  return 50;
+}
+
+function shouldCollapseRelationshipEvidence(edge) {
+  return [
+    "source_authority",
+    "delegated_authority",
+    "authoritySource",
+    "authorityChainLink",
+    "divine_message"
+  ].includes(edge.relationshipType);
+}
+
 function addRelationshipEdge(edges, seen, config) {
   const edge = createRelationshipEdge(config);
   if (!edge) return;
@@ -2625,21 +2856,77 @@ function addRelationshipEdge(edges, seen, config) {
   if (relationshipType === "lineage_father_son" && edge.relationshipType !== "lineage_father_son") {
     edge.relationshipType = "lineage_father_son";
   }
-  const key = [
+  const keyParts = [
     sourceContextKey,
     edge.fromEntity.toLowerCase(),
     edge.toEntity.toLowerCase(),
-    relationshipType,
-    normalizeWhitespace(edge.evidencePhrase).toLowerCase()
-  ].join("|");
-  if (seen.has(key)) return;
-  seen.add(key);
+    relationshipType
+  ];
+  if (!shouldCollapseRelationshipEvidence(edge)) {
+    keyParts.push(normalizeWhitespace(edge.evidencePhrase).toLowerCase());
+  }
+  const key = keyParts.join("|");
+  const existingIndex = seen.get(key);
+  if (existingIndex !== undefined) {
+    const existing = edges[existingIndex];
+    if (relationshipEvidenceRank(edge) < relationshipEvidenceRank(existing)) {
+      edges[existingIndex] = edge;
+    }
+    return;
+  }
+  seen.set(key, edges.length);
   edges.push(edge);
 }
 
+function shouldCollapseOverlappingRelationshipType(edge) {
+  return ["delegated_authority", "divine_message"].includes(edge.relationshipType);
+}
+
+function overlappingRelationshipPreferenceRank(edge) {
+  const typeRank = {
+    divine_message: 1,
+    delegated_authority: 2
+  };
+  return typeRank[edge.relationshipType] || 99;
+}
+
+function preferRelationshipGraphEdges(edges) {
+  const preferred = [];
+  const seen = new Map();
+
+  for (const edge of edges || []) {
+    if (!shouldCollapseOverlappingRelationshipType(edge)) {
+      preferred.push(edge);
+      continue;
+    }
+
+    const sourceContextKey = edge.sourceContext?.sourceUrl || edge.sourceContext?.sourceTitle || edge.sourceCaptureId || "";
+    const key = [
+      sourceContextKey,
+      edge.fromEntity.toLowerCase(),
+      edge.toEntity.toLowerCase(),
+      normalizeWhitespace(edge.evidencePhrase).toLowerCase()
+    ].join("|");
+    const existingIndex = seen.get(key);
+
+    if (existingIndex === undefined) {
+      seen.set(key, preferred.length);
+      preferred.push(edge);
+      continue;
+    }
+
+    const existing = preferred[existingIndex];
+    const typeRank = overlappingRelationshipPreferenceRank(edge) - overlappingRelationshipPreferenceRank(existing);
+    if (typeRank < 0 || (typeRank === 0 && relationshipEvidenceRank(edge) < relationshipEvidenceRank(existing))) {
+      preferred[existingIndex] = edge;
+    }
+  }
+
+  return preferred;
+}
 function createRelationshipGraph(entityRegistry, semanticEvents, semanticFlowChains, interactions, entityRoleItems) {
   const edges = [];
-  const seen = new Set();
+  const seen = new Map();
 
   for (const eventItem of semanticEvents || []) {
     const fromEntity = eventItem.actor || eventItem.narrator || eventItem.quotedSpeaker || "";
@@ -2725,7 +3012,7 @@ function createRelationshipGraph(entityRegistry, semanticEvents, semanticFlowCha
   // Future work can add visualization, weighted graph traversal, cross-page
   // identity merging, doctrine graph links, source chronology, and confidence
   // evidence views without replacing the existing semantic/event sections.
-  return edges.sort((a, b) =>
+  return preferRelationshipGraphEdges(edges).sort((a, b) =>
     (a.sourceCaptureId || "").localeCompare(b.sourceCaptureId || "") ||
     a.fromEntity.localeCompare(b.fromEntity) ||
     a.relationshipType.localeCompare(b.relationshipType) ||
@@ -2815,6 +3102,12 @@ async function runFullAnalysisPipeline(reason = "manual") {
       dedupedInteractionGraph,
       entityRoleItems
     );
+    const canonicalIdentities = createCanonicalIdentities(
+      entityRegistry,
+      relationshipGraph,
+      semanticEvents,
+      entityRoleItems
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -2831,6 +3124,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticFlowChainCount: semanticFlowChains.length,
       entityRegistryCount: entityRegistry.length,
       relationshipGraphCount: relationshipGraph.length,
+      canonicalIdentityCount: canonicalIdentities.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -2848,6 +3142,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SEMANTIC_FLOW_CHAINS_KEY]: semanticFlowChains,
       [ENTITY_REGISTRY_KEY]: entityRegistry,
       [RELATIONSHIP_GRAPH_KEY]: relationshipGraph,
+      [CANONICAL_IDENTITIES_KEY]: canonicalIdentities,
       [ANALYSIS_STATUS_KEY]: status
     });
 
