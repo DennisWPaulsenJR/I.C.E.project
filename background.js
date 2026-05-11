@@ -16,6 +16,7 @@ const INTERACTION_GRAPH_KEY = "ICE_INTERACTION_GRAPH";
 const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
 const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
 const ENTITY_REGISTRY_KEY = "ICE_ENTITY_REGISTRY";
+const RELATIONSHIP_GRAPH_KEY = "ICE_RELATIONSHIP_GRAPH";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -200,7 +201,7 @@ function parseScriptureBookAndChapter(capture) {
 
 // Phase 5.8 source hierarchy foundation. Future source metadata can expand
 // this lightweight context into Old Testament / New Testament / Book of
-// Mormon / Conference Talks collections, speaker/date metadata, source and
+// Mormon / Conference Talks collections, speaker/date metadata, author vs narrator distinctions, source and
 // historical chronology, cross-document references, and semantic parent/child
 // trees: Corpus -> Collection -> Source -> Chapter -> Scene -> Event -> Action.
 function buildSourceContext(capture) {
@@ -209,6 +210,15 @@ function buildSourceContext(capture) {
   const title = capture?.title || "";
   const looksScripture = /\b(Matthew|Mark|Luke|John)\b/i.test(`${title} ${url}`) ||
     /\/scriptures\//i.test(url);
+  const traditionalAuthors = new Map([
+    ["Matthew", "Matthew"],
+    ["Mark", "Mark"],
+    ["Luke", "Luke"],
+    ["John", "John"]
+  ]);
+  const traditionalAuthor = looksScripture && book
+    ? traditionalAuthors.get(book) || ""
+    : "";
 
   return {
     sourceCaptureId: capture?.id || "",
@@ -219,6 +229,10 @@ function buildSourceContext(capture) {
     book,
     chapter,
     section: "",
+    author: "",
+    traditionalAuthor,
+    authorConfidence: traditionalAuthor ? "traditional-attribution" : "",
+    authorBasis: traditionalAuthor ? "book/source metadata" : "",
     explicitDate: "",
     inferredDate: "",
     timeRange: "",
@@ -2543,6 +2557,181 @@ function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChain
       a.canonicalName.localeCompare(b.canonicalName);
   });
 }
+function relationshipGraphTypeForSemanticEvent(eventItem) {
+  const eventType = eventItem?.eventType || "";
+  const relationshipType = eventItem?.relationshipType || "";
+
+  if (eventType === "lineage_birth" || relationshipType === "father_son") return "lineage_father_son";
+  if (eventType === "covenant_family_union") return "covenant_family_union";
+  if (eventType === "naming_event") return "naming";
+  if (eventType === "birth_event") return "birth";
+  if ([
+    "divine_messenger_appearance",
+    "divine_message_speech",
+    "instruction_concerning_person"
+  ].includes(eventType)) return "divine_message";
+  if (eventType === "passive_fulfillment_narration") return "fulfillment_narration";
+  return relationshipType || eventType || "semantic_relationship";
+}
+
+function relationshipTargetForSemanticEvent(eventItem) {
+  if (!eventItem) return "";
+  if (eventItem.eventType === "passive_fulfillment_narration") {
+    return "Prophecy / Fulfillment";
+  }
+  return eventItem.target || eventItem.recipient || eventItem.concerning || "";
+}
+
+function createRelationshipEdge(config) {
+  const fromEntity = canonicalEntityName(config.fromEntity || "");
+  const toEntity = canonicalEntityName(config.toEntity || "");
+  if (!fromEntity || !toEntity || fromEntity === toEntity) return null;
+
+  const key = [
+    config.sourceCaptureId || config.sourceContext?.sourceCaptureId || "",
+    fromEntity,
+    toEntity,
+    config.relationshipType || "relationship",
+    normalizeWhitespace(config.evidencePhrase || "").toLowerCase(),
+    config.derivedFrom || "derived"
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: config.sourceCaptureId || config.sourceContext?.sourceCaptureId || "",
+    sourceContext: config.sourceContext || {},
+    fromEntity,
+    toEntity,
+    relationshipType: config.relationshipType || "relationship",
+    semanticCategory: config.semanticCategory || "relationship_graph",
+    evidencePhrase: trimText(config.evidencePhrase || "", 180),
+    confidence: config.confidence || "probable",
+    derivedFrom: config.derivedFrom || "derived"
+  };
+}
+
+function relationshipDedupType(edge) {
+  if (["lineage_father_son", "father_son"].includes(edge.relationshipType)) {
+    return "lineage_father_son";
+  }
+  return edge.relationshipType;
+}
+
+function addRelationshipEdge(edges, seen, config) {
+  const edge = createRelationshipEdge(config);
+  if (!edge) return;
+  const sourceContextKey = edge.sourceContext?.sourceUrl || edge.sourceContext?.sourceTitle || edge.sourceCaptureId || "";
+  const relationshipType = relationshipDedupType(edge);
+  if (relationshipType === "lineage_father_son" && edge.relationshipType !== "lineage_father_son") {
+    edge.relationshipType = "lineage_father_son";
+  }
+  const key = [
+    sourceContextKey,
+    edge.fromEntity.toLowerCase(),
+    edge.toEntity.toLowerCase(),
+    relationshipType,
+    normalizeWhitespace(edge.evidencePhrase).toLowerCase()
+  ].join("|");
+  if (seen.has(key)) return;
+  seen.add(key);
+  edges.push(edge);
+}
+
+function createRelationshipGraph(entityRegistry, semanticEvents, semanticFlowChains, interactions, entityRoleItems) {
+  const edges = [];
+  const seen = new Set();
+
+  for (const eventItem of semanticEvents || []) {
+    const fromEntity = eventItem.actor || eventItem.narrator || eventItem.quotedSpeaker || "";
+    const toEntity = relationshipTargetForSemanticEvent(eventItem);
+    addRelationshipEdge(edges, seen, {
+      sourceCaptureId: eventItem.sourceCaptureId || "",
+      sourceContext: eventItem.sourceContext || {},
+      fromEntity,
+      toEntity,
+      relationshipType: relationshipGraphTypeForSemanticEvent(eventItem),
+      semanticCategory: eventItem.semanticCategory || "semantic_event",
+      evidencePhrase: eventItem.anchorText || eventItem.sourceSnippet || eventItem.normalizedMeaning || "",
+      confidence: eventItem.confidence || "probable",
+      derivedFrom: "semantic_event"
+    });
+
+    const authorityChain = (eventItem.authorityChain || []).map(canonicalEntityName).filter(Boolean);
+    for (let index = 0; index < authorityChain.length - 1; index += 1) {
+      addRelationshipEdge(edges, seen, {
+        sourceCaptureId: eventItem.sourceCaptureId || "",
+        sourceContext: eventItem.sourceContext || {},
+        fromEntity: authorityChain[index],
+        toEntity: authorityChain[index + 1],
+        relationshipType: index === 0 ? "source_authority" : "delegated_authority",
+        semanticCategory: "authority_chain",
+        evidencePhrase: eventItem.anchorText || eventItem.sourceSnippet || "authority chain",
+        confidence: index === 0 ? "inferred-source" : eventItem.confidence || "probable",
+        derivedFrom: "semantic_event_authority_chain"
+      });
+    }
+  }
+
+  for (const chain of semanticFlowChains || []) {
+    const nodeById = new Map((chain.nodes || []).map((node) => [node.semanticEventId, node]));
+    for (const relationship of chain.relationships || []) {
+      const fromNode = nodeById.get(relationship.fromEventId);
+      const toNode = nodeById.get(relationship.toEventId);
+      addRelationshipEdge(edges, seen, {
+        sourceCaptureId: chain.sourceCaptureId || "",
+        sourceContext: chain.sourceContext || {},
+        fromEntity: fromNode?.actor || "",
+        toEntity: toNode?.actor || toNode?.target || "",
+        relationshipType: relationship.relationType || "semantic_flow",
+        semanticCategory: chain.chainType || "semantic_flow_chain",
+        evidencePhrase: relationship.evidenceSnippet || chain.summary || "",
+        confidence: relationship.confidence || chain.confidence || "probable",
+        derivedFrom: "semantic_flow_chain"
+      });
+    }
+  }
+
+  for (const interaction of interactions || []) {
+    addRelationshipEdge(edges, seen, {
+      sourceCaptureId: interaction.sourceCaptureId || "",
+      sourceContext: interaction.sourceContext || {},
+      fromEntity: interaction.actorA || "",
+      toEntity: interaction.actorB || "",
+      relationshipType: interaction.interactionType || "interaction",
+      semanticCategory: "character_interaction",
+      evidencePhrase: interaction.sourceSnippet || "",
+      confidence: interaction.confidence || "probable",
+      derivedFrom: "interaction_graph"
+    });
+  }
+
+  for (const entity of entityRegistry || []) {
+    for (const relationship of entity.relationships || []) {
+      addRelationshipEdge(edges, seen, {
+        sourceCaptureId: entity.sourceCaptureIds?.[0] || "",
+        sourceContext: entity.sourceContexts?.[0] || {},
+        fromEntity: entity.canonicalName || "",
+        toEntity: relationship.target || "",
+        relationshipType: relationship.relationshipType || "entity_relationship",
+        semanticCategory: "entity_registry",
+        evidencePhrase: relationship.evidence || "",
+        confidence: relationship.confidence || entity.confidence || "probable",
+        derivedFrom: "entity_registry"
+      });
+    }
+  }
+
+  // Phase 6.1 keeps this current-page-only relationship graph lightweight.
+  // Future work can add visualization, weighted graph traversal, cross-page
+  // identity merging, doctrine graph links, source chronology, and confidence
+  // evidence views without replacing the existing semantic/event sections.
+  return edges.sort((a, b) =>
+    (a.sourceCaptureId || "").localeCompare(b.sourceCaptureId || "") ||
+    a.fromEntity.localeCompare(b.fromEntity) ||
+    a.relationshipType.localeCompare(b.relationshipType) ||
+    a.toEntity.localeCompare(b.toEntity)
+  );
+}
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -2619,6 +2808,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       dedupedInteractionGraph,
       sceneModels
     );
+    const relationshipGraph = createRelationshipGraph(
+      entityRegistry,
+      semanticEvents,
+      semanticFlowChains,
+      dedupedInteractionGraph,
+      entityRoleItems
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -2634,6 +2830,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticEventCount: semanticEvents.length,
       semanticFlowChainCount: semanticFlowChains.length,
       entityRegistryCount: entityRegistry.length,
+      relationshipGraphCount: relationshipGraph.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -2650,6 +2847,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SEMANTIC_EVENTS_KEY]: semanticEvents,
       [SEMANTIC_FLOW_CHAINS_KEY]: semanticFlowChains,
       [ENTITY_REGISTRY_KEY]: entityRegistry,
+      [RELATIONSHIP_GRAPH_KEY]: relationshipGraph,
       [ANALYSIS_STATUS_KEY]: status
     });
 
