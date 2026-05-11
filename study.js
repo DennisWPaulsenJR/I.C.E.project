@@ -21,6 +21,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const DISPLAY_LIMIT = 5;
 
   let studyData = {};
+  console.log("[FOCUS DEBUG] study.js loaded", {
+    rendererVersion: "v2",
+    focusedMountCount: document.querySelectorAll("#focused-relationship-view").length
+  });
 
   function normalizeText(text) {
     return (text || "").replace(/\s+/g, " ").trim();
@@ -720,21 +724,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderEntityRegistry(term) {
     const container = document.getElementById("entityRegistryCards");
     const count = document.getElementById("entityRegistryCount");
-    const registry = Array.isArray(studyData.entityRegistry)
-      ? studyData.entityRegistry
-      : [];
-    const filtered = registry.filter((entity) => includesTerm([
-      entity.canonicalName,
-      entity.displayName,
-      entity.entityType,
-      asArray(entity.roleTypes).join(" "),
-      asArray(entity.aliases).join(" "),
-      asArray(entity.relationships).map((relationship) => [
-        relationship.relationshipType,
-        relationship.target,
-        relationship.source
-      ].join(" ")).join(" ")
-    ].join(" "), term));
+    const filtered = filteredEntityRegistry(term);
 
     renderLimited(container, sortEntityRegistryForDisplay(filtered), count, (entity) => {
       const roleTypes = asArray(entity.roleTypes);
@@ -785,13 +775,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       normalizeText(left.relationshipType).localeCompare(normalizeText(right.relationshipType))
     );
   }
-  function renderRelationshipGraph(term) {
-    const container = document.getElementById("relationshipGraphCards");
-    const count = document.getElementById("relationshipGraphCount");
-    const graph = Array.isArray(studyData.relationshipGraph)
-      ? studyData.relationshipGraph
-      : [];
-    const filtered = graph.filter((edge) => includesTerm([
+  function parseSearchTerms(term) {
+    const normalized = normalizeText(term).toLowerCase();
+    if (!normalized) return [];
+    if (normalized.includes(",")) {
+      return Array.from(new Set(normalized
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)));
+    }
+    const words = normalized.split(/\s+/).filter(Boolean);
+    return Array.from(new Set([normalized, ...words]));
+  }
+
+  function matchesSearchQuery(value, term) {
+    const terms = parseSearchTerms(term);
+    if (terms.length === 0) return true;
+    const searchable = normalizeText(value).toLowerCase();
+    return terms.some((searchTerm) => searchable.includes(searchTerm));
+  }
+
+  function relationshipSearchText(edge) {
+    return [
       edge.fromEntity,
       edge.toEntity,
       edge.relationshipType,
@@ -799,21 +804,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       edge.evidencePhrase,
       edge.confidence,
       edge.derivedFrom
-    ].join(" "), term));
-
-    renderLimited(container, sortRelationshipGraphForDisplay(filtered), count, (edge) => createCard(
-      `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"}`,
-      `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
-      edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
-    ), "No relationship graph edges match.", "relationship");
+    ].join(" ");
   }
-  function renderCanonicalIdentities(term) {
-    const container = document.getElementById("canonicalIdentityCards");
-    const count = document.getElementById("canonicalIdentityCount");
-    const identities = Array.isArray(studyData.canonicalIdentities)
-      ? studyData.canonicalIdentities
-      : [];
-    const filtered = identities.filter((identity) => includesTerm([
+
+  function entityRegistrySearchText(entity) {
+    return [
+      entity.canonicalName,
+      entity.displayName,
+      entity.entityType,
+      asArray(entity.roleTypes).join(" "),
+      asArray(entity.aliases).join(" "),
+      asArray(entity.relationships).map((relationship) => [
+        relationship.relationshipType,
+        relationship.target,
+        relationship.source
+      ].join(" ")).join(" ")
+    ].join(" ");
+  }
+
+  function canonicalIdentitySearchText(identity) {
+    return [
       identity.canonicalName,
       identity.entityType,
       identity.identityScope,
@@ -822,7 +832,203 @@ document.addEventListener("DOMContentLoaded", async () => {
       asArray(identity.evidencePhrases).join(" "),
       identity.confidence,
       identity.notes
-    ].join(" "), term));
+    ].join(" ");
+  }
+
+  function semanticEventSearchText(item) {
+    return [
+      item.actor,
+      item.action,
+      item.target,
+      item.recipient,
+      item.concerning,
+      item.narrator,
+      item.quotedSpeaker,
+      item.eventType,
+      item.semanticCategory,
+      item.relationshipType,
+      item.normalizedMeaning,
+      item.anchorText,
+      item.sourceSnippet,
+      asArray(item.participants).join(" "),
+      asArray(item.authorityChain).join(" ")
+    ].join(" ");
+  }
+
+  function semanticFlowChainSearchText(chain) {
+    return [
+      chain.chainTitle,
+      chain.chainType,
+      chain.summary,
+      asArray(chain.authorityChain).join(" "),
+      asArray(chain.nodes).map((node) => [
+        node.actor,
+        node.action,
+        node.target,
+        node.eventType,
+        node.anchorText
+      ].join(" ")).join(" "),
+      asArray(chain.relationships).map((relationship) => [
+        relationship.relationType,
+        relationship.evidenceSnippet,
+        relationship.confidence
+      ].join(" ")).join(" ")
+    ].join(" ");
+  }
+
+  function filteredRelationshipGraph(term) {
+    return sortRelationshipGraphForDisplay(asArray(studyData.relationshipGraph)
+      .filter((edge) => matchesSearchQuery(relationshipSearchText(edge), term)));
+  }
+
+  function filteredEntityRegistry(term) {
+    return sortEntityRegistryForDisplay(asArray(studyData.entityRegistry)
+      .filter((entity) => matchesSearchQuery(entityRegistrySearchText(entity), term)));
+  }
+
+  function filteredCanonicalIdentities(term) {
+    return asArray(studyData.canonicalIdentities)
+      .filter((identity) => matchesSearchQuery(canonicalIdentitySearchText(identity), term));
+  }
+
+  function filteredSemanticEvents(term) {
+    return asArray(studyData.semanticEvents)
+      .filter((item) => matchesSearchQuery(semanticEventSearchText(item), term));
+  }
+
+  function filteredSemanticFlowChains(term) {
+    return asArray(studyData.semanticFlowChains)
+      .filter((chain) => matchesSearchQuery(semanticFlowChainSearchText(chain), term));
+  }
+
+  function focusedBuckets(term) {
+    return {
+      relationships: filteredRelationshipGraph(term),
+      entities: filteredEntityRegistry(term),
+      canonicalIdentities: filteredCanonicalIdentities(term),
+      semanticEvents: filteredSemanticEvents(term),
+      flowChains: filteredSemanticFlowChains(term)
+    };
+  }
+
+  function renderFocusedGraph(term) {
+    const mount = document.getElementById("focused-relationship-view");
+    const mountCount = document.querySelectorAll("#focused-relationship-view").length;
+    console.log("[FOCUS DEBUG] mount found", {
+      found: Boolean(mount),
+      mountCount
+    });
+    if (!mount) return;
+    clearElement(mount);
+
+    if (!term) return;
+
+    const buckets = focusedBuckets(term);
+    console.log("[FOCUS DEBUG] rendering focus view", {
+      searchText: term,
+      termArray: parseSearchTerms(term),
+      relationshipCount: buckets.relationships.length,
+      entityCount: buckets.entities.length,
+      identityCount: buckets.canonicalIdentities.length,
+      semanticEventCount: buckets.semanticEvents.length,
+      flowChainCount: buckets.flowChains.length
+    });
+
+    const section = document.createElement("section");
+    const debugBox = document.createElement("div");
+    const heading = document.createElement("div");
+    const title = document.createElement("h2");
+    const count = document.createElement("span");
+    const marker = document.createElement("p");
+    const version = document.createElement("p");
+    const cards = document.createElement("div");
+
+    section.className = "study-section focused-relationship-view";
+    heading.className = "section-heading";
+    count.className = "count-label";
+    marker.className = "focus-render-marker";
+    version.className = "focus-render-marker";
+    cards.className = "card-grid";
+    debugBox.setAttribute("style", "border:2px solid red;padding:8px;margin-bottom:8px;background:#fff5f5;color:#8a0000;font-weight:700;");
+    debugBox.textContent = "[FOCUS VIEW ACTIVE] Renderer Version: v2";
+
+    marker.textContent = "[FOCUS VIEW ACTIVE]";
+    version.textContent = "Renderer Version: v2";
+    title.textContent = `Focused Relationship View: ${renderDivineDisplayText(term)}`;
+
+    const total = buckets.relationships.length + buckets.entities.length +
+      buckets.canonicalIdentities.length + buckets.semanticEvents.length + buckets.flowChains.length;
+    count.textContent = `Found: ${total} focused item(s)`;
+
+    heading.append(title, count);
+    section.append(debugBox, marker, version, heading, cards);
+    mount.appendChild(section);
+
+    if (total === 0) {
+      appendEmpty(cards, `No focused items found for: ${term}`);
+      return;
+    }
+
+    const renderBucket = (bucketTitleText, items, renderItem) => {
+      if (items.length === 0) return;
+      const preview = document.createElement("article");
+      const bucketTitle = document.createElement("h3");
+      const list = document.createElement("div");
+      preview.className = "study-card focused-bucket";
+      bucketTitle.textContent = `${bucketTitleText} (${items.length})`;
+      list.className = "focused-bucket-list";
+      for (const item of items.slice(0, 4)) {
+        const line = document.createElement("p");
+        line.textContent = renderDivineDisplayText(renderItem(item));
+        list.appendChild(line);
+      }
+      if (items.length > 4) {
+        const more = document.createElement("span");
+        more.className = "meta";
+        more.textContent = `${items.length - 4} more hidden by preview limit.`;
+        list.appendChild(more);
+      }
+      preview.append(bucketTitle, list);
+      cards.appendChild(preview);
+    };
+
+    renderBucket("Relationships", buckets.relationships, (edge) =>
+      `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"} | ${edge.relationshipType || "relationship"} | ${edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 80)}` : edge.derivedFrom || "derived"}`
+    );
+    renderBucket("Entity Registry nodes", buckets.entities, (entity) =>
+      `${entity.displayName || entity.canonicalName || "Entity"} | ${entity.entityType || "entity"} | ${asArray(entity.roleTypes).slice(0, 4).join(", ") || "No roles yet"}`
+    );
+    renderBucket("Canonical Identities", buckets.canonicalIdentities, (identity) =>
+      `${identity.canonicalName || "Canonical identity"} | ${identity.identityScope || "source-mentioned"}`
+    );
+    renderBucket("Semantic Events", buckets.semanticEvents, (item) => {
+      const target = item.target || item.recipient || item.concerning || "";
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${target ? ` -> ${target}` : ""} | ${item.anchorText || trimText(item.sourceSnippet, 80)}`;
+    });
+    renderBucket("Flow Chains", buckets.flowChains, (chain) =>
+      `${chain.chainTitle || "Semantic flow chain"} | ${trimText(chain.summary, 90)}`
+    );
+
+    // Phase 6.4 focus mode has one dynamic mount point. Future work can turn
+    // these focused slices into clickable graph traversal, visual graph
+    // navigation, timeline graph exploration, Alpha/Omega graph navigation, and
+    // scoped AI_Actor awareness.
+  }
+  function renderRelationshipGraph(term) {
+    const container = document.getElementById("relationshipGraphCards");
+    const count = document.getElementById("relationshipGraphCount");
+    const filtered = filteredRelationshipGraph(term);
+
+    renderLimited(container, filtered, count, (edge) => createCard(
+      `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"}`,
+      `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
+      edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
+    ), "No relationship graph edges match.", "relationship");
+  }
+  function renderCanonicalIdentities(term) {
+    const container = document.getElementById("canonicalIdentityCards");
+    const count = document.getElementById("canonicalIdentityCount");
+    const filtered = filteredCanonicalIdentities(term);
 
     renderLimited(container, filtered, count, (identity) => {
       const aliases = asArray(identity.aliases).slice(0, 5).join(", ") || "No aliases yet";
@@ -1051,24 +1257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderSemanticFlowChains(term) {
     const container = document.getElementById("semanticFlowChainCards");
     const count = document.getElementById("semanticFlowChainCount");
-    const chains = Array.isArray(studyData.semanticFlowChains)
-      ? studyData.semanticFlowChains
-      : [];
-    const filtered = chains.filter((chain) => includesTerm([
-      chain.chainTitle,
-      chain.chainType,
-      chain.summary,
-      asArray(chain.authorityChain).join(" "),
-      asArray(chain.nodes).map((node) => [
-        node.actor,
-        node.action,
-        node.target,
-        node.eventType,
-        node.anchorText
-      ].join(" ")).join(" "),
-      asArray(chain.relationships).map((item) => item.relationType).join(" "),
-      chain.confidence
-    ].join(" "), term));
+    const filtered = filteredSemanticFlowChains(term);
 
     renderLimited(container, filtered, count, (chain) => {
       const nodePreview = asArray(chain.nodes)
@@ -1096,24 +1285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderSemanticEvents(term) {
     const container = document.getElementById("semanticEventCards");
     const count = document.getElementById("semanticEventCount");
-    const semanticEvents = Array.isArray(studyData.semanticEvents)
-      ? studyData.semanticEvents
-      : [];
-    const filtered = semanticEvents.filter((item) => includesTerm([
-      item.actor,
-      item.action,
-      item.target,
-      item.recipient,
-      item.concerning,
-      asArray(item.participants).join(" "),
-      asArray(item.authorityChain).join(" "),
-      item.eventType,
-      item.semanticCategory,
-      item.relationshipType,
-      item.normalizedMeaning,
-      item.sourceSnippet,
-      item.confidence
-    ].join(" "), term));
+    const filtered = filteredSemanticEvents(term);
 
     renderLimited(container, filtered, count, (item) => {
       const target = item.target || item.recipient || item.concerning || "";
@@ -1186,6 +1358,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .toLowerCase();
 
       renderDiagnostics();
+      renderFocusedGraph(term);
       renderCurrentPage(term);
       renderSourceContext(term);
       renderEntityRoles(term);
@@ -1331,7 +1504,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // persona profiles without overcrowding this quick study panel.
   await refreshStudyData();
 
-  document.getElementById("searchInput").addEventListener("input", renderStudy);
+  document.getElementById("searchInput").addEventListener("input", () => {
+    console.log("[FOCUS DEBUG] search input event", {
+      value: document.getElementById("searchInput").value
+    });
+    renderStudy();
+  });
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
   window.addEventListener("focus", refreshStudyData);
   window.addEventListener("pageshow", refreshStudyData);
