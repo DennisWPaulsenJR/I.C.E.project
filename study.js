@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     canonicalIdentities: "ICE_CANONICAL_IDENTITIES",
     mentionIndex: "ICE_MENTION_INDEX",
     domSemanticHints: "ICE_DOM_SEMANTIC_HINTS",
+    sourceAdapters: "ICE_SOURCE_ADAPTERS",
+    activeAdapter: "ICE_ACTIVE_ADAPTER",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1184,6 +1186,56 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
 
+
+  function sourceAdapterSearchText(adapter) {
+    return [
+      adapter?.adapterName,
+      adapter?.adapterId,
+      asArray(adapter?.supportedDomains).join(" "),
+      asArray(adapter?.supportedPatterns).join(" "),
+      asArray(adapter?.semanticCapabilities).join(" "),
+      asArray(adapter?.detectedCapabilities).join(" "),
+      adapter?.confidence,
+      adapter?.derivedFrom,
+      adapter?.sourceTitle,
+      adapter?.sourceUrl
+    ].join(" ");
+  }
+
+  function renderSourceAdapter(term) {
+    const container = document.getElementById("sourceAdapterCards");
+    const count = document.getElementById("sourceAdapterCount");
+    const active = studyData.activeAdapter;
+    const adapters = asArray(studyData.sourceAdapters);
+
+    clearElement(container);
+
+    if (!active?.adapterName) {
+      count.textContent = "0 active";
+      appendEmpty(container, "No source adapter detected yet.");
+      return;
+    }
+
+    if (!matchesSearchQuery(sourceAdapterSearchText(active), term)) {
+      count.textContent = "0 active";
+      appendEmpty(container, "No source adapter matches.");
+      return;
+    }
+
+    count.textContent = "1 active";
+    const capabilities = asArray(active.detectedCapabilities || active.semanticCapabilities);
+    container.appendChild(createCard(
+      active.adapterName,
+      [
+        `Capabilities: ${capabilities.join(", ") || "none detected"}`,
+        `Confidence: ${displayConfidence(active.confidence || "possible")}`,
+        active.fallbackMode ? "Fallback mode: yes" : "Fallback mode: no",
+        active.derivedFrom ? `Detected from: ${active.derivedFrom}` : "",
+        active.version ? `Version: ${active.version}` : ""
+      ].filter(Boolean).join("\n"),
+      `${adapters.length || 0} registered adapter(s)`
+    ));
+  }
   function domSemanticHintSearchText(item) {
     return [
       item.hintType,
@@ -1618,6 +1670,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderFocusedGraph(term);
       renderCurrentPage(term);
       renderSourceContext(term);
+      renderSourceAdapter(term);
       renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
@@ -1670,6 +1723,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       canonicalIdentities: countItems(studyData.canonicalIdentities),
       mentions: countItems(studyData.mentionIndex),
       domHints: countItems(studyData.domSemanticHints),
+      activeAdapter: studyData.activeAdapter?.adapterName || "",
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -1693,6 +1747,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const entityClassCount = classifiedEntityCount();
     const mentionCount = countItems(studyData.mentionIndex);
     const domHintCount = countItems(studyData.domSemanticHints);
+    const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
@@ -1716,6 +1771,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticEntityClasses").textContent = entityClassCount;
     document.getElementById("diagnosticMentions").textContent = mentionCount;
     document.getElementById("diagnosticDomHints").textContent = domHintCount;
+    document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;

@@ -328,6 +328,7 @@
       divineReferenceCount: capture.divineReferenceCount || 0,
       text: capture.text || "",
       domSemanticHints: capture.domSemanticHints || [],
+      sourceAdapter: capture.sourceAdapter || null,
       textHash: hash
     };
   }
@@ -720,6 +721,93 @@
 
     return hints;
   }
+
+  function sourceAdapterRegistry() {
+    return [
+      {
+        adapterId: "lds-scripture-v1",
+        adapterName: "lds_scripture_adapter",
+        supportedDomains: ["churchofjesuschrist.org", "www.churchofjesuschrist.org"],
+        supportedPatterns: ["/scriptures/", "[data-eng-ref]", ".verse", ".study-note-ref", ".deity-name"],
+        semanticCapabilities: ["verse_scope", "data_eng_ref", "deity_name", "study_note_ref", "scripture_metadata", "chapter_metadata"],
+        confidence: "probable",
+        version: "0.1.0"
+      },
+      {
+        adapterId: "generic-html-v1",
+        adapterName: "generic_html_adapter",
+        supportedDomains: ["*"],
+        supportedPatterns: ["article", "main", "[role='main']", "meta[name='description']", "h1", "p"],
+        semanticCapabilities: ["metadata", "headings", "paragraphs", "generic_semantic_hints"],
+        confidence: "possible",
+        version: "0.1.0"
+      },
+      {
+        adapterId: "plain-text-v1",
+        adapterName: "plain_text_adapter",
+        supportedDomains: ["*"],
+        supportedPatterns: ["textContent"],
+        semanticCapabilities: ["plain_text_capture", "minimal_metadata"],
+        confidence: "possible",
+        version: "0.1.0"
+      }
+    ];
+  }
+
+  function detectActiveSourceAdapter() {
+    const hostname = location.hostname || "";
+    const pathname = location.pathname || "";
+    const hasLdsDomain = /(?:^|\.)churchofjesuschrist\.org$/i.test(hostname);
+    const hasScripturePath = /\/scriptures\//i.test(pathname);
+    const hasVerseMarkup = Boolean(document.querySelector("[data-eng-ref], .verse"));
+    const hasStudyNotes = Boolean(document.querySelector("a.study-note-ref"));
+    const hasDeityMarkup = Boolean(document.querySelector(".deity-name"));
+    const hasGenericMain = Boolean(document.querySelector("article, main, [role='main'], h1, p"));
+    const registry = sourceAdapterRegistry();
+
+    if (hasLdsDomain || hasScripturePath || hasVerseMarkup || hasStudyNotes || hasDeityMarkup) {
+      const adapter = registry.find((item) => item.adapterName === "lds_scripture_adapter");
+      return {
+        ...adapter,
+        detectedCapabilities: adapter.semanticCapabilities.filter((capability) => {
+          if (capability === "verse_scope" || capability === "data_eng_ref") return hasVerseMarkup;
+          if (capability === "study_note_ref") return hasStudyNotes;
+          if (capability === "deity_name") return hasDeityMarkup;
+          return true;
+        }),
+        detectionSignals: {
+          hostname,
+          hasLdsDomain,
+          hasScripturePath,
+          hasVerseMarkup,
+          hasStudyNotes,
+          hasDeityMarkup
+        },
+        fallbackMode: false,
+        detectedAt: new Date().toISOString()
+      };
+    }
+
+    if (hasGenericMain) {
+      const adapter = registry.find((item) => item.adapterName === "generic_html_adapter");
+      return {
+        ...adapter,
+        detectedCapabilities: adapter.semanticCapabilities,
+        detectionSignals: { hostname, hasGenericMain },
+        fallbackMode: true,
+        detectedAt: new Date().toISOString()
+      };
+    }
+
+    const adapter = registry.find((item) => item.adapterName === "plain_text_adapter");
+    return {
+      ...adapter,
+      detectedCapabilities: adapter.semanticCapabilities,
+      detectionSignals: { hostname },
+      fallbackMode: true,
+      detectedAt: new Date().toISOString()
+    };
+  }
   function wordCount(text) {
     return text ? text.split(/\s+/).filter(Boolean).length : 0;
   }
@@ -738,7 +826,8 @@
       wordCount: wordCount(capturedText),
       characterCount: capturedText.length,
       divineReferenceCount: engine.countDivineReferences(capturedText),
-      capturedAt: new Date().toISOString()
+      capturedAt: new Date().toISOString(),
+      sourceAdapter: detectActiveSourceAdapter()
     };
     capture.domSemanticHints = extractDomSemanticHints(capture);
     return capture;

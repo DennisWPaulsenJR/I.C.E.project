@@ -20,6 +20,8 @@ const RELATIONSHIP_GRAPH_KEY = "ICE_RELATIONSHIP_GRAPH";
 const CANONICAL_IDENTITIES_KEY = "ICE_CANONICAL_IDENTITIES";
 const MENTION_INDEX_KEY = "ICE_MENTION_INDEX";
 const DOM_SEMANTIC_HINTS_KEY = "ICE_DOM_SEMANTIC_HINTS";
+const SOURCE_ADAPTERS_KEY = "ICE_SOURCE_ADAPTERS";
+const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -248,6 +250,83 @@ function buildSourceContext(capture) {
 }
 
 
+
+function sourceAdapterRegistry() {
+  return [
+    {
+      adapterId: "lds-scripture-v1",
+      adapterName: "lds_scripture_adapter",
+      supportedDomains: ["churchofjesuschrist.org", "www.churchofjesuschrist.org"],
+      supportedPatterns: ["/scriptures/", "[data-eng-ref]", ".verse", ".study-note-ref", ".deity-name"],
+      semanticCapabilities: ["verse_scope", "data_eng_ref", "deity_name", "study_note_ref", "scripture_metadata", "chapter_metadata"],
+      confidence: "probable",
+      version: "0.1.0"
+    },
+    {
+      adapterId: "generic-html-v1",
+      adapterName: "generic_html_adapter",
+      supportedDomains: ["*"],
+      supportedPatterns: ["article", "main", "[role='main']", "meta[name='description']", "h1", "p"],
+      semanticCapabilities: ["metadata", "headings", "paragraphs", "generic_semantic_hints"],
+      confidence: "possible",
+      version: "0.1.0"
+    },
+    {
+      adapterId: "plain-text-v1",
+      adapterName: "plain_text_adapter",
+      supportedDomains: ["*"],
+      supportedPatterns: ["textContent"],
+      semanticCapabilities: ["plain_text_capture", "minimal_metadata"],
+      confidence: "possible",
+      version: "0.1.0"
+    }
+  ];
+}
+
+function deriveActiveSourceAdapter(captures, domSemanticHints) {
+  const capture = (captures || []).find((item) => item?.sourceAdapter) || captures?.[0] || null;
+  const adapter = capture?.sourceAdapter;
+  if (adapter) {
+    return {
+      ...adapter,
+      sourceCaptureId: capture?.id || "",
+      sourceTitle: capture?.title || "",
+      sourceUrl: capture?.url || "",
+      derivedFrom: "capture-dom-detection"
+    };
+  }
+
+  const hintTypes = new Set((domSemanticHints || []).map((hint) => hint.hintType));
+  const registry = sourceAdapterRegistry();
+  if (hintTypes.has("verse_scope") || hintTypes.has("study_note_ref") || hintTypes.has("deity_name")) {
+    const lds = registry.find((item) => item.adapterName === "lds_scripture_adapter");
+    return {
+      ...lds,
+      detectedCapabilities: lds.semanticCapabilities.filter((capability) => {
+        if (capability === "verse_scope" || capability === "data_eng_ref") return hintTypes.has("verse_scope");
+        if (capability === "study_note_ref") return hintTypes.has("study_note_ref");
+        if (capability === "deity_name") return hintTypes.has("deity_name");
+        return true;
+      }),
+      sourceCaptureId: capture?.id || "",
+      sourceTitle: capture?.title || "",
+      sourceUrl: capture?.url || "",
+      fallbackMode: false,
+      derivedFrom: "dom-semantic-hints"
+    };
+  }
+
+  const fallback = registry.find((item) => item.adapterName === (capture?.text ? "generic_html_adapter" : "plain_text_adapter"));
+  return {
+    ...fallback,
+    detectedCapabilities: fallback.semanticCapabilities,
+    sourceCaptureId: capture?.id || "",
+    sourceTitle: capture?.title || "",
+    sourceUrl: capture?.url || "",
+    fallbackMode: true,
+    derivedFrom: "pipeline-fallback"
+  };
+}
 function createDomSemanticHints(captures) {
   const hints = [];
   const seen = new Set();
@@ -3356,6 +3435,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
     }
 
     const domSemanticHints = createDomSemanticHints(captures);
+    const sourceAdapters = sourceAdapterRegistry();
+    const activeAdapter = deriveActiveSourceAdapter(captures, domSemanticHints);
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
@@ -3431,6 +3512,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       canonicalIdentityCount: canonicalIdentities.length,
       mentionCount: mentionIndex.length,
       domHintCount: domSemanticHints.length,
+      activeAdapterName: activeAdapter?.adapterName || "",
       analyzedAt: new Date().toISOString()
     };
 
@@ -3451,6 +3533,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [CANONICAL_IDENTITIES_KEY]: canonicalIdentities,
       [MENTION_INDEX_KEY]: mentionIndex,
       [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
+      [SOURCE_ADAPTERS_KEY]: sourceAdapters,
+      [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [ANALYSIS_STATUS_KEY]: status
     });
 
