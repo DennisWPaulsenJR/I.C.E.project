@@ -22,6 +22,7 @@ const MENTION_INDEX_KEY = "ICE_MENTION_INDEX";
 const DOM_SEMANTIC_HINTS_KEY = "ICE_DOM_SEMANTIC_HINTS";
 const SOURCE_ADAPTERS_KEY = "ICE_SOURCE_ADAPTERS";
 const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
+const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -325,6 +326,118 @@ function deriveActiveSourceAdapter(captures, domSemanticHints) {
     sourceUrl: capture?.url || "",
     fallbackMode: true,
     derivedFrom: "pipeline-fallback"
+  };
+}
+
+function scopeSlug(value) {
+  return normalizeWhitespace(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "") || "unknown";
+}
+
+function sourceScopePrefix(context = {}) {
+  const sourceUrl = context.sourceUrl || "";
+  if (context.sourceType === "scripture" || context.collection === "scripture" || /\/scriptures\//i.test(sourceUrl)) {
+    const testament = /\/scriptures\/nt\//i.test(sourceUrl) ? "nt" :
+      /\/scriptures\/ot\//i.test(sourceUrl) ? "ot" : "scripture";
+    return [
+      "scripture",
+      testament,
+      scopeSlug(context.book || context.sourceTitle || "source"),
+      scopeSlug(context.chapter || "chapter")
+    ].join(".");
+  }
+
+  return ["generic", "page"].join(".");
+}
+
+function verseNumberFromRef(verseRef) {
+  const match = normalizeWhitespace(verseRef || "").match(/(?:^|:)(\d{1,3})$/);
+  return match?.[1] || "";
+}
+
+function itemVerseNumber(item = {}) {
+  return item.verseNumber || verseNumberFromRef(item.verseRef) || inferVerseNumberFromText([
+    item.anchorText,
+    item.sourceSnippet,
+    item.evidencePhrase,
+    item.text,
+    item.sourcePhrase,
+    item.normalizedMeaning
+  ].filter(Boolean).join(" "));
+}
+
+function enrichScopeItem(item, type, index, activeAdapter) {
+  if (!item) return item;
+  const context = item.sourceContext || {};
+  const verseNumber = itemVerseNumber(item);
+  const sourceCaptureId = item.sourceCaptureId || context.sourceCaptureId || "";
+  const sourceUri = item.sourceUri || item.sourceUrl || context.sourceUrl || "";
+  const chapter = item.chapter || context.chapter || verseNumberFromRef(item.verseRef) || "";
+  const book = item.book || context.book || "";
+  const prefix = sourceScopePrefix({ ...context, sourceUrl: sourceUri, book, chapter: chapter || context.chapter });
+  const timelinePosition = item.timelinePosition || verseNumber || item.sequenceOrder || item.sequenceIndex || index + 1;
+  const typeKey = scopeSlug(type);
+  const positionKey = verseNumber && ["verse", "dom_hint", "mention"].includes(type)
+    ? `verse.${verseNumber}`
+    : `${typeKey}.${timelinePosition}`;
+
+  item.scopePath = item.scopePath && item.scopePath.includes(".")
+    ? item.scopePath
+    : `${prefix}.${positionKey}`;
+  item.verseNumber = verseNumber || item.verseNumber || "";
+  item.verseRef = item.verseRef || (chapter && verseNumber ? `${chapter}:${verseNumber}` : "");
+  item.chapter = chapter || context.chapter || "";
+  item.book = book || context.book || "";
+  item.sourceUri = sourceUri;
+  item.sourceCaptureId = sourceCaptureId;
+  item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
+  item.timelinePosition = timelinePosition;
+  return item;
+}
+
+function applyScopeIntegrity(data, activeAdapter) {
+  const mappings = [
+    [data.domSemanticHints, "dom_hint"],
+    [data.mentionIndex, "mention"],
+    [data.semanticEvents, "event"],
+    [data.relationshipGraph, "relationship"],
+    [data.canonicalIdentities, "identity"],
+    [data.semanticFlowChains, "flow_chain"]
+  ];
+
+  for (const [items, type] of mappings) {
+    for (const [index, item] of (items || []).entries()) {
+      enrichScopeItem(item, type, index, activeAdapter);
+    }
+  }
+}
+
+function createScopeIntegrityReport(data, activeAdapter) {
+  const scopedItems = [
+    ...(data.domSemanticHints || []),
+    ...(data.mentionIndex || []),
+    ...(data.semanticEvents || []),
+    ...(data.relationshipGraph || []),
+    ...(data.canonicalIdentities || []),
+    ...(data.semanticFlowChains || [])
+  ];
+  const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
+  const missingScopeCount = scopedItems.length - scopedCount;
+  const sampleScopePaths = Array.from(new Set(scopedItems
+    .map((item) => item?.scopePath)
+    .filter(Boolean)))
+    .slice(0, 6);
+
+  return {
+    scopedItemsCount: scopedCount,
+    missingScopeCount,
+    adapterId: activeAdapter?.adapterId || "",
+    adapterName: activeAdapter?.adapterName || "",
+    sampleScopePaths,
+    generatedAt: new Date().toISOString()
   };
 }
 function createDomSemanticHints(captures) {
@@ -3493,6 +3606,22 @@ async function runFullAnalysisPipeline(reason = "manual") {
       canonicalIdentities,
       domSemanticHints
     );
+    applyScopeIntegrity({
+      domSemanticHints,
+      mentionIndex,
+      semanticEvents,
+      relationshipGraph,
+      canonicalIdentities,
+      semanticFlowChains
+    }, activeAdapter);
+    const scopeIntegrity = createScopeIntegrityReport({
+      domSemanticHints,
+      mentionIndex,
+      semanticEvents,
+      relationshipGraph,
+      canonicalIdentities,
+      semanticFlowChains
+    }, activeAdapter);
     const status = {
       reason,
       captureCount: captures.length,
@@ -3513,6 +3642,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       mentionCount: mentionIndex.length,
       domHintCount: domSemanticHints.length,
       activeAdapterName: activeAdapter?.adapterName || "",
+      scopedItemsCount: scopeIntegrity.scopedItemsCount,
+      missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
     };
 
@@ -3535,6 +3666,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
+      [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status
     });
 

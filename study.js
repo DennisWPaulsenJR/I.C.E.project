@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     domSemanticHints: "ICE_DOM_SEMANTIC_HINTS",
     sourceAdapters: "ICE_SOURCE_ADAPTERS",
     activeAdapter: "ICE_ACTIVE_ADAPTER",
+    scopeIntegrity: "ICE_SCOPE_INTEGRITY",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1268,6 +1269,52 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("\n");
   }
 
+
+  function renderScopeIntegrity(term) {
+    const container = document.getElementById("scopeIntegrityCards");
+    const count = document.getElementById("scopeIntegrityCount");
+    const report = studyData.scopeIntegrity || {};
+    const samplePaths = asArray(report.sampleScopePaths);
+    const searchText = [
+      report.adapterName,
+      report.adapterId,
+      samplePaths.join(" ")
+    ].join(" ");
+
+    clearElement(container);
+
+    if (!report.generatedAt) {
+      count.textContent = "0 scoped";
+      appendEmpty(container, "No scope integrity report yet.");
+      return;
+    }
+
+    if (!matchesSearchQuery(searchText, term)) {
+      count.textContent = "0 scoped";
+      appendEmpty(container, "No scope integrity items match.");
+      return;
+    }
+
+    count.textContent = `${report.scopedItemsCount || 0} scoped`;
+    container.appendChild(createCard(
+      "Scope Integrity",
+      [
+        `Scoped items: ${report.scopedItemsCount || 0}`,
+        `Missing scope: ${report.missingScopeCount || 0}`,
+        `Adapter: ${report.adapterName || "unknown"}`,
+        `Generated: ${report.generatedAt || ""}`
+      ].filter(Boolean).join("\n"),
+      "unified source position layer"
+    ));
+
+    if (samplePaths.length > 0) {
+      container.appendChild(createCard(
+        "Sample Scope Paths",
+        samplePaths.slice(0, 6).join("\n"),
+        "preview only"
+      ));
+    }
+  }
   function renderDomSemanticHints(term) {
     const container = document.getElementById("domSemanticHintCards");
     const count = document.getElementById("domSemanticHintCount");
@@ -1671,6 +1718,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderCurrentPage(term);
       renderSourceContext(term);
       renderSourceAdapter(term);
+      renderScopeIntegrity(term);
       renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
@@ -1724,6 +1772,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       mentions: countItems(studyData.mentionIndex),
       domHints: countItems(studyData.domSemanticHints),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
+      scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
