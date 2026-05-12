@@ -18,6 +18,8 @@ const ENTITY_ROLE_ITEMS_KEY = "ICE_ENTITY_ROLE_ITEMS";
 const ENTITY_REGISTRY_KEY = "ICE_ENTITY_REGISTRY";
 const RELATIONSHIP_GRAPH_KEY = "ICE_RELATIONSHIP_GRAPH";
 const CANONICAL_IDENTITIES_KEY = "ICE_CANONICAL_IDENTITIES";
+const MENTION_INDEX_KEY = "ICE_MENTION_INDEX";
+const DOM_SEMANTIC_HINTS_KEY = "ICE_DOM_SEMANTIC_HINTS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -245,6 +247,67 @@ function buildSourceContext(capture) {
   };
 }
 
+
+function createDomSemanticHints(captures) {
+  const hints = [];
+  const seen = new Set();
+
+  for (const capture of captures || []) {
+    const sourceContext = buildSourceContext(capture || {});
+    for (const hint of capture?.domSemanticHints || []) {
+      const text = normalizeWhitespace(hint.text || "");
+      if (!text) continue;
+      const normalizedText = normalizeWhitespace(hint.normalizedText || text).toLowerCase();
+      const key = [
+        sourceContext.sourceCaptureId || capture?.id || "",
+        hint.hintType || "unknown",
+        normalizedText,
+        hint.verseRef || "",
+        hint.verseNumber || "",
+        hint.domId || "",
+        hint.selectorHint || ""
+      ].join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hints.push({
+        id: hint.id || `${Date.now()}-${textHash(`dom-hint|${key}`)}`,
+        sourceCaptureId: sourceContext.sourceCaptureId || capture?.id || "",
+        sourceUrl: capture?.url || hint.sourceUrl || "",
+        sourceContext: {
+          ...sourceContext,
+          ...(hint.sourceContext || {}),
+          sourceCaptureId: sourceContext.sourceCaptureId || capture?.id || "",
+          sourceTitle: sourceContext.sourceTitle || capture?.title || "",
+          sourceUrl: sourceContext.sourceUrl || capture?.url || ""
+        },
+        hintType: hint.hintType || "source_marker",
+        text,
+        normalizedText,
+        verseRef: hint.verseRef || "",
+        verseNumber: hint.verseNumber || "",
+        domId: hint.domId || "",
+        selectorHint: hint.selectorHint || "",
+        attributes: hint.attributes || {},
+        confidence: hint.confidence || "source-markup",
+        source: hint.source || "dom",
+        originalText: hint.originalText || "",
+        entityClass: hint.entityClass || "",
+        noHighlight: Boolean(hint.noHighlight),
+        scopePath: hint.scopePath || [
+          sourceContext.collection || sourceContext.sourceType || "source",
+          sourceContext.book || sourceContext.sourceTitle || "unknown-source",
+          sourceContext.chapter ? `chapter:${sourceContext.chapter}` : "",
+          hint.verseRef ? `verse:${hint.verseRef}` : ""
+        ].filter(Boolean).join(" > ")
+      });
+    }
+  }
+
+  // Phase 7.2 keeps DOM metadata as optional enrichment. Future site adapters
+  // can map source markup to full semantic scope paths, note graphs, and
+  // cross-reference ingestion without making markup mandatory for analysis.
+  return hints;
+}
 function sourceContextKey(context) {
   return [
     context?.sourceCaptureId || "",
@@ -3019,6 +3082,238 @@ function createRelationshipGraph(entityRegistry, semanticEvents, semanticFlowCha
     a.toEntity.localeCompare(b.toEntity)
   );
 }
+const HUMAN_ROLE_MENTION_PATTERN = /\b(prophet|husband|wife|mother|virgin)\b/gi;
+const HUMAN_GROUP_MENTION_PATTERN = /\b(people|brethren|generations)\b/gi;
+const DIVINE_TITLE_MENTION_PATTERN = /\b(JESUS CHRIST|Jesus Christ|Holy Ghost|Holy Spirit|THE LORD|the Lord|GOD with us|God with us|Emmanuel|God)\b/g;
+const ANGEL_MENTION_PATTERN = /\b(?:the\s+)?angel of (?:THE LORD|the Lord)\b/gi;
+const PRONOUN_MENTION_PATTERN = /\b(He|Him|His|he|him|his)\b/g;
+
+function entityClassForMention({ mentionText = "", mentionType = "", entityType = "", roleHint = "" } = {}) {
+  const text = normalizeWhitespace(mentionText).toLowerCase();
+  const type = normalizeWhitespace(entityType).toLowerCase();
+  const role = normalizeWhitespace(roleHint).toLowerCase();
+
+  if (["adversary", "anti_god", "deceiver"].includes(type) || ["satan", "lucifer", "adversary", "perdition"].includes(text)) return "IIIIII";
+  if (["divine_authority", "divine_redeemer", "divine"].includes(type) ||
+      ["god", "the lord", "yhwh", "jesus christ", "jesus", "holy ghost", "holy spirit", "emmanuel", "god with us"].includes(text)) return "I";
+  if (["divine_messenger", "angelic_messenger"].includes(type) || /angel of (?:the )?lord/i.test(mentionText)) return "II";
+  if (["human", "prophet", "author", "narrator", "lineage_person", "traditional_author", "source_author"].includes(type) ||
+      ["named_entity", "role_title", "group_collective", "lineage_person"].includes(mentionType) ||
+      /human|author|narrator|lineage|recipient|participant|wife|mother|virgin|people|brethren/.test(role)) return "III";
+  if (["animal", "plant", "living_organism"].includes(type)) return "IIII";
+  if (["object", "place", "artifact", "symbolic_item"].includes(type) || ["object_item", "place", "symbolic_reference"].includes(mentionType)) return "IIIII";
+  return "";
+}
+
+function mentionTypeForEntity(entity = {}) {
+  const entityType = entity.entityType || "";
+  const roles = new Set((entity.roleTypes || []).map((role) => normalizeWhitespace(role).toLowerCase()));
+  if (["divine_authority", "divine", "divine_redeemer"].includes(entityType)) return "divine_title";
+  if (["divine_messenger", "angelic_messenger"].includes(entityType)) return "named_entity";
+  if (entityType === "lineage_person" || roles.has("lineageperson")) return "lineage_person";
+  return "named_entity";
+}
+
+function createMentionRecord(capture, config) {
+  const sourceContext = config.sourceContext || buildSourceContext(capture || {});
+  const mentionText = normalizeWhitespace(config.mentionText || "");
+  if (!mentionText) return null;
+  const mentionType = config.mentionType || "named_entity";
+  const entityClass = config.entityClass || entityClassForMention({
+    mentionText,
+    mentionType,
+    entityType: config.entityType || "",
+    roleHint: config.roleHint || ""
+  });
+  const key = [
+    sourceContext.sourceCaptureId || config.sourceCaptureId || capture?.id || "",
+    mentionText.toLowerCase(),
+    mentionType,
+    config.linkedEntity || "",
+    config.sentenceIndex ?? "",
+    config.sourcePhrase || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(`mention|${key}`)}`,
+    sourceCaptureId: sourceContext.sourceCaptureId || config.sourceCaptureId || capture?.id || "",
+    sourceContext,
+    mentionText,
+    normalizedText: mentionText.toLowerCase(),
+    mentionType,
+    entityClass,
+    linkedEntity: config.linkedEntity || "",
+    roleHint: config.roleHint || "",
+    sourcePhrase: trimText(config.sourcePhrase || mentionText, 180),
+    verseNumber: config.verseNumber || inferVerseNumberFromText(config.sourcePhrase || mentionText),
+    sentenceIndex: typeof config.sentenceIndex === "number" ? config.sentenceIndex : "",
+    scopePath: config.scopePath || [
+      sourceContext.collection || sourceContext.sourceType || "source",
+      sourceContext.book || sourceContext.sourceTitle || "unknown-source",
+      sourceContext.chapter ? `chapter:${sourceContext.chapter}` : ""
+    ].filter(Boolean).join(" > "),
+    confidence: config.confidence || "probable"
+  };
+}
+
+function addMention(mentions, seen, capture, config) {
+  const item = createMentionRecord(capture, config);
+  if (!item) return;
+  const key = [
+    item.sourceCaptureId,
+    item.normalizedText,
+    item.mentionType,
+    item.linkedEntity,
+    item.sentenceIndex,
+    normalizeWhitespace(item.sourcePhrase).toLowerCase()
+  ].join("|");
+  if (seen.has(key)) return;
+  seen.add(key);
+  mentions.push(item);
+}
+
+function addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, pattern, configForMatch) {
+  pattern.lastIndex = 0;
+  let match;
+  while ((match = pattern.exec(sentence)) !== null) {
+    addMention(mentions, seen, capture, {
+      ...configForMatch(match[0], match),
+      sourcePhrase: sentence,
+      sentenceIndex,
+      verseNumber: inferVerseNumberFromText(sentence)
+    });
+  }
+}
+
+function createMentionIndex(captures, eventItems, entityRoleItems, entityRegistry, canonicalIdentities, domSemanticHints = []) {
+  const mentions = [];
+  const seen = new Set();
+  const captureById = new Map((captures || []).map((capture) => [capture.id || "", capture]));
+  const fallbackCapture = captures?.[0] || {};
+
+  for (const hint of domSemanticHints || []) {
+    if (!["deity_name", "uppercase_title"].includes(hint.hintType)) continue;
+    const capture = captureById.get(hint.sourceCaptureId || "") || fallbackCapture;
+    addMention(mentions, seen, capture, {
+      sourceContext: hint.sourceContext || buildSourceContext(capture),
+      mentionText: hint.text,
+      mentionType: "divine_title",
+      linkedEntity: canonicalEntityName(hint.text || ""),
+      roleHint: `source DOM markup: ${hint.hintType}`,
+      sourcePhrase: hint.text,
+      verseNumber: hint.verseNumber || inferVerseNumberFromText(hint.text || ""),
+      scopePath: hint.scopePath || "",
+      confidence: hint.confidence || "source-markup"
+    });
+  }
+
+  for (const entity of entityRegistry || []) {
+    const context = entity.sourceContexts?.[0] || buildSourceContext(fallbackCapture);
+    addMention(mentions, seen, fallbackCapture, {
+      sourceContext: context,
+      mentionText: entity.displayName || entity.canonicalName,
+      mentionType: mentionTypeForEntity(entity),
+      entityType: entity.entityType || "",
+      linkedEntity: entity.canonicalName || "",
+      roleHint: (entity.roleTypes || []).slice(0, 4).join(", "),
+      sourcePhrase: entity.mentions?.[0]?.anchorText || entity.mentions?.[0]?.evidence || entity.canonicalName || "",
+      confidence: entity.confidence || "probable"
+    });
+  }
+
+  for (const identity of canonicalIdentities || []) {
+    const context = identity.sourceContexts?.[0] || buildSourceContext(fallbackCapture);
+    addMention(mentions, seen, fallbackCapture, {
+      sourceContext: context,
+      mentionText: identity.canonicalName,
+      mentionType: ["divine_authority", "divine", "divine_redeemer"].includes(identity.entityType) ? "divine_title" : "named_entity",
+      entityType: identity.entityType || "",
+      linkedEntity: identity.canonicalName || "",
+      roleHint: identity.identityScope || "canonical identity",
+      sourcePhrase: identity.evidencePhrases?.[0] || identity.canonicalName || "",
+      confidence: identity.confidence || "probable"
+    });
+  }
+
+  for (const role of entityRoleItems || []) {
+    const capture = captureById.get(role.sourceCaptureId || "") || fallbackCapture;
+    addMention(mentions, seen, capture, {
+      sourceContext: role.sourceContext || buildSourceContext(capture),
+      mentionText: role.entityName,
+      mentionType: role.roleGroup === "Lineage Persons" ? "lineage_person" : "named_entity",
+      linkedEntity: canonicalEntityName(role.entityName || ""),
+      roleHint: role.roleGroup || "entity role",
+      sourcePhrase: role.anchorText || role.evidence || role.entityName || "",
+      confidence: role.confidence || "probable"
+    });
+  }
+
+  for (const item of eventItems || []) {
+    const capture = captureById.get(item.sourceCaptureId || "") || fallbackCapture;
+    for (const name of item.lineagePersons || []) {
+      addMention(mentions, seen, capture, {
+        sourceContext: item.sourceContext || buildSourceContext(capture),
+        mentionText: name,
+        mentionType: "lineage_person",
+        linkedEntity: canonicalEntityName(name),
+        roleHint: "lineage person",
+        sourcePhrase: item.eventText || name,
+        sentenceIndex: item.sequenceIndex,
+        verseNumber: inferVerseNumberFromText(item.eventText || ""),
+        confidence: "explicit"
+      });
+    }
+  }
+
+  for (const capture of captures || []) {
+    splitSentences(capture.text || "").forEach((sentence, sentenceIndex) => {
+      addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, DIVINE_TITLE_MENTION_PATTERN, (mentionText) => ({
+        mentionText,
+        mentionType: "divine_title",
+        linkedEntity: canonicalEntityName(mentionText),
+        roleHint: "divine title/reference",
+        confidence: "probable"
+      }));
+      addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, ANGEL_MENTION_PATTERN, (mentionText) => ({
+        mentionText,
+        mentionType: "named_entity",
+        entityType: "divine_messenger",
+        linkedEntity: "Angel of THE LORD",
+        roleHint: "divine messenger",
+        confidence: "explicit"
+      }));
+      addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, HUMAN_ROLE_MENTION_PATTERN, (mentionText) => ({
+        mentionText,
+        mentionType: "role_title",
+        roleHint: "human role/title",
+        confidence: "probable"
+      }));
+      addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, HUMAN_GROUP_MENTION_PATTERN, (mentionText) => ({
+        mentionText,
+        mentionType: "group_collective",
+        roleHint: "human group/collective",
+        confidence: "probable"
+      }));
+      addRegexMentions(mentions, seen, capture, sentence, sentenceIndex, PRONOUN_MENTION_PATTERN, (mentionText) => ({
+        mentionText,
+        mentionType: "pronoun",
+        roleHint: "unresolved pronoun; future pronoun resolution should link entity/class by scope",
+        confidence: "possible"
+      }));
+    });
+  }
+
+  // Phase 7.1 keeps mentions separate from canonical identities. Future work can
+  // add pronoun resolution, title-aware SON of David rendering, role/group
+  // distinction, and scope-aware AI_Actor knowledge without promoting every word
+  // into the Entity Registry.
+  return mentions.sort((a, b) =>
+    (a.sourceCaptureId || "").localeCompare(b.sourceCaptureId || "") ||
+    Number(a.sentenceIndex || 0) - Number(b.sentenceIndex || 0) ||
+    a.mentionType.localeCompare(b.mentionType) ||
+    a.normalizedText.localeCompare(b.normalizedText)
+  );
+}
 async function runFullAnalysisPipeline(reason = "manual") {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
@@ -3060,6 +3355,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       }
     }
 
+    const domSemanticHints = createDomSemanticHints(captures);
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
@@ -3108,6 +3404,14 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticEvents,
       entityRoleItems
     );
+    const mentionIndex = createMentionIndex(
+      captures,
+      eventItems,
+      entityRoleItems,
+      entityRegistry,
+      canonicalIdentities,
+      domSemanticHints
+    );
     const status = {
       reason,
       captureCount: captures.length,
@@ -3125,6 +3429,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRegistryCount: entityRegistry.length,
       relationshipGraphCount: relationshipGraph.length,
       canonicalIdentityCount: canonicalIdentities.length,
+      mentionCount: mentionIndex.length,
+      domHintCount: domSemanticHints.length,
       analyzedAt: new Date().toISOString()
     };
 
@@ -3143,6 +3449,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ENTITY_REGISTRY_KEY]: entityRegistry,
       [RELATIONSHIP_GRAPH_KEY]: relationshipGraph,
       [CANONICAL_IDENTITIES_KEY]: canonicalIdentities,
+      [MENTION_INDEX_KEY]: mentionIndex,
+      [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
       [ANALYSIS_STATUS_KEY]: status
     });
 

@@ -77,6 +77,7 @@
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
+  const DOM_HINT_LIMIT = 250;
 
   let engine;
   let settings = { ...DEFAULT_SETTINGS };
@@ -326,6 +327,7 @@
       charCount: capture.characterCount || capture.charCount || 0,
       divineReferenceCount: capture.divineReferenceCount || 0,
       text: capture.text || "",
+      domSemanticHints: capture.domSemanticHints || [],
       textHash: hash
     };
   }
@@ -530,6 +532,194 @@
     return document.body;
   }
 
+
+  function domSelectorHint(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return "";
+    if (element.id) return `#${CSS.escape(element.id)}`;
+
+    const parts = [];
+    let current = element;
+    while (current && current.nodeType === Node.ELEMENT_NODE && parts.length < 4) {
+      let part = current.tagName.toLowerCase();
+      const className = Array.from(current.classList || []).slice(0, 2).join(".");
+      if (className) part += `.${className}`;
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return parts.join(" > ");
+  }
+
+  function nearestVerseScope(element) {
+    return element?.closest?.("[data-eng-ref], .verse, p[id^='p']");
+  }
+
+  function verseRefFromScope(scope) {
+    if (!scope) return "";
+    return scope.getAttribute("data-eng-ref") || "";
+  }
+
+  function verseNumberFromScope(scope) {
+    const verseRef = verseRefFromScope(scope);
+    const refMatch = verseRef.match(/(?:^|:)(\d+)$/);
+    if (refMatch) return refMatch[1];
+
+    const idMatch = (scope?.id || "").match(/^p?(\d+)$/i);
+    return idMatch ? idMatch[1] : "";
+  }
+
+  function sourceDomPathForScope(scope) {
+    const verseRef = verseRefFromScope(scope);
+    const verseNumber = verseNumberFromScope(scope);
+    if (verseRef) return `verse:${verseRef}`;
+    if (verseNumber) return `verse:${verseNumber}`;
+    return scope ? domSelectorHint(scope) : "";
+  }
+
+  function elementText(element) {
+    return normalizeCapturedText(element?.textContent || "");
+  }
+
+  function hintAttributes(element, names) {
+    const attributes = {};
+    for (const name of names) {
+      const value = element?.getAttribute?.(name);
+      if (value) attributes[name] = value;
+    }
+    return attributes;
+  }
+
+  function createDomSemanticHint(capture, hintType, element, text, metadata = {}) {
+    const verseScope = nearestVerseScope(element);
+    const verseRef = metadata.verseRef || verseRefFromScope(verseScope);
+    const verseNumber = metadata.verseNumber || verseNumberFromScope(verseScope);
+    const normalizedText = normalizeCapturedText(text || elementText(element));
+    if (!normalizedText) return null;
+
+    return {
+      id: `${Date.now()}-${textHash([
+        capture.id || capture.url || "",
+        hintType,
+        verseRef,
+        verseNumber,
+        normalizedText,
+        domSelectorHint(element)
+      ].join("|"))}`,
+      sourceCaptureId: capture.id || "",
+      sourceUrl: capture.url || location.href,
+      sourceContext: {
+        sourceCaptureId: capture.id || "",
+        sourceTitle: capture.title || document.title || "",
+        sourceUrl: capture.url || location.href,
+        sourceType: /\/scriptures\//i.test(location.href) ? "scripture" : "unknown",
+        collection: /\/scriptures\//i.test(location.href) ? "scripture" : "unknown"
+      },
+      hintType,
+      text: normalizedText,
+      normalizedText: normalizedText.toLowerCase(),
+      verseRef,
+      verseNumber,
+      domId: metadata.domId || element?.id || verseScope?.id || "",
+      selectorHint: metadata.selectorHint || domSelectorHint(element),
+      attributes: metadata.attributes || {},
+      confidence: metadata.confidence || "source-markup",
+      source: metadata.source || "dom",
+      scopePath: metadata.scopePath || sourceDomPathForScope(verseScope),
+      originalText: metadata.originalText || "",
+      entityClass: metadata.entityClass || "",
+      noHighlight: Boolean(metadata.noHighlight)
+    };
+  }
+
+  function pushDomHint(hints, seen, capture, hintType, element, text, metadata = {}) {
+    if (!element || hints.length >= DOM_HINT_LIMIT) return;
+    const hint = createDomSemanticHint(capture, hintType, element, text, metadata);
+    if (!hint) return;
+    const key = [
+      hint.hintType,
+      hint.normalizedText,
+      hint.verseRef,
+      hint.verseNumber,
+      hint.domId,
+      hint.selectorHint
+    ].join("|");
+    if (seen.has(key)) return;
+    seen.add(key);
+    hints.push(hint);
+  }
+
+  function extractDomSemanticHints(capture) {
+    const hints = [];
+    const seen = new Set();
+
+    // Phase 7.2 optional DOM enrichment. Future site adapters can refine this
+    // into LDS scripture, BibleGateway, conference talk, generic article, and
+    // DOM-to-scopePath ingestion without replacing the plain-text fallback.
+    for (const verse of Array.from(document.querySelectorAll("[data-eng-ref], p.verse, .verse")).slice(0, DOM_HINT_LIMIT)) {
+      pushDomHint(hints, seen, capture, "verse_scope", verse, elementText(verse), {
+        domId: verse.id || "",
+        selectorHint: domSelectorHint(verse),
+        attributes: hintAttributes(verse, ["id", "class", "data-eng-ref"]),
+        confidence: "source-markup",
+        scopePath: sourceDomPathForScope(verse)
+      });
+    }
+
+    for (const deity of Array.from(document.querySelectorAll(".deity-name")).slice(0, DOM_HINT_LIMIT)) {
+      pushDomHint(hints, seen, capture, "deity_name", deity, elementText(deity), {
+        attributes: hintAttributes(deity, ["id", "class", "data-eng-ref"]),
+        confidence: "source-markup"
+      });
+    }
+
+    for (const uppercase of Array.from(document.querySelectorAll(".deity-name .uppercase, .uppercase")).slice(0, DOM_HINT_LIMIT)) {
+      pushDomHint(hints, seen, capture, "uppercase_title", uppercase, elementText(uppercase), {
+        attributes: hintAttributes(uppercase, ["id", "class", "data-eng-ref"]),
+        confidence: "source-markup"
+      });
+    }
+
+    for (const note of Array.from(document.querySelectorAll("a.study-note-ref")).slice(0, DOM_HINT_LIMIT)) {
+      const href = note.getAttribute("href") || "";
+      const linkedText = elementText(note);
+      const labelText = note.getAttribute("aria-label") || note.getAttribute("title") || "";
+      const attributes = {
+        ...hintAttributes(note, ["id", "class", "href", "aria-label", "title"]),
+        marker: linkedText,
+        linkedText,
+        labelText
+      };
+      pushDomHint(hints, seen, capture, "study_note_ref", note, linkedText || labelText, {
+        domId: note.id || "",
+        attributes,
+        confidence: "source-markup"
+      });
+      pushDomHint(hints, seen, capture, "source_marker", note, linkedText || labelText, {
+        domId: note.id || "",
+        attributes,
+        confidence: "source-markup"
+      });
+      if (/cross|ref/i.test(href) || /cross|ref/i.test(note.className || "")) {
+        pushDomHint(hints, seen, capture, "cross_reference_ref", note, linkedText || labelText, {
+          domId: note.id || "",
+          attributes,
+          confidence: "source-markup"
+        });
+      }
+    }
+
+    for (const rendered of Array.from(document.querySelectorAll(`.${FORMATTER_CLASS}`)).slice(0, DOM_HINT_LIMIT)) {
+      pushDomHint(hints, seen, capture, "ice_rendered_reference", rendered, elementText(rendered), {
+        attributes: hintAttributes(rendered, ["id", "class", "title", "data-original-text"]),
+        originalText: rendered.dataset.originalText || "",
+        entityClass: Array.from(rendered.classList || []).find((name) => /^I+$/.test(name)) || "",
+        noHighlight: rendered.classList?.contains("ice-no-highlight") || false,
+        confidence: "render-debug",
+        source: "ice-render"
+      });
+    }
+
+    return hints;
+  }
   function wordCount(text) {
     return text ? text.split(/\s+/).filter(Boolean).length : 0;
   }
@@ -540,7 +730,8 @@
     // Phase 2 foundation: this local capture object is the future input for a
     // document library, timeline extraction, and historical analysis. No
     // backend, AI calls, or timeline UI are attached in Phase 2.
-    return {
+    const capture = {
+      id: `${Date.now()}-${textHash(`${location.href}|${capturedText}`)}`,
       title: document.title || "",
       url: location.href,
       text: capturedText,
@@ -549,6 +740,8 @@
       divineReferenceCount: engine.countDivineReferences(capturedText),
       capturedAt: new Date().toISOString()
     };
+    capture.domSemanticHints = extractDomSemanticHints(capture);
+    return capture;
   }
 
   async function capturePageText() {

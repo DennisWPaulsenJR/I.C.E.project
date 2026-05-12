@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     entityRegistry: "ICE_ENTITY_REGISTRY",
     relationshipGraph: "ICE_RELATIONSHIP_GRAPH",
     canonicalIdentities: "ICE_CANONICAL_IDENTITIES",
+    mentionIndex: "ICE_MENTION_INDEX",
+    domSemanticHints: "ICE_DOM_SEMANTIC_HINTS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1167,6 +1169,138 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
     }, "No canonical identities match.", "identity");
   }
+  function mentionSearchText(item) {
+    return [
+      item.mentionText,
+      item.normalizedText,
+      item.mentionType,
+      item.entityClass,
+      item.linkedEntity,
+      item.roleHint,
+      item.sourcePhrase,
+      item.scopePath,
+      item.confidence
+    ].join(" ");
+  }
+
+
+  function domSemanticHintSearchText(item) {
+    return [
+      item.hintType,
+      item.text,
+      item.normalizedText,
+      item.verseRef,
+      item.verseNumber,
+      item.domId,
+      item.selectorHint,
+      item.confidence,
+      item.source,
+      item.originalText,
+      item.entityClass,
+      item.noHighlight ? "no-highlight" : "",
+      item.scopePath,
+      item.sourceContext?.book,
+      item.sourceContext?.chapter
+    ].join(" ");
+  }
+
+  function domHintSummary(items) {
+    const counts = new Map();
+    for (const item of items) {
+      const key = item.hintType || "unknown";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key, value]) => `${key}: ${value}`)
+      .join("\n");
+  }
+
+  function renderDomSemanticHints(term) {
+    const container = document.getElementById("domSemanticHintCards");
+    const count = document.getElementById("domSemanticHintCount");
+    const hints = asArray(studyData.domSemanticHints);
+    const filtered = hints.filter((item) => matchesSearchQuery(domSemanticHintSearchText(item), term));
+
+    clearElement(container);
+    count.textContent = `${filtered.length} total`;
+
+    if (filtered.length === 0) {
+      appendEmpty(container, hints.length === 0 ? "No DOM semantic hints detected." : "No DOM semantic hints match.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Hint Types",
+      domHintSummary(filtered),
+      "optional source DOM enrichment"
+    ));
+
+    const preview = filtered.slice(0, 5).map((item) => {
+      const ref = item.verseRef || item.verseNumber || "no verse ref";
+      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
+    }).join("\n");
+    container.appendChild(createCard(
+      "DOM Hint Preview",
+      preview,
+      `${Math.max(filtered.length - 5, 0)} more hidden by preview limit`
+    ));
+  }
+  function mentionSummary(items, keyName) {
+    const counts = new Map();
+    for (const item of items) {
+      const key = item[keyName] || "unclassified";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key, value]) => `${key}: ${value}`)
+      .join("\n");
+  }
+
+  function mentionClassSummary(items) {
+    const counts = new Map();
+    for (const item of items) {
+      const key = item.entityClass ? entityClassLabel(item.entityClass) : "Unclassified";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key, value]) => `${key}: ${value}`)
+      .join("\n");
+  }
+
+  function renderMentionIndex(term) {
+    const container = document.getElementById("mentionIndexCards");
+    const count = document.getElementById("mentionIndexCount");
+    const mentions = asArray(studyData.mentionIndex);
+    const filtered = mentions.filter((item) => matchesSearchQuery(mentionSearchText(item), term));
+
+    clearElement(container);
+    count.textContent = `${filtered.length} total`;
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No mention index items match.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Mention Types",
+      mentionSummary(filtered, "mentionType"),
+      "mentions are separate from canonical entities"
+    ));
+    container.appendChild(createCard(
+      "Entity Classes",
+      mentionClassSummary(filtered),
+      "display classification only"
+    ));
+
+    const preview = filtered.slice(0, 5).map((item) => {
+      const classLabel = item.entityClass ? entityClassLabel(item.entityClass) : "Unclassified";
+      return `${item.mentionText} | ${item.mentionType} | ${classLabel}${item.linkedEntity ? ` | linked: ${item.linkedEntity}` : ""}${item.roleHint ? ` | ${item.roleHint}` : ""}`;
+    }).join("\n");
+    container.appendChild(createCard("Mention Preview", preview, `${Math.max(filtered.length - 5, 0)} more hidden by preview limit`));
+  }
   function renderActors(term) {
     const container = document.getElementById("actorCards");
     const count = document.getElementById("actorCount");
@@ -1484,10 +1618,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderFocusedGraph(term);
       renderCurrentPage(term);
       renderSourceContext(term);
+      renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
       renderRelationshipGraph(term);
       renderCanonicalIdentities(term);
+      renderMentionIndex(term);
       renderActors(term);
       renderScenes(term);
       renderSemanticEvents(term);
@@ -1532,6 +1668,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       entityRegistry: countItems(studyData.entityRegistry),
       relationshipGraph: countItems(studyData.relationshipGraph),
       canonicalIdentities: countItems(studyData.canonicalIdentities),
+      mentions: countItems(studyData.mentionIndex),
+      domHints: countItems(studyData.domSemanticHints),
       principles: countItems(studyData.principleItems),
       prophecyLinks: countItems(studyData.prophecyLinks),
       lastAnalysis: studyData.analysisStatus?.analyzedAt || ""
@@ -1552,10 +1690,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const entityRegistryCount = countItems(studyData.entityRegistry);
     const relationshipGraphCount = countItems(studyData.relationshipGraph);
     const canonicalIdentityCount = countItems(studyData.canonicalIdentities);
+    const entityClassCount = classifiedEntityCount();
+    const mentionCount = countItems(studyData.mentionIndex);
+    const domHintCount = countItems(studyData.domSemanticHints);
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount +
+      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
       principleCount + prophecyLinkCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -1572,6 +1713,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticEntityRegistry").textContent = entityRegistryCount;
     document.getElementById("diagnosticRelationshipGraph").textContent = relationshipGraphCount;
     document.getElementById("diagnosticCanonicalIdentities").textContent = canonicalIdentityCount;
+    document.getElementById("diagnosticEntityClasses").textContent = entityClassCount;
+    document.getElementById("diagnosticMentions").textContent = mentionCount;
+    document.getElementById("diagnosticDomHints").textContent = domHintCount;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;
