@@ -689,6 +689,122 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createEntityRoleCard(group));
     }
   }
+  // Roadmap only: future semantic/glorified rendering should map resolved
+  // entityType -> entityClass -> renderClass. Do not classify by word alone;
+  // use entity resolution, context, relationship, confidence, and source scope.
+  // I = GOD / Divine Authority
+  // II = AngEL / Messenger of GOD
+  // III = Human
+  // IIII = Other living organisms
+  // IIIII = Non-living items / objects
+  // IIIIII = Anti-GOD / adversary
+  const FUTURE_ENTITY_CLASSES = Object.freeze({
+    I: Object.freeze({
+      label: "GOD / Divine Authority",
+      rank: 1,
+      entityTypes: Object.freeze(["divine_authority", "divine_redeemer"]),
+      examples: Object.freeze(["GOD", "THE LORD", "YHWH", "JESUS CHRIST"]),
+      renderClass: "I"
+    }),
+    II: Object.freeze({
+      label: "AngEL / Messenger of GOD",
+      rank: 2,
+      entityTypes: Object.freeze(["divine_messenger", "angelic_messenger"]),
+      examples: Object.freeze(["Angel of THE LORD", "AngEL", "Gabriel"]),
+      renderClass: "II"
+    }),
+    III: Object.freeze({
+      label: "Human",
+      rank: 3,
+      entityTypes: Object.freeze(["human", "prophet", "author", "narrator", "lineage_person"]),
+      examples: Object.freeze(["Joseph", "Mary", "Matthew", "Abraham"]),
+      renderClass: "III"
+    }),
+    IIII: Object.freeze({
+      label: "Other living organisms",
+      rank: 4,
+      entityTypes: Object.freeze(["animal", "plant", "living_organism"]),
+      examples: Object.freeze(["lamb", "dove", "fig tree"]),
+      renderClass: "IIII"
+    }),
+    IIIII: Object.freeze({
+      label: "Non-living items / objects",
+      rank: 5,
+      entityTypes: Object.freeze(["object", "place", "artifact", "symbolic_item"]),
+      examples: Object.freeze(["altar", "temple", "stone", "rod"]),
+      renderClass: "IIIII"
+    }),
+    IIIIII: Object.freeze({
+      label: "Anti-GOD / adversary",
+      rank: 6,
+      entityTypes: Object.freeze(["adversary", "anti_god", "deceiver"]),
+      examples: Object.freeze(["satan", "lucifer", "adversary", "perdition"]),
+      renderClass: "IIIIII"
+    })
+  });
+  function entityClassRecord(entityClass) {
+    return FUTURE_ENTITY_CLASSES[entityClass] || null;
+  }
+
+  function entityClassLabel(entityClass) {
+    const record = entityClassRecord(entityClass);
+    return record ? `${record.renderClass} - ${record.label}` : "Unclassified";
+  }
+
+  function classifyEntityDisplay(item = {}) {
+    const canonicalName = normalizeText(item.canonicalName || item.displayName || item.entityName || item.name || "");
+    const normalizedName = canonicalName.toLowerCase();
+    const entityType = normalizeText(item.entityType || "").toLowerCase();
+    const roleTypes = new Set(asArray(item.roleTypes).map((role) => normalizeText(role).toLowerCase()));
+    const aliases = asArray(item.aliases).map((alias) => normalizeText(alias).toLowerCase());
+    const surfaces = asArray(item.surfaceForms).map((surface) => normalizeText(surface).toLowerCase());
+    const identityScope = normalizeText(item.identityScope || "").toLowerCase();
+    const relationshipText = asArray(item.relationships)
+      .map((relationship) => [relationship.relationshipType, relationship.target, relationship.evidence].join(" "))
+      .join(" ")
+      .toLowerCase();
+    const allNames = [normalizedName, ...aliases, ...surfaces].filter(Boolean);
+    const hasExactName = (names) => allNames.some((name) => names.includes(name));
+
+    // Display-only Phase 6.5 classifier. It intentionally depends on resolved
+    // entity metadata and role/context signals, not raw substrings inside words.
+    if (["adversary", "anti_god", "deceiver"].includes(entityType) ||
+        hasExactName(["satan", "lucifer", "adversary", "perdition"])) {
+      return "IIIIII";
+    }
+
+    if (["divine_authority", "divine_redeemer"].includes(entityType) ||
+        hasExactName(["god", "the lord", "yhwh", "jesus christ", "jesus"]) ||
+        (entityType === "divine" && (roleTypes.has("divineglorifiedentity") || roleTypes.has("lineagefocus") || /retrospective identity: christ|source title: jesus christ/.test(identityScope)))) {
+      return "I";
+    }
+
+    if (["divine_messenger", "angelic_messenger"].includes(entityType) ||
+        hasExactName(["angel of the lord"]) ||
+        /authoritysource|messenger|divine messenger/.test(relationshipText)) {
+      return "II";
+    }
+
+    if (["human", "prophet", "author", "narrator", "lineage_person", "traditional_author", "source_author"].includes(entityType) ||
+        roleTypes.has("traditionalauthor") || roleTypes.has("sourcemetadata") || roleTypes.has("lineageperson")) {
+      return "III";
+    }
+
+    if (["animal", "plant", "living_organism"].includes(entityType)) return "IIII";
+    if (["object", "place", "artifact", "symbolic_item"].includes(entityType)) return "IIIII";
+
+    return "";
+  }
+
+  function classifiedEntityCount() {
+    const keys = new Set();
+    for (const item of [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]) {
+      const entityClass = classifyEntityDisplay(item);
+      if (!entityClass) continue;
+      keys.add(`${item.canonicalName || item.displayName || item.entityName || item.name || "entity"}|${entityClass}`);
+    }
+    return keys.size;
+  }
   // Default Study Panel order uses Source / Authority flow for passage comprehension.
   // Future display modes can offer Source / Authority Order, chronological
   // mention order, Christ-centered / redemptive order, entity type order,
@@ -736,15 +852,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? `; ${roleTypes.length - 5} more role(s)`
         : "";
       const aliasPreview = aliases.slice(0, 3).join(", ");
+      const entityClass = classifyEntityDisplay(entity);
+      const classLine = entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified";
 
       return createCard(
         entity.displayName || entity.canonicalName || "Entity",
         [
+          classLine,
           `Type: ${entity.entityType || "entity"}`,
           `Roles: ${rolesPreview}${roleOverflow}`,
           `Mentions: ${mentions.length}`,
           `Relationships: ${relationships.length}`
-        ].join(" "),
+        ].join("\n"),
         aliasPreview ? `Aliases: ${aliasPreview}` : "derived graph node"
       );
     }, "No entity registry entries match.", "entity");
@@ -995,12 +1114,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderBucket("Relationships", buckets.relationships, (edge) =>
       `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"} | ${edge.relationshipType || "relationship"} | ${edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 80)}` : edge.derivedFrom || "derived"}`
     );
-    renderBucket("Entity Registry nodes", buckets.entities, (entity) =>
-      `${entity.displayName || entity.canonicalName || "Entity"} | ${entity.entityType || "entity"} | ${asArray(entity.roleTypes).slice(0, 4).join(", ") || "No roles yet"}`
-    );
-    renderBucket("Canonical Identities", buckets.canonicalIdentities, (identity) =>
-      `${identity.canonicalName || "Canonical identity"} | ${identity.identityScope || "source-mentioned"}`
-    );
+    renderBucket("Entity Registry nodes", buckets.entities, (entity) => {
+      const entityClass = classifyEntityDisplay(entity);
+      return `${entity.displayName || entity.canonicalName || "Entity"} | ${entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified"} | ${entity.entityType || "entity"} | ${asArray(entity.roleTypes).slice(0, 4).join(", ") || "No roles yet"}`;
+    });
+    renderBucket("Canonical Identities", buckets.canonicalIdentities, (identity) => {
+      const entityClass = classifyEntityDisplay(identity);
+      return `${identity.canonicalName || "Canonical identity"} | ${entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified"} | ${identity.identityScope || "source-mentioned"}`;
+    });
     renderBucket("Semantic Events", buckets.semanticEvents, (item) => {
       const target = item.target || item.recipient || item.concerning || "";
       return `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${target ? ` -> ${target}` : ""} | ${item.anchorText || trimText(item.sourceSnippet, 80)}`;
@@ -1033,9 +1154,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderLimited(container, filtered, count, (identity) => {
       const aliases = asArray(identity.aliases).slice(0, 5).join(", ") || "No aliases yet";
       const surfaces = asArray(identity.surfaceForms).slice(0, 4).join(", ");
+      const entityClass = classifyEntityDisplay(identity);
       return createCard(
         identity.canonicalName || "Canonical identity",
         [
+          entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified",
           `Aliases: ${aliases}`,
           `Identity scope: ${identity.identityScope || "source-mentioned"}`,
           surfaces ? `Surface forms: ${surfaces}` : ""
