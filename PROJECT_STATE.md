@@ -133,6 +133,25 @@ The QA harness exports:
 
 Generated `qa-output/` files should remain uncommitted unless intentionally requested.
 
+
+## Collaboration Identity Map
+
+Use these labels in responses, repo logs, and commit messages so parallel desktop/mobile work can be traced:
+
+- `gpt` = PC/browser GPT orchestration lane
+- `mgpt` = mobile GPT orchestration lane
+- `pcdx` = PC/desktop Codex implementation lane
+- `mcdx` = mobile/web Codex implementation lane
+
+Commit message convention:
+- Prefix commits with the actor label when feasible, e.g. `pcdx: Add scope integrity layer` or `mcdx: Verify mobile repo workflow`.
+
+Repo memory convention:
+- Significant instructions, decisions, implementation actions, QA results, and commits should be summarized in repo memory.
+- `PROJECT_STATE.md` remains concise current operational truth.
+- `PROJECT_LOG.md` remains milestone/decision history.
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` records ongoing multi-agent activity updates.
+- Do not paste full chat transcripts unless explicitly requested.
 ## Standing Rules
 
 - Run syntax checks after implementation.

@@ -15,3 +15,6 @@ Recommended naming:
 - `YYYY-MM-topic.md`
 - `YYYY-MM-DD-thread-export.md`
 - `YYYY-MM-phase-notes.md`
+Activity logging:
+- Use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for compact ongoing action updates from `gpt`, `mgpt`, `pcdx`, and `mcdx`.
+- Keep entries concise: actor, timestamp, summary, files touched, checks, commit hash if any, and status.
