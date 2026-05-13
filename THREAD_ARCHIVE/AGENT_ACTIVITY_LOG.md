@@ -181,3 +181,27 @@ Next recommended step:
 
 Status:
 - Implemented locally by MCDX and bridged by PCDX.
+## 2026-05-13 - mcdx - Add direct agent outbox
+
+Task:
+- Create a quick direct-message lane for actor-to-actor handoffs, especially MCDX-to-PCDX instructions.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- MCDX reported `git diff --check` passed locally.
+- MCDX local commit `e8c9567` created the outbox, but MCDX shell GitHub push remains blocked by proxy 403.
+- PCDX recreated and bridged the described outbox convention on desktop.
+
+Commit:
+- MCDX local commit `e8c9567`; bridged by PCDX in this desktop commit.
+
+Next recommended step:
+- Use `THREAD_ARCHIVE/AGENT_OUTBOX.md` for short direct handoff messages and keep `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for completed work history.
+
+Status:
+- Implemented locally by MCDX and bridged by PCDX.

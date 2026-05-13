@@ -147,6 +147,7 @@ Commit message convention:
 - Prefix commits with the actor label when feasible, e.g. `pcdx: Add scope integrity layer` or `mcdx: Verify mobile repo workflow`.
 
 Repo memory convention:
+- Use `THREAD_ARCHIVE/AGENT_OUTBOX.md` for short current direct handoff messages between actors.
 - Before starting any I.C.E. task, read `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 - Significant instructions, decisions, implementation actions, QA results, and commits should be summarized in repo memory.
 - After completing meaningful work, append an entry to `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
@@ -155,6 +156,7 @@ Repo memory convention:
 - `PROJECT_STATE.md` remains concise current operational truth.
 - `PROJECT_LOG.md` remains milestone/decision history.
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` records ongoing multi-agent activity updates.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` records quick current handoff messages and should not replace durable activity logging.
 - Do not paste full chat transcripts unless explicitly requested.
 ## Standing Rules
 
