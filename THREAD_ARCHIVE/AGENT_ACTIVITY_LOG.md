@@ -160,3 +160,24 @@ Next recommended step:
 
 Status:
 - Validated and ready to push
+## 2026-05-13 - mcdx - Report Playwright QA readiness
+
+Task:
+- Improve the Matthew 1 QA harness so missing Playwright still writes a structured QA bundle and reports setup readiness cleanly.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- MCDX local commit `7165634` reported the change locally, but MCDX shell GitHub push remains blocked by proxy 403.
+- PCDX recreated the described harness behavior from the MCDX status report.
+
+Commit:
+- MCDX local commit `7165634`; bridged by PCDX in this desktop commit.
+
+Next recommended step:
+- PCDX should validate and push the QA-readiness harness update to `origin/master`.
+
+Status:
+- Implemented locally by MCDX and bridged by PCDX.

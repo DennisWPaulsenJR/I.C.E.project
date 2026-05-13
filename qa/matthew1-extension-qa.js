@@ -44,16 +44,17 @@ const CLEAR_KEYS = [
   "ICE_SOURCE_ADAPTERS"
 ];
 
-function requirePlaywright() {
+function loadPlaywright() {
   try {
-    return require("playwright");
+    return {
+      playwright: require("playwright"),
+      error: null
+    };
   } catch (error) {
-    console.error("FAIL: Playwright is not installed.");
-    console.error("Setup commands:");
-    console.error("  npm install");
-    console.error("  npx playwright install chromium");
-    console.error(`Original error: ${error.message}`);
-    process.exit(1);
+    return {
+      playwright: null,
+      error
+    };
   }
 }
 
@@ -63,6 +64,84 @@ function count(value) {
 
 function sample(items, size = 3) {
   return Array.isArray(items) ? items.slice(0, size) : items || null;
+}
+
+function emptyCounts() {
+  return {
+    latestCapture: 0,
+    domSemanticHints: 0,
+    mentionIndex: 0,
+    entityRegistry: 0,
+    relationshipGraph: 0,
+    canonicalIdentities: 0,
+    semanticEvents: 0,
+    semanticFlowChains: 0
+  };
+}
+
+function buildCounts(storageData) {
+  return {
+    latestCapture: count(storageData.ICE_LATEST_CAPTURE),
+    domSemanticHints: count(storageData.ICE_DOM_SEMANTIC_HINTS),
+    mentionIndex: count(storageData.ICE_MENTION_INDEX),
+    entityRegistry: count(storageData.ICE_ENTITY_REGISTRY),
+    relationshipGraph: count(storageData.ICE_RELATIONSHIP_GRAPH),
+    canonicalIdentities: count(storageData.ICE_CANONICAL_IDENTITIES),
+    semanticEvents: count(storageData.ICE_SEMANTIC_EVENTS),
+    semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS)
+  };
+}
+
+function buildSamples(storageData) {
+  return {
+    activeAdapter: storageData.ICE_ACTIVE_ADAPTER || null,
+    domSemanticHints: sample(storageData.ICE_DOM_SEMANTIC_HINTS, 5),
+    mentionIndex: sample(storageData.ICE_MENTION_INDEX, 5),
+    entityRegistry: sample(storageData.ICE_ENTITY_REGISTRY, 5),
+    relationshipGraph: sample(storageData.ICE_RELATIONSHIP_GRAPH, 10),
+    canonicalIdentities: sample(storageData.ICE_CANONICAL_IDENTITIES, 5),
+    semanticEvents: sample(storageData.ICE_SEMANTIC_EVENTS, 5),
+    semanticFlowChains: sample(storageData.ICE_SEMANTIC_FLOW_CHAINS, 3),
+    scopeIntegrity: storageData.ICE_SCOPE_INTEGRITY || null,
+    analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
+  };
+}
+
+function writeQaBundle(bundle) {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(bundle, null, 2));
+  return OUTPUT_FILE;
+}
+
+function buildMissingPlaywrightBundle(error) {
+  return {
+    testedAt: new Date().toISOString(),
+    url: TEST_URL,
+    pageTitle: "",
+    pass: false,
+    failureType: "missing-playwright",
+    failures: [
+      "Playwright is not installed.",
+      "Run npm install and npx playwright install chromium.",
+      `Original error: ${error.message}`
+    ],
+    counts: emptyCounts(),
+    samples: {},
+    pageHtmlSample: "",
+    mainContentHtmlSample: ""
+  };
+}
+
+function reportMissingPlaywright(error) {
+  const bundle = buildMissingPlaywrightBundle(error);
+  writeQaBundle(bundle);
+  console.error("FAIL: Playwright is not installed.");
+  console.error("Setup commands:");
+  console.error("  npm install");
+  console.error("  npx playwright install chromium");
+  console.error(`Original error: ${error.message}`);
+  console.error(`Bundle: ${OUTPUT_FILE}`);
+  process.exitCode = 1;
 }
 
 function hasCanonicalIdentity(data, name) {
@@ -141,7 +220,13 @@ async function waitForAnalysis(worker, timeoutMs = 45000) {
 }
 
 async function main() {
-  const { chromium } = requirePlaywright();
+  const { playwright, error: playwrightError } = loadPlaywright();
+  if (!playwright) {
+    reportMissingPlaywright(playwrightError);
+    return;
+  }
+
+  const { chromium } = playwright;
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "ice-extension-qa-"));
   const failures = [];
   let context;
@@ -166,7 +251,8 @@ async function main() {
         enabled: true,
         strictMode: true,
         highlightPronouns: true,
-        autoCaptureOnPageLoad: true
+        autoCaptureOnPageLoad: true,
+        showPageOverlay: false
       });
     }, { clearKeys: CLEAR_KEYS });
 
@@ -190,35 +276,15 @@ async function main() {
       url: TEST_URL,
       pageTitle,
       pass: failures.length === 0,
+      failureType: failures.length > 0 ? "assertion-failure" : null,
       failures,
-      counts: {
-        latestCapture: count(storageData.ICE_LATEST_CAPTURE),
-        domSemanticHints: count(storageData.ICE_DOM_SEMANTIC_HINTS),
-        mentionIndex: count(storageData.ICE_MENTION_INDEX),
-        entityRegistry: count(storageData.ICE_ENTITY_REGISTRY),
-        relationshipGraph: count(storageData.ICE_RELATIONSHIP_GRAPH),
-        canonicalIdentities: count(storageData.ICE_CANONICAL_IDENTITIES),
-        semanticEvents: count(storageData.ICE_SEMANTIC_EVENTS),
-        semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS)
-      },
-      samples: {
-        activeAdapter: storageData.ICE_ACTIVE_ADAPTER || null,
-        domSemanticHints: sample(storageData.ICE_DOM_SEMANTIC_HINTS, 5),
-        mentionIndex: sample(storageData.ICE_MENTION_INDEX, 5),
-        entityRegistry: sample(storageData.ICE_ENTITY_REGISTRY, 5),
-        relationshipGraph: sample(storageData.ICE_RELATIONSHIP_GRAPH, 10),
-        canonicalIdentities: sample(storageData.ICE_CANONICAL_IDENTITIES, 5),
-        semanticEvents: sample(storageData.ICE_SEMANTIC_EVENTS, 5),
-        semanticFlowChains: sample(storageData.ICE_SEMANTIC_FLOW_CHAINS, 3),
-        scopeIntegrity: storageData.ICE_SCOPE_INTEGRITY || null,
-        analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
-      },
+      counts: buildCounts(storageData),
+      samples: buildSamples(storageData),
       pageHtmlSample,
       mainContentHtmlSample
     };
 
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    fs.writeFileSync(OUTPUT_FILE, JSON.stringify(bundle, null, 2));
+    writeQaBundle(bundle);
 
     console.log(bundle.pass ? "PASS: Matthew 1 extension QA" : "FAIL: Matthew 1 extension QA");
     console.log(`Bundle: ${OUTPUT_FILE}`);
@@ -230,17 +296,18 @@ async function main() {
     }
   } catch (error) {
     failures.push(error.message);
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    fs.writeFileSync(OUTPUT_FILE, JSON.stringify({
+    writeQaBundle({
       testedAt: new Date().toISOString(),
       url: TEST_URL,
+      pageTitle: page ? await page.title().catch(() => "") : "",
       pass: false,
+      failureType: "runtime-error",
       failures,
-      counts: {},
-      samples: {},
+      counts: buildCounts(storageData),
+      samples: buildSamples(storageData),
       pageHtmlSample: "",
       mainContentHtmlSample: ""
-    }, null, 2));
+    });
     console.error("FAIL: Matthew 1 extension QA");
     console.error(error.stack || error.message);
     console.error(`Bundle: ${OUTPUT_FILE}`);
