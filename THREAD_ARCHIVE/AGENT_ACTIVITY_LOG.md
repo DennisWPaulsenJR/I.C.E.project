@@ -82,3 +82,24 @@ Next recommended step:
 
 Status:
 - Investigated; file not found locally or on `origin/master`
+## 2026-05-12 - pcdx - Record mcdx shell proxy limitation
+
+Task:
+- Record current MCDX repo/network status after mobile Codex confirmed local repo-memory access but shell GitHub operations remain blocked.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- User-provided MCDX status confirms local branch `work`, latest local commit `8ea1156`, repo-memory files present locally, and origin URL correct.
+- MCDX shell commands `git ls-remote`, `git fetch`, `git pull`, `git push`, and raw GitHub curl fail due proxy HTTPS CONNECT 403.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Continue using manual patch bridge for MCDX shell work until proxy allows HTTPS CONNECT to GitHub endpoints. PCDX remains desktop push/pull bridge.
+
+Status:
+- Documented
