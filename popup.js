@@ -245,7 +245,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     enabled: true,
     strictMode: true,
     highlightPronouns: false,
-    autoCaptureOnPageLoad: true
+    autoCaptureOnPageLoad: true,
+    showPageOverlay: false
   };
 
   const settings = await chrome.storage.sync.get(defaults);
@@ -1792,6 +1793,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("autoCaptureOnPageLoad")
     .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
+
+  document.getElementById("showPageOverlay")
+    .addEventListener("change", () => saveSetting("showPageOverlay"));
 
   document.getElementById("runFullAnalysis")
     .addEventListener("click", () => {

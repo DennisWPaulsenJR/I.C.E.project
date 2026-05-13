@@ -2,7 +2,8 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   strictMode: true,
   highlightPronouns: false,
-  autoCaptureOnPageLoad: true
+  autoCaptureOnPageLoad: true,
+  showPageOverlay: false
 };
 const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
 const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";

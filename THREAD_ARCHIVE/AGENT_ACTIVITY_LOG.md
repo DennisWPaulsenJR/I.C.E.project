@@ -103,3 +103,60 @@ Next recommended step:
 
 Status:
 - Documented
+## 2026-05-13 03:00 - mcdx - Add optional live page overlay
+
+Task:
+- Implement the previously planned lightweight page overlay/sidebar without replacing `content.js` or `engine.js`.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks in MCDX.
+- `git diff --check` passed in MCDX.
+- `npm run qa:matthew1` blocked because Playwright is not installed in MCDX.
+- `npm install` blocked by npm registry/proxy 403 for `playwright` in MCDX.
+
+Commit:
+- MCDX local commit `da46522`; bridged by PCDX in this desktop commit.
+
+Next recommended step:
+- PCDX should validate and push because MCDX shell GitHub push remains blocked by proxy 403.
+
+Status:
+- Implemented locally by MCDX and bridged by PCDX.
+## 2026-05-12 - pcdx - Bridge mcdx optional page overlay
+
+Task:
+- Apply MCDX local commit `da46522` through the desktop patch bridge, validate it, and prepare it for GitHub push.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `package-lock.json`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check` passed for `background.js`, `content.js`, `engine.js`, `popup.js`, `study.js`, `pageOverlay.js`, and `qa/matthew1-extension-qa.js`.
+- `manifest.json` and `package.json` JSON parse checks passed.
+- `git diff --check` passed.
+- Installed Playwright dependencies with `npm.cmd install` and `npx.cmd playwright install chromium`.
+- `npm.cmd run qa:matthew1` passed on PCDX with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Push to `origin/master`, then have MCDX read the GitHub repo-browser copy because MCDX shell GitHub access remains proxy-blocked.
+
+Status:
+- Validated and ready to push

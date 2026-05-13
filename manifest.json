@@ -28,7 +28,8 @@
       "matches": ["<all_urls>"],
       "js": [
         "engine.js",
-        "content.js"
+        "content.js",
+        "pageOverlay.js"
       ],
       "css": [
         "styles.css"
