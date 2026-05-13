@@ -40,3 +40,23 @@ Commit:
 
 Status:
 - Implemented
+## 2026-05-12 - pcdx - Add standing repo-memory read/write instruction
+
+Task:
+- Record standing instruction that all I.C.E. actors read project memory before work and append meaningful work updates afterward.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed
+
+Commit:
+- This commit
+
+Next recommended step:
+- Push/pull repo so `mcdx`, `gpt`, and `mgpt` can read the standing instruction from repo memory.
+
+Status:
+- Committed

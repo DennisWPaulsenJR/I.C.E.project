@@ -147,7 +147,11 @@ Commit message convention:
 - Prefix commits with the actor label when feasible, e.g. `pcdx: Add scope integrity layer` or `mcdx: Verify mobile repo workflow`.
 
 Repo memory convention:
+- Before starting any I.C.E. task, read `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 - Significant instructions, decisions, implementation actions, QA results, and commits should be summarized in repo memory.
+- After completing meaningful work, append an entry to `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+- Activity entries should use actor label `pcdx`, `mcdx`, `gpt`, or `mgpt`.
+- Activity entries should include task, files changed, validation, commit hash if committed, and next recommended step.
 - `PROJECT_STATE.md` remains concise current operational truth.
 - `PROJECT_LOG.md` remains milestone/decision history.
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` records ongoing multi-agent activity updates.
