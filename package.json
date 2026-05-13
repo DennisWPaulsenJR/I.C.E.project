@@ -1,0 +1,12 @@
+{
+  "name": "ice-scripture-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development tools for the I.C.E. Manifest V3 scripture study extension.",
+  "scripts": {
+    "qa:matthew1": "node qa/matthew1-extension-qa.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}
