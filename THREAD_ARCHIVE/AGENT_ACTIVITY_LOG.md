@@ -60,3 +60,25 @@ Next recommended step:
 
 Status:
 - Committed
+## 2026-05-12 - pcdx - Investigate mcdx find-me file path negotiation
+
+Task:
+- Look for a new mcdx-created "find me" file and verify whether desktop and mobile Codex are seeing the same repo path/remote state.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- Checked local git status/log.
+- Fetched `origin`.
+- Checked remote branches and searched tracked remote files for find/mcdx/mobile markers.
+
+Commit:
+- Not committed yet
+
+Next recommended step:
+- Push pcdx commits to origin so mcdx can see repo memory files, then ask mcdx for its branch/commit hash if the "find me" file still does not appear.
+
+Status:
+- Investigated; file not found locally or on `origin/master`
