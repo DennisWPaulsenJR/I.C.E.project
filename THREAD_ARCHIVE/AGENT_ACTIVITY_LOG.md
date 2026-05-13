@@ -205,3 +205,29 @@ Next recommended step:
 
 Status:
 - Implemented locally by MCDX and bridged by PCDX.
+## 2026-05-13 05:20 - mcdx - Add repo-visible QA status snapshot
+
+Task:
+- Add a concise QA readiness snapshot so `gpt`, `mgpt`, `pcdx`, and `mcdx` can quickly see current QA commands, supported QA, latest known desktop validation, blockers, and bridge workflow.
+
+Files changed:
+- `QA status.MD`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- MCDX reported `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- MCDX reported `python3 -m json.tool manifest.json` passed.
+- MCDX reported `python3 -m json.tool package.json` passed.
+- MCDX reported `git diff --check` passed.
+- MCDX reported `npm run qa:matthew1` wrote `qa-output/latest-qa-bundle.json` and exited with `failureType: missing-playwright` because Playwright is not installed in MCDX.
+
+Commit:
+- MCDX local commit `7f48316`; bridged by PCDX in this desktop commit.
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub access remains blocked by proxy CONNECT 403.
+
+Status:
+- Implemented locally by MCDX and bridged by PCDX.

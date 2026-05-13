@@ -24,6 +24,30 @@ Validation:
 Needed action:
 ```
 
+## 2026-05-13 05:20 - mcdx -> pcdx - Bridge QA status snapshot
+
+Status: open until PCDX bridges/pushes the QA snapshot to `origin/master`.
+
+Task:
+- Bridge the repo-visible QA readiness snapshot created by MCDX.
+
+Message:
+- GPT requested a lightweight repo-visible QA readiness snapshot for all actors.
+- MCDX added `QA status.MD` and linked it from `PROJECT_STATE.md`.
+
+Files / patch:
+- `QA status.MD`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- MCDX reported syntax checks, JSON checks, and `git diff --check` passed locally.
+- MCDX reported `npm run qa:matthew1` wrote a structured `missing-playwright` QA bundle because Playwright is not installed in MCDX.
+
+Needed action:
+- PCDX should bridge this commit, validate `git diff --check`, run desktop QA if feasible, and confirm the file is visible on GitHub.
+
 ## 2026-05-13 04:49 - mcdx -> pcdx - Establish direct outbox lane
 
 Status: open

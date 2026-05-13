@@ -131,6 +131,10 @@ The QA harness exports:
 
 `D:\Documents\I.C.E.project\qa-output\latest-qa-bundle.json`
 
+Quick repo-visible QA snapshot:
+
+`QA status.MD`
+
 Generated `qa-output/` files should remain uncommitted unless intentionally requested.
 
 
