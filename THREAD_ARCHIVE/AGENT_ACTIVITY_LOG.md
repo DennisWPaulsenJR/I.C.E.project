@@ -231,3 +231,26 @@ Next recommended step:
 
 Status:
 - Implemented locally by MCDX and bridged by PCDX.
+
+## 2026-05-14 - pcdx - Add mgpt orchestration roadmap
+
+Task:
+- Add a repo-readable onboarding and roadmap file for `mgpt` so mobile GPT can plan and instruct `mcdx` without needing full original thread context.
+
+Files changed:
+- `THREAD_ARCHIVE/MGPT_ORCHESTRATION_ROADMAP.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`, and `THREAD_ARCHIVE/AGENT_OUTBOX.md` first.
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Have `mgpt` and `mcdx` read `THREAD_ARCHIVE/MGPT_ORCHESTRATION_ROADMAP.md` before drafting mobile-side tasks.
+
+Status:
+- Implemented by PCDX.

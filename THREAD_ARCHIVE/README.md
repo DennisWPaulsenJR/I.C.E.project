@@ -22,3 +22,5 @@ Direct-message outbox:
 - Use `THREAD_ARCHIVE/AGENT_OUTBOX.md` for quick current handoff messages between `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 - Keep outbox entries short, actionable, and free of secrets.
 - Move durable completed work summaries into `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` after action is complete.
+Mobile GPT onboarding:
+- Use `THREAD_ARCHIVE/MGPT_ORCHESTRATION_ROADMAP.md` as the mobile GPT onboarding roadmap for `mgpt` planning and `mcdx` task drafting.
