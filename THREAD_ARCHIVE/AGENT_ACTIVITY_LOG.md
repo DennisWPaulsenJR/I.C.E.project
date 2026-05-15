@@ -323,3 +323,28 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Add entity class labels to role groups
+
+Task:
+- Begin Phase 7.5a Entity Class Display Refinement by showing existing entity class labels inside Detected Entities / Roles cards.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Keep future formalized exaltation rendering separate; this change only surfaces existing display classification in role groups.
+
+Status:
+- Implemented by PCDX.

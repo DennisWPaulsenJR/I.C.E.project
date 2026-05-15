@@ -1,6 +1,36 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 7.5a Entity Class Display Refinement
+
+Instruction summary:
+- Make entity class / exaltation hierarchy visible in Detected Entities / Roles.
+- Keep the change display-only, preserve role grouping/order, and avoid extraction or page-text rendering changes.
+
+Codex action summary:
+- Added Study Panel role-card class labels using existing entity classification helpers.
+- Reused stored Entity Registry / Canonical Identity classification where available before falling back to role metadata.
+- Added compact `Class: ...` lines for classified role/entity cards such as divine authorities, messengers, humans, lineage persons, and source metadata entities.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 7.5 Current-Page Source Discovery Index
 
 Instruction summary:

@@ -603,6 +603,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       normalizeText(left.name).localeCompare(normalizeText(right.name))
     );
   }
+
+  function entityRoleTypeForDisplay(groupName) {
+    const normalized = normalizeText(groupName || "").toLowerCase();
+    const map = new Map([
+      ["direct actors", "directActor"],
+      ["source authorities", "sourceAuthority"],
+      ["source metadata entities", "sourceMetadata"],
+      ["recipients / targets", "recipient"],
+      ["instruction recipients", "instructionRecipient"],
+      ["instruction concerning", "instructionConcerning"],
+      ["covenant / family participants", "covenantFamilyParticipant"],
+      ["divine / glorified entities", "divineGlorifiedEntity"],
+      ["lineage focus", "lineageFocus"],
+      ["participants", "participant"],
+      ["lineage persons", "lineagePerson"]
+    ]);
+
+    return map.get(normalized) || normalized.replace(/\s+/g, "_") || "mentioned";
+  }
+
+  function candidateNamesForEntityClass(item = {}) {
+    return [
+      item.canonicalName,
+      item.displayName,
+      item.entityName,
+      item.name,
+      ...asArray(item.aliases),
+      ...asArray(item.surfaceForms)
+    ].map((name) => normalizeText(name).toLowerCase()).filter(Boolean);
+  }
+
+  function classifiedStoredEntityForRole(item = {}) {
+    const roleName = normalizeText(item.name || item.entityName || "").toLowerCase();
+    if (!roleName) return "";
+
+    const candidates = [
+      ...asArray(studyData.entityRegistry),
+      ...asArray(studyData.canonicalIdentities)
+    ];
+
+    for (const entity of candidates) {
+      if (!candidateNamesForEntityClass(entity).includes(roleName)) continue;
+      const entityClass = classifyEntityDisplay(entity);
+      if (entityClass) return entityClass;
+    }
+
+    return "";
+  }
+
+  function entityRoleClassForDisplay(item = {}, groupName = "") {
+    const storedClass = classifiedStoredEntityForRole(item);
+    if (storedClass) return storedClass;
+
+    const roleType = entityRoleTypeForDisplay(groupName);
+    return classifyEntityDisplay({
+      ...item,
+      canonicalName: item.name || item.entityName || "",
+      displayName: item.name || item.entityName || "",
+      roleTypes: [roleType, groupName, item.eventType].filter(Boolean),
+      identityScope: item.actorReason || item.evidence || item.anchorText || "",
+      relationships: item.semanticEventReference
+        ? [{ relationshipType: item.eventType || roleType, evidence: item.semanticEventReference }]
+        : []
+    });
+  }
+
   function createEntityRoleCard(group) {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
@@ -624,6 +690,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       name.className = "entity-role-name";
       name.textContent = renderDivineDisplayText(`${item.name} (${confidence})`);
       roleItem.appendChild(name);
+
+      const entityClass = entityRoleClassForDisplay(item, group.groupName);
+      if (entityClass) {
+        const classLine = document.createElement("div");
+        classLine.className = "entity-role-class";
+        classLine.textContent = renderDivineDisplayText(`Class: ${entityClassLabel(entityClass)}`);
+        roleItem.appendChild(classLine);
+      }
 
       if (item.actorReason) {
         const reason = document.createElement("div");
