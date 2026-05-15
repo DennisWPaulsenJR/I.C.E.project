@@ -1,6 +1,47 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 7.7 Reference Graph Layer
+
+Instruction summary:
+- Convert current-page source discovery records into graph-style reference edges.
+- Do not fetch linked pages, crawl, or mutate the Source Discovery Index.
+- Add compact Study Panel Reference Graph visibility and Matthew 1 QA coverage.
+
+Codex action summary:
+- Added derived `ICE_REFERENCE_GRAPH` records from `ICE_SOURCE_DISCOVERY_INDEX`.
+- Mapped discovery ref types to relationship types such as `has_study_note`, `has_cross_reference`, `has_chapter_navigation`, `has_source_collection_link`, and `has_table_of_contents_link`.
+- Preserved current-page scope via `fromScopePath` and linked each edge back to `sourceDiscoveryId`.
+- Added Study Panel Reference Graph section with total edges, counts by relationship type, and sample edges.
+- Added Matthew 1 QA assertions for reference graph count, study-note edges, navigation/source edges, and scoped note edge `scripture.nt.matthew.1.note.20a`.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js`
+- `node --check study.js`
+- `node --check qa/matthew1-extension-qa.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+- Reference graph relationship types in QA sample: has_cross_reference 42, has_study_note 36, has_chapter_navigation 32, has_source_collection_link 23, has_table_of_contents_link 3.
+- Scope integrity: 775 scoped items, 0 missing scope.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-14 - Phase 7.5a Entity Class Display Refinement
 
 Instruction summary:

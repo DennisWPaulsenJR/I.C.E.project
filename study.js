@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     activeAdapter: "ICE_ACTIVE_ADAPTER",
     scopeIntegrity: "ICE_SCOPE_INTEGRITY",
     sourceDiscoveryIndex: "ICE_SOURCE_DISCOVERY_INDEX",
+    referenceGraph: "ICE_REFERENCE_GRAPH",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1472,6 +1473,71 @@ document.addEventListener("DOMContentLoaded", async () => {
       ));
     });
   }
+
+  function referenceGraphSearchText(item) {
+    return [
+      item.relationshipType,
+      item.refType,
+      item.fromScopePath,
+      item.fromText,
+      item.toText,
+      item.toHref,
+      item.confidence
+    ].join(" ");
+  }
+
+  function referenceGraphTypeCounts(items) {
+    const counts = new Map();
+    for (const item of items) {
+      const key = item.relationshipType || "has_external_reference";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }
+
+  function renderReferenceGraph(term) {
+    const container = document.getElementById("referenceGraphCards");
+    const count = document.getElementById("referenceGraphCount");
+    const edges = asArray(studyData.referenceGraph);
+    const filtered = edges.filter((item) => matchesSearchQuery(referenceGraphSearchText(item), term));
+    const relationshipCounts = referenceGraphTypeCounts(edges);
+
+    clearElement(container);
+    count.textContent = `${filtered.length} edges`;
+
+    if (edges.length === 0) {
+      appendEmpty(container, "No reference graph edges built yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No reference graph edges match.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Reference Graph",
+      [
+        `Total reference edges: ${edges.length}`,
+        relationshipCounts.map(([type, value]) => `${type}: ${value}`).join("\n")
+      ].filter(Boolean).join("\n"),
+      "derived from current-page source discovery"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createCard(
+        item.relationshipType || "Reference edge",
+        [
+          item.fromScopePath ? `From: ${item.fromScopePath}` : `From: ${trimText(item.fromText || "current page", 90)}`,
+          `To: ${trimText(item.toText || item.toHref || "reference", 90)}`,
+          `Href: ${trimText(item.toHref || "", 120)}`,
+          `Ref type: ${item.refType || "external_link"}`
+        ].filter(Boolean).join("\n"),
+        displayConfidence(item.confidence || "possible")
+      ));
+    });
+  }
   function renderDomSemanticHints(term) {
     const container = document.getElementById("domSemanticHintCards");
     const count = document.getElementById("domSemanticHintCount");
@@ -1877,6 +1943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSourceAdapter(term);
       renderScopeIntegrity(term);
       renderSourceDiscovery(term);
+      renderReferenceGraph(term);
       renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
@@ -1930,6 +1997,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       mentions: countItems(studyData.mentionIndex),
       domHints: countItems(studyData.domSemanticHints),
       sourceDiscovery: countItems(studyData.sourceDiscoveryIndex),
+      referenceGraph: countItems(studyData.referenceGraph),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -1956,12 +2024,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const mentionCount = countItems(studyData.mentionIndex);
     const domHintCount = countItems(studyData.domSemanticHints);
     const sourceDiscoveryCount = countItems(studyData.sourceDiscoveryIndex);
+    const referenceGraphCount = countItems(studyData.referenceGraph);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount;
+      principleCount + prophecyLinkCount + referenceGraphCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -1981,6 +2050,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticMentions").textContent = mentionCount;
     document.getElementById("diagnosticDomHints").textContent = domHintCount;
     document.getElementById("diagnosticSourceDiscovery").textContent = sourceDiscoveryCount;
+    document.getElementById("diagnosticReferenceGraph").textContent = referenceGraphCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

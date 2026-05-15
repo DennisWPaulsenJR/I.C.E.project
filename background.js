@@ -25,6 +25,7 @@ const SOURCE_ADAPTERS_KEY = "ICE_SOURCE_ADAPTERS";
 const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
 const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
+const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -511,7 +512,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.relationshipGraph || []).map((item) => ({ ...item, scopeLayer: "relationship" })),
     ...(data.canonicalIdentities || []).map((item) => ({ ...item, scopeLayer: "canonical_identity" })),
     ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" })),
-    ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" }))
+    ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" })),
+    ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -653,6 +655,62 @@ function createSourceDiscoveryIndex(captures, activeAdapter) {
     a.refType.localeCompare(b.refType) ||
     (a.scopePath || "").localeCompare(b.scopePath || "") ||
     a.linkText.localeCompare(b.linkText)
+  );
+}
+
+function referenceRelationshipType(refType) {
+  const map = new Map([
+    ["study_note", "has_study_note"],
+    ["cross_reference", "has_cross_reference"],
+    ["media", "has_media_reference"],
+    ["chapter_nav", "has_chapter_navigation"],
+    ["table_of_contents", "has_table_of_contents_link"],
+    ["source_collection", "has_source_collection_link"],
+    ["related_content", "has_external_reference"],
+    ["external_link", "has_external_reference"]
+  ]);
+
+  return map.get(refType || "") || "has_external_reference";
+}
+
+function createReferenceGraph(sourceDiscoveryIndex, activeAdapter) {
+  const graph = [];
+  const seen = new Set();
+
+  for (const [index, item] of (sourceDiscoveryIndex || []).entries()) {
+    if (!item?.href) continue;
+    const relationshipType = referenceRelationshipType(item.refType);
+    const fromScopePath = item.scopePath || "";
+    const key = [
+      item.sourceCaptureId || "",
+      fromScopePath,
+      item.href,
+      item.linkText || "",
+      relationshipType
+    ].join("|").toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    graph.push({
+      id: `${Date.now()}-${textHash(`reference-graph|${key}|${index}`)}`,
+      sourceUrl: item.sourceUrl || item.sourceContext?.sourceUrl || "",
+      sourceCaptureId: item.sourceCaptureId || item.sourceContext?.sourceCaptureId || "",
+      adapterId: item.adapterId || activeAdapter?.adapterId || "",
+      fromScopePath,
+      fromText: item.sourceElement || item.verseRef || fromScopePath || item.sourceContext?.sourceTitle || "current page",
+      toHref: item.href || "",
+      toText: item.linkText || item.href || "",
+      refType: item.refType || "external_link",
+      relationshipType,
+      confidence: item.confidence || "possible",
+      sourceDiscoveryId: item.id || ""
+    });
+  }
+
+  return graph.sort((a, b) =>
+    a.relationshipType.localeCompare(b.relationshipType) ||
+    (a.fromScopePath || "").localeCompare(b.fromScopePath || "") ||
+    a.toText.localeCompare(b.toText)
   );
 }
 function sourceContextKey(context) {
@@ -3706,6 +3764,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
     const sourceAdapters = sourceAdapterRegistry();
     const activeAdapter = deriveActiveSourceAdapter(captures, domSemanticHints);
     const sourceDiscoveryIndex = createSourceDiscoveryIndex(captures, activeAdapter);
+    const referenceGraph = createReferenceGraph(sourceDiscoveryIndex, activeAdapter);
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
@@ -3769,7 +3828,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       relationshipGraph,
       canonicalIdentities,
       semanticFlowChains,
-      sourceDiscoveryIndex
+      sourceDiscoveryIndex,
+      referenceGraph
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -3778,7 +3838,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       relationshipGraph,
       canonicalIdentities,
       semanticFlowChains,
-      sourceDiscoveryIndex
+      sourceDiscoveryIndex,
+      referenceGraph
     }, activeAdapter);
     const status = {
       reason,
@@ -3801,6 +3862,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       domHintCount: domSemanticHints.length,
       activeAdapterName: activeAdapter?.adapterName || "",
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
+      referenceGraphCount: referenceGraph.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -3824,6 +3886,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [MENTION_INDEX_KEY]: mentionIndex,
       [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
       [SOURCE_DISCOVERY_INDEX_KEY]: sourceDiscoveryIndex,
+      [REFERENCE_GRAPH_KEY]: referenceGraph,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

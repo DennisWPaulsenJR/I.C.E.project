@@ -29,7 +29,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_FLOW_CHAINS",
   "ICE_ANALYSIS_STATUS",
   "ICE_SCOPE_INTEGRITY",
-  "ICE_SOURCE_DISCOVERY_INDEX"
+  "ICE_SOURCE_DISCOVERY_INDEX",
+  "ICE_REFERENCE_GRAPH"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -77,7 +78,8 @@ function emptyCounts() {
     canonicalIdentities: 0,
     semanticEvents: 0,
     semanticFlowChains: 0,
-    sourceDiscovery: 0
+    sourceDiscovery: 0,
+    referenceGraph: 0
   };
 }
 
@@ -91,7 +93,8 @@ function buildCounts(storageData) {
     canonicalIdentities: count(storageData.ICE_CANONICAL_IDENTITIES),
     semanticEvents: count(storageData.ICE_SEMANTIC_EVENTS),
     semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS),
-    sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX)
+    sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX),
+    referenceGraph: count(storageData.ICE_REFERENCE_GRAPH)
   };
 }
 
@@ -107,6 +110,7 @@ function buildSamples(storageData) {
     semanticFlowChains: sample(storageData.ICE_SEMANTIC_FLOW_CHAINS, 3),
     scopeIntegrity: storageData.ICE_SCOPE_INTEGRITY || null,
     sourceDiscovery: sample(storageData.ICE_SOURCE_DISCOVERY_INDEX, 200),
+    referenceGraph: sample(storageData.ICE_REFERENCE_GRAPH, 200),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -189,6 +193,18 @@ function hasScopedDiscoveryRef(data, scopePath, predicate = () => true) {
   return hasScopePath(data.ICE_SOURCE_DISCOVERY_INDEX, scopePath, predicate);
 }
 
+function hasReferenceEdge(data, relationshipType, predicate = () => true) {
+  return (data.ICE_REFERENCE_GRAPH || []).some((item) =>
+    item.relationshipType === relationshipType && predicate(item)
+  );
+}
+
+function hasScopedReferenceEdge(data, scopePath, predicate = () => true) {
+  return (data.ICE_REFERENCE_GRAPH || []).some((item) =>
+    item.fromScopePath === scopePath && predicate(item)
+  );
+}
+
 function evaluateFailures(data) {
   const failures = [];
   const adapterName = data.ICE_ACTIVE_ADAPTER?.adapterName || "";
@@ -213,6 +229,10 @@ function evaluateFailures(data) {
   if (!hasDiscoveredRef(data, "study_note")) failures.push("Expected study note refs in source discovery index.");
   if (!hasDiscoveredRef(data, "chapter_nav") && !hasDiscoveredRef(data, "table_of_contents") && !hasDiscoveredRef(data, "source_collection")) failures.push("Expected chapter/source navigation refs in source discovery index.");
   if (!hasScopedDiscoveryRef(data, "scripture.nt.matthew.1.note.20a", (item) => item.refType === "study_note")) failures.push("Expected verse-scoped note ref scripture.nt.matthew.1.note.20a.");
+  if (count(data.ICE_REFERENCE_GRAPH) <= 0) failures.push("Expected reference graph edges count > 0.");
+  if (!hasReferenceEdge(data, "has_study_note")) failures.push("Expected study note edges in reference graph.");
+  if (!hasReferenceEdge(data, "has_chapter_navigation") && !hasReferenceEdge(data, "has_table_of_contents_link") && !hasReferenceEdge(data, "has_source_collection_link")) failures.push("Expected chapter/source navigation edges in reference graph.");
+  if (!hasScopedReferenceEdge(data, "scripture.nt.matthew.1.note.20a", (item) => item.relationshipType === "has_study_note")) failures.push("Expected reference graph edge from scripture.nt.matthew.1.note.20a.");
 
   for (const [fromEntity, toEntity] of [
     ["THE LORD", "Angel of THE LORD"],

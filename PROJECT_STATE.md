@@ -65,6 +65,7 @@ Next planned phase:
 - Identity scope
 - ScopePath / verse position integrity
 - Current-page source discovery index
+- Reference graph layer
 - Development QA automation harness
 
 ## Current Architecture
@@ -93,6 +94,7 @@ Core keys:
 - `ICE_ANALYSIS_STATUS`
 - `ICE_SCOPE_INTEGRITY`
 - `ICE_SOURCE_DISCOVERY_INDEX`
+- `ICE_REFERENCE_GRAPH`
 - `ICE_QA_LATEST_EXPORT`
 
 Other active local/derived keys:

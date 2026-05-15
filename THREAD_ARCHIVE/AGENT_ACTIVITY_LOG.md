@@ -348,3 +348,35 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+## 2026-05-14 - pcdx - Add reference graph layer
+
+Task:
+- Begin Phase 7.7 Reference Graph Layer by deriving graph-style current-page reference edges from `ICE_SOURCE_DISCOVERY_INDEX`.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+- Reference graph QA sample counts: has_cross_reference 42, has_study_note 36, has_chapter_navigation 32, has_source_collection_link 23, has_table_of_contents_link 3.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Keep reference graph current-page only until a separately scoped cross-document fetch/crawl phase is approved.
+
+Status:
+- Implemented by PCDX.
