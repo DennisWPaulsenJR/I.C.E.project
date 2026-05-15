@@ -1,6 +1,40 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 8.0 Scope-Aware Entity/Reference Focus
+
+Instruction summary:
+- Make entity searches useful as a unified investigation view connecting identity, class, scopes, events, relationships, mentions, references, and flow-chain nodes.
+- Activate only when the search/filter matches an entity, canonical identity, or mention.
+- Do not change extraction logic, fetch linked pages, crawl, rewrite existing panels, or change page rendering.
+
+Codex action summary:
+- Added a compact Study Panel `Entity Scope Focus` section that is hidden until an entity-like search matches stored entity/canonical data.
+- Added entity focus matching across Entity Registry and Canonical Identities, including aliases and surface forms.
+- Built focused buckets for identity/class, scope/verse presence, semantic events, relationship graph edges, mentions, scoped references, and flow-chain nodes.
+- Connected source discovery and reference graph edges by the same normalized verse/note scope paths where the entity appears.
+- Kept `Verse Scope Focus` unchanged and left extraction/rendering untouched.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 7.9 Verse Scope Focus View
 
 Instruction summary:

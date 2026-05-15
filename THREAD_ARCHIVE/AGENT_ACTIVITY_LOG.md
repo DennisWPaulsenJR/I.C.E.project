@@ -458,3 +458,35 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Add entity scope focus view
+
+Task:
+- Begin Phase 8.0 Scope-Aware Entity/Reference Focus by adding a Study Panel section that appears for entity/canonical/mention searches and groups related scoped data.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added `Entity Scope Focus` in the Study Panel for entity searches such as `Joseph`, `JESUS`, `THE LORD`, `Angel of THE LORD`, `Mary`, and `Matthew`.
+- The focus view shows identity/canonical data, class label, aliases/surface forms, scope/verse presence, semantic events, relationship graph edges, mention entries, scoped source/reference edges, and semantic flow-chain nodes.
+- Source Discovery and Reference Graph entries are connected by shared normalized verse/note scope paths; no linked-page fetching or crawling was added.
+- `Verse Scope Focus` remains unchanged.
+
+Next recommended step:
+- Use entity searches for Joseph, Angel of THE LORD, and JESUS to inspect whether entity-scoped references and pronoun mentions are sufficiently useful before adding deeper pronoun/entity resolution.
+
+Status:
+- Implemented by PCDX.

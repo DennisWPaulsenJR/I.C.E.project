@@ -1606,6 +1606,251 @@ document.addEventListener("DOMContentLoaded", async () => {
       "No flow chain nodes tied to this verse scope."
     );
   }
+  function normalizedEntityName(value) {
+    return normalizeText(value || "").toLowerCase();
+  }
+
+  function entityNameCandidates(item = {}) {
+    return Array.from(new Set([
+      item.canonicalName,
+      item.displayName,
+      item.entityName,
+      item.name,
+      item.linkedEntity,
+      item.mentionText,
+      ...asArray(item.aliases),
+      ...asArray(item.surfaceForms)
+    ].map(normalizedEntityName).filter(Boolean)));
+  }
+
+  function entityQueryFromSearch(term) {
+    const normalized = normalizedEntityName(term);
+    if (!normalized || !/[a-z]/i.test(normalized)) return "";
+    if (/\b\d+:\d+\b|\bverse[.\s:_-]*\d+\b|\bscripture\.nt\./i.test(normalized)) return "";
+    if (["the", "and", "of", "a", "an"].includes(normalized)) return "";
+    return normalized;
+  }
+
+  function entityQueryMatchesName(query, name) {
+    if (!query || !name) return false;
+    return name === query || name.includes(query) || (query.includes(name) && name.length >= 4);
+  }
+
+  function bestEntityFocusMatch(term) {
+    const query = entityQueryFromSearch(term);
+    if (!query) return null;
+
+    const candidates = [];
+    for (const entity of asArray(studyData.entityRegistry)) {
+      const names = entityNameCandidates(entity);
+      if (!names.some((name) => entityQueryMatchesName(query, name))) continue;
+      const exact = names.includes(query);
+      candidates.push({ source: "registry", item: entity, names, score: exact ? 100 : 80 });
+    }
+    for (const identity of asArray(studyData.canonicalIdentities)) {
+      const names = entityNameCandidates(identity);
+      if (!names.some((name) => entityQueryMatchesName(query, name))) continue;
+      const exact = names.includes(query);
+      candidates.push({ source: "canonical", item: identity, names, score: exact ? 95 : 75 });
+    }
+
+    if (candidates.length === 0) return null;
+    candidates.sort((left, right) => right.score - left.score || left.names[0].localeCompare(right.names[0]));
+    const best = candidates[0];
+    const displayName = best.item.displayName || best.item.canonicalName || best.item.linkedEntity || best.item.mentionText || term;
+    const allNames = new Set(best.names);
+    for (const candidate of candidates) {
+      if (candidate.score < 70) continue;
+      for (const name of candidate.names) allNames.add(name);
+    }
+
+    return {
+      query,
+      displayName,
+      canonicalName: best.item.canonicalName || displayName,
+      names: Array.from(allNames),
+      registry: asArray(studyData.entityRegistry).find((entity) => entityNameCandidates(entity).some((name) => allNames.has(name))) || null,
+      canonical: asArray(studyData.canonicalIdentities).find((identity) => entityNameCandidates(identity).some((name) => allNames.has(name))) || null
+    };
+  }
+
+  function textContainsEntityName(text, focus) {
+    const normalized = normalizedEntityName(text);
+    if (!normalized || !focus) return false;
+    return focus.names.some((name) => normalized === name || normalized.includes(name));
+  }
+
+  function itemNamesMatchEntity(values, focus) {
+    return asArray(values).some((value) => textContainsEntityName(value, focus));
+  }
+
+  function eventMatchesEntityFocus(item = {}, focus) {
+    return itemNamesMatchEntity([
+      item.actor,
+      item.target,
+      item.recipient,
+      item.concerning,
+      item.narrator,
+      item.quotedSpeaker,
+      ...asArray(item.participants),
+      ...asArray(item.authorityChain)
+    ], focus);
+  }
+
+  function relationshipMatchesEntityFocus(item = {}, focus) {
+    return itemNamesMatchEntity([item.fromEntity, item.toEntity, item.target], focus);
+  }
+
+  function mentionMatchesEntityFocus(item = {}, focus) {
+    return itemNamesMatchEntity([item.linkedEntity, item.mentionText, item.roleHint], focus);
+  }
+
+  function flowNodeMatchesEntityFocus(node = {}, focus) {
+    return itemNamesMatchEntity([
+      node.actor,
+      node.target,
+      node.recipient,
+      node.concerning,
+      ...asArray(node.participants),
+      ...asArray(node.authorityChain)
+    ], focus);
+  }
+
+  function scopeBaseForEntityFocus(scopePath) {
+    const value = normalizeText(scopePath || "").toLowerCase();
+    const verse = value.match(/^(scripture\.nt\.[^.]+\.\d+)\.verse\.(\d+)/i);
+    if (verse) return `${verse[1]}.verse.${verse[2]}`;
+    const note = value.match(/^(scripture\.nt\.[^.]+\.\d+)\.note\.(\d+)/i);
+    if (note) return `${note[1]}.verse.${note[2]}`;
+    return value;
+  }
+
+  function addScopeCandidate(scopes, item = {}) {
+    for (const scopePath of [item.scopePath, item.fromScopePath, item.sourceContext?.scopePath]) {
+      const normalized = scopeBaseForEntityFocus(scopePath);
+      if (normalized) scopes.add(normalized);
+    }
+  }
+
+  function itemMatchesEntityScopeSet(item = {}, scopeSet) {
+    if (!scopeSet || scopeSet.size === 0) return false;
+    return [item.scopePath, item.fromScopePath, item.sourceContext?.scopePath]
+      .map(scopeBaseForEntityFocus)
+      .some((scopePath) => scopePath && scopeSet.has(scopePath));
+  }
+
+  function readableScopeFromBase(scopePath) {
+    return referenceScopeLabel({ fromScopePath: scopePath });
+  }
+
+  function collectEntityScopeFocus(term) {
+    const focus = bestEntityFocusMatch(term);
+    if (!focus) return null;
+
+    const semanticEvents = asArray(studyData.semanticEvents).filter((item) => eventMatchesEntityFocus(item, focus));
+    const relationships = asArray(studyData.relationshipGraph).filter((item) => relationshipMatchesEntityFocus(item, focus));
+    const directMentions = asArray(studyData.mentionIndex).filter((item) => mentionMatchesEntityFocus(item, focus));
+    const flowNodes = [];
+
+    for (const chain of asArray(studyData.semanticFlowChains)) {
+      for (const node of asArray(chain.nodes)) {
+        if (!flowNodeMatchesEntityFocus(node, focus)) continue;
+        flowNodes.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow chain" });
+      }
+    }
+
+    const scopeSet = new Set();
+    [focus.registry, focus.canonical, ...semanticEvents, ...relationships, ...directMentions, ...flowNodes]
+      .filter(Boolean)
+      .forEach((item) => addScopeCandidate(scopeSet, item));
+
+    const scopedMentions = asArray(studyData.mentionIndex).filter((item) =>
+      mentionMatchesEntityFocus(item, focus) || itemMatchesEntityScopeSet(item, scopeSet)
+    );
+    const sourceDiscovery = asArray(studyData.sourceDiscoveryIndex).filter((item) => itemMatchesEntityScopeSet(item, scopeSet));
+    const referenceGraph = asArray(studyData.referenceGraph).filter((item) => itemMatchesEntityScopeSet(item, scopeSet));
+
+    return {
+      ...focus,
+      entityClass: classifyEntityDisplay(focus.canonical || focus.registry || {}),
+      scopes: Array.from(scopeSet).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      semanticEvents,
+      relationships,
+      mentions: scopedMentions,
+      sourceDiscovery,
+      referenceGraph,
+      flowNodes
+    };
+  }
+
+
+  function renderEntityScopeFocus(term) {
+    const section = document.getElementById("entityScopeFocusSection");
+    const container = document.getElementById("entityScopeFocusCards");
+    const count = document.getElementById("entityScopeFocusCount");
+    if (!section || !container || !count) return;
+
+    const focus = collectEntityScopeFocus(term);
+    clearElement(container);
+
+    if (!focus) {
+      section.hidden = true;
+      count.textContent = "0";
+      return;
+    }
+
+    section.hidden = false;
+    const total = focus.scopes.length + focus.semanticEvents.length + focus.relationships.length +
+      focus.mentions.length + focus.sourceDiscovery.length + focus.referenceGraph.length + focus.flowNodes.length;
+    count.textContent = `${total} focused`;
+
+    if (total === 0 && !focus.registry && !focus.canonical) {
+      appendEmpty(container, "No entity scope focus data for current filter.");
+      return;
+    }
+
+    const aliases = [
+      ...asArray(focus.registry?.aliases),
+      ...asArray(focus.canonical?.aliases),
+      ...asArray(focus.canonical?.surfaceForms)
+    ].filter(Boolean);
+    container.appendChild(createCard(
+      `Entity Scope Focus: ${focus.displayName}`,
+      [
+        `Canonical: ${focus.canonical?.canonicalName || focus.registry?.canonicalName || focus.canonicalName || focus.displayName}`,
+        focus.entityClass ? `Class: ${entityClassLabel(focus.entityClass)}` : "Class: Unclassified",
+        focus.registry?.entityType || focus.canonical?.entityType ? `Type: ${focus.registry?.entityType || focus.canonical?.entityType}` : "",
+        focus.canonical?.identityScope ? `Identity scope: ${focus.canonical.identityScope}` : "",
+        aliases.length ? `Aliases/surfaces: ${aliases.slice(0, 8).join(", ")}` : "Aliases/surfaces: none stored"
+      ].filter(Boolean).join("\n"),
+      "entity identity / scope focus"
+    ));
+
+    scopedBucketCard(container, "Scope / Verse Presence", focus.scopes, (scopePath) => {
+      const mentionCount = focus.mentions.filter((item) => scopeBaseForEntityFocus(item.scopePath) === scopePath).length;
+      return `${readableScopeFromBase(scopePath)} | ${scopePath} | mentions: ${mentionCount}`;
+    }, "No scoped verse presence detected.");
+    scopedBucketCard(container, "Semantic Events", focus.semanticEvents, (item) => {
+      const target = item.target || item.recipient || item.concerning || "";
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""} | ${item.scopePath || "unscoped"}`;
+    }, "No semantic events found for this entity.");
+    scopedBucketCard(container, "Relationship Graph", focus.relationships, (item) =>
+      `${item.fromEntity || "Unknown"} -> ${item.toEntity || "Unknown"} | ${item.relationshipType || "relationship"} | ${item.scopePath || "unscoped"}`,
+      "No relationship edges found for this entity."
+    );
+    scopedBucketCard(container, "Mentions", focus.mentions, (item) =>
+      `${item.mentionText || item.linkedEntity || "mention"} | ${item.mentionType || "mention"}${item.linkedEntity ? ` | linked: ${item.linkedEntity}` : ""} | ${item.scopePath || "unscoped"}`,
+      "No mention entries found for this entity."
+    );
+    scopedBucketCard(container, "References", [...focus.sourceDiscovery, ...focus.referenceGraph], (item) => {
+      if (item.relationshipType) return `${referenceRelationshipLabel(item.relationshipType)}: ${trimText(item.toText || item.toHref, 76)} | ${item.fromScopePath || "unscoped"}`;
+      return `${item.refType || "ref"}: ${trimText(item.linkText || item.href, 76)} | ${item.scopePath || "unscoped"}`;
+    }, "No scoped references found for this entity.");
+    scopedBucketCard(container, "Flow Chains", focus.flowNodes, (item) =>
+      `${item.chainTitle}: ${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""} | ${item.scopePath || "unscoped"}`,
+      "No flow-chain nodes found for this entity."
+    );
+  }
   function sourceDiscoverySearchText(item) {
     return [
       item.refType,
@@ -2214,6 +2459,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSourceAdapter(term);
       renderScopeIntegrity(term);
       renderVerseScopeFocus(term);
+      renderEntityScopeFocus(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
