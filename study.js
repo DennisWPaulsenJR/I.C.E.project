@@ -1920,7 +1920,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       flowNodes: [],
       flowLinks: [],
       entities: new Set(),
-      title: fallbackTitle || "Narrative step"
+      title: fallbackTitle || "Narrative moment"
     };
   }
 
@@ -1946,9 +1946,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     return scopes.some((scope) => entry.scopes.has(scope));
   }
 
-  function narrativeEntryMatchesItemPosition(entry, item = {}) {
-    const position = Number(item.timelinePosition || item.sequenceOrder || 0);
-    return Number.isFinite(position) && position > 0 && Math.abs(position - Number(entry.timelinePosition || 0)) < 0.001;
+  function narrativeEntryHasSpecificScopeMatch(entry, item = {}) {
+    const itemScopes = narrativeItemScopes(item);
+    if (itemScopes.some((scope) => entry.scopes.includes(scope))) return true;
+
+    const itemVerseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
+    if (itemVerseRef && entry.semanticEvents.some((eventItem) =>
+      normalizeText(eventItem.verseRef || eventItem.sourceContext?.verseRef || "") === itemVerseRef
+    )) return true;
+
+    const evidence = normalizeText(item.evidencePhrase || item.anchorText || item.sourceSnippet || "").toLowerCase();
+    if (!evidence) return false;
+    return entry.semanticEvents.some((eventItem) => {
+      const eventEvidence = normalizeText(eventItem.anchorText || eventItem.sourceSnippet || eventItem.normalizedMeaning || "").toLowerCase();
+      return eventEvidence && (eventEvidence.includes(evidence) || evidence.includes(eventEvidence));
+    });
+  }
+
+  function narrativeEntrySemanticParticipants(entry) {
+    const names = new Set();
+    for (const eventItem of entry.semanticEvents) {
+      for (const name of narrativeEntityValues(eventItem).map(normalizedEntityName).filter(Boolean)) {
+        names.add(name);
+      }
+    }
+    return names;
+  }
+
+  function narrativeRelationshipParticipantsPresent(entry, edge = {}) {
+    const participants = narrativeEntrySemanticParticipants(entry);
+    if (participants.size === 0) return false;
+    const from = normalizedEntityName(edge.fromEntity || "");
+    const to = normalizedEntityName(edge.toEntity || edge.target || "");
+    if (!from || !to) return false;
+    return participants.has(from) && participants.has(to);
+  }
+
+  function narrativeRelationshipBelongsToEntry(entry, edge = {}) {
+    return narrativeEntryHasSpecificScopeMatch(entry, edge) || narrativeRelationshipParticipantsPresent(entry, edge);
   }
 
   function createNarrativeTimelineEntries() {
@@ -1984,7 +2019,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     for (const entry of entries.values()) {
       for (const edge of asArray(studyData.relationshipGraph)) {
-        if (narrativeEntrySharesScope(entry, edge) || narrativeEntryMatchesItemPosition(entry, edge)) {
+        if (narrativeRelationshipBelongsToEntry(entry, edge)) {
           addNarrativeEntryItem(entry, edge, "relationships");
         }
       }
@@ -2092,7 +2127,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const entries = createNarrativeTimelineEntries();
     const filtered = entries.filter((entry) => narrativeEntryMatchesFilter(entry, term));
     clearElement(container);
-    count.textContent = `${filtered.length} step(s)`;
+    count.textContent = `${filtered.length} moment(s)`;
 
     if (filtered.length === 0) {
       appendEmpty(container, "No narrative timeline data for current filter.");
@@ -2105,7 +2140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.appendChild(createCard(
       term ? `Narrative Timeline: ${term}` : "Narrative Timeline",
       [
-        `Timeline steps: ${filtered.length}`,
+        `Timeline moments: ${filtered.length}`,
         `Semantic events: ${semanticCount}`,
         `Relationship edges: ${relationshipCount}`,
         `Flow links/nodes: ${flowCount}`,
@@ -2134,14 +2169,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         `${entry.flowLinks.length + entry.flowNodes.length} flow`
       ].join(" | ");
       container.appendChild(createCard(
-        `Step ${entry.timelinePosition}: ${entry.title}`,
+        `Moment ${entry.timelinePosition}: ${entry.title}`,
         body,
         meta
       ));
     }
 
     if (filtered.length > DISPLAY_LIMIT) {
-      appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more narrative step(s) hidden by preview limit. Use entity or verse search to narrow the timeline.`);
+      appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more narrative moment(s) hidden by preview limit. Use entity or verse search to narrow the timeline.`);
     }
   }
   function sourceDiscoverySearchText(item) {

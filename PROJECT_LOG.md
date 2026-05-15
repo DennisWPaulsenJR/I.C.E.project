@@ -1,6 +1,38 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 8.1 QA Refinement: Narrative Timeline Wording and Relationship Attachment
+
+Instruction summary:
+- Change Narrative Timeline display wording from `Step` to `Moment` so the view does not imply a procedure/instruction list.
+- Prevent unrelated lineage relationship edges from appearing inside Joseph/Angel/fulfillment narrative moments.
+- Keep genealogy available as its own lineage/grouped material without polluting dream, fulfillment, or response moments.
+
+Codex action summary:
+- Updated display text from `Timeline steps` / `Step N` to `Timeline moments` / `Moment N`.
+- Removed position-only relationship attachment from Narrative Timeline entries.
+- Refined relationship attachment so edges join a moment only through specific scope/verse/evidence matches or when both relationship participants are present in that moment's semantic events.
+- Preserved internal timeline identifiers and kept the change display/refinement-only.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 8.1 Scope-Aware Narrative Timeline Layer
 
 Instruction summary:

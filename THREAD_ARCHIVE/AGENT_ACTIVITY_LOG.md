@@ -547,3 +547,33 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Refine narrative timeline display wording
+
+Task:
+- Refine Phase 8.1 Narrative Timeline wording and relationship attachment after QA review.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Changed Narrative Timeline display wording from `Step` to `Moment`, including `Timeline moments` and `Moment N` titles.
+- Removed position-only relationship attachment that could leak lineage edges such as Abia -> Asa into unrelated narrative moments.
+- Relationship edges now attach to a narrative moment only through specific scope/verse/evidence matches or when both edge participants appear in that moment's semantic events.
+- Internal timeline identifiers remain unchanged; extraction, crawling, linked-page fetching, page rendering, and existing panels were not changed.
+
+Next recommended step:
+- Recheck Matthew 1 narrative moments for Joseph, Angel of THE LORD, JESUS, and lineage/genealogy separation before adding timeline-specific QA assertions.
+
+Status:
+- Implemented by PCDX.
