@@ -490,3 +490,28 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Post Phase 8.0 approval request
+
+Task:
+- Post the Phase 8.0 Scope-Aware Entity/Reference Focus approval request into repo-visible memory so Dennis and GPT can review it without chat repaste.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added a top `pcdx -> Dennis/gpt` outbox request asking for approval of Phase 8.0 as the completed entity-focus layer.
+- Included the commit, files changed, validation results, QA counts, no-crawl/no-render-change caveats, and recommended review searches.
+
+Next recommended step:
+- Dennis/GPT should approve Phase 8.0 or request targeted refinements based on searches for Joseph, Angel of THE LORD, and JESUS.
+
+Status:
+- Posted by PCDX.

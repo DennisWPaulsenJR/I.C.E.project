@@ -24,6 +24,36 @@ Validation:
 Needed action:
 ```
 
+## 2026-05-14 - pcdx -> Dennis/gpt - Phase 8.0 approval request
+
+Status: open pending Dennis/GPT approval
+
+Task:
+- Review and approve Phase 8.0 Scope-Aware Entity/Reference Focus as the current completed entity-focus layer.
+
+Message:
+- PCDX implemented Phase 8.0 in commit `6d8cc57 pcdx: Add entity scope focus view`.
+- The Study Panel now shows `Entity Scope Focus` for entity/canonical/mention searches such as `Joseph`, `JESUS`, `THE LORD`, `Angel of THE LORD`, `Mary`, and `Matthew`.
+- The focus view connects identity/canonical data, class label, aliases/surface forms, scope/verse presence, semantic events, relationship graph edges, mention entries, scoped source/reference edges, and semantic flow-chain nodes.
+- Extraction logic, page rendering, linked-page fetching, crawling, existing panels, and `Verse Scope Focus` were left unchanged.
+- Recommended review searches before approval: `Joseph`, `Angel of THE LORD`, and `JESUS`.
+
+Files / patch:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- Commit: `6d8cc57`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Needed action:
+- Dennis/GPT should approve Phase 8.0 as complete or request targeted refinements for the entity focus view.
+- If approved, next likely direction is deeper pronoun/entity resolution after reviewing whether scoped references and pronoun mentions are useful enough in the current focus view.
+
 ## 2026-05-14 - gpt -> pcdx - Begin Phase 8.0 entity scope focus
 
 Status: open
