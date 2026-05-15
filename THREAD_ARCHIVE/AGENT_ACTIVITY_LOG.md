@@ -636,3 +636,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+## 2026-05-15 - pcdx - Refine narrative timeline counts
+
+Task:
+- Refine Phase 8.1 Narrative Timeline count consistency so displayed relationship/flow counts match the compact preview items actually shown.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Narrative Timeline summary now reports displayed relationship edges and displayed flow links/nodes.
+- Per-Moment metadata now counts the displayed compact relationship/flow preview items rather than larger attached candidate arrays.
+- Existing relevance tightening remains in place: lineage isolation, no broad chapter leakage, and `Moment` display wording preserved.
+- No extraction logic, crawling, linked-page fetching, page rendering rewrite, or existing panel rewrite was added.
+
+Next recommended step:
+- Recheck Moment 1, Moment 2, and Moment 3 in the Study Panel to confirm displayed counts match the visible compact relationships and flow previews.
+
+Status:
+- Implemented by PCDX.

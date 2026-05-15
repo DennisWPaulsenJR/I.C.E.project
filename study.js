@@ -2189,20 +2189,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     return entry.orderedEvents.slice(0, 2).map((item) => trimText(narrativeTextFromOrderedEvent(item), 120)).join("\n");
   }
 
+  function displayedNarrativeRelationships(entry) {
+    return asArray(entry.relationships).slice(0, 3);
+  }
+
+  function displayedNarrativeFlowItems(entry) {
+    const links = asArray(entry.flowLinks).slice(0, 3);
+    if (links.length) return links.map((item) => ({ ...item, displayKind: "link" }));
+    return asArray(entry.flowNodes).slice(0, 3).map((item) => ({ ...item, displayKind: "node" }));
+  }
+
   function compactNarrativeRelationshipPreview(entry) {
-    return entry.relationships.slice(0, 3).map((edge) =>
+    return displayedNarrativeRelationships(entry).map((edge) =>
       `${edge.fromEntity || "Unknown"} -> ${edge.toEntity || "Unknown"} | ${edge.relationshipType || "relationship"}`
     ).join("\n");
   }
 
   function compactNarrativeFlowPreview(entry) {
-    const links = entry.flowLinks.slice(0, 3).map((link) =>
-      `${link.relationType || "flow_link"} (${displayConfidence(link.confidence || "probable")})`
-    );
-    if (links.length) return links.join("\n");
-    return entry.flowNodes.slice(0, 3).map((node) =>
-      `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${node.target ? ` -> ${node.target}` : ""}`
-    ).join("\n");
+    return displayedNarrativeFlowItems(entry).map((item) => {
+      if (item.displayKind === "link") {
+        return `${item.relationType || "flow_link"} (${displayConfidence(item.confidence || "probable")})`;
+      }
+      return `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""}`;
+    }).join("\n");
   }
 
   function renderNarrativeTimeline(term) {
@@ -2221,15 +2230,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const semanticCount = filtered.reduce((sum, entry) => sum + entry.semanticEvents.length, 0);
-    const relationshipCount = filtered.reduce((sum, entry) => sum + entry.relationships.length, 0);
-    const flowCount = filtered.reduce((sum, entry) => sum + entry.flowLinks.length + entry.flowNodes.length, 0);
+    const relationshipCount = filtered.reduce((sum, entry) => sum + displayedNarrativeRelationships(entry).length, 0);
+    const flowCount = filtered.reduce((sum, entry) => sum + displayedNarrativeFlowItems(entry).length, 0);
     container.appendChild(createCard(
       term ? `Narrative Timeline: ${term}` : "Narrative Timeline",
       [
         `Timeline moments: ${filtered.length}`,
         `Semantic events: ${semanticCount}`,
-        `Relationship edges: ${relationshipCount}`,
-        `Flow links/nodes: ${flowCount}`,
+        `Displayed relationship edges: ${relationshipCount}`,
+        `Displayed flow links/nodes: ${flowCount}`,
         `Filter: ${term || "all current-page narrative data"}`
       ].join("\n"),
       "scope-aware event progression"
@@ -2237,6 +2246,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     for (const entry of filtered.slice(0, DISPLAY_LIMIT)) {
       const eventPreview = compactNarrativeEventPreview(entry);
+      const displayedRelationships = displayedNarrativeRelationships(entry);
+      const displayedFlowItems = displayedNarrativeFlowItems(entry);
       const relationshipPreview = compactNarrativeRelationshipPreview(entry);
       const flowPreview = compactNarrativeFlowPreview(entry);
       const entityPreview = entry.entities.slice(0, 6).join(", ");
@@ -2251,8 +2262,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const meta = [
         `timeline ${entry.timelinePosition}`,
         `${entry.semanticEvents.length} semantic`,
-        `${entry.relationships.length} relationships`,
-        `${entry.flowLinks.length + entry.flowNodes.length} flow`
+        `${displayedRelationships.length} displayed relationships`,
+        `${displayedFlowItems.length} displayed flow`
       ].join(" | ");
       container.appendChild(createCard(
         `Moment ${entry.timelinePosition}: ${entry.title}`,

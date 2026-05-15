@@ -1,6 +1,36 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.1 QA Refinement: Narrative Timeline Count Consistency
+
+Instruction summary:
+- Make Narrative Timeline relationship and flow counts match the relationships and flow items actually displayed in each compact Moment card.
+- Preserve current narrative separation improvements, including lineage isolation and no broad chapter leakage.
+
+Codex action summary:
+- Added displayed relationship/flow helper functions for Narrative Timeline cards.
+- Updated Narrative Timeline summary counts to report displayed relationship edges and displayed flow links/nodes.
+- Updated per-Moment metadata to count the displayed relationship/flow preview items rather than the larger attached candidate arrays.
+- Kept compact display, `Moment` wording, scope normalization, extraction logic, page rendering, linked-page fetching, crawling, and existing panel behavior unchanged.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Phase 8.1 QA Refinement: Narrative Timeline Relevance Tightening
 
 Instruction summary:
