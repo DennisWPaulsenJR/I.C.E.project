@@ -1,6 +1,40 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 8.1 Scope-Aware Narrative Timeline Layer
+
+Instruction summary:
+- Build a unified narrative timeline investigation layer using ordered events, semantic flow chains, semantic events, scope integrity, verse scopes, and entity focus data.
+- Allow the Study Panel to show event progression and semantic causality in timeline order.
+- Preserve extraction logic, avoid linked-page fetching or crawling, and keep the change additive/non-destructive.
+
+Codex action summary:
+- Added a compact Study Panel `Narrative Timeline` section near the scope/entity focus views.
+- Built timeline entries from existing ordered events and semantic events, grouped by timeline position and shared scope where available.
+- Annotated each timeline step with scope labels, linked entities, semantic event previews, relationship graph edges, and semantic flow-chain links/nodes.
+- Added filtering support for entity searches such as `Joseph` and scope searches such as `1:20` by reusing the existing entity and verse focus helpers.
+- Kept extraction logic, page rendering, linked-page fetching, crawling, and existing panels unchanged.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 8.0 Scope-Aware Entity/Reference Focus
 
 Instruction summary:

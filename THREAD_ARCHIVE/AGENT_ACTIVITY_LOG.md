@@ -515,3 +515,35 @@ Next recommended step:
 
 Status:
 - Posted by PCDX.
+
+## 2026-05-14 - pcdx - Add narrative timeline layer
+
+Task:
+- Begin Phase 8.1 Scope-Aware Narrative Timeline Layer by adding a Study Panel section that shows event progression and semantic causality from existing ordered/semantic data.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, `THREAD_ARCHIVE/AGENT_OUTBOX.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added `Narrative Timeline` in the Study Panel to show current-page event progression from ordered events and semantic events.
+- Timeline steps include scope labels, entity presence, semantic event previews, relationship graph edges, and semantic flow-chain links/nodes where available.
+- Entity and verse/scope searches filter the timeline by reusing the existing Entity Scope Focus and Verse Scope Focus matching helpers.
+- No extraction logic, crawling, linked-page fetches, page rendering changes, or existing panel rewrites were added.
+
+Next recommended step:
+- Review Matthew 1 timeline searches for `Joseph`, `Angel of THE LORD`, `JESUS`, and `1:20` before deciding whether to add deeper pronoun/entity resolution or timeline-specific QA assertions.
+
+Status:
+- Implemented by PCDX.

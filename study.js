@@ -1851,6 +1851,299 @@ document.addEventListener("DOMContentLoaded", async () => {
       "No flow-chain nodes found for this entity."
     );
   }
+  function narrativeTimelinePosition(item = {}, fallback = 0) {
+    const value = Number(item.timelinePosition || item.sequenceOrder || item.sequenceIndex || item.sentenceIndex || fallback + 1);
+    return Number.isFinite(value) && value > 0 ? value : fallback + 1;
+  }
+
+  function narrativeTimelineSort(left, right) {
+    return Number(left.timelinePosition || 0) - Number(right.timelinePosition || 0) ||
+      normalizeText(left.title).localeCompare(normalizeText(right.title));
+  }
+
+  function narrativeItemScopes(item = {}) {
+    return Array.from(new Set([
+      item.scopePath,
+      item.fromScopePath,
+      item.sourceScopePath,
+      item.sourceContext?.scopePath
+    ].map(scopeBaseForEntityFocus).filter(Boolean)));
+  }
+
+  function narrativeReadableScopes(scopes) {
+    return scopes.length
+      ? scopes.slice(0, 3).map(readableScopeFromBase).join(", ")
+      : "Unscoped";
+  }
+
+  function narrativeEntityValues(item = {}) {
+    return Array.from(new Set([
+      item.actor,
+      item.target,
+      item.recipient,
+      item.concerning,
+      item.narrator,
+      item.quotedSpeaker,
+      item.fromEntity,
+      item.toEntity,
+      item.linkedEntity,
+      item.mentionText,
+      ...asArray(item.participants),
+      ...asArray(item.authorityChain)
+    ].map((value) => normalizeText(value)).filter(Boolean)));
+  }
+
+  function narrativeTitleFromSemanticEvent(item = {}) {
+    const target = item.target || item.recipient || item.concerning || "";
+    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+  }
+
+  function narrativeTextFromOrderedEvent(item = {}) {
+    return item.eventText || item.contextSnippet || item.sourceSnippet || item.normalizedMeaning || "";
+  }
+
+  function narrativeEntryKey(position, scopes, fallback) {
+    return [
+      Number(position || 0).toFixed(3),
+      scopes[0] || "unscoped",
+      fallback || "event"
+    ].join("|");
+  }
+
+  function createNarrativeEntry(position, scopes, fallbackTitle) {
+    return {
+      timelinePosition: position,
+      scopes: new Set(scopes),
+      orderedEvents: [],
+      semanticEvents: [],
+      relationships: [],
+      flowNodes: [],
+      flowLinks: [],
+      entities: new Set(),
+      title: fallbackTitle || "Narrative step"
+    };
+  }
+
+  function addNarrativeEntryItem(entry, item = {}, collectionName) {
+    for (const scope of narrativeItemScopes(item)) entry.scopes.add(scope);
+    for (const name of narrativeEntityValues(item)) entry.entities.add(name);
+    if (collectionName === "orderedEvents") entry.orderedEvents.push(item);
+    if (collectionName === "semanticEvents") entry.semanticEvents.push(item);
+    if (collectionName === "relationships") entry.relationships.push(item);
+    if (collectionName === "flowNodes") entry.flowNodes.push(item);
+    if (collectionName === "flowLinks") entry.flowLinks.push(item);
+  }
+
+  function narrativeEntryEntityMatches(entry, item = {}) {
+    const entityNames = narrativeEntityValues(item).map(normalizedEntityName).filter(Boolean);
+    if (entityNames.length === 0 || entry.entities.size === 0) return false;
+    const entryNames = Array.from(entry.entities).map(normalizedEntityName).filter(Boolean);
+    return entityNames.some((name) => entryNames.some((entryName) => entityQueryMatchesName(name, entryName) || entityQueryMatchesName(entryName, name)));
+  }
+
+  function narrativeEntrySharesScope(entry, item = {}) {
+    const scopes = narrativeItemScopes(item);
+    return scopes.some((scope) => entry.scopes.has(scope));
+  }
+
+  function narrativeEntryMatchesItemPosition(entry, item = {}) {
+    const position = Number(item.timelinePosition || item.sequenceOrder || 0);
+    return Number.isFinite(position) && position > 0 && Math.abs(position - Number(entry.timelinePosition || 0)) < 0.001;
+  }
+
+  function createNarrativeTimelineEntries() {
+    const entries = new Map();
+    const ensureEntry = (position, scopes, title, fallback) => {
+      const key = narrativeEntryKey(position, scopes, fallback);
+      if (!entries.has(key)) entries.set(key, createNarrativeEntry(position, scopes, title));
+      return entries.get(key);
+    };
+
+    asArray(studyData.orderedEvents)
+      .map((item, index) => ({ item, position: narrativeTimelinePosition(item, index) }))
+      .sort((left, right) => left.position - right.position)
+      .forEach(({ item, position }, index) => {
+        const scopes = narrativeItemScopes(item);
+        const entry = ensureEntry(position, scopes, trimText(narrativeTextFromOrderedEvent(item), 72) || `Ordered event ${position}`, `ordered-${index}`);
+        addNarrativeEntryItem(entry, item, "orderedEvents");
+      });
+
+    asArray(studyData.semanticEvents)
+      .map((item, index) => ({ item, position: narrativeTimelinePosition(item, index) }))
+      .sort((left, right) => left.position - right.position)
+      .forEach(({ item, position }, index) => {
+        const scopes = narrativeItemScopes(item);
+        const existing = Array.from(entries.values()).find((entry) =>
+          Math.abs(Number(entry.timelinePosition || 0) - position) < 0.001 ||
+          scopes.some((scope) => entry.scopes.has(scope))
+        );
+        const entry = existing || ensureEntry(position, scopes, narrativeTitleFromSemanticEvent(item), `semantic-${index}`);
+        if (!entry.semanticEvents.length && entry.orderedEvents.length === 0) entry.title = narrativeTitleFromSemanticEvent(item);
+        addNarrativeEntryItem(entry, item, "semanticEvents");
+      });
+
+    for (const entry of entries.values()) {
+      for (const edge of asArray(studyData.relationshipGraph)) {
+        if (narrativeEntrySharesScope(entry, edge) || narrativeEntryMatchesItemPosition(entry, edge)) {
+          addNarrativeEntryItem(entry, edge, "relationships");
+        }
+      }
+
+      for (const chain of asArray(studyData.semanticFlowChains)) {
+        for (const node of asArray(chain.nodes)) {
+          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          const linkedToEntry = entry.semanticEvents.some((eventItem) =>
+            eventItem.id && nodeItem.semanticEventId === eventItem.id
+          );
+          if (linkedToEntry || narrativeEntrySharesScope(entry, nodeItem)) {
+            addNarrativeEntryItem(entry, nodeItem, "flowNodes");
+          }
+        }
+        for (const link of asArray(chain.relationships)) {
+          const linkedEventIds = new Set([
+            link.fromEventId,
+            link.toEventId
+          ].filter(Boolean));
+          const linkedToEntry = entry.semanticEvents.some((eventItem) => linkedEventIds.has(eventItem.id));
+          if (linkedToEntry || narrativeEntrySharesScope(entry, link)) {
+            addNarrativeEntryItem(entry, { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" }, "flowLinks");
+          }
+        }
+      }
+    }
+
+    return Array.from(entries.values()).map((entry) => ({
+      ...entry,
+      scopes: Array.from(entry.scopes).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      entities: Array.from(entry.entities).sort((a, b) => a.localeCompare(b))
+    })).sort(narrativeTimelineSort);
+  }
+
+  function narrativeTimelineSearchText(entry) {
+    return [
+      entry.title,
+      entry.scopes.join(" "),
+      entry.entities.join(" "),
+      entry.orderedEvents.map(narrativeTextFromOrderedEvent).join(" "),
+      entry.semanticEvents.map(semanticEventSearchText).join(" "),
+      entry.relationships.map(relationshipSearchText).join(" "),
+      entry.flowNodes.map((node) => [node.actor, node.action, node.target, node.eventType, node.anchorText, node.scopePath].join(" ")).join(" "),
+      entry.flowLinks.map((link) => [link.relationType, link.evidenceSnippet, link.confidence].join(" ")).join(" ")
+    ].join(" ");
+  }
+
+  function narrativeEntryMatchesEntityFocus(entry, focus) {
+    if (!focus) return false;
+    const entityHit = entry.entities.some((name) => textContainsEntityName(name, focus));
+    if (entityHit) return true;
+    const scopeHit = focus.scopes?.some((scope) => entry.scopes.includes(scope));
+    if (scopeHit) return true;
+    return entry.semanticEvents.some((eventItem) => eventMatchesEntityFocus(eventItem, focus)) ||
+      entry.relationships.some((edge) => relationshipMatchesEntityFocus(edge, focus)) ||
+      entry.flowNodes.some((node) => flowNodeMatchesEntityFocus(node, focus));
+  }
+
+  function narrativeEntryMatchesFilter(entry, term) {
+    if (!term) return true;
+    const verseFocus = parseVerseScopeFocus(term);
+    if (verseFocus) {
+      return entry.scopes.some((scopePath) => scopePathMatchesFocus(scopePath, verseFocus)) ||
+        entry.orderedEvents.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
+        entry.semanticEvents.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
+        entry.relationships.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
+        entry.flowNodes.some((item) => itemMatchesVerseFocus(item, verseFocus));
+    }
+
+    const entityFocus = collectEntityScopeFocus(term);
+    if (entityFocus) return narrativeEntryMatchesEntityFocus(entry, entityFocus);
+    return matchesSearchQuery(narrativeTimelineSearchText(entry), term);
+  }
+
+  function compactNarrativeEventPreview(entry) {
+    const semanticPreview = entry.semanticEvents.slice(0, 3).map((item) => {
+      const target = item.target || item.recipient || item.concerning || "";
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+    });
+    if (semanticPreview.length) return semanticPreview.join("\n");
+    return entry.orderedEvents.slice(0, 2).map((item) => trimText(narrativeTextFromOrderedEvent(item), 120)).join("\n");
+  }
+
+  function compactNarrativeRelationshipPreview(entry) {
+    return entry.relationships.slice(0, 3).map((edge) =>
+      `${edge.fromEntity || "Unknown"} -> ${edge.toEntity || "Unknown"} | ${edge.relationshipType || "relationship"}`
+    ).join("\n");
+  }
+
+  function compactNarrativeFlowPreview(entry) {
+    const links = entry.flowLinks.slice(0, 3).map((link) =>
+      `${link.relationType || "flow_link"} (${displayConfidence(link.confidence || "probable")})`
+    );
+    if (links.length) return links.join("\n");
+    return entry.flowNodes.slice(0, 3).map((node) =>
+      `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${node.target ? ` -> ${node.target}` : ""}`
+    ).join("\n");
+  }
+
+  function renderNarrativeTimeline(term) {
+    const container = document.getElementById("narrativeTimelineCards");
+    const count = document.getElementById("narrativeTimelineCount");
+    if (!container || !count) return;
+
+    const entries = createNarrativeTimelineEntries();
+    const filtered = entries.filter((entry) => narrativeEntryMatchesFilter(entry, term));
+    clearElement(container);
+    count.textContent = `${filtered.length} step(s)`;
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No narrative timeline data for current filter.");
+      return;
+    }
+
+    const semanticCount = filtered.reduce((sum, entry) => sum + entry.semanticEvents.length, 0);
+    const relationshipCount = filtered.reduce((sum, entry) => sum + entry.relationships.length, 0);
+    const flowCount = filtered.reduce((sum, entry) => sum + entry.flowLinks.length + entry.flowNodes.length, 0);
+    container.appendChild(createCard(
+      term ? `Narrative Timeline: ${term}` : "Narrative Timeline",
+      [
+        `Timeline steps: ${filtered.length}`,
+        `Semantic events: ${semanticCount}`,
+        `Relationship edges: ${relationshipCount}`,
+        `Flow links/nodes: ${flowCount}`,
+        `Filter: ${term || "all current-page narrative data"}`
+      ].join("\n"),
+      "scope-aware event progression"
+    ));
+
+    for (const entry of filtered.slice(0, DISPLAY_LIMIT)) {
+      const eventPreview = compactNarrativeEventPreview(entry);
+      const relationshipPreview = compactNarrativeRelationshipPreview(entry);
+      const flowPreview = compactNarrativeFlowPreview(entry);
+      const entityPreview = entry.entities.slice(0, 6).join(", ");
+      const hiddenSemantic = Math.max(entry.semanticEvents.length - 3, 0);
+      const body = [
+        `Scope: ${narrativeReadableScopes(entry.scopes)}`,
+        eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
+        relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
+        flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
+        entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked"
+      ].join("\n");
+      const meta = [
+        `timeline ${entry.timelinePosition}`,
+        `${entry.semanticEvents.length} semantic`,
+        `${entry.relationships.length} relationships`,
+        `${entry.flowLinks.length + entry.flowNodes.length} flow`
+      ].join(" | ");
+      container.appendChild(createCard(
+        `Step ${entry.timelinePosition}: ${entry.title}`,
+        body,
+        meta
+      ));
+    }
+
+    if (filtered.length > DISPLAY_LIMIT) {
+      appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more narrative step(s) hidden by preview limit. Use entity or verse search to narrow the timeline.`);
+    }
+  }
   function sourceDiscoverySearchText(item) {
     return [
       item.refType,
@@ -2460,6 +2753,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderScopeIntegrity(term);
       renderVerseScopeFocus(term);
       renderEntityScopeFocus(term);
+      renderNarrativeTimeline(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
