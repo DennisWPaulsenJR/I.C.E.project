@@ -1,6 +1,38 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 7.8 Reference Graph Focus / Navigation View
+
+Instruction summary:
+- Make `ICE_REFERENCE_GRAPH` easier to use in the Study Panel by grouping and filtering reference edges by scope, verse, and relationship type.
+- Do not fetch linked pages, crawl, rewrite source discovery, or change extraction logic.
+
+Codex action summary:
+- Refined the Study Panel Reference Graph renderer to show counts by relationship type first.
+- Added readable scope grouping such as `Matthew 1:20` while preserving exact `fromScopePath` in each edge preview.
+- Expanded Reference Graph search text so relationship type, ref type, scope label, scope path, target text, href, and confidence all participate in filtering.
+- Added compact grouped edge previews showing target text/href, `fromScopePath`, `relationshipType`, and confidence.
+- Updated the empty state to `No reference graph edges detected.`
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 7.7 Reference Graph Layer
 
 Instruction summary:
@@ -42,6 +74,7 @@ Commit hash:
 
 Status:
 - Implemented
+
 ## 2026-05-14 - Phase 7.5a Entity Class Display Refinement
 
 Instruction summary:

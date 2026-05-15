@@ -1474,11 +1474,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function capitalizeWord(value) {
+    const text = normalizeText(value || "");
+    if (!text) return "";
+    return `${text.charAt(0).toUpperCase()}${text.slice(1).toLowerCase()}`;
+  }
+
+  function referenceScopeLabel(item = {}) {
+    const scopePath = item.fromScopePath || "";
+    const scriptureMatch = scopePath.match(/^scripture\.nt\.([^.]+)\.(\d+)\.(?:verse|note)\.(\d+)/i);
+    if (scriptureMatch) {
+      return `${capitalizeWord(scriptureMatch[1])} ${scriptureMatch[2]}:${scriptureMatch[3]}`;
+    }
+
+    const chapterMatch = scopePath.match(/^scripture\.nt\.([^.]+)\.(\d+)\.chapter/i);
+    if (chapterMatch) {
+      return `${capitalizeWord(chapterMatch[1])} ${chapterMatch[2]} chapter navigation`;
+    }
+
+    const genericMatch = scopePath.match(/^generic\.page\.section\.(\d+)\.paragraph\.(\d+)/i);
+    if (genericMatch) return `Section ${genericMatch[1]}, paragraph ${genericMatch[2]}`;
+
+    return scopePath || trimText(item.fromText || "Current page", 70);
+  }
+
+  function referenceRelationshipLabel(type) {
+    const labels = new Map([
+      ["has_study_note", "study note"],
+      ["has_cross_reference", "cross reference"],
+      ["has_media_reference", "media reference"],
+      ["has_chapter_navigation", "chapter navigation"],
+      ["has_table_of_contents_link", "table of contents"],
+      ["has_source_collection_link", "source collection"],
+      ["has_external_reference", "external reference"]
+    ]);
+
+    return labels.get(type || "") || type || "reference";
+  }
+
   function referenceGraphSearchText(item) {
+    const scopeLabel = referenceScopeLabel(item);
     return [
       item.relationshipType,
       item.refType,
       item.fromScopePath,
+      scopeLabel,
       item.fromText,
       item.toText,
       item.toHref,
@@ -1496,18 +1536,42 @@ document.addEventListener("DOMContentLoaded", async () => {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }
 
+  function groupReferenceGraphByScope(items) {
+    const groups = new Map();
+    for (const item of items) {
+      const key = referenceScopeLabel(item);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+
+    return Array.from(groups.entries())
+      .map(([scopeLabel, edges]) => ({ scopeLabel, edges }))
+      .sort((a, b) => a.scopeLabel.localeCompare(b.scopeLabel, undefined, { numeric: true }));
+  }
+
+  function referenceEdgePreview(item) {
+    const target = trimText(item.toText || item.toHref || "reference", 72);
+    return [
+      `${referenceRelationshipLabel(item.relationshipType)}: ${target}`,
+      `fromScopePath: ${item.fromScopePath || "unscoped"}`,
+      `relationshipType: ${item.relationshipType || "has_external_reference"}`,
+      `confidence: ${displayConfidence(item.confidence || "possible")}`
+    ].join("\n");
+  }
+
   function renderReferenceGraph(term) {
     const container = document.getElementById("referenceGraphCards");
     const count = document.getElementById("referenceGraphCount");
     const edges = asArray(studyData.referenceGraph);
     const filtered = edges.filter((item) => matchesSearchQuery(referenceGraphSearchText(item), term));
     const relationshipCounts = referenceGraphTypeCounts(edges);
+    const grouped = groupReferenceGraphByScope(filtered);
 
     clearElement(container);
     count.textContent = `${filtered.length} edges`;
 
     if (edges.length === 0) {
-      appendEmpty(container, "No reference graph edges built yet.");
+      appendEmpty(container, "No reference graph edges detected.");
       return;
     }
 
@@ -1517,7 +1581,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     container.appendChild(createCard(
-      "Reference Graph",
+      "Counts by Relationship Type",
       [
         `Total reference edges: ${edges.length}`,
         relationshipCounts.map(([type, value]) => `${type}: ${value}`).join("\n")
@@ -1525,18 +1589,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       "derived from current-page source discovery"
     ));
 
-    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+    grouped.slice(0, DISPLAY_LIMIT).forEach((group) => {
+      const preview = group.edges.slice(0, 4)
+        .map(referenceEdgePreview)
+        .join("\n\n");
+      const hidden = group.edges.length > 4
+        ? `\n\n${group.edges.length - 4} more edge(s) hidden in this scope.`
+        : "";
+
       container.appendChild(createCard(
-        item.relationshipType || "Reference edge",
-        [
-          item.fromScopePath ? `From: ${item.fromScopePath}` : `From: ${trimText(item.fromText || "current page", 90)}`,
-          `To: ${trimText(item.toText || item.toHref || "reference", 90)}`,
-          `Href: ${trimText(item.toHref || "", 120)}`,
-          `Ref type: ${item.refType || "external_link"}`
-        ].filter(Boolean).join("\n"),
-        displayConfidence(item.confidence || "possible")
+        group.scopeLabel,
+        `${preview}${hidden}`,
+        `${group.edges.length} edge(s)`
       ));
     });
+
+    if (grouped.length > DISPLAY_LIMIT) {
+      appendEmpty(container, `${grouped.length - DISPLAY_LIMIT} more scope group(s) hidden by preview limit.`);
+    }
   }
   function renderDomSemanticHints(term) {
     const container = document.getElementById("domSemanticHintCards");
