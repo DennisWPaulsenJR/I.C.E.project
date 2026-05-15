@@ -1488,14 +1488,47 @@ document.addEventListener("DOMContentLoaded", async () => {
       value.includes(`.${focus.chapter}.note.${focus.verseNumber}`);
   }
 
+  function normalizeScopeList(value, fallbackItem = {}) {
+    const scopes = [];
+    const addScope = (candidate) => {
+      if (!candidate) return;
+      if (Array.isArray(candidate)) {
+        candidate.forEach(addScope);
+        return;
+      }
+      if (candidate instanceof Set) {
+        Array.from(candidate).forEach(addScope);
+        return;
+      }
+      if (typeof candidate === "object") {
+        [
+          candidate.scope,
+          candidate.scopePath,
+          candidate.fromScopePath,
+          candidate.sourceScopePath,
+          candidate.sourceContext?.scopePath
+        ].forEach(addScope);
+        return;
+      }
+      const normalized = normalizeText(String(candidate));
+      if (normalized) scopes.push(normalized);
+    };
+
+    addScope(value);
+    [
+      fallbackItem.scope,
+      fallbackItem.scopePath,
+      fallbackItem.fromScopePath,
+      fallbackItem.sourceScopePath,
+      fallbackItem.sourceContext?.scopePath
+    ].forEach(addScope);
+
+    return Array.from(new Set(scopes));
+  }
+
   function itemMatchesVerseFocus(item = {}, focus) {
     if (!focus) return false;
-    const scopeCandidates = [
-      item.scopePath,
-      item.fromScopePath,
-      item.sourceScopePath,
-      item.sourceContext?.scopePath
-    ];
+    const scopeCandidates = normalizeScopeList(item.scopes, item);
     if (scopeCandidates.some((scopePath) => scopePathMatchesFocus(scopePath, focus))) return true;
 
     const verseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
@@ -1519,14 +1552,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function scopedBucketCard(container, title, items, previewFn, emptyText) {
-    if (items.length === 0) {
+    const safeItems = Array.isArray(items) ? items : [];
+    if (safeItems.length === 0) {
       container.appendChild(createCard(title, emptyText, "0 items"));
       return;
     }
 
-    const preview = items.slice(0, 4).map(previewFn).join("\n");
-    const hidden = items.length > 4 ? `\n${items.length - 4} more hidden by preview limit.` : "";
-    container.appendChild(createCard(title, `${preview}${hidden}`, `${items.length} item(s)`));
+    const preview = safeItems.slice(0, 4).map(previewFn).join("\n");
+    const hidden = safeItems.length > 4 ? `\n${safeItems.length - 4} more hidden by preview limit.` : "";
+    container.appendChild(createCard(title, `${preview}${hidden}`, `${safeItems.length} item(s)`));
   }
 
   function renderVerseScopeFocus(term) {
@@ -1726,7 +1760,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function addScopeCandidate(scopes, item = {}) {
-    for (const scopePath of [item.scopePath, item.fromScopePath, item.sourceContext?.scopePath]) {
+    for (const scopePath of normalizeScopeList(item.scopes, item)) {
       const normalized = scopeBaseForEntityFocus(scopePath);
       if (normalized) scopes.add(normalized);
     }
@@ -1734,7 +1768,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function itemMatchesEntityScopeSet(item = {}, scopeSet) {
     if (!scopeSet || scopeSet.size === 0) return false;
-    return [item.scopePath, item.fromScopePath, item.sourceContext?.scopePath]
+    return normalizeScopeList(item.scopes, item)
       .map(scopeBaseForEntityFocus)
       .some((scopePath) => scopePath && scopeSet.has(scopePath));
   }
@@ -1800,7 +1834,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     section.hidden = false;
-    const total = focus.scopes.length + focus.semanticEvents.length + focus.relationships.length +
+    const focusScopes = normalizeScopeList(focus.scopes, focus);
+    const total = focusScopes.length + focus.semanticEvents.length + focus.relationships.length +
       focus.mentions.length + focus.sourceDiscovery.length + focus.referenceGraph.length + focus.flowNodes.length;
     count.textContent = `${total} focused`;
 
@@ -1826,7 +1861,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "entity identity / scope focus"
     ));
 
-    scopedBucketCard(container, "Scope / Verse Presence", focus.scopes, (scopePath) => {
+    scopedBucketCard(container, "Scope / Verse Presence", focusScopes, (scopePath) => {
       const mentionCount = focus.mentions.filter((item) => scopeBaseForEntityFocus(item.scopePath) === scopePath).length;
       return `${readableScopeFromBase(scopePath)} | ${scopePath} | mentions: ${mentionCount}`;
     }, "No scoped verse presence detected.");
@@ -1862,12 +1897,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function narrativeItemScopes(item = {}) {
-    return Array.from(new Set([
-      item.scopePath,
-      item.fromScopePath,
-      item.sourceScopePath,
-      item.sourceContext?.scopePath
-    ].map(scopeBaseForEntityFocus).filter(Boolean)));
+    return Array.from(new Set(
+      normalizeScopeList(item.scopes, item)
+        .map(scopeBaseForEntityFocus)
+        .filter(Boolean)
+    ));
   }
 
   function narrativeReadableScopes(scopes) {
@@ -1942,13 +1976,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function narrativeEntrySharesScope(entry, item = {}) {
+    const entryScopes = normalizeScopeList(entry.scopes, entry);
     const scopes = narrativeItemScopes(item);
-    return scopes.some((scope) => entry.scopes.has(scope));
+    return scopes.some((scope) => entry.scopes?.has?.(scope) || entryScopes.includes(scope));
   }
 
   function narrativeEntryHasSpecificScopeMatch(entry, item = {}) {
+    const entryScopes = normalizeScopeList(entry.scopes, entry);
     const itemScopes = narrativeItemScopes(item);
-    if (itemScopes.some((scope) => entry.scopes.includes(scope))) return true;
+    if (itemScopes.some((scope) => entryScopes.includes(scope))) return true;
 
     const itemVerseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
     if (itemVerseRef && entry.semanticEvents.some((eventItem) =>
@@ -2010,7 +2046,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const scopes = narrativeItemScopes(item);
         const existing = Array.from(entries.values()).find((entry) =>
           Math.abs(Number(entry.timelinePosition || 0) - position) < 0.001 ||
-          scopes.some((scope) => entry.scopes.has(scope))
+          scopes.some((scope) => entry.scopes?.has?.(scope) || normalizeScopeList(entry.scopes, entry).includes(scope))
         );
         const entry = existing || ensureEntry(position, scopes, narrativeTitleFromSemanticEvent(item), `semantic-${index}`);
         if (!entry.semanticEvents.length && entry.orderedEvents.length === 0) entry.title = narrativeTitleFromSemanticEvent(item);
@@ -2049,7 +2085,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     return Array.from(entries.values()).map((entry) => ({
       ...entry,
-      scopes: Array.from(entry.scopes).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      scopes: normalizeScopeList(entry.scopes, entry).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
       entities: Array.from(entry.entities).sort((a, b) => a.localeCompare(b))
     })).sort(narrativeTimelineSort);
   }
@@ -2057,7 +2093,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function narrativeTimelineSearchText(entry) {
     return [
       entry.title,
-      entry.scopes.join(" "),
+      normalizeScopeList(entry.scopes, entry).join(" "),
       entry.entities.join(" "),
       entry.orderedEvents.map(narrativeTextFromOrderedEvent).join(" "),
       entry.semanticEvents.map(semanticEventSearchText).join(" "),
@@ -2071,7 +2107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!focus) return false;
     const entityHit = entry.entities.some((name) => textContainsEntityName(name, focus));
     if (entityHit) return true;
-    const scopeHit = focus.scopes?.some((scope) => entry.scopes.includes(scope));
+    const entryScopes = normalizeScopeList(entry.scopes, entry);
+    const focusScopes = normalizeScopeList(focus.scopes, focus);
+    const scopeHit = focusScopes.some((scope) => entryScopes.includes(scope));
     if (scopeHit) return true;
     return entry.semanticEvents.some((eventItem) => eventMatchesEntityFocus(eventItem, focus)) ||
       entry.relationships.some((edge) => relationshipMatchesEntityFocus(edge, focus)) ||
@@ -2082,7 +2120,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!term) return true;
     const verseFocus = parseVerseScopeFocus(term);
     if (verseFocus) {
-      return entry.scopes.some((scopePath) => scopePathMatchesFocus(scopePath, verseFocus)) ||
+      const entryScopes = normalizeScopeList(entry.scopes, entry);
+      return entryScopes.some((scopePath) => scopePathMatchesFocus(scopePath, verseFocus)) ||
         entry.orderedEvents.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
         entry.semanticEvents.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
         entry.relationships.some((item) => itemMatchesVerseFocus(item, verseFocus)) ||
@@ -2156,7 +2195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const entityPreview = entry.entities.slice(0, 6).join(", ");
       const hiddenSemantic = Math.max(entry.semanticEvents.length - 3, 0);
       const body = [
-        `Scope: ${narrativeReadableScopes(entry.scopes)}`,
+        `Scope: ${narrativeReadableScopes(normalizeScopeList(entry.scopes, entry))}`,
         eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
         relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
         flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
@@ -2255,7 +2294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function referenceScopeLabel(item = {}) {
-    const scopePath = item.fromScopePath || "";
+    const scopePath = normalizeScopeList(item.scopes, { fromScopePath: item.fromScopePath || item.scopePath || item.scope || "" })[0] || "";
     const scriptureMatch = scopePath.match(/^scripture\.nt\.([^.]+)\.(\d+)\.(?:verse|note)\.(\d+)/i);
     if (scriptureMatch) {
       return `${capitalizeWord(scriptureMatch[1])} ${scriptureMatch[2]}:${scriptureMatch[3]}`;

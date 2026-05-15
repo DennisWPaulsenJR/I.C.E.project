@@ -577,3 +577,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+## 2026-05-14 - pcdx - Fix scope normalization in timeline views
+
+Task:
+- Fix critical Study Panel render error where scope-aware timeline code assumed `entry.scopes` was always an array.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added `normalizeScopeList()` to normalize undefined, null, string, Set, array, and object-shaped scope values at render/helper boundaries.
+- Applied scope normalization across Verse Scope Focus, Entity Scope Focus, Narrative Timeline, Reference Graph scope labels, entity scope matching, and narrative scope matching.
+- Preserved scope values from `scope`, `scopePath`, `fromScopePath`, `sourceScopePath`, and `sourceContext.scopePath` instead of silently dropping them.
+- Confirmed previous QA refinement remains in place: Narrative Timeline displays `Moment`, not `Step`, and relationship attachment no longer uses position-only matching that leaked lineage edges.
+
+Next recommended step:
+- Reopen Study Panel and verify searches for `Joseph`, `Angel of THE LORD`, `JESUS`, and `1:20` render without scope errors.
+
+Status:
+- Implemented by PCDX.

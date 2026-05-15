@@ -1,6 +1,37 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Critical QA Fix: Scope Normalization in Timeline Views
+
+Instruction summary:
+- Fix Study Panel render error: `entry.scopes.includes is not a function`.
+- Normalize scope values before `.includes`, `.map`, `.some`, `.join`, or iteration in scope-aware render paths.
+- Preserve existing scope values and keep previous Narrative Timeline QA refinement: `Step` -> `Moment` and stricter relationship attachment.
+
+Codex action summary:
+- Added a shared `normalizeScopeList()` helper that accepts undefined, null, string, Set, array, and object-shaped scope values.
+- Routed Verse Scope Focus, Entity Scope Focus, Narrative Timeline, Reference Graph scope labels, entity scope matching, and narrative scope matching through normalized scope lists.
+- Preserved scope values from `scope`, `scopePath`, `fromScopePath`, `sourceScopePath`, and `sourceContext.scopePath`.
+- Kept the Phase 8.1 display wording as `Moment` and retained stricter relationship attachment to prevent lineage leakage.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-14 - Phase 8.1 QA Refinement: Narrative Timeline Wording and Relationship Attachment
 
 Instruction summary:
