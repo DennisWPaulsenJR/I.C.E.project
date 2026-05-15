@@ -1,6 +1,35 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Study Panel Display Refinement: AngEL Of THE LORD Casing
+
+Instruction summary:
+- Update the Study Panel canonical angel display spelling to `AngEL Of THE LORD` when the Angel of THE LORD appears.
+- Keep the change display-only and do not alter extracted source phrases or stored semantic data.
+
+Codex action summary:
+- Updated the conservative canonical display helper to render safe angel label variants as `AngEL Of THE LORD`.
+- Updated the Class II example label to match the preferred display spelling.
+- Did not change extraction logic, source text storage, page rendering, crawling, or QA expectations.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts unchanged: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Narrative Timeline Display Refinement: Hierarchical Entity Ordering
 
 Instruction summary:

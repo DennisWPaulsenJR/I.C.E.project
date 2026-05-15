@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function entityDisplayNameFromRecord(item = {}) {
     const displayName = normalizeText(item.displayName || item.canonicalName || item.entityName || item.name || "");
-    if (/^angel of the lord$/i.test(displayName)) return "Angel of THE LORD";
+    if (/^angel of the lord$/i.test(displayName)) return "AngEL Of THE LORD";
     return displayName;
   }
 
@@ -76,8 +76,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ].forEach((value) => addCandidate(value, display));
     }
 
-    addCandidate("angel of the lord", "Angel of THE LORD");
-    addCandidate("the angel of the lord", "Angel of THE LORD");
+    addCandidate("angel of the lord", "AngEL Of THE LORD");
+    addCandidate("the angel of the lord", "AngEL Of THE LORD");
 
     return candidates.sort((left, right) => right.sourceText.length - left.sourceText.length);
   }
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bChrist\b/gi, "CHRIST")
       .replace(/\bGod\b/gi, "GOD")
       .replace(/\bFather\b/g, "FATHER")
-      .replace(/\b(?:the\s+)?angel of THE LORD\b/gi, "Angel of THE LORD");
+      .replace(/\b(?:the\s+)?angel Of THE LORD\b/gi, "AngEL Of THE LORD");
   }
 
   function includesTerm(value, term) {
@@ -840,7 +840,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       label: "AngEL / Messenger of GOD",
       rank: 2,
       entityTypes: Object.freeze(["divine_messenger", "angelic_messenger"]),
-      examples: Object.freeze(["Angel of THE LORD", "AngEL", "Gabriel"]),
+      examples: Object.freeze(["AngEL Of THE LORD", "AngEL", "Gabriel"]),
       renderClass: "II"
     }),
     III: Object.freeze({

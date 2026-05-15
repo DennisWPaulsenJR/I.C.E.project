@@ -724,3 +724,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Refine AngEL Of THE LORD display spelling
+
+Task:
+- Update Study Panel display spelling for the Angel of THE LORD to Dennis's preferred `AngEL Of THE LORD` casing.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with unchanged counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Study Panel canonical angel display now renders safe variants as `AngEL Of THE LORD`.
+- Class II example display now uses `AngEL Of THE LORD`.
+- This is display-only; extraction logic, source phrases, stored semantic records, page rendering, crawling/fetching, and QA assertions were not changed.
+
+Next recommended step:
+- Recheck Study Panel role groups, Entity Scope Focus, and Narrative Timeline for `AngEL Of THE LORD` display consistency.
+
+Status:
+- Implemented by PCDX.
