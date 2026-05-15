@@ -1,6 +1,50 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 7.5 Current-Page Source Discovery Index
+
+Instruction summary:
+- Create a current-page, adapter-aware discovery index for links/references on the active source page.
+- Do not implement broad crawling or recursive fetching.
+- Add compact Study Panel Source Discovery section and Matthew 1 QA coverage.
+
+Codex action summary:
+- Added content-side current-page link discovery for anchors on the active page only.
+- Added derived `ICE_SOURCE_DISCOVERY_INDEX` in the background pipeline.
+- Standardized discovery records with source URL/capture, adapter ID, discovery scope, link text, href, ref type, source element, verse ref, scope path, and confidence.
+- Classified refs as study notes, cross references, chapter/source navigation, table of contents, source collection, media, related content, or external links.
+- Added Study Panel Source Discovery section with total refs, scoped refs, counts by ref type, and sample refs.
+- Added Matthew 1 QA assertions for source discovery count, study notes, navigation refs, and `scripture.nt.matthew.1.note.20a`.
+
+Files changed:
+- `content.js`
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check content.js`
+- `node --check background.js`
+- `node --check study.js`
+- `node --check qa/matthew1-extension-qa.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136.
+- Source discovery ref types in QA sample: chapter_nav 32, cross_reference 42, source_collection 23, study_note 36, table_of_contents 3.
+- Scope integrity: 639 scoped items, 0 missing scope.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 
 ## 2026-05-14 - Phase 7.4 ScopePath + Verse Position Integrity Refinement
 

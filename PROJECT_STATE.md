@@ -64,6 +64,7 @@ Next planned phase:
 - Covenant instruction/response pairing
 - Identity scope
 - ScopePath / verse position integrity
+- Current-page source discovery index
 - Development QA automation harness
 
 ## Current Architecture
@@ -91,6 +92,7 @@ Core keys:
 - `ICE_SEMANTIC_FLOW_CHAINS`
 - `ICE_ANALYSIS_STATUS`
 - `ICE_SCOPE_INTEGRITY`
+- `ICE_SOURCE_DISCOVERY_INDEX`
 - `ICE_QA_LATEST_EXPORT`
 
 Other active local/derived keys:
@@ -228,7 +230,7 @@ Near-term:
 - Continue ScopePath / verse integrity refinements.
 
 Future:
-- source discovery / site inquisition
+- current-page source discovery index
 - current-page reference inventory
 - reference graph
 - commentary graph

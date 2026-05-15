@@ -24,6 +24,7 @@ const DOM_SEMANTIC_HINTS_KEY = "ICE_DOM_SEMANTIC_HINTS";
 const SOURCE_ADAPTERS_KEY = "ICE_SOURCE_ADAPTERS";
 const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
 const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
+const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -367,6 +368,8 @@ function verseNumberFromRef(verseRef) {
 
 function noteKeyFromRef(value) {
   const text = normalizeWhitespace(value || "").toLowerCase();
+  const splitMatch = text.match(/(?:note|study-note|fn|footnote|#|:)(\d{1,3})[_-]?([a-z])\b/) || text.match(/\b(\d{1,3})[_-]([a-z])\b/);
+  if (splitMatch) return `${splitMatch[1]}${splitMatch[2]}`;
   const match = text.match(/(?:note|study-note|fn|footnote|#|:)(\d{1,3}[a-z])\b/) || text.match(/\b(\d{1,3}[a-z])\b/);
   return match?.[1] || "";
 }
@@ -400,17 +403,25 @@ function scopeKindForItem(item = {}, type = "item") {
   if (type === "relationship") return "relationship";
   if (type === "identity") return "identity";
   if (type === "flow_chain") return "flow_chain";
+  if (type === "source_discovery") return item.refType || "source_discovery";
   return type;
 }
 
 function scopePathForItem(item, type, index, context, verseNumber, timelinePosition) {
   const prefix = sourceScopePrefix(context);
-  const noteKey = noteKeyFromRef([
+  const noteMarker = normalizeWhitespace(item.linkText || item.text || item.attributes?.marker || "").toLowerCase();
+  const markerNoteKey = item.refType === "study_note" && verseNumber && /^[a-z]$/i.test(noteMarker)
+    ? `${verseNumber}${noteMarker}`
+    : "";
+  const noteKey = markerNoteKey || noteKeyFromRef([
     item.verseRef,
     item.domId,
     item.attributes?.href,
     item.attributes?.marker,
     item.attributes?.linkedText,
+    item.href,
+    item.linkText,
+    item.sourceElement,
     item.text
   ].filter(Boolean).join(" "));
 
@@ -489,6 +500,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.relationshipGraph, "relationship", activeAdapter);
   enrichScopeCollection(data.canonicalIdentities, "identity", activeAdapter);
   enrichSemanticFlowChainScopes(data.semanticFlowChains, activeAdapter);
+  enrichScopeCollection(data.sourceDiscoveryIndex, "source_discovery", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -498,7 +510,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.semanticEvents || []).map((item) => ({ ...item, scopeLayer: "semantic_event" })),
     ...(data.relationshipGraph || []).map((item) => ({ ...item, scopeLayer: "relationship" })),
     ...(data.canonicalIdentities || []).map((item) => ({ ...item, scopeLayer: "canonical_identity" })),
-    ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" }))
+    ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" })),
+    ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -583,6 +596,64 @@ function createDomSemanticHints(captures) {
   // can map source markup to full semantic scope paths, note graphs, and
   // cross-reference ingestion without making markup mandatory for analysis.
   return hints;
+}
+function normalizeSourceDiscoveryItem(capture, link, activeAdapter, index) {
+  const sourceContext = buildSourceContext(capture || {});
+  const href = normalizeWhitespace(link?.href || "");
+  const linkText = trimText(link?.linkText || href, 180);
+  if (!href || !linkText) return null;
+
+  const item = {
+    id: link.id || `${Date.now()}-${textHash(`source-discovery|${capture?.id || ""}|${href}|${linkText}|${index}`)}`,
+    sourceUrl: capture?.url || link.sourceUrl || "",
+    sourceCaptureId: capture?.id || link.sourceCaptureId || "",
+    adapterId: activeAdapter?.adapterId || "",
+    discoveryScope: link.discoveryScope || "current_page",
+    linkText,
+    href,
+    refType: link.refType || "external_link",
+    sourceElement: link.sourceElement || "",
+    verseRef: link.verseRef || "",
+    verseNumber: link.verseNumber || "",
+    scopePath: link.scopePath || "",
+    sourceContext: {
+      ...sourceContext,
+      sourceCaptureId: capture?.id || sourceContext.sourceCaptureId || "",
+      sourceTitle: sourceContext.sourceTitle || capture?.title || "",
+      sourceUrl: sourceContext.sourceUrl || capture?.url || ""
+    },
+    confidence: link.confidence || "possible"
+  };
+
+  return enrichScopeItem(item, "source_discovery", index, activeAdapter);
+}
+
+function createSourceDiscoveryIndex(captures, activeAdapter) {
+  const index = [];
+  const seen = new Set();
+
+  for (const capture of captures || []) {
+    for (const link of capture?.sourceDiscoveryLinks || []) {
+      const item = normalizeSourceDiscoveryItem(capture, link, activeAdapter, index.length);
+      if (!item) continue;
+      const key = [
+        item.sourceCaptureId,
+        item.refType,
+        item.href,
+        item.linkText,
+        item.scopePath
+      ].join("|").toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      index.push(item);
+    }
+  }
+
+  return index.sort((a, b) =>
+    a.refType.localeCompare(b.refType) ||
+    (a.scopePath || "").localeCompare(b.scopePath || "") ||
+    a.linkText.localeCompare(b.linkText)
+  );
 }
 function sourceContextKey(context) {
   return [
@@ -3634,6 +3705,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
     const domSemanticHints = createDomSemanticHints(captures);
     const sourceAdapters = sourceAdapterRegistry();
     const activeAdapter = deriveActiveSourceAdapter(captures, domSemanticHints);
+    const sourceDiscoveryIndex = createSourceDiscoveryIndex(captures, activeAdapter);
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
@@ -3696,7 +3768,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticEvents,
       relationshipGraph,
       canonicalIdentities,
-      semanticFlowChains
+      semanticFlowChains,
+      sourceDiscoveryIndex
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -3704,7 +3777,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticEvents,
       relationshipGraph,
       canonicalIdentities,
-      semanticFlowChains
+      semanticFlowChains,
+      sourceDiscoveryIndex
     }, activeAdapter);
     const status = {
       reason,
@@ -3726,6 +3800,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       mentionCount: mentionIndex.length,
       domHintCount: domSemanticHints.length,
       activeAdapterName: activeAdapter?.adapterName || "",
+      sourceDiscoveryCount: sourceDiscoveryIndex.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -3748,6 +3823,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [CANONICAL_IDENTITIES_KEY]: canonicalIdentities,
       [MENTION_INDEX_KEY]: mentionIndex,
       [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
+      [SOURCE_DISCOVERY_INDEX_KEY]: sourceDiscoveryIndex,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

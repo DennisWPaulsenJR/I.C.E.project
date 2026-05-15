@@ -648,6 +648,84 @@
     hints.push(hint);
   }
 
+  function absoluteHref(href) {
+    try {
+      return href ? new URL(href, location.href).href : "";
+    } catch (_error) {
+      return href || "";
+    }
+  }
+
+  function sourceDiscoveryRefType(link) {
+    const href = link.getAttribute("href") || "";
+    const text = normalizeCapturedText([
+      link.textContent || "",
+      link.getAttribute("aria-label") || "",
+      link.getAttribute("title") || "",
+      link.className || "",
+      href
+    ].join(" ")).toLowerCase();
+    const pathname = (() => {
+      try {
+        return new URL(href, location.href).pathname.toLowerCase();
+      } catch (_error) {
+        return href.toLowerCase();
+      }
+    })();
+
+    if (link.matches("a.study-note-ref") || /study-note|footnote|note\s*\d+[a-z]?/.test(text)) return "study_note";
+    if (link.matches("a.scripture-ref") || /cross.?ref|cross-reference|footnote|fn|\b(?:gen|ex|num|deut|ruth|sam|chr|isa|matt|mark|luke|john)\.?\s+\d+[:]/i.test(text)) return "cross_reference";
+    if (/media|video|audio|image|download|watch|listen/.test(text) || /\/media\//.test(pathname)) return "media";
+    if (/table of contents|contents|toc/.test(text) || /\/study\/scriptures(?:\?|$|\/[^/]*$)/.test(pathname)) return "table_of_contents";
+    if (/chapter|next|previous|matthew\s+\d+/.test(text) || /\/scriptures\/[^/]+\/[^/]+\/\d+/.test(pathname)) return "chapter_nav";
+    if (/related|also see|see also/.test(text)) return "related_content";
+    if (/\/study\/scriptures\//.test(pathname)) return "source_collection";
+    return "external_link";
+  }
+
+  function sourceDiscoveryConfidence(link, refType) {
+    if (link.matches("a.study-note-ref") || refType === "study_note") return "source-markup";
+    if (["chapter_nav", "table_of_contents", "source_collection"].includes(refType)) return "probable";
+    return "possible";
+  }
+
+  function extractSourceDiscoveryLinks(capture) {
+    const links = [];
+    const seen = new Set();
+
+    for (const link of Array.from(document.querySelectorAll("a[href]")).slice(0, DOM_HINT_LIMIT * 3)) {
+      const rawHref = link.getAttribute("href") || "";
+      const href = absoluteHref(rawHref);
+      const linkText = normalizeCapturedText(link.textContent || link.getAttribute("aria-label") || link.getAttribute("title") || rawHref);
+      if (!href || !linkText) continue;
+
+      const verseScope = nearestVerseScope(link);
+      const verseRef = verseRefFromScope(verseScope);
+      const verseNumber = verseNumberFromScope(verseScope);
+      const refType = sourceDiscoveryRefType(link);
+      const sourceElement = domSelectorHint(link);
+      const key = [refType, href, linkText, verseRef, verseNumber, sourceElement].join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      links.push({
+        id: `${Date.now()}-${textHash(`source-discovery|${key}`)}`,
+        sourceUrl: capture.url || location.href,
+        sourceCaptureId: capture.id || "",
+        discoveryScope: "current_page",
+        linkText: linkText.slice(0, 180),
+        href,
+        refType,
+        sourceElement,
+        verseRef,
+        verseNumber,
+        scopePath: sourceDomPathForScope(verseScope),
+        confidence: sourceDiscoveryConfidence(link, refType)
+      });
+    }
+
+    return links;
+  }
   function extractDomSemanticHints(capture) {
     const hints = [];
     const seen = new Set();
@@ -830,6 +908,7 @@
       sourceAdapter: detectActiveSourceAdapter()
     };
     capture.domSemanticHints = extractDomSemanticHints(capture);
+    capture.sourceDiscoveryLinks = extractSourceDiscoveryLinks(capture);
     return capture;
   }
 

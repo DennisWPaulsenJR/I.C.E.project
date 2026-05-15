@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     sourceAdapters: "ICE_SOURCE_ADAPTERS",
     activeAdapter: "ICE_ACTIVE_ADAPTER",
     scopeIntegrity: "ICE_SCOPE_INTEGRITY",
+    sourceDiscoveryIndex: "ICE_SOURCE_DISCOVERY_INDEX",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1329,6 +1330,74 @@ document.addEventListener("DOMContentLoaded", async () => {
       ));
     }
   }
+  function sourceDiscoverySearchText(item) {
+    return [
+      item.refType,
+      item.linkText,
+      item.href,
+      item.sourceElement,
+      item.verseRef,
+      item.scopePath,
+      item.confidence
+    ].join(" ");
+  }
+
+  function sourceDiscoveryTypeCounts(items) {
+    const counts = new Map();
+    for (const item of items) {
+      const key = item.refType || "external_link";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }
+
+  function renderSourceDiscovery(term) {
+    const container = document.getElementById("sourceDiscoveryCards");
+    const count = document.getElementById("sourceDiscoveryCount");
+    const refs = asArray(studyData.sourceDiscoveryIndex);
+    const filtered = refs.filter((item) => matchesSearchQuery(sourceDiscoverySearchText(item), term));
+    const scopedCount = refs.filter((item) => item.scopePath).length;
+    const typeCounts = sourceDiscoveryTypeCounts(refs);
+
+    clearElement(container);
+    count.textContent = `${filtered.length} refs`;
+
+    if (refs.length === 0) {
+      appendEmpty(container, "No current-page source references discovered.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No source discovery refs match.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Source Discovery",
+      [
+        `Total discovered refs: ${refs.length}`,
+        `Scoped refs: ${scopedCount}`,
+        `Adapter: ${studyData.activeAdapter?.adapterName || "unknown"}`,
+        typeCounts.map(([type, value]) => `${type}: ${value}`).join("\n")
+      ].filter(Boolean).join("\n"),
+      "current-page only"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createCard(
+        item.linkText || item.href || "Source ref",
+        [
+          `Type: ${item.refType || "external_link"}`,
+          item.scopePath ? `Scope: ${item.scopePath}` : "Scope: unscoped",
+          item.verseRef ? `Verse: ${item.verseRef}` : "",
+          `Href: ${trimText(item.href || "", 120)}`,
+          item.sourceElement ? `Element: ${item.sourceElement}` : ""
+        ].filter(Boolean).join("\n"),
+        displayConfidence(item.confidence || "possible")
+      ));
+    });
+  }
   function renderDomSemanticHints(term) {
     const container = document.getElementById("domSemanticHintCards");
     const count = document.getElementById("domSemanticHintCount");
@@ -1733,6 +1802,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSourceContext(term);
       renderSourceAdapter(term);
       renderScopeIntegrity(term);
+      renderSourceDiscovery(term);
       renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
@@ -1785,6 +1855,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       canonicalIdentities: countItems(studyData.canonicalIdentities),
       mentions: countItems(studyData.mentionIndex),
       domHints: countItems(studyData.domSemanticHints),
+      sourceDiscovery: countItems(studyData.sourceDiscoveryIndex),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -1810,6 +1881,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const entityClassCount = classifiedEntityCount();
     const mentionCount = countItems(studyData.mentionIndex);
     const domHintCount = countItems(studyData.domSemanticHints);
+    const sourceDiscoveryCount = countItems(studyData.sourceDiscoveryIndex);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
@@ -1834,6 +1906,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticEntityClasses").textContent = entityClassCount;
     document.getElementById("diagnosticMentions").textContent = mentionCount;
     document.getElementById("diagnosticDomHints").textContent = domHintCount;
+    document.getElementById("diagnosticSourceDiscovery").textContent = sourceDiscoveryCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

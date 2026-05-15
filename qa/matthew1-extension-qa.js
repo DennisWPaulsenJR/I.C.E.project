@@ -28,7 +28,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_EVENTS",
   "ICE_SEMANTIC_FLOW_CHAINS",
   "ICE_ANALYSIS_STATUS",
-  "ICE_SCOPE_INTEGRITY"
+  "ICE_SCOPE_INTEGRITY",
+  "ICE_SOURCE_DISCOVERY_INDEX"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -75,7 +76,8 @@ function emptyCounts() {
     relationshipGraph: 0,
     canonicalIdentities: 0,
     semanticEvents: 0,
-    semanticFlowChains: 0
+    semanticFlowChains: 0,
+    sourceDiscovery: 0
   };
 }
 
@@ -88,7 +90,8 @@ function buildCounts(storageData) {
     relationshipGraph: count(storageData.ICE_RELATIONSHIP_GRAPH),
     canonicalIdentities: count(storageData.ICE_CANONICAL_IDENTITIES),
     semanticEvents: count(storageData.ICE_SEMANTIC_EVENTS),
-    semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS)
+    semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS),
+    sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX)
   };
 }
 
@@ -103,6 +106,7 @@ function buildSamples(storageData) {
     semanticEvents: sample(storageData.ICE_SEMANTIC_EVENTS, 5),
     semanticFlowChains: sample(storageData.ICE_SEMANTIC_FLOW_CHAINS, 3),
     scopeIntegrity: storageData.ICE_SCOPE_INTEGRITY || null,
+    sourceDiscovery: sample(storageData.ICE_SOURCE_DISCOVERY_INDEX, 200),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -175,6 +179,15 @@ function hasScopedEvent(data, eventType, scopePath, predicate = () => true) {
 function hasScopedHint(data, scopePath, predicate = () => true) {
   return hasScopePath(data.ICE_DOM_SEMANTIC_HINTS, scopePath, predicate);
 }
+function hasDiscoveredRef(data, refType, predicate = () => true) {
+  return (data.ICE_SOURCE_DISCOVERY_INDEX || []).some((item) =>
+    item.refType === refType && predicate(item)
+  );
+}
+
+function hasScopedDiscoveryRef(data, scopePath, predicate = () => true) {
+  return hasScopePath(data.ICE_SOURCE_DISCOVERY_INDEX, scopePath, predicate);
+}
 
 function evaluateFailures(data) {
   const failures = [];
@@ -196,6 +209,10 @@ function evaluateFailures(data) {
   if (!hasScopedHint(data, "scripture.nt.matthew.1.verse.21")) failures.push("Expected Matthew 1 verse 21 DOM hints scoped to scripture.nt.matthew.1.verse.21.");
   if (!hasScopedEvent(data, "instruction_concerning_person", "scripture.nt.matthew.1.verse.20")) failures.push("Expected Joseph instruction event scoped to Matthew 1 verse 20.");
   if (!hasScopedEvent(data, "covenant_family_union", "scripture.nt.matthew.1.verse.24", (item) => /took unto him his wife/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected Joseph response event scoped to Matthew 1 verse 24.");
+  if (count(data.ICE_SOURCE_DISCOVERY_INDEX) <= 0) failures.push("Expected source discovery refs count > 0.");
+  if (!hasDiscoveredRef(data, "study_note")) failures.push("Expected study note refs in source discovery index.");
+  if (!hasDiscoveredRef(data, "chapter_nav") && !hasDiscoveredRef(data, "table_of_contents") && !hasDiscoveredRef(data, "source_collection")) failures.push("Expected chapter/source navigation refs in source discovery index.");
+  if (!hasScopedDiscoveryRef(data, "scripture.nt.matthew.1.note.20a", (item) => item.refType === "study_note")) failures.push("Expected verse-scoped note ref scripture.nt.matthew.1.note.20a.");
 
   for (const [fromEntity, toEntity] of [
     ["THE LORD", "Angel of THE LORD"],

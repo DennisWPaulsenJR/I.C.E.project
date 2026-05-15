@@ -288,3 +288,38 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Add current-page source discovery index
+
+Task:
+- Begin Phase 7.5 Current-Page Source Discovery Index by adding adapter-aware current-page link/reference discovery without broad crawling.
+
+Files changed:
+- `content.js`
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` first.
+- `node --check content.js` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- Initial `npm.cmd run qa:matthew1` found 136 source discovery refs but failed the exact `note.20a` assertion; fixed LDS note scope parsing for `#note20_a` and reran.
+- Final `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, scope integrity 639 scoped items and 0 missing scope.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Use `ICE_SOURCE_DISCOVERY_INDEX` for current-page reference inventory only; future crawling/fetching should remain explicitly scoped as a separate task.
+
+Status:
+- Implemented by PCDX.
