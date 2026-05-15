@@ -665,3 +665,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+## 2026-05-15 - pcdx - Refine source preview and canonical display
+
+Task:
+- Refine Study Panel Source Discovery preview priority and Angel canonical display consistency.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with unchanged counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Source Discovery preview now prioritizes `study_note`, scoped verse/chapter refs, `cross_reference`, navigation/source refs, then external/other refs.
+- Preview order changed only in Study Panel display; stored source discovery records and counts are unchanged.
+- Added a conservative canonical display helper for angel labels, preferring existing Entity Registry / Canonical Identity display when available and normalizing safe angel display variants to `Angel of THE LORD`.
+- No source phrase data, extraction logic, page rendering, crawling/fetching, or theological inference was changed.
+
+Next recommended step:
+- Recheck Study Panel Source Discovery and entity/relationship displays for Matthew 1 to confirm study notes appear first and Angel naming is consistent.
+
+Status:
+- Implemented by PCDX.

@@ -43,15 +43,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${normalized.slice(0, maxLength - 3).trim()}...`;
   }
 
+  function escapeRegExp(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function entityDisplayNameFromRecord(item = {}) {
+    const displayName = normalizeText(item.displayName || item.canonicalName || item.entityName || item.name || "");
+    if (/^angel of the lord$/i.test(displayName)) return "Angel of THE LORD";
+    return displayName;
+  }
+
+  function canonicalDisplayCandidates() {
+    const candidates = [];
+    const addCandidate = (source, display) => {
+      const sourceText = normalizeText(source);
+      const displayText = normalizeText(display);
+      if (!sourceText || !displayText || sourceText.length < 4) return;
+      if (!/angel/i.test(`${sourceText} ${displayText}`)) return;
+      candidates.push({ sourceText, displayText: entityDisplayNameFromRecord({ displayName: displayText }) });
+    };
+
+    for (const item of [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]) {
+      const display = entityDisplayNameFromRecord(item);
+      if (!/angel/i.test(display)) continue;
+      [
+        item.displayName,
+        item.canonicalName,
+        item.entityName,
+        item.name,
+        ...asArray(item.aliases),
+        ...asArray(item.surfaceForms)
+      ].forEach((value) => addCandidate(value, display));
+    }
+
+    addCandidate("angel of the lord", "Angel of THE LORD");
+    addCandidate("the angel of the lord", "Angel of THE LORD");
+
+    return candidates.sort((left, right) => right.sourceText.length - left.sourceText.length);
+  }
+
+  function applyCanonicalDisplayLabels(text) {
+    let value = normalizeText(text);
+    for (const { sourceText, displayText } of canonicalDisplayCandidates()) {
+      if (sourceText.toLowerCase() === displayText.toLowerCase()) continue;
+      value = value.replace(new RegExp(`\\b${escapeRegExp(sourceText)}\\b`, "gi"), displayText);
+    }
+    return value;
+  }
+
   function renderDivineDisplayText(text) {
-    return normalizeText(text)
+    return applyCanonicalDisplayLabels(text)
       .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT")
       .replace(/\bThe Lord\b/gi, "THE LORD")
       .replace(/\bJesus Christ\b/gi, "JESUS CHRIST")
       .replace(/\bJesus\b/gi, "JESUS")
       .replace(/\bChrist\b/gi, "CHRIST")
       .replace(/\bGod\b/gi, "GOD")
-      .replace(/\bFather\b/g, "FATHER");
+      .replace(/\bFather\b/g, "FATHER")
+      .replace(/\b(?:the\s+)?angel of THE LORD\b/gi, "Angel of THE LORD");
   }
 
   function includesTerm(value, term) {
@@ -2298,6 +2347,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }
 
+  function sourceDiscoveryPreviewRank(item = {}) {
+    const refType = item.refType || "external_link";
+    const scopePath = normalizeText(item.scopePath || item.fromScopePath || "").toLowerCase();
+    if (refType === "study_note") return 10;
+    if (/\.(?:verse|chapter)\./.test(scopePath) || item.verseRef) return 20;
+    if (refType === "cross_reference") return 30;
+    if (["chapter_nav", "source_collection", "table_of_contents", "related_content", "media"].includes(refType)) return 40;
+    return 90;
+  }
+
+  function sortSourceDiscoveryForPreview(items) {
+    return [...items].sort((left, right) =>
+      sourceDiscoveryPreviewRank(left) - sourceDiscoveryPreviewRank(right) ||
+      normalizeText(left.scopePath || left.verseRef || "").localeCompare(normalizeText(right.scopePath || right.verseRef || ""), undefined, { numeric: true }) ||
+      normalizeText(left.linkText || left.href || "").localeCompare(normalizeText(right.linkText || right.href || ""))
+    );
+  }
+
   function renderSourceDiscovery(term) {
     const container = document.getElementById("sourceDiscoveryCards");
     const count = document.getElementById("sourceDiscoveryCount");
@@ -2330,7 +2397,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "current-page only"
     ));
 
-    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+    sortSourceDiscoveryForPreview(filtered).slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createCard(
         item.linkText || item.href || "Source ref",
         [

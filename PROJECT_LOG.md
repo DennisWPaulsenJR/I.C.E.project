@@ -1,6 +1,37 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Study Panel Refinement: Source Preview Priority and Angel Display
+
+Instruction summary:
+- Reorder Source Discovery preview so immediate study-note refs appear before broad cross references and navigation/external refs.
+- Refine Study Panel display labels so angel entity naming/casing is consistent as `Angel of THE LORD` where safe.
+- Keep the change display-only with no extraction, source phrase storage, page rendering, crawling, or count changes.
+
+Codex action summary:
+- Added preview-only Source Discovery ranking: study notes first, then current scoped verse/chapter refs, cross references, navigation/source refs, and external/other refs.
+- Applied the preview sort only to displayed Source Discovery cards; stored `ICE_SOURCE_DISCOVERY_INDEX` order and counts are unchanged.
+- Added a conservative canonical display helper that uses existing Entity Registry / Canonical Identity angel labels where available and normalizes angel display casing to `Angel of THE LORD`.
+- Avoided broad alias promotion or theological inference; this is Study Panel display text only.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts unchanged: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Phase 8.1 QA Refinement: Narrative Timeline Count Consistency
 
 Instruction summary:
