@@ -1981,22 +1981,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     return scopes.some((scope) => entry.scopes?.has?.(scope) || entryScopes.includes(scope));
   }
 
-  function narrativeEntryHasSpecificScopeMatch(entry, item = {}) {
-    const entryScopes = normalizeScopeList(entry.scopes, entry);
-    const itemScopes = narrativeItemScopes(item);
-    if (itemScopes.some((scope) => entryScopes.includes(scope))) return true;
+  function narrativeIsBroadScope(scopePath) {
+    const value = normalizeText(scopePath || "").toLowerCase();
+    if (!value) return true;
+    return /\.chapter(?:\.|$)|\.relationship\.\d+$|\.event\.\d+$|\.identity\.\d+$|\.mention\.\d+$/.test(value);
+  }
 
+  function narrativeEntryIsLineageMoment(entry) {
+    return entry.semanticEvents.some((item) =>
+      item.eventType === "lineage_birth" ||
+      item.semanticCategory === "lineage" ||
+      item.relationshipType === "father_son"
+    ) || entry.orderedEvents.some((item) => item.eventType === "lineage_record");
+  }
+
+  function narrativeRelationshipIsLineage(edge = {}) {
+    return [
+      edge.relationshipType,
+      edge.semanticCategory,
+      edge.derivedFrom,
+      edge.evidencePhrase
+    ].some((value) => /lineage|father_son|begat/i.test(value || ""));
+  }
+
+  function narrativeItemHasNarrowScopeMatch(entry, item = {}) {
+    const entryScopes = normalizeScopeList(entry.scopes, entry).filter((scope) => !narrativeIsBroadScope(scope));
+    const itemScopes = narrativeItemScopes(item).filter((scope) => !narrativeIsBroadScope(scope));
+    return itemScopes.length > 0 && itemScopes.some((scope) => entryScopes.includes(scope));
+  }
+
+  function narrativeEntryHasVerseRefMatch(entry, item = {}) {
     const itemVerseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
-    if (itemVerseRef && entry.semanticEvents.some((eventItem) =>
+    if (!itemVerseRef) return false;
+    return entry.semanticEvents.some((eventItem) =>
       normalizeText(eventItem.verseRef || eventItem.sourceContext?.verseRef || "") === itemVerseRef
-    )) return true;
+    ) || entry.orderedEvents.some((eventItem) =>
+      normalizeText(eventItem.verseRef || eventItem.sourceContext?.verseRef || "") === itemVerseRef
+    );
+  }
 
+  function narrativeSourcePhraseOverlap(entry, item = {}) {
     const evidence = normalizeText(item.evidencePhrase || item.anchorText || item.sourceSnippet || "").toLowerCase();
-    if (!evidence) return false;
-    return entry.semanticEvents.some((eventItem) => {
-      const eventEvidence = normalizeText(eventItem.anchorText || eventItem.sourceSnippet || eventItem.normalizedMeaning || "").toLowerCase();
-      return eventEvidence && (eventEvidence.includes(evidence) || evidence.includes(eventEvidence));
-    });
+    if (!evidence || evidence.length < 12) return false;
+    const eventTexts = [...entry.semanticEvents, ...entry.orderedEvents]
+      .map((eventItem) => normalizeText([
+        eventItem.anchorText,
+        eventItem.sourceSnippet,
+        eventItem.normalizedMeaning,
+        narrativeTextFromOrderedEvent(eventItem)
+      ].filter(Boolean).join(" ")).toLowerCase())
+      .filter((value) => value.length >= 12);
+    return eventTexts.some((eventEvidence) =>
+      eventEvidence.includes(evidence) || evidence.includes(eventEvidence)
+    );
+  }
+
+  function narrativeEntryHasSpecificScopeMatch(entry, item = {}) {
+    return narrativeItemHasNarrowScopeMatch(entry, item) ||
+      narrativeEntryHasVerseRefMatch(entry, item) ||
+      narrativeSourcePhraseOverlap(entry, item);
   }
 
   function narrativeEntrySemanticParticipants(entry) {
@@ -2019,7 +2062,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function narrativeRelationshipBelongsToEntry(entry, edge = {}) {
-    return narrativeEntryHasSpecificScopeMatch(entry, edge) || narrativeRelationshipParticipantsPresent(entry, edge);
+    if (narrativeRelationshipIsLineage(edge) && !narrativeEntryIsLineageMoment(entry)) return false;
+    if (narrativeEntryHasSpecificScopeMatch(entry, edge)) return true;
+    if (!narrativeRelationshipParticipantsPresent(entry, edge)) return false;
+    return narrativeSourcePhraseOverlap(entry, edge) || narrativeItemHasNarrowScopeMatch(entry, edge);
   }
 
   function createNarrativeTimelineEntries() {
@@ -2066,7 +2112,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const linkedToEntry = entry.semanticEvents.some((eventItem) =>
             eventItem.id && nodeItem.semanticEventId === eventItem.id
           );
-          if (linkedToEntry || narrativeEntrySharesScope(entry, nodeItem)) {
+          if (linkedToEntry || narrativeItemHasNarrowScopeMatch(entry, nodeItem) || narrativeEntryHasVerseRefMatch(entry, nodeItem)) {
             addNarrativeEntryItem(entry, nodeItem, "flowNodes");
           }
         }
@@ -2076,8 +2122,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             link.toEventId
           ].filter(Boolean));
           const linkedToEntry = entry.semanticEvents.some((eventItem) => linkedEventIds.has(eventItem.id));
-          if (linkedToEntry || narrativeEntrySharesScope(entry, link)) {
-            addNarrativeEntryItem(entry, { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" }, "flowLinks");
+          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          if (linkedToEntry || narrativeItemHasNarrowScopeMatch(entry, linkItem) || narrativeSourcePhraseOverlap(entry, linkItem)) {
+            addNarrativeEntryItem(entry, linkItem, "flowLinks");
           }
         }
       }

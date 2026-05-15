@@ -1,6 +1,38 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.1 QA Refinement: Narrative Timeline Relevance Tightening
+
+Instruction summary:
+- Tighten Narrative Timeline relationship and flow attachment so each Moment shows relationships/flow nodes truly relevant to that narrative moment.
+- Prefer exact verse/scope matches, participant matches within the moment's semantic events, and source phrase overlap.
+- Do not attach broad chapter-scope relationships unless no narrower scope exists, and keep lineage/genealogy isolated to lineage moments.
+
+Codex action summary:
+- Added narrow-scope checks that ignore broad chapter, relationship, event, identity, and mention scope paths as standalone attachment evidence.
+- Added lineage detection so lineage/father-son relationship edges are rejected from non-lineage narrative moments.
+- Tightened relationship attachment so participant overlap must also have narrow scope or source phrase overlap.
+- Tightened flow node/link attachment to prefer linked semantic event IDs, narrow scope, verse ref, or source phrase overlap.
+- Kept `Moment` wording, scope normalization, extraction logic, page rendering, linked-page fetching, crawling, and existing panels unchanged.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-14 - Critical QA Fix: Scope Normalization in Timeline Views
 
 Instruction summary:

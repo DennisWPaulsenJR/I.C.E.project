@@ -606,3 +606,33 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+## 2026-05-15 - pcdx - Tighten narrative timeline relevance
+
+Task:
+- Refine Phase 8.1 Narrative Timeline relationship and flow attachment so each Moment only shows relationships and flow nodes relevant to that narrative moment.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added broad-scope filtering so chapter/relationship/event/identity/mention scope paths cannot attach relationships to narrative moments by themselves.
+- Added lineage isolation so lineage/father-son relationships remain out of non-lineage moments.
+- Tightened relationship attachment to require narrow scope, verse ref, source phrase overlap, or participant match backed by narrow scope/source phrase relevance.
+- Tightened flow node/link attachment to prefer linked semantic event IDs, narrow scope, verse ref, or source phrase overlap.
+- Preserved `Moment` wording and existing extraction/page rendering behavior.
+
+Next recommended step:
+- Recheck Study Panel Narrative Timeline for `Joseph`, `Angel of THE LORD`, `JESUS`, and `1:20`, with special attention to Moment 1 relationship counts and genealogy separation.
+
+Status:
+- Implemented by PCDX.
