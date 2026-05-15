@@ -1,6 +1,37 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Narrative Timeline Display Refinement: Hierarchical Entity Ordering
+
+Instruction summary:
+- Add readable narrative moment labels such as Matthew 1:20 instruction, Matthew 1:1-17 lineage, Matthew 1:22-23 fulfillment, and Matthew 1:24-25 response/naming.
+- Display entities inside Narrative Timeline moments in sacred/authority hierarchy order without changing stored extraction data.
+- Keep Angel display canonical as `Angel of THE LORD` and keep the timeline compact.
+
+Codex action summary:
+- Added display-only Narrative Timeline helpers for moment verse labels and concise moment topics.
+- Added hierarchy-aware entity label sorting for moment previews: divine authority first, divine messenger second, human actors/recipients next, and birth/naming focus entities handled without flattening the authority order.
+- Reused existing Entity Registry / Canonical Identity classification and Angel canonical display helpers where available.
+- Did not change extraction logic, stored entity arrays, page rendering, crawling, linked-page fetching, or existing panel structure.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts unchanged: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Study Panel Refinement: Source Preview Priority and Angel Display
 
 Instruction summary:

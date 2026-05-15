@@ -2117,6 +2117,149 @@ document.addEventListener("DOMContentLoaded", async () => {
     return narrativeSourcePhraseOverlap(entry, edge) || narrativeItemHasNarrowScopeMatch(entry, edge);
   }
 
+  function narrativeEntityRecordForName(name) {
+    const normalized = normalizedEntityName(name);
+    if (!normalized) return null;
+    return [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]
+      .find((item) => entityNameCandidates(item).some((candidate) =>
+        candidate === normalized || entityQueryMatchesName(normalized, candidate) || entityQueryMatchesName(candidate, normalized)
+      )) || null;
+  }
+
+  function narrativeEntityDisplayName(name) {
+    const record = narrativeEntityRecordForName(name);
+    return renderDivineDisplayText(entityDisplayNameFromRecord(record || { displayName: name }) || name);
+  }
+
+  function narrativeEntryHasBirthNamingFocus(entry) {
+    const eventText = [...entry.semanticEvents, ...entry.orderedEvents]
+      .map((item) => [
+        item.eventType,
+        item.semanticCategory,
+        item.action,
+        item.normalizedMeaning,
+        item.sourceSnippet,
+        narrativeTextFromOrderedEvent(item)
+      ].join(" "))
+      .join(" ")
+      .toLowerCase();
+    return /birth|born|name|named|call his name|brought forth/.test(eventText);
+  }
+
+  function narrativeEntityDirectnessRank(entry, displayName) {
+    const normalized = normalizedEntityName(displayName);
+    if (!normalized) return 90;
+    const directActors = new Set(entry.semanticEvents
+      .map((item) => normalizedEntityName(item.actor || item.narrator || item.quotedSpeaker))
+      .filter(Boolean));
+    const directRecipients = new Set(entry.semanticEvents
+      .flatMap((item) => [item.recipient, item.target, item.concerning])
+      .map(normalizedEntityName)
+      .filter(Boolean));
+    if (directActors.has(normalized)) return 0;
+    if (directRecipients.has(normalized)) return 5;
+    return 20;
+  }
+
+  function narrativeEntityDisplayRank(entry, name) {
+    const displayName = narrativeEntityDisplayName(name);
+    const normalized = normalizedEntityName(displayName);
+    const record = narrativeEntityRecordForName(name);
+    const entityClass = classifyEntityDisplay(record || { displayName: name });
+    const type = normalizeText(record?.entityType || "").toLowerCase();
+    const roles = new Set(asArray(record?.roleTypes).map((role) => normalizeText(role).toLowerCase()));
+    const directness = narrativeEntityDirectnessRank(entry, displayName);
+
+    if (normalized === "the lord" || roles.has("authoritysource") || type === "divine_authority") return 10 + directness / 100;
+    if (normalized === "angel of the lord" || entityClass === "II" || type === "divine_messenger") return 20 + directness / 100;
+    if ((normalized === "jesus" || normalized === "jesus christ") && narrativeEntryHasBirthNamingFocus(entry)) return 45 + directness / 100;
+    if (entityClass === "III" || type === "human" || type === "narrator" || type === "lineage_person") return 30 + directness / 100;
+    if (entityClass === "I") return 50 + directness / 100;
+    return 80 + directness / 100;
+  }
+
+  function sortedNarrativeEntityLabels(entry) {
+    const labels = entry.entities.map((name) => ({
+      displayName: narrativeEntityDisplayName(name),
+      rank: narrativeEntityDisplayRank(entry, name)
+    }));
+    const seen = new Set();
+    return labels
+      .sort((left, right) => left.rank - right.rank || left.displayName.localeCompare(right.displayName))
+      .filter((item) => {
+        const key = normalizedEntityName(item.displayName);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => item.displayName);
+  }
+
+  function narrativeVerseNumbers(entry) {
+    const numbers = new Set();
+    const addVerse = (value) => {
+      const match = normalizeText(value || "").match(/(?:\b\d+:)?(\d+)[a-z]?\b/);
+      if (match) numbers.add(Number(match[1]));
+    };
+    const addScopeVerse = (value) => {
+      const match = normalizeText(value || "").match(/\.(?:verse|note)\.(\d+)[a-z]?\b/i);
+      if (match) numbers.add(Number(match[1]));
+    };
+
+    for (const scope of normalizeScopeList(entry.scopes, entry)) addScopeVerse(scope);
+    for (const item of [...entry.semanticEvents, ...entry.orderedEvents]) {
+      addVerse(item.verseRef || item.sourceContext?.verseRef);
+      addVerse(item.verseNumber || item.sourceContext?.verseNumber);
+      addScopeVerse(item.scopePath || item.sourceContext?.scopePath);
+    }
+    return Array.from(numbers)
+      .filter((number) => Number.isFinite(number) && number > 0)
+      .sort((a, b) => a - b);
+  }
+
+  function narrativeVerseLabel(entry) {
+    const context = activeScopeContext();
+    const book = scopeBookTitle(context.book || "Matthew");
+    const chapter = String(context.chapter || "1");
+    if (narrativeEntryIsLineageMoment(entry)) return `${book} ${chapter}:1-17`;
+
+    const verses = narrativeVerseNumbers(entry);
+    if (verses.length === 0) return narrativeReadableScopes(normalizeScopeList(entry.scopes, entry));
+    const first = verses[0];
+    const last = verses[verses.length - 1];
+    return first === last ? `${book} ${chapter}:${first}` : `${book} ${chapter}:${first}-${last}`;
+  }
+
+  function narrativeMomentLabel(entry) {
+    if (narrativeEntryIsLineageMoment(entry)) return "Genealogy / Lineage Sequence";
+
+    const eventText = [...entry.semanticEvents, ...entry.orderedEvents]
+      .map((item) => [
+        item.eventType,
+        item.semanticCategory,
+        item.actor,
+        item.narrator,
+        item.action,
+        item.target,
+        item.recipient,
+        item.concerning,
+        item.normalizedMeaning,
+        item.sourceSnippet,
+        narrativeTextFromOrderedEvent(item)
+      ].join(" "))
+      .join(" ")
+      .toLowerCase();
+
+    if (/fulfill|fulfilled|prophet|narrator/.test(eventText)) return "Fulfillment Declared";
+    if (/took|wife|brought forth|name|named|call his name|birth|born/.test(eventText)) return "Joseph Obeys and JESUS Is Named";
+    if (/angel|fear not|instruct|command|take unto thee|dream|appeared/.test(eventText)) return "Joseph Receives Divine Instruction";
+    return trimText(entry.title, 64) || "Narrative Moment";
+  }
+
+  function narrativeMomentDisplayTitle(entry) {
+    return `${narrativeVerseLabel(entry)} - ${narrativeMomentLabel(entry)}`;
+  }
+
   function createNarrativeTimelineEntries() {
     const entries = new Map();
     const ensureEntry = (position, scopes, title, fallback) => {
@@ -2299,7 +2442,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const displayedFlowItems = displayedNarrativeFlowItems(entry);
       const relationshipPreview = compactNarrativeRelationshipPreview(entry);
       const flowPreview = compactNarrativeFlowPreview(entry);
-      const entityPreview = entry.entities.slice(0, 6).join(", ");
+      const entityPreview = sortedNarrativeEntityLabels(entry).slice(0, 6).join(", ");
       const hiddenSemantic = Math.max(entry.semanticEvents.length - 3, 0);
       const body = [
         `Scope: ${narrativeReadableScopes(normalizeScopeList(entry.scopes, entry))}`,
@@ -2315,7 +2458,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `${displayedFlowItems.length} displayed flow`
       ].join(" | ");
       container.appendChild(createCard(
-        `Moment ${entry.timelinePosition}: ${entry.title}`,
+        `Moment ${entry.timelinePosition}: ${narrativeMomentDisplayTitle(entry)}`,
         body,
         meta
       ));

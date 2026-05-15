@@ -694,3 +694,33 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Add hierarchy ordering to narrative timeline
+
+Task:
+- Refine Narrative Timeline display with readable moment labels and hierarchy-aware entity ordering.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with unchanged counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Narrative Timeline cards now use readable labels such as scoped Matthew verse/range plus a compact moment topic.
+- Entity previews now sort display labels by authority hierarchy: THE LORD/source authority first, Angel of THE LORD/divine messenger second, human actors and recipients next, with birth/naming focus handled separately.
+- Existing canonical Angel display remains `Angel of THE LORD`.
+- No extraction logic, stored entity arrays, page rendering, crawling/fetching, or existing panel rewrite was added.
+
+Next recommended step:
+- Recheck Matthew 1 Narrative Timeline cards for `1:20`, `Joseph`, `Angel of THE LORD`, and `JESUS` to confirm the visual order and moment labels match the intended review flow.
+
+Status:
+- Implemented by PCDX.
