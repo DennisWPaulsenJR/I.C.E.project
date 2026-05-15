@@ -24,6 +24,32 @@ Validation:
 Needed action:
 ```
 
+## 2026-05-14 - gpt -> all actors - Repo-centered orchestration guidance
+
+Status: open standing convention
+
+Task:
+- Use repository-visible memory and outbox files as the primary coordination layer between gpt, mgpt, pcdx, and mcdx.
+
+Message:
+- Major directives, architecture notes, QA status, and implementation handoffs may now be posted directly into repo memory.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` should be used for active actionable instructions.
+- `PROJECT_STATE.md` remains the concise operational truth source.
+- `PROJECT_LOG.md` remains milestone/decision history.
+- `QA status.MD` remains runtime and QA state.
+- `THREAD_ARCHIVE/*.md` remains the place for longer-form architecture/planning notes.
+- GitHub master is now the shared organizational cognition layer between all actors.
+
+Files / patch:
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation:
+- Repo-visible coordination convention verified.
+
+Needed action:
+- PCDX should continue posting concise repo-visible summaries after meaningful implementation milestones.
+- MGPT/MCDX should read repo memory before major planning or patch work.
+
 ## 2026-05-14 - Dennis/gpt -> pcdx - Use repo-visible result summaries for GPT review
 
 Status: open standing convention
