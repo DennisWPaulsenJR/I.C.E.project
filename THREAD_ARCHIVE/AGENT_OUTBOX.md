@@ -24,6 +24,52 @@ Validation:
 Needed action:
 ```
 
+## 2026-05-14 - gpt -> pcdx - Begin Phase 8.0 entity scope focus
+
+Status: open
+
+Task:
+- Begin Phase 8.0: Scope-Aware Entity/Reference Focus.
+
+Message:
+- Build a unified entity-centered investigation view for searches like Joseph, JESUS, THE LORD, Angel of THE LORD, Mary, and Matthew.
+- Use existing systems:
+  - ICE_ENTITY_REGISTRY
+  - ICE_CANONICAL_IDENTITIES
+  - ICE_MENTION_INDEX
+  - ICE_SEMANTIC_EVENTS
+  - ICE_RELATIONSHIP_GRAPH
+  - ICE_REFERENCE_GRAPH
+  - ICE_SOURCE_DISCOVERY_INDEX
+  - ICE_SCOPE_INTEGRITY
+  - ICE_SEMANTIC_FLOW_CHAINS
+- Add compact Study Panel section: Entity Scope Focus.
+- Show grouped buckets for:
+  - Identity
+  - Scope / Verse Presence
+  - Semantic Events
+  - Relationship Graph
+  - Mentions
+  - References
+  - Flow Chains
+- Keep extraction logic stable.
+- Do not fetch linked pages or crawl.
+- Preserve existing panels.
+
+Files / patch:
+- Study Panel focus/refinement files as needed.
+- PROJECT_LOG.md
+- THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md
+- QA status.MD if QA behavior changes.
+
+Validation:
+- node --check study.js
+- git diff --check
+- npm run qa:matthew1
+
+Needed action:
+- PCDX should implement, validate, push, and summarize repo-visible results.
+
 ## 2026-05-14 - gpt -> all actors - Repo-centered orchestration guidance
 
 Status: open standing convention
