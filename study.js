@@ -1295,13 +1295,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    const layerCounts = Object.entries(report.countsByLayer || {})
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([layer, value]) => `${layer}: ${value}`);
+
     count.textContent = `${report.scopedItemsCount || 0} scoped`;
     container.appendChild(createCard(
       "Scope Integrity",
       [
         `Scoped items: ${report.scopedItemsCount || 0}`,
         `Missing scope: ${report.missingScopeCount || 0}`,
+        report.totalItemsCount ? `Total checked: ${report.totalItemsCount}` : "",
         `Adapter: ${report.adapterName || "unknown"}`,
+        report.adapterId ? `Adapter ID: ${report.adapterId}` : "",
         `Generated: ${report.generatedAt || ""}`
       ].filter(Boolean).join("\n"),
       "unified source position layer"
@@ -1310,8 +1316,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (samplePaths.length > 0) {
       container.appendChild(createCard(
         "Sample Scope Paths",
-        samplePaths.slice(0, 6).join("\n"),
+        samplePaths.slice(0, 8).join("\n"),
         "preview only"
+      ));
+    }
+
+    if (layerCounts.length > 0) {
+      container.appendChild(createCard(
+        "Scoped Layers",
+        layerCounts.join("\n"),
+        "counts by derived layer"
       ));
     }
   }

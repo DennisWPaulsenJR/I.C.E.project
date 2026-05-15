@@ -2,6 +2,45 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-14 - Phase 7.4 ScopePath + Verse Position Integrity Refinement
+
+Instruction summary:
+- Standardize positional/scope fields across DOM hints, mentions, semantic events, relationships, canonical identities, and semantic flow chains.
+- Prefer DOM/verse scope where available, preserve generic fallbacks, and keep this as a derived integrity layer.
+- Add/confirm Study Panel Scope Integrity visibility and Matthew 1 QA assertions.
+
+Codex action summary:
+- Reworked scope enrichment to derive stable `scopePath`, `verseRef`, `verseNumber`, `chapter`, `book`, `sourceUri`, `sourceCaptureId`, `adapterId`, and `timelinePosition` fields after extraction.
+- Standardized scripture paths such as `scripture.nt.matthew.1.verse.20` and generic fallbacks such as `generic.page.section.N.paragraph.N`.
+- Enriched nested semantic flow-chain nodes and relationships.
+- Expanded Scope Integrity Study Panel display with total checked, missing scope, adapter ID, sample paths, and layer counts.
+- Updated Matthew 1 QA to explicitly require scope integrity report, verse 20/21 DOM scopes, Joseph instruction at verse 20, and Joseph response at verse 24.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js`
+- `node --check study.js`
+- `node --check qa/matthew1-extension-qa.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1.
+- Scope integrity: 503 scoped items, 0 missing scope.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-12 - Repo Memory / Archive Structure
 
 Instruction summary:

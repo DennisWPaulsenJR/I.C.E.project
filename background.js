@@ -331,23 +331,28 @@ function deriveActiveSourceAdapter(captures, domSemanticHints) {
 }
 
 function scopeSlug(value) {
-  return normalizeWhitespace(value || "")
+  return normalizeWhitespace(String(value || ""))
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, ".")
     .replace(/^\.+|\.+$/g, "") || "unknown";
 }
 
+function scopeSegment(value, fallback = "unknown") {
+  const slug = scopeSlug(value || fallback);
+  return slug === "unknown" && fallback !== "unknown" ? scopeSlug(fallback) : slug;
+}
+
 function sourceScopePrefix(context = {}) {
-  const sourceUrl = context.sourceUrl || "";
+  const sourceUrl = context.sourceUrl || context.sourceUri || "";
   if (context.sourceType === "scripture" || context.collection === "scripture" || /\/scriptures\//i.test(sourceUrl)) {
     const testament = /\/scriptures\/nt\//i.test(sourceUrl) ? "nt" :
       /\/scriptures\/ot\//i.test(sourceUrl) ? "ot" : "scripture";
     return [
       "scripture",
       testament,
-      scopeSlug(context.book || context.sourceTitle || "source"),
-      scopeSlug(context.chapter || "chapter")
+      scopeSegment(context.book || context.sourceTitle || "source"),
+      scopeSegment(context.chapter || "chapter")
     ].join(".");
   }
 
@@ -355,39 +360,91 @@ function sourceScopePrefix(context = {}) {
 }
 
 function verseNumberFromRef(verseRef) {
-  const match = normalizeWhitespace(verseRef || "").match(/(?:^|:)(\d{1,3})$/);
+  const value = normalizeWhitespace(verseRef || "");
+  const match = value.match(/(?:^|:)(\d{1,3})(?:[a-z])?$/i) || value.match(/\b(\d{1,3})[a-z]?$/i);
+  return match?.[1] || "";
+}
+
+function noteKeyFromRef(value) {
+  const text = normalizeWhitespace(value || "").toLowerCase();
+  const match = text.match(/(?:note|study-note|fn|footnote|#|:)(\d{1,3}[a-z])\b/) || text.match(/\b(\d{1,3}[a-z])\b/);
+  return match?.[1] || "";
+}
+
+function verseNumberFromDomId(value) {
+  const text = normalizeWhitespace(value || "");
+  const match = text.match(/^(?:p|verse|v)?(\d{1,3})$/i) || text.match(/(?:^|[-_:])(\d{1,3})(?:[-_:]|$)/);
   return match?.[1] || "";
 }
 
 function itemVerseNumber(item = {}) {
-  return item.verseNumber || verseNumberFromRef(item.verseRef) || inferVerseNumberFromText([
-    item.anchorText,
-    item.sourceSnippet,
-    item.evidencePhrase,
-    item.text,
-    item.sourcePhrase,
-    item.normalizedMeaning
+  const attributes = item.attributes || {};
+  return item.verseNumber ||
+    verseNumberFromRef(item.verseRef) ||
+    verseNumberFromRef(attributes["data-eng-ref"]) ||
+    verseNumberFromDomId(item.domId) ||
+    inferVerseNumberFromText([
+      item.anchorText,
+      item.sourceSnippet,
+      item.evidencePhrase,
+      item.text,
+      item.sourcePhrase,
+      item.normalizedMeaning
+    ].filter(Boolean).join(" "));
+}
+
+function scopeKindForItem(item = {}, type = "item") {
+  if (type === "dom_hint" && item.hintType === "study_note_ref") return "note";
+  if (type === "dom_hint" && item.hintType === "source_marker") return "note";
+  if (type === "dom_hint" && item.hintType === "cross_reference_ref") return "note";
+  if (type === "relationship") return "relationship";
+  if (type === "identity") return "identity";
+  if (type === "flow_chain") return "flow_chain";
+  return type;
+}
+
+function scopePathForItem(item, type, index, context, verseNumber, timelinePosition) {
+  const prefix = sourceScopePrefix(context);
+  const noteKey = noteKeyFromRef([
+    item.verseRef,
+    item.domId,
+    item.attributes?.href,
+    item.attributes?.marker,
+    item.attributes?.linkedText,
+    item.text
   ].filter(Boolean).join(" "));
+
+  if (noteKey) return `${prefix}.note.${noteKey}`;
+  if (verseNumber) return `${prefix}.verse.${verseNumber}`;
+
+  if (prefix === "generic.page") {
+    const section = item.section || context.section || 1;
+    const paragraph = item.paragraph || item.sentenceIndex || item.sequenceIndex || timelinePosition || index + 1;
+    return `generic.page.section.${scopeSegment(section)}.paragraph.${scopeSegment(paragraph)}`;
+  }
+
+  const kind = scopeKindForItem(item, type);
+  return `${prefix}.${scopeSegment(kind)}.${scopeSegment(timelinePosition || index + 1)}`;
 }
 
 function enrichScopeItem(item, type, index, activeAdapter) {
   if (!item) return item;
   const context = item.sourceContext || {};
-  const verseNumber = itemVerseNumber(item);
   const sourceCaptureId = item.sourceCaptureId || context.sourceCaptureId || "";
   const sourceUri = item.sourceUri || item.sourceUrl || context.sourceUrl || "";
-  const chapter = item.chapter || context.chapter || verseNumberFromRef(item.verseRef) || "";
+  const chapter = item.chapter || context.chapter || "";
   const book = item.book || context.book || "";
-  const prefix = sourceScopePrefix({ ...context, sourceUrl: sourceUri, book, chapter: chapter || context.chapter });
-  const timelinePosition = item.timelinePosition || verseNumber || item.sequenceOrder || item.sequenceIndex || index + 1;
-  const typeKey = scopeSlug(type);
-  const positionKey = verseNumber && ["verse", "dom_hint", "mention"].includes(type)
-    ? `verse.${verseNumber}`
-    : `${typeKey}.${timelinePosition}`;
+  const verseNumber = itemVerseNumber(item);
+  const timelinePosition = item.timelinePosition || item.sequenceOrder || item.sequenceIndex || item.sentenceIndex || index + 1;
+  const enrichedContext = {
+    ...context,
+    sourceCaptureId,
+    sourceUrl: sourceUri || context.sourceUrl || "",
+    book,
+    chapter
+  };
 
-  item.scopePath = item.scopePath && item.scopePath.includes(".")
-    ? item.scopePath
-    : `${prefix}.${positionKey}`;
+  item.sourceContext = enrichedContext;
   item.verseNumber = verseNumber || item.verseNumber || "";
   item.verseRef = item.verseRef || (chapter && verseNumber ? `${chapter}:${verseNumber}` : "");
   item.chapter = chapter || context.chapter || "";
@@ -396,51 +453,77 @@ function enrichScopeItem(item, type, index, activeAdapter) {
   item.sourceCaptureId = sourceCaptureId;
   item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
   item.timelinePosition = timelinePosition;
+  item.scopePath = scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
   return item;
 }
 
-function applyScopeIntegrity(data, activeAdapter) {
-  const mappings = [
-    [data.domSemanticHints, "dom_hint"],
-    [data.mentionIndex, "mention"],
-    [data.semanticEvents, "event"],
-    [data.relationshipGraph, "relationship"],
-    [data.canonicalIdentities, "identity"],
-    [data.semanticFlowChains, "flow_chain"]
-  ];
+function enrichScopeCollection(items, type, activeAdapter) {
+  for (const [index, item] of (items || []).entries()) {
+    enrichScopeItem(item, type, index, activeAdapter);
+  }
+}
 
-  for (const [items, type] of mappings) {
-    for (const [index, item] of (items || []).entries()) {
-      enrichScopeItem(item, type, index, activeAdapter);
+function enrichSemanticFlowChainScopes(chains, activeAdapter) {
+  for (const [chainIndex, chain] of (chains || []).entries()) {
+    enrichScopeItem(chain, "flow_chain", chainIndex, activeAdapter);
+
+    for (const [nodeIndex, node] of (chain.nodes || []).entries()) {
+      node.sourceContext = node.sourceContext || chain.sourceContext || {};
+      node.sourceCaptureId = node.sourceCaptureId || chain.sourceCaptureId || node.sourceContext.sourceCaptureId || "";
+      enrichScopeItem(node, "event", nodeIndex, activeAdapter);
+      node.adapterId = node.adapterId || activeAdapter?.adapterId || "";
+    }
+
+    for (const [relationshipIndex, relationship] of (chain.relationships || []).entries()) {
+      relationship.sourceContext = relationship.sourceContext || chain.sourceContext || {};
+      relationship.sourceCaptureId = relationship.sourceCaptureId || chain.sourceCaptureId || relationship.sourceContext.sourceCaptureId || "";
+      enrichScopeItem(relationship, "relationship", relationshipIndex, activeAdapter);
     }
   }
 }
 
+function applyScopeIntegrity(data, activeAdapter) {
+  enrichScopeCollection(data.domSemanticHints, "dom_hint", activeAdapter);
+  enrichScopeCollection(data.mentionIndex, "mention", activeAdapter);
+  enrichScopeCollection(data.semanticEvents, "event", activeAdapter);
+  enrichScopeCollection(data.relationshipGraph, "relationship", activeAdapter);
+  enrichScopeCollection(data.canonicalIdentities, "identity", activeAdapter);
+  enrichSemanticFlowChainScopes(data.semanticFlowChains, activeAdapter);
+}
+
 function createScopeIntegrityReport(data, activeAdapter) {
   const scopedItems = [
-    ...(data.domSemanticHints || []),
-    ...(data.mentionIndex || []),
-    ...(data.semanticEvents || []),
-    ...(data.relationshipGraph || []),
-    ...(data.canonicalIdentities || []),
-    ...(data.semanticFlowChains || [])
+    ...(data.domSemanticHints || []).map((item) => ({ ...item, scopeLayer: "dom_hint" })),
+    ...(data.mentionIndex || []).map((item) => ({ ...item, scopeLayer: "mention" })),
+    ...(data.semanticEvents || []).map((item) => ({ ...item, scopeLayer: "semantic_event" })),
+    ...(data.relationshipGraph || []).map((item) => ({ ...item, scopeLayer: "relationship" })),
+    ...(data.canonicalIdentities || []).map((item) => ({ ...item, scopeLayer: "canonical_identity" })),
+    ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
   const sampleScopePaths = Array.from(new Set(scopedItems
     .map((item) => item?.scopePath)
     .filter(Boolean)))
-    .slice(0, 6);
+    .slice(0, 8);
+  const countsByLayer = scopedItems.reduce((counts, item) => {
+    const key = item.scopeLayer || "unknown";
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
 
   return {
     scopedItemsCount: scopedCount,
     missingScopeCount,
+    totalItemsCount: scopedItems.length,
     adapterId: activeAdapter?.adapterId || "",
     adapterName: activeAdapter?.adapterName || "",
+    countsByLayer,
     sampleScopePaths,
     generatedAt: new Date().toISOString()
   };
 }
+
 function createDomSemanticHints(captures) {
   const hints = [];
   const seen = new Set();

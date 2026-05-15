@@ -40,6 +40,7 @@ Commit:
 
 Status:
 - Implemented
+
 ## 2026-05-12 - pcdx - Add standing repo-memory read/write instruction
 
 Task:
@@ -251,6 +252,39 @@ Commit:
 
 Next recommended step:
 - Have `mgpt` and `mcdx` read `THREAD_ARCHIVE/MGPT_ORCHESTRATION_ROADMAP.md` before drafting mobile-side tasks.
+
+Status:
+- Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Add scope integrity layer
+
+Task:
+- Begin Phase 7.4 ScopePath + Verse Position Integrity by strengthening the derived scope layer across DOM hints, mentions, semantic events, relationships, canonical identities, and semantic flow chains.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- Read `PROJECT_STATE.md`, `PROJECT_LOG.md`, `QA status.MD`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`, and `THREAD_ARCHIVE/AGENT_OUTBOX.md` first.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- First `npm run qa:matthew1` was blocked by PowerShell execution policy; reran with `npm.cmd`.
+- First sandboxed `npm.cmd run qa:matthew1` was blocked by network access; reran with web access.
+- One QA pass exposed a numeric scope slug bug; fixed and reran.
+- Final `npm.cmd run qa:matthew1` passed with counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, scope integrity 503 scoped items and 0 missing scope.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Review `qa-output/latest-qa-bundle.json` locally if detailed scope samples are needed, but keep generated QA output uncommitted.
 
 Status:
 - Implemented by PCDX.

@@ -2,18 +2,20 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-13 by `mcdx`.
+Last updated: 2026-05-14 by `pcdx`.
 
 Current operational state:
 - Matthew 1 Playwright QA is the primary end-to-end extension readiness check.
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current bridge-confirmed desktop status from `pcdx`: `npm run qa:matthew1` passed after applying the optional page overlay and QA-readiness bridge changes.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding the Phase 7.4 ScopePath + Verse Position Integrity refinement.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
   - `7270d68 pcdx: Bridge mcdx direct agent outbox`
+  - `f32e2d2 pcdx: Add mgpt orchestration roadmap`
+  - Phase 7.4 scope integrity refinement: this commit
 
 Latest successful Matthew 1 QA counts reported by `pcdx`:
 - DOM hints: 173
@@ -23,6 +25,7 @@ Latest successful Matthew 1 QA counts reported by `pcdx`:
 - Canonical identities: 48
 - Semantic events: 48
 - Semantic flow chains: 1
+- Scope integrity: 503 scoped items, 0 missing scope
 
 ## Validation Commands
 
@@ -98,6 +101,7 @@ Current Matthew 1 harness validates:
 - semantic events
 - semantic flow chains
 - scope integrity export samples
+- explicit ScopePath assertions for Matthew 1 verse 20, verse 21, Joseph instruction at verse 20, and Joseph response at verse 24
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

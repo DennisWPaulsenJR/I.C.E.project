@@ -160,6 +160,21 @@ function hasRelationship(data, fromEntity, toEntity) {
     String(edge.toEntity || "").toLowerCase() === expectedTo
   );
 }
+function hasScopePath(items, scopePath, predicate = () => true) {
+  return (items || []).some((item) =>
+    item?.scopePath === scopePath && predicate(item)
+  );
+}
+
+function hasScopedEvent(data, eventType, scopePath, predicate = () => true) {
+  return hasScopePath(data.ICE_SEMANTIC_EVENTS, scopePath, (item) =>
+    item.eventType === eventType && predicate(item)
+  );
+}
+
+function hasScopedHint(data, scopePath, predicate = () => true) {
+  return hasScopePath(data.ICE_DOM_SEMANTIC_HINTS, scopePath, predicate);
+}
 
 function evaluateFailures(data) {
   const failures = [];
@@ -172,6 +187,15 @@ function evaluateFailures(data) {
   if (count(data.ICE_MENTION_INDEX) <= 0) failures.push("Expected mention index count > 0.");
   if (count(data.ICE_RELATIONSHIP_GRAPH) <= 0) failures.push("Expected relationship graph count > 0.");
   if (!hasCanonicalIdentity(data, "JESUS CHRIST")) failures.push("Expected canonical identity JESUS CHRIST.");
+
+  const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
+  if (count(scopeIntegrity) <= 0 || !scopeIntegrity.generatedAt) failures.push("Expected scope integrity report.");
+  if (Number(scopeIntegrity.scopedItemsCount || 0) <= 0) failures.push("Expected scoped items count > 0.");
+  if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
+  if (!hasScopedHint(data, "scripture.nt.matthew.1.verse.20")) failures.push("Expected Matthew 1 verse 20 DOM hints scoped to scripture.nt.matthew.1.verse.20.");
+  if (!hasScopedHint(data, "scripture.nt.matthew.1.verse.21")) failures.push("Expected Matthew 1 verse 21 DOM hints scoped to scripture.nt.matthew.1.verse.21.");
+  if (!hasScopedEvent(data, "instruction_concerning_person", "scripture.nt.matthew.1.verse.20")) failures.push("Expected Joseph instruction event scoped to Matthew 1 verse 20.");
+  if (!hasScopedEvent(data, "covenant_family_union", "scripture.nt.matthew.1.verse.24", (item) => /took unto him his wife/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected Joseph response event scoped to Matthew 1 verse 24.");
 
   for (const [fromEntity, toEntity] of [
     ["THE LORD", "Angel of THE LORD"],
@@ -196,6 +220,18 @@ async function getServiceWorker(context) {
 
 async function readStorage(worker) {
   return await worker.evaluate(async (keys) => chrome.storage.local.get(keys), STORAGE_KEYS);
+}
+
+async function runBackgroundAnalysis(worker) {
+  return await worker.evaluate(async () => {
+    if (typeof runFullAnalysisPipeline === "function") {
+      return await runFullAnalysisPipeline("qa:matthew1");
+    }
+    return await chrome.runtime.sendMessage({
+      type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
+      reason: "qa:matthew1"
+    });
+  });
 }
 
 async function waitForAnalysis(worker, timeoutMs = 45000) {
@@ -260,6 +296,7 @@ async function main() {
     await page.goto(TEST_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(() => document.body && document.body.innerText.length > 1000, null, { timeout: 45000 });
     await page.waitForSelector("[data-eng-ref], .verse, main, article", { timeout: 45000 });
+    await runBackgroundAnalysis(worker);
 
     storageData = await waitForAnalysis(worker);
     failures.push(...evaluateFailures(storageData));
