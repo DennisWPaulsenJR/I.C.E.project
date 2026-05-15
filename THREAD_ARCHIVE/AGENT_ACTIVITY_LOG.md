@@ -405,3 +405,25 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-14 - pcdx - Record repo-visible result summary convention
+
+Task:
+- Record Dennis's standing instruction that PCDX should paste future task results into repo memory in the same concise final-summary format so GPT can review them directly in the repository.
+
+Files changed:
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- After future PCDX task completions, keep final result summaries in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` and place current direct handoffs in `THREAD_ARCHIVE/AGENT_OUTBOX.md`.
+
+Status:
+- Implemented by PCDX.

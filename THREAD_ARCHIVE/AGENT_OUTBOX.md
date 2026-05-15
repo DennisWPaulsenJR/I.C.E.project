@@ -24,6 +24,27 @@ Validation:
 Needed action:
 ```
 
+## 2026-05-14 - Dennis/gpt -> pcdx - Use repo-visible result summaries for GPT review
+
+Status: open standing convention
+
+Task:
+- Make future PCDX task results visible in the repository so Dennis and GPT can review them without relying on chat repaste.
+
+Message:
+- Dennis requested that PCDX paste results like the recent phase summaries into repo memory in the same concise format: commit, files changed, validation, QA counts, push status, and caveats.
+- GPT should be able to find the result summaries directly in the repository.
+
+Files / patch:
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation:
+- `git diff --check`
+
+Needed action:
+- For future completed PCDX tasks, update `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` with the final result summary and use `THREAD_ARCHIVE/AGENT_OUTBOX.md` for current direct handoffs when Dennis asks.
+
 ## 2026-05-13 05:20 - mcdx -> pcdx - Bridge QA status snapshot
 
 Status: open until PCDX bridges/pushes the QA snapshot to `origin/master`.
