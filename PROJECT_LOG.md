@@ -1,6 +1,39 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-14 - Phase 7.9 Verse Scope Focus View
+
+Instruction summary:
+- Make `scopePath` and `verseRef` useful in the Study Panel by showing everything tied to a searched verse or scope.
+- Activate only when search includes a verse/scope term such as `1:20`, `verse.20`, `Matthew 1:20`, or `scripture.nt.matthew.1.verse.20`.
+- Do not change extraction logic, fetch linked pages, crawl, or rewrite existing panels.
+
+Codex action summary:
+- Added a compact Study Panel `Verse Scope Focus` section that is hidden until the search term contains a verse/scope target.
+- Added verse/scope parsing for full scripture scope paths, chapter:verse searches, and `verse.N` searches using the active source context when needed.
+- Grouped matching data into buckets for DOM hints, mentions, semantic events, relationship graph edges, source discovery refs, reference graph edges, and flow-chain nodes.
+- Preserved exact `scopePath` / `fromScopePath` details in compact previews while showing readable focus labels such as `Matthew 1:20`.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-14 - Phase 7.8 Reference Graph Focus / Navigation View
 
 Instruction summary:

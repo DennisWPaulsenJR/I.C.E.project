@@ -1405,6 +1405,207 @@ document.addEventListener("DOMContentLoaded", async () => {
       ));
     }
   }
+  function activeScopeContext() {
+    return findSourceContext() || studyData.latestCapture?.sourceContext || {};
+  }
+
+  function scopeBookSlug(value) {
+    const normalized = normalizeText(value || "").toLowerCase();
+    const aliases = new Map([
+      ["matt", "matthew"],
+      ["mt", "matthew"],
+      ["matthew", "matthew"],
+      ["mark", "mark"],
+      ["luke", "luke"],
+      ["john", "john"]
+    ]);
+    return aliases.get(normalized) || normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "source";
+  }
+
+  function scopeBookTitle(value) {
+    const slug = scopeBookSlug(value);
+    const titles = new Map([
+      ["matthew", "Matthew"],
+      ["mark", "Mark"],
+      ["luke", "Luke"],
+      ["john", "John"]
+    ]);
+    return titles.get(slug) || capitalizeWord(slug.replace(/-/g, " "));
+  }
+
+  function parseVerseScopeFocus(term) {
+    const normalized = normalizeText(term).toLowerCase();
+    if (!normalized) return null;
+
+    const context = activeScopeContext();
+    let book = context.book || "Matthew";
+    let chapter = context.chapter || "";
+    let verse = "";
+
+    const fullScope = normalized.match(/\bscripture\.nt\.([^.\s]+)\.(\d+)\.(?:verse|note)\.(\d+[a-z]?)\b/i);
+    if (fullScope) {
+      book = fullScope[1];
+      chapter = fullScope[2];
+      verse = fullScope[3].match(/\d+/)?.[0] || "";
+    }
+
+    if (!verse) {
+      const verseRef = normalized.match(/(?:\b([a-z]+)\s+)?\b(\d+):(\d+)\b/i);
+      if (verseRef) {
+        if (verseRef[1]) book = verseRef[1];
+        chapter = verseRef[2];
+        verse = verseRef[3];
+      }
+    }
+
+    if (!verse) {
+      const verseOnly = normalized.match(/\bverse[.\s:_-]*(\d+)\b/i);
+      if (verseOnly) verse = verseOnly[1];
+    }
+
+    if (!verse || !chapter) return null;
+
+    const bookSlug = scopeBookSlug(book);
+    return {
+      bookSlug,
+      bookTitle: scopeBookTitle(book),
+      chapter: String(chapter),
+      verseNumber: String(verse),
+      verseRef: `${chapter}:${verse}`,
+      scopePath: `scripture.nt.${bookSlug}.${chapter}.verse.${verse}`,
+      noteScopePrefix: `scripture.nt.${bookSlug}.${chapter}.note.${verse}`,
+      displayLabel: `${scopeBookTitle(book)} ${chapter}:${verse}`
+    };
+  }
+
+  function scopePathMatchesFocus(scopePath, focus) {
+    const value = normalizeText(scopePath || "").toLowerCase();
+    if (!value || !focus) return false;
+    return value === focus.scopePath ||
+      value.startsWith(`${focus.scopePath}.`) ||
+      value.startsWith(focus.noteScopePrefix) ||
+      value.includes(`.${focus.chapter}.verse.${focus.verseNumber}`) ||
+      value.includes(`.${focus.chapter}.note.${focus.verseNumber}`);
+  }
+
+  function itemMatchesVerseFocus(item = {}, focus) {
+    if (!focus) return false;
+    const scopeCandidates = [
+      item.scopePath,
+      item.fromScopePath,
+      item.sourceScopePath,
+      item.sourceContext?.scopePath
+    ];
+    if (scopeCandidates.some((scopePath) => scopePathMatchesFocus(scopePath, focus))) return true;
+
+    const verseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
+    if (verseRef === focus.verseRef) return true;
+
+    const verseNumber = String(item.verseNumber || item.sourceContext?.verseNumber || "");
+    const chapter = String(item.chapter || item.sourceContext?.chapter || focus.chapter || "");
+    const bookSlug = scopeBookSlug(item.book || item.sourceContext?.book || focus.bookSlug);
+    return verseNumber === focus.verseNumber && chapter === focus.chapter && bookSlug === focus.bookSlug;
+  }
+
+  function scopedFlowNodes(focus) {
+    const matches = [];
+    for (const chain of asArray(studyData.semanticFlowChains)) {
+      for (const node of asArray(chain.nodes)) {
+        if (!itemMatchesVerseFocus(node, focus)) continue;
+        matches.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow chain" });
+      }
+    }
+    return matches;
+  }
+
+  function scopedBucketCard(container, title, items, previewFn, emptyText) {
+    if (items.length === 0) {
+      container.appendChild(createCard(title, emptyText, "0 items"));
+      return;
+    }
+
+    const preview = items.slice(0, 4).map(previewFn).join("\n");
+    const hidden = items.length > 4 ? `\n${items.length - 4} more hidden by preview limit.` : "";
+    container.appendChild(createCard(title, `${preview}${hidden}`, `${items.length} item(s)`));
+  }
+
+  function renderVerseScopeFocus(term) {
+    const section = document.getElementById("verseScopeFocusSection");
+    const container = document.getElementById("verseScopeFocusCards");
+    const count = document.getElementById("verseScopeFocusCount");
+    if (!section || !container || !count) return;
+
+    const focus = parseVerseScopeFocus(term);
+    clearElement(container);
+
+    if (!focus) {
+      section.hidden = true;
+      count.textContent = "0";
+      return;
+    }
+
+    section.hidden = false;
+    const buckets = {
+      domHints: asArray(studyData.domSemanticHints).filter((item) => itemMatchesVerseFocus(item, focus)),
+      mentions: asArray(studyData.mentionIndex).filter((item) => itemMatchesVerseFocus(item, focus)),
+      semanticEvents: asArray(studyData.semanticEvents).filter((item) => itemMatchesVerseFocus(item, focus)),
+      relationships: asArray(studyData.relationshipGraph).filter((item) => itemMatchesVerseFocus(item, focus)),
+      sourceDiscovery: asArray(studyData.sourceDiscoveryIndex).filter((item) => itemMatchesVerseFocus(item, focus)),
+      referenceGraph: asArray(studyData.referenceGraph).filter((item) => itemMatchesVerseFocus(item, focus)),
+      flowNodes: scopedFlowNodes(focus)
+    };
+    const total = Object.values(buckets).reduce((sum, items) => sum + items.length, 0);
+    count.textContent = `${total} scoped`;
+
+    if (total === 0) {
+      appendEmpty(container, "No verse scope focus data for current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      `Verse Scope Focus: ${focus.displayLabel}`,
+      [
+        `Scope: ${focus.scopePath}`,
+        `DOM hints: ${buckets.domHints.length}`,
+        `Mentions: ${buckets.mentions.length}`,
+        `Semantic events: ${buckets.semanticEvents.length}`,
+        `Relationship edges: ${buckets.relationships.length}`,
+        `Source refs: ${buckets.sourceDiscovery.length}`,
+        `Reference edges: ${buckets.referenceGraph.length}`,
+        `Flow nodes: ${buckets.flowNodes.length}`
+      ].join("\n"),
+      "search-scoped source position"
+    ));
+
+    scopedBucketCard(container, "DOM Hints", buckets.domHints, (item) =>
+      `${item.hintType || "hint"}: ${trimText(item.text || item.normalizedText, 74)} | ${item.scopePath || item.verseRef || "unscoped"}`,
+      "No DOM hints tied to this verse scope."
+    );
+    scopedBucketCard(container, "Mentions", buckets.mentions, (item) =>
+      `${item.mentionText || item.linkedEntity || "mention"} | ${item.mentionType || "mention"}${item.linkedEntity ? ` | linked: ${item.linkedEntity}` : ""}`,
+      "No mentions tied to this verse scope."
+    );
+    scopedBucketCard(container, "Semantic Events", buckets.semanticEvents, (item) => {
+      const target = item.target || item.recipient || item.concerning || "";
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""} | ${item.scopePath || "unscoped"}`;
+    }, "No semantic events tied to this verse scope.");
+    scopedBucketCard(container, "Relationship Graph", buckets.relationships, (item) =>
+      `${item.fromEntity || "Unknown"} -> ${item.toEntity || "Unknown"} | ${item.relationshipType || "relationship"} | ${item.scopePath || "unscoped"}`,
+      "No relationship edges tied to this verse scope."
+    );
+    scopedBucketCard(container, "Source Discovery", buckets.sourceDiscovery, (item) =>
+      `${item.refType || "ref"}: ${trimText(item.linkText || item.href, 78)} | ${item.scopePath || item.verseRef || "unscoped"}`,
+      "No discovered refs tied to this verse scope."
+    );
+    scopedBucketCard(container, "Reference Graph", buckets.referenceGraph, (item) =>
+      `${referenceRelationshipLabel(item.relationshipType)}: ${trimText(item.toText || item.toHref, 78)} | ${item.fromScopePath || "unscoped"}`,
+      "No reference edges tied to this verse scope."
+    );
+    scopedBucketCard(container, "Flow Chain Nodes", buckets.flowNodes, (item) =>
+      `${item.chainTitle}: ${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""} | ${item.scopePath || "unscoped"}`,
+      "No flow chain nodes tied to this verse scope."
+    );
+  }
   function sourceDiscoverySearchText(item) {
     return [
       item.refType,
@@ -2012,6 +2213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSourceContext(term);
       renderSourceAdapter(term);
       renderScopeIntegrity(term);
+      renderVerseScopeFocus(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
