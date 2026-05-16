@@ -999,3 +999,43 @@ Result summary for repo review:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Add passage function search focus
+
+Task:
+- Begin Phase 8.2d by integrating `ICE_PASSAGE_FUNCTIONS` into the Study Panel search/filter experience.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Passage Function search now includes `passageFunction`, `verseRange`, `scopePath`, `plainMeaning`, `fulfillmentMeaning`, `evidence`, `linkedThemes`, `relatedEntities`, `relatedProphecies`, `confidence`, and `sourceGrounding`.
+- No-search view still shows all Passage Function cards.
+- Empty filtered state now says `No passage functions match current filter.`
+- This is display/search integration only; records, reasoning scope, extraction, crawling/fetching, and QA counts are unchanged.
+
+Status:
+- Implemented by PCDX.

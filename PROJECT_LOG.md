@@ -1,6 +1,48 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.2d Passage Function Search Focus
+
+Instruction summary:
+- Make `ICE_PASSAGE_FUNCTIONS` participate in the Study Panel search/filter system.
+- Match search terms against function name, verse range, scope path, meanings, evidence, linked themes, related entities, related prophecies, confidence, and source grounding.
+- Keep the change display/search only with no new records, reasoning expansion, extraction changes, crawling, or fetching.
+
+Codex action summary:
+- Extended Passage Function search text to include `scopePath` and `relatedProphecies` in addition to the existing meaning, evidence, themes, entities, confidence, and grounding fields.
+- Kept the no-search view showing all Passage Function cards.
+- Updated the filtered empty state to `No passage functions match current filter.`
+- Added related prophecies to cards when present.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-15 - Phase 8.2c Passage Function Evidence Review View
 
 Instruction summary:

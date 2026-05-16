@@ -2676,11 +2676,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return [
       item.passageFunction,
       item.verseRange,
+      item.scopePath,
       item.plainMeaning,
       item.fulfillmentMeaning,
       asArray(item.evidence).join(" "),
       asArray(item.linkedThemes).join(" "),
       asArray(item.relatedEntities).join(" "),
+      asArray(item.relatedProphecies).join(" "),
       item.confidence,
       item.sourceGrounding
     ].join(" ");
@@ -2727,7 +2729,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (filtered.length === 0) {
-      appendEmpty(container, "No passage functions match.");
+      appendEmpty(container, "No passage functions match current filter.");
       return;
     }
 
@@ -2753,6 +2755,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           evidence ? `Evidence:\n${evidence}` : "Evidence:\nNo evidence phrases stored.",
           passageFunctionLineList("Themes", item.linkedThemes),
           passageFunctionLineList("Related entities", item.relatedEntities),
+          passageFunctionLineList("Related prophecies", item.relatedProphecies),
           `Confidence:\n${displayConfidence(item.confidence || "probable")}`,
           item.sourceGrounding ? `Source grounding:\n${item.sourceGrounding}` : "Source grounding:\nNot recorded."
         ].filter(Boolean).join("\n\n"),

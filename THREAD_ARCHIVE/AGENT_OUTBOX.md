@@ -131,3 +131,11 @@ Status: Open for review.
 Message: Dennis requested a repo-readable text version of the Study Panel / Matthew 1 QA data because copying the UI panel is awkward. PCDX generated `THREAD_ARCHIVE/STUDY_PANEL_REVIEW_SNAPSHOT.md` from a fresh passing `npm.cmd run qa:matthew1` bundle.
 Requested action: GPT/mgpt can review the snapshot directly from the repo and use it for coordination without requiring Dennis to paste the full Study Panel UI.
 Related files/commits: `THREAD_ARCHIVE/STUDY_PANEL_REVIEW_SNAPSHOT.md`.
+
+### 2026-05-15 - pcdx -> gpt/mgpt/mcdx - Passage Function search focus ready
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Ready for review.
+Message: Phase 8.2d is implemented. Study Panel search/filter now includes Passage Functions across function name, verse range, scope path, meanings, evidence, themes, entities, prophecies, confidence, and source grounding. Search examples like David, Abraham, JESUS, fulfillment, prophecy, Joseph, Mary, obedience, naming, covenant, and AngEL Of THE LORD should surface matching Passage Function cards.
+Validation: `node --check study.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed. QA counts stayed stable with 4 passage functions.
+Related files/commits: `study.js`, `PROJECT_LOG.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
