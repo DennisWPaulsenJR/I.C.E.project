@@ -2,14 +2,14 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-15 by `pcdx`.
+Last updated: 2026-05-16 by `pcdx`.
 
 Current operational state:
 - Matthew 1 Playwright QA is the primary end-to-end extension readiness check.
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2e multi-instruction / multi-revelation clustering.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2f revelation pattern / speech structure layer.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
@@ -23,17 +23,17 @@ Current operational state:
 
 Latest successful Matthew 1 QA counts reported by `pcdx`:
 - DOM hints: 173
-- Mention index: 174
-- Entity registry: 48
-- Relationship graph: 64
-- Canonical identities: 50
-- Semantic events: 50
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
 - Semantic flow chains: 1
 - Source discovery: 136 current-page refs
 - Reference graph: 136 current-page edges
 - Passage functions: 4 derived records
-- Scope integrity: 800 scoped items, 0 missing scope
-
+- Revelation patterns: 1 derived speech/revelation record
+- Scope integrity: 801 scoped items, 0 missing scope
 ## Validation Commands
 
 Run syntax checks:
@@ -113,6 +113,7 @@ Current Matthew 1 harness validates:
 - reference graph assertions for study-note edges, navigation/source edges, and scoped note edge `scripture.nt.matthew.1.note.20a`
 - passage function assertions for grounded Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`
 - Matthew 1 naming distinction assertions for name revelation preserving `JESUS`, conception revelation, mission reason declaration, and Joseph naming `JESUS` while canonical identity remains `JESUS CHRIST`
+- revelation pattern assertions for AngEL Of THE LORD speech to Joseph with THE LORD as authority source and four ordered sub-events
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

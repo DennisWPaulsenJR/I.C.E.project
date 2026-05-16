@@ -27,6 +27,7 @@ const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
+const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -405,6 +406,7 @@ function scopeKindForItem(item = {}, type = "item") {
   if (type === "relationship") return "relationship";
   if (type === "identity") return "identity";
   if (type === "flow_chain") return "flow_chain";
+  if (type === "revelation_pattern") return "revelation_pattern";
   if (type === "source_discovery") return item.refType || "source_discovery";
   return type;
 }
@@ -503,6 +505,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.canonicalIdentities, "identity", activeAdapter);
   enrichSemanticFlowChainScopes(data.semanticFlowChains, activeAdapter);
   enrichScopeCollection(data.sourceDiscoveryIndex, "source_discovery", activeAdapter);
+  enrichScopeCollection(data.revelationPatterns, "revelation_pattern", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -515,7 +518,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" })),
     ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" })),
     ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" })),
-    ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" }))
+    ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" })),
+    ...(data.revelationPatterns || []).map((item) => ({ ...item, scopeLayer: "revelation_pattern" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -745,6 +749,82 @@ function passageFunctionRecord(config) {
   };
 }
 
+function revelationPatternDisplayName(value) {
+  if (/^angel of the lord$/i.test(value || "")) return "AngEL Of THE LORD";
+  return value || "";
+}
+
+function revelationPatternVerseRange(cluster = {}) {
+  const context = cluster.sourceContext || {};
+  const book = context.book || cluster.book || "";
+  const chapter = context.chapter || cluster.chapter || "";
+  const subEventTypes = new Set((cluster.subEvents || []).map((item) => item.eventType || item.clusterType || ""));
+  if (book === "Matthew" && String(chapter) === "1" &&
+    subEventTypes.has("instruction_concerning_person") &&
+    subEventTypes.has("conception_revelation") &&
+    subEventTypes.has("name_revelation") &&
+    subEventTypes.has("mission_reason_declaration")) {
+    return "Matthew 1:20-21";
+  }
+  if (cluster.verseRef && book) return `${book} ${cluster.verseRef}`;
+  if (book && chapter) return `${book} ${chapter}`;
+  return cluster.scopePath || "Current scope";
+}
+
+function createRevelationPatterns(semanticEvents = [], passageFunctions = []) {
+  const patterns = [];
+  const clusters = semanticEvents.filter((item) =>
+    item.eventType === "divine_message_cluster" && Array.isArray(item.subEvents) && item.subEvents.length > 0
+  );
+
+  for (const cluster of clusters) {
+    const orderedSubEvents = [...(cluster.subEvents || [])];
+    const authoritySource = cluster.authorityChain?.[0] || "THE LORD";
+    const speaker = revelationPatternDisplayName(cluster.actor || "");
+    const recipient = cluster.recipient || "";
+    const evidence = orderedSubEvents
+      .map((item) => item.anchorText || item.sourceSnippet || "")
+      .filter(Boolean);
+    const relatedEntities = Array.from(new Set([
+      authoritySource,
+      speaker,
+      recipient,
+      ...(cluster.participants || []),
+      ...orderedSubEvents.map((item) => item.target || "")
+    ].map(revelationPatternDisplayName).filter(Boolean)));
+    const relatedPassageFunctions = (passageFunctions || [])
+      .filter((item) => item.passageFunction === "divine_message_instruction" || item.scopePath === cluster.scopePath)
+      .map((item) => item.passageFunction || item.id)
+      .filter(Boolean);
+    const patternKey = [
+      "revelation-pattern",
+      cluster.sourceCaptureId || "",
+      speaker,
+      recipient,
+      orderedSubEvents.map((item) => `${item.clusterType || item.eventType}:${item.semanticEventId || item.anchorText || ""}`).join("|")
+    ].join("|");
+
+    patterns.push({
+      id: `${Date.now()}-${textHash(patternKey)}`,
+      sourceCaptureId: cluster.sourceCaptureId || "",
+      sourceContext: cluster.sourceContext || {},
+      scopePath: cluster.scopePath || "",
+      verseRange: revelationPatternVerseRange(cluster),
+      speaker,
+      authoritySource,
+      recipient,
+      revelationType: "divine_message_revelation_pattern",
+      subEvents: orderedSubEvents,
+      relatedEntities,
+      relatedPassageFunctions,
+      evidence,
+      confidence: cluster.confidence || "probable",
+      sourceGrounding: "derived from source-grounded divine message cluster and its ordered semantic sub-events"
+    });
+  }
+
+  return patterns;
+}
 function createPassageFunctions(captures, semanticEvents, relationshipGraph, prophecyLinks, canonicalIdentities) {
   const passageFunctions = [];
   const capture = (captures || [])[0] || {};
@@ -4116,6 +4196,10 @@ async function runFullAnalysisPipeline(reason = "manual") {
       prophecyLinks,
       canonicalIdentities
     );
+    const revelationPatterns = createRevelationPatterns(
+      semanticEvents,
+      passageFunctions
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -4125,7 +4209,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticFlowChains,
       sourceDiscoveryIndex,
       referenceGraph,
-      passageFunctions
+      passageFunctions,
+      revelationPatterns
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -4136,7 +4221,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticFlowChains,
       sourceDiscoveryIndex,
       referenceGraph,
-      passageFunctions
+      passageFunctions,
+      revelationPatterns
     }, activeAdapter);
     const status = {
       reason,
@@ -4161,6 +4247,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
       passageFunctionCount: passageFunctions.length,
+      revelationPatternCount: revelationPatterns.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -4186,6 +4273,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SOURCE_DISCOVERY_INDEX_KEY]: sourceDiscoveryIndex,
       [REFERENCE_GRAPH_KEY]: referenceGraph,
       [PASSAGE_FUNCTIONS_KEY]: passageFunctions,
+      [REVELATION_PATTERNS_KEY]: revelationPatterns,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

@@ -1,6 +1,57 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-16 - Phase 8.2f Revelation Pattern / Speech Structure Layer
+
+Instruction summary:
+- Create a reusable derived layer for structured speech/revelation blocks.
+- Preserve narrative-time `JESUS`, canonical `JESUS CHRIST`, AngEL Of THE LORD display, source grounding, confidence, and current extraction stability.
+- Add a compact Study Panel `Revelation Patterns` section.
+
+Codex action summary:
+- Added `ICE_REVELATION_PATTERNS` as a derived storage key and scope-integrity layer.
+- Derived Revelation Pattern records from existing `divine_message_cluster` semantic events instead of broadening extraction.
+- Added the Matthew 1 pilot pattern: THE LORD as authority source, AngEL Of THE LORD as speaker, Joseph as recipient, and ordered sub-events for marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Added Study Panel rendering for authority source, speaker, recipient, verse range, revelation type, ordered sub-events, evidence, related entities, related passage functions, confidence, and source grounding.
+- Added Matthew 1 QA assertions for the Revelation Pattern layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Scope integrity: 801 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-15 - Phase 8.2e Multi-Instruction / Multi-Revelation Separation
 
 Instruction summary:

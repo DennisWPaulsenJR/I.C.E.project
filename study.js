@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     sourceDiscoveryIndex: "ICE_SOURCE_DISCOVERY_INDEX",
     referenceGraph: "ICE_REFERENCE_GRAPH",
     passageFunctions: "ICE_PASSAGE_FUNCTIONS",
+    revelationPatterns: "ICE_REVELATION_PATTERNS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -2731,6 +2732,98 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${label}:\n${shown}${hidden}`;
   }
 
+  function revelationPatternSearchText(item = {}) {
+    return [
+      item.revelationType,
+      item.verseRange,
+      item.scopePath,
+      item.speaker,
+      item.authoritySource,
+      item.recipient,
+      asArray(item.subEvents).map((subEvent) => [
+        subEvent.clusterType,
+        subEvent.eventType,
+        subEvent.action,
+        subEvent.target,
+        subEvent.anchorText
+      ].join(" ")).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.relatedPassageFunctions).join(" "),
+      asArray(item.evidence).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function revelationPatternTitle(value) {
+    return passageFunctionTitle(value || "revelation_pattern");
+  }
+
+  function revelationPatternSubEventList(subEvents, limit = 8) {
+    const values = asArray(subEvents).map((item, index) => {
+      const label = item.clusterType || item.eventType || "sub_event";
+      const target = item.target ? ` -> ${item.target}` : "";
+      const evidence = item.anchorText ? ` (${trimText(item.anchorText, 90)})` : "";
+      return `${index + 1}. ${label}: ${item.action || "event"}${target}${evidence}`;
+    });
+    if (values.length === 0) return "";
+    const shown = values.slice(0, limit);
+    if (values.length > limit) shown.push(`${values.length - limit} more sub-event(s) hidden by preview limit.`);
+    return shown.join("\n");
+  }
+
+  function renderRevelationPatterns(term) {
+    const container = document.getElementById("revelationPatternCards");
+    const count = document.getElementById("revelationPatternCount");
+    const patterns = asArray(studyData.revelationPatterns);
+    const filtered = patterns.filter((item) => matchesSearchQuery(revelationPatternSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} pattern(s)`;
+
+    if (patterns.length === 0) {
+      appendEmpty(container, "No revelation patterns derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No revelation patterns match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Revelation Patterns",
+      [
+        `Derived records: ${patterns.length}`,
+        `Layer: ICE_REVELATION_PATTERNS`,
+        "Purpose: structure speech/revelation blocks that contain multiple semantic parts.",
+        "Review posture: inspect authority, speaker, recipient, ordered sub-events, evidence, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      const subEvents = revelationPatternSubEventList(item.subEvents);
+      const evidence = passageFunctionBulletList(item.evidence, 6);
+      container.appendChild(createCard(
+        revelationPatternTitle(item.revelationType),
+        [
+          item.verseRange || item.scopePath || "Current scope",
+          `Authority source:\n${item.authoritySource || "unknown"}`,
+          `Speaker:\n${renderDivineDisplayText(item.speaker || "unknown")}`,
+          `Recipient:\n${item.recipient || "unknown"}`,
+          subEvents ? `Ordered sub-events:\n${subEvents}` : "Ordered sub-events:\nNone stored.",
+          evidence ? `Evidence:\n${evidence}` : "Evidence:\nNo evidence phrases stored.",
+          passageFunctionLineList("Related entities", item.relatedEntities),
+          passageFunctionLineList("Related passage functions", item.relatedPassageFunctions),
+          `Confidence:\n${displayConfidence(item.confidence || "probable")}`,
+          item.sourceGrounding ? `Source grounding:\n${item.sourceGrounding}` : "Source grounding:\nNot recorded."
+        ].filter(Boolean).join("\n\n"),
+        item.scopePath ? `Scope: ${item.scopePath}` : "review derived speech pattern"
+      ));
+    });
+  }
   function renderPassageFunctions(term) {
     const container = document.getElementById("passageFunctionCards");
     const count = document.getElementById("passageFunctionCount");
@@ -3410,6 +3503,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderEntityScopeFocus(term);
       renderNarrativeTimeline(term);
       renderPassageFunctions(term);
+      renderRevelationPatterns(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
@@ -3467,6 +3561,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sourceDiscovery: countItems(studyData.sourceDiscoveryIndex),
       referenceGraph: countItems(studyData.referenceGraph),
       passageFunctions: countItems(studyData.passageFunctions),
+      revelationPatterns: countItems(studyData.revelationPatterns),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -3495,12 +3590,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sourceDiscoveryCount = countItems(studyData.sourceDiscoveryIndex);
     const referenceGraphCount = countItems(studyData.referenceGraph);
     const passageFunctionCount = countItems(studyData.passageFunctions);
+    const revelationPatternCount = countItems(studyData.revelationPatterns);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -3522,6 +3618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticSourceDiscovery").textContent = sourceDiscoveryCount;
     document.getElementById("diagnosticReferenceGraph").textContent = referenceGraphCount;
     document.getElementById("diagnosticPassageFunctions").textContent = passageFunctionCount;
+    document.getElementById("diagnosticRevelationPatterns").textContent = revelationPatternCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

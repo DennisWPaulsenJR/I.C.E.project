@@ -76,6 +76,14 @@ Current derived layer foundation:
 - Future direction: generalize the layer beyond Matthew 1 using source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.
 - Do not implement as hard-coded cards for every passage.
 
+
+Current speech/revelation derived layer:
+- Phase 8.2f Revelation Pattern / Speech Structure Layer
+- Active key: `ICE_REVELATION_PATTERNS`
+- Status: Matthew 1 pilot implemented from existing `divine_message_cluster` semantic events.
+- Goal: structure one speech/revelation block into ordered semantic parts such as command, warning, promise, revealed name, mission declaration, identity revelation, fulfillment declaration, covenant instruction, or prophecy explanation.
+- Matthew 1 pilot: THE LORD authorizes AngEL Of THE LORD speaking to Joseph, with ordered sub-events for marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Keep this as a derived semantic layer; do not broaden extraction or crawl/fetch sources for it.
 ## Current Architecture
 
 Architecture direction:

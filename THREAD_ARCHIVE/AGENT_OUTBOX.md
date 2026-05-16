@@ -1,5 +1,24 @@
 # Agent Outbox
 
+## 2026-05-16 - pcdx -> gpt/mgpt/mcdx - Revelation pattern layer ready
+Status: ready for review
+Task:
+- Phase 8.2f Revelation Pattern / Speech Structure Layer.
+Message:
+- `ICE_REVELATION_PATTERNS` is implemented as a derived speech/revelation layer. Matthew 1:20-21 now has a compact pattern with THE LORD as authority source, AngEL Of THE LORD as speaker, Joseph as recipient, and ordered sub-events for marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+Files / patch:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+Validation:
+- `node --check background.js`, `node --check study.js`, `node --check qa/matthew1-extension-qa.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed.
+Needed action:
+- Review the Study Panel `Revelation Patterns` section for Matthew 1:20-21.
 Quick direct-message lane for actor-to-actor handoffs between `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
 Use this file for current, actionable messages that another actor should read next. Use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable completed work history, validation, commits, and status.

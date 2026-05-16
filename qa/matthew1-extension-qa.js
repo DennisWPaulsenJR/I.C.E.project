@@ -31,7 +31,8 @@ const STORAGE_KEYS = [
   "ICE_SCOPE_INTEGRITY",
   "ICE_SOURCE_DISCOVERY_INDEX",
   "ICE_REFERENCE_GRAPH",
-  "ICE_PASSAGE_FUNCTIONS"
+  "ICE_PASSAGE_FUNCTIONS",
+  "ICE_REVELATION_PATTERNS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -81,7 +82,8 @@ function emptyCounts() {
     semanticFlowChains: 0,
     sourceDiscovery: 0,
     referenceGraph: 0,
-    passageFunctions: 0
+    passageFunctions: 0,
+    revelationPatterns: 0
   };
 }
 
@@ -97,7 +99,8 @@ function buildCounts(storageData) {
     semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS),
     sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX),
     referenceGraph: count(storageData.ICE_REFERENCE_GRAPH),
-    passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS)
+    passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS),
+    revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS)
   };
 }
 
@@ -115,6 +118,7 @@ function buildSamples(storageData) {
     sourceDiscovery: sample(storageData.ICE_SOURCE_DISCOVERY_INDEX, 200),
     referenceGraph: sample(storageData.ICE_REFERENCE_GRAPH, 200),
     passageFunctions: sample(storageData.ICE_PASSAGE_FUNCTIONS, 20),
+    revelationPatterns: sample(storageData.ICE_REVELATION_PATTERNS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -221,6 +225,10 @@ function hasPassageFunction(data, passageFunction, predicate = () => true) {
   );
 }
 
+function hasRevelationPattern(data, predicate = () => true) {
+  return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
+}
+
 function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
@@ -266,6 +274,8 @@ function evaluateFailures(data) {
   if (!hasScopedReferenceEdge(data, "scripture.nt.matthew.1.note.20a", (item) => item.relationshipType === "has_study_note")) failures.push("Expected reference graph edge from scripture.nt.matthew.1.note.20a.");
 
   if (count(data.ICE_PASSAGE_FUNCTIONS) <= 0) failures.push("Expected passage function records count > 0.");
+  if (count(data.ICE_REVELATION_PATTERNS) <= 0) failures.push("Expected revelation pattern records count > 0.");
+  if (!hasRevelationPattern(data, (item) => item.speaker === "AngEL Of THE LORD" && item.authoritySource === "THE LORD" && item.recipient === "Joseph" && item.revelationType === "divine_message_revelation_pattern" && Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "marriage_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "conception_revelation") && item.subEvents.some((subEvent) => subEvent.clusterType === "revealed_name_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "mission_declaration") && Array.isArray(item.evidence) && item.evidence.some((phrase) => /call his name JESUS/i.test(phrase)) && item.confidence === "explicit")) failures.push("Expected grounded revelation pattern for AngEL Of THE LORD speech to Joseph with four ordered sub-events.");
   for (const passageFunction of [
     "genealogy_establishes_identity",
     "divine_message_instruction",

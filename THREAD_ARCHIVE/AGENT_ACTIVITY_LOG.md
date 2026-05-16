@@ -1132,3 +1132,53 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-16 - pcdx - Add revelation pattern layer
+
+Task:
+- Implement Phase 8.2f Revelation Pattern / Speech Structure Layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `QA status.MD`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Validation:
+- Confirmed repo root `D:/Documents/I.C.E.project`, branch `master`, remote `DennisWPaulsenJR/I.C.E.project`, and HEAD `58331d0 pcdx: Add revelation sub-event clustering` before starting.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Scope integrity: 801 scoped items, 0 missing scope
+
+Result summary for repo review:
+- Added `ICE_REVELATION_PATTERNS` as a derived semantic layer for structured speech/revelation blocks.
+- Matthew 1 pilot pattern records THE LORD as authority source, AngEL Of THE LORD as speaker, Joseph as recipient, and four ordered sub-events: marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Study Panel now includes a compact `Revelation Patterns` section with authority, speaker, recipient, verse range, ordered sub-events, evidence, confidence, and source grounding.
+- No crawling/fetching, broad NLP rewrite, page rendering rewrite, or canonical identity collapse was added.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
