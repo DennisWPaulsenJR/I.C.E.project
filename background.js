@@ -26,6 +26,7 @@ const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
 const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
+const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
@@ -513,7 +514,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.canonicalIdentities || []).map((item) => ({ ...item, scopeLayer: "canonical_identity" })),
     ...(data.semanticFlowChains || []).map((item) => ({ ...item, scopeLayer: "semantic_flow_chain" })),
     ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" })),
-    ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" }))
+    ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" })),
+    ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -712,6 +714,126 @@ function createReferenceGraph(sourceDiscoveryIndex, activeAdapter) {
     (a.fromScopePath || "").localeCompare(b.fromScopePath || "") ||
     a.toText.localeCompare(b.toText)
   );
+}
+
+function sourceCaptureText(captures) {
+  return normalizeWhitespace((captures || []).map((capture) => [capture?.title, capture?.text].join(" ")).join(" "));
+}
+
+function passageFunctionRecord(config) {
+  const key = [
+    config.sourceCaptureId || "",
+    config.scopePath || "",
+    config.passageFunction || "",
+    config.verseRange || ""
+  ].join("|");
+
+  return {
+    id: config.id || `${Date.now()}-${textHash(`passage-function|${key}`)}`,
+    sourceCaptureId: config.sourceCaptureId || "",
+    scopePath: config.scopePath || "",
+    verseRange: config.verseRange || "",
+    passageFunction: config.passageFunction || "unknown_passage_function",
+    plainMeaning: config.plainMeaning || "",
+    fulfillmentMeaning: config.fulfillmentMeaning || "",
+    evidence: config.evidence || [],
+    linkedThemes: config.linkedThemes || [],
+    relatedEntities: config.relatedEntities || [],
+    relatedProphecies: config.relatedProphecies || [],
+    confidence: config.confidence || "probable",
+    sourceGrounding: config.sourceGrounding || "derived from current semantic data"
+  };
+}
+
+function createPassageFunctions(captures, semanticEvents, relationshipGraph, prophecyLinks, canonicalIdentities) {
+  const passageFunctions = [];
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  if (!isMatthewOne) return passageFunctions;
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const hasCanonicalJesus = (canonicalIdentities || []).some((item) =>
+    normalizeWhitespace(item.canonicalName || "").toLowerCase() === "jesus christ"
+  );
+  const hasDavidAbrahamEvidence = /son of David/i.test(sourceText) && /son of Abraham/i.test(sourceText);
+  const hasInstruction = (semanticEvents || []).some((item) => item.eventType === "instruction_concerning_person") &&
+    (relationshipGraph || []).some((edge) => /Angel of THE LORD/i.test(edge.fromEntity || "") && /Joseph/i.test(edge.toEntity || ""));
+  const hasFulfillment = (semanticEvents || []).some((item) => item.eventType === "passive_fulfillment_narration") ||
+    (prophecyLinks || []).some((item) => /fulfill/i.test(`${item.fulfillmentText || ""} ${item.contextSnippet || ""}`));
+  const hasResponseNaming = (semanticEvents || []).some((item) => item.eventType === "covenant_family_union") &&
+    (semanticEvents || []).some((item) => item.eventType === "naming_event" || /called his name JESUS/i.test(`${item.anchorText || ""} ${item.sourceSnippet || ""}`));
+
+  if (hasCanonicalJesus && hasDavidAbrahamEvidence) {
+    passageFunctions.push(passageFunctionRecord({
+      sourceCaptureId,
+      scopePath: "scripture.nt.matthew.1.verse.1-17",
+      verseRange: "Matthew 1:1-17",
+      passageFunction: "genealogy_establishes_identity",
+      plainMeaning: "JESUS CHRIST is presented in the lineage of David and Abraham.",
+      fulfillmentMeaning: "The genealogy establishes identity and covenant lineage before the fulfillment narrative.",
+      evidence: ["The book of the generation of Jesus Christ", "son of David", "son of Abraham"],
+      linkedThemes: ["Davidic kingship", "Abrahamic covenant", "covenant lineage", "prophetic fulfillment"],
+      relatedEntities: ["JESUS CHRIST", "David", "Abraham"],
+      relatedProphecies: [],
+      confidence: "probable",
+      sourceGrounding: "explicit source phrases plus canonical identity record"
+    }));
+  }
+
+  if (hasInstruction) {
+    passageFunctions.push(passageFunctionRecord({
+      sourceCaptureId,
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20-21",
+      passageFunction: "divine_message_instruction",
+      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph concerning Mary and the child.",
+      fulfillmentMeaning: "The divine message reveals the name JESUS and frames His saving mission.",
+      evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "thou shalt call his name JESUS"],
+      linkedThemes: ["divine instruction", "name revelation", "mission naming", "obedience"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS CHRIST"],
+      relatedProphecies: [],
+      confidence: "explicit",
+      sourceGrounding: "semantic events and relationship graph show AngEL Of THE LORD instructing Joseph"
+    }));
+  }
+
+  if (hasFulfillment) {
+    passageFunctions.push(passageFunctionRecord({
+      sourceCaptureId,
+      scopePath: "scripture.nt.matthew.1.verse.22",
+      verseRange: "Matthew 1:22-23",
+      passageFunction: "prophecy_fulfillment_identification",
+      plainMeaning: "The narrator identifies the event as fulfilling what was spoken of THE LORD by the prophet.",
+      fulfillmentMeaning: "The passage connects the birth narrative to prophecy fulfillment.",
+      evidence: ["that it might be fulfilled", "spoken of the Lord by the prophet"],
+      linkedThemes: ["prophecy fulfillment", "narrator witness", "divine speech", "Emmanuel"],
+      relatedEntities: ["Scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"],
+      relatedProphecies: (prophecyLinks || []).map((item) => item.id).filter(Boolean),
+      confidence: "explicit",
+      sourceGrounding: "fulfillment semantic event or prophecy link evidence"
+    }));
+  }
+
+  if (hasResponseNaming) {
+    passageFunctions.push(passageFunctionRecord({
+      sourceCaptureId,
+      scopePath: "scripture.nt.matthew.1.verse.24",
+      verseRange: "Matthew 1:24-25",
+      passageFunction: "obedient_response_and_naming",
+      plainMeaning: "Joseph obeys divine instruction, takes Mary as wife, and names the child JESUS.",
+      fulfillmentMeaning: "The response completes the instruction and applies the revealed mission name.",
+      evidence: ["did as the angel of THE LORD had bidden him", "took unto him his wife", "called his name JESUS"],
+      linkedThemes: ["obedience", "covenant response", "mission naming", "family stewardship"],
+      relatedEntities: ["Joseph", "Mary", "JESUS CHRIST"],
+      relatedProphecies: [],
+      confidence: "explicit",
+      sourceGrounding: "semantic events include Joseph response and naming event"
+    }));
+  }
+
+  return passageFunctions;
 }
 function sourceContextKey(context) {
   return [
@@ -3821,6 +3943,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       canonicalIdentities,
       domSemanticHints
     );
+    const passageFunctions = createPassageFunctions(
+      captures,
+      semanticEvents,
+      relationshipGraph,
+      prophecyLinks,
+      canonicalIdentities
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -3829,7 +3958,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       canonicalIdentities,
       semanticFlowChains,
       sourceDiscoveryIndex,
-      referenceGraph
+      referenceGraph,
+      passageFunctions
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -3839,7 +3969,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       canonicalIdentities,
       semanticFlowChains,
       sourceDiscoveryIndex,
-      referenceGraph
+      referenceGraph,
+      passageFunctions
     }, activeAdapter);
     const status = {
       reason,
@@ -3863,6 +3994,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       activeAdapterName: activeAdapter?.adapterName || "",
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
+      passageFunctionCount: passageFunctions.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -3887,6 +4019,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
       [SOURCE_DISCOVERY_INDEX_KEY]: sourceDiscoveryIndex,
       [REFERENCE_GRAPH_KEY]: referenceGraph,
+      [PASSAGE_FUNCTIONS_KEY]: passageFunctions,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

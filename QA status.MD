@@ -2,14 +2,14 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-14 by `pcdx`.
+Last updated: 2026-05-15 by `pcdx`.
 
 Current operational state:
 - Matthew 1 Playwright QA is the primary end-to-end extension readiness check.
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding the Phase 7.7 Reference Graph Layer.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding the Phase 8.2 Passage Function foundation scaffolding.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
@@ -18,7 +18,8 @@ Current operational state:
   - `12cb9e4 pcdx: Add scope integrity layer`
   - `467a9ce pcdx: Add current page source discovery index`
   - `18050ca pcdx: Add entity class labels to role groups`
-  - Phase 7.7 reference graph layer: this commit
+  - Phase 7.7 reference graph layer
+  - Phase 8.2 passage function scaffolding: this commit
 
 Latest successful Matthew 1 QA counts reported by `pcdx`:
 - DOM hints: 173
@@ -30,7 +31,8 @@ Latest successful Matthew 1 QA counts reported by `pcdx`:
 - Semantic flow chains: 1
 - Source discovery: 136 current-page refs
 - Reference graph: 136 current-page edges
-- Scope integrity: 775 scoped items, 0 missing scope
+- Passage functions: 4 derived records
+- Scope integrity: 779 scoped items, 0 missing scope
 
 ## Validation Commands
 
@@ -109,6 +111,7 @@ Current Matthew 1 harness validates:
 - explicit ScopePath assertions for Matthew 1 verse 20, verse 21, Joseph instruction at verse 20, and Joseph response at verse 24
 - current-page source discovery assertions for study notes, navigation/source refs, and scoped note `scripture.nt.matthew.1.note.20a`
 - reference graph assertions for study-note edges, navigation/source edges, and scoped note edge `scripture.nt.matthew.1.note.20a`
+- passage function assertions for grounded Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

@@ -872,3 +872,55 @@ Next recommended step:
 
 Status:
 - Completed by PCDX.
+
+## 2026-05-15 - pcdx - Add passage function scaffolding
+
+Task:
+- Begin Phase 8.2 by adding the `ICE_PASSAGE_FUNCTIONS` structural derived-layer foundation without generalized theological reasoning, crawling/fetching, extraction rewrites, or Narrative Timeline rewrites.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 779 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added `ICE_PASSAGE_FUNCTIONS` as a derived storage key and status count.
+- Added four conservative Matthew 1 pilot records grounded in existing source/semantic data: genealogy identity, divine message instruction, prophecy fulfillment identification, and obedient response/naming.
+- Added the Study Panel `Passage Functions` section and diagnostics count.
+- Added QA assertions that each pilot record has scope, verse range, meaning, evidence, confidence, and source grounding.
+- Included passage functions in scope integrity as a derived layer.
+- Did not add broad AI reasoning, crawling/fetching, extraction rewrites, page rendering changes, or permanent hard-coded passage cards.
+
+Next recommended step:
+- Review the pilot records in `qa-output/latest-qa-bundle.json` and the Study Panel, then decide how Phase 8.2 should generalize passage functions beyond Matthew 1.
+
+Status:
+- Implemented by PCDX.

@@ -68,11 +68,12 @@ Next planned phase:
 - Reference graph layer
 - Development QA automation harness
 
-Future planned derived layer:
+Current derived layer foundation:
 - Phase 8.2 Passage Function / Narrative Purpose Layer
-- Potential key: `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES`
+- Active key: `ICE_PASSAGE_FUNCTIONS`
+- Status: foundation scaffolding implemented with Matthew 1 pilot records grounded in existing source phrases, semantic events, relationship graph, prophecy links, and canonical identities.
 - Goal: identify why a passage or section exists, not only what events occur.
-- This should become a reusable derived semantic layer using source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.
+- Future direction: generalize the layer beyond Matthew 1 using source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.
 - Do not implement as hard-coded cards for every passage.
 
 ## Current Architecture
@@ -102,6 +103,7 @@ Core keys:
 - `ICE_SCOPE_INTEGRITY`
 - `ICE_SOURCE_DISCOVERY_INDEX`
 - `ICE_REFERENCE_GRAPH`
+- `ICE_PASSAGE_FUNCTIONS`
 - `ICE_QA_LATEST_EXPORT`
 
 Other active local/derived keys:
@@ -280,7 +282,7 @@ I.C.E. should support human agency, personal interpretation, faith development, 
 
 ## Phase 8.2 Roadmap: Passage Function / Narrative Purpose Layer
 
-Status: planned documentation only; not implemented yet.
+Status: foundation scaffolding implemented; generalized reasoning is not implemented yet.
 
 Goal:
 - Create a derived semantic layer that identifies why a passage or section exists, not only what events occur.

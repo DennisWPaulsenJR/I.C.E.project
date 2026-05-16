@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     scopeIntegrity: "ICE_SCOPE_INTEGRITY",
     sourceDiscoveryIndex: "ICE_SOURCE_DISCOVERY_INDEX",
     referenceGraph: "ICE_REFERENCE_GRAPH",
+    passageFunctions: "ICE_PASSAGE_FUNCTIONS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -2671,6 +2672,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more narrative moment(s) hidden by preview limit. Use entity or verse search to narrow the timeline.`);
     }
   }
+  function passageFunctionSearchText(item = {}) {
+    return [
+      item.passageFunction,
+      item.verseRange,
+      item.plainMeaning,
+      item.fulfillmentMeaning,
+      asArray(item.evidence).join(" "),
+      asArray(item.linkedThemes).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function passageFunctionTitle(value) {
+    return normalizeText(value || "passage_function")
+      .split("_")
+      .filter(Boolean)
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join(" ");
+  }
+
+  function renderPassageFunctions(term) {
+    const container = document.getElementById("passageFunctionCards");
+    const count = document.getElementById("passageFunctionCount");
+    const functions = asArray(studyData.passageFunctions);
+    const filtered = functions.filter((item) => matchesSearchQuery(passageFunctionSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} function(s)`;
+
+    if (functions.length === 0) {
+      appendEmpty(container, "No passage functions derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No passage functions match.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Passage Functions",
+      [
+        `Derived records: ${functions.length}`,
+        `Layer: ICE_PASSAGE_FUNCTIONS`,
+        "Purpose: why a passage or section exists, grounded in current semantic data."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createCard(
+        passageFunctionTitle(item.passageFunction),
+        [
+          item.verseRange || item.scopePath || "Current scope",
+          item.plainMeaning ? `Meaning:\n${item.plainMeaning}` : "",
+          asArray(item.linkedThemes).length ? `Themes:\n${asArray(item.linkedThemes).join(", ")}` : "",
+          item.fulfillmentMeaning ? `Fulfillment:\n${item.fulfillmentMeaning}` : "",
+          asArray(item.evidence).length ? `Evidence:\n${asArray(item.evidence).slice(0, 3).join(" | ")}` : ""
+        ].filter(Boolean).join("\n"),
+        `Confidence: ${displayConfidence(item.confidence || "probable")}`
+      ));
+    });
+  }
   function sourceDiscoverySearchText(item) {
     return [
       item.refType,
@@ -3299,6 +3366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderVerseScopeFocus(term);
       renderEntityScopeFocus(term);
       renderNarrativeTimeline(term);
+      renderPassageFunctions(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
@@ -3355,6 +3423,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       domHints: countItems(studyData.domSemanticHints),
       sourceDiscovery: countItems(studyData.sourceDiscoveryIndex),
       referenceGraph: countItems(studyData.referenceGraph),
+      passageFunctions: countItems(studyData.passageFunctions),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -3382,12 +3451,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const domHintCount = countItems(studyData.domSemanticHints);
     const sourceDiscoveryCount = countItems(studyData.sourceDiscoveryIndex);
     const referenceGraphCount = countItems(studyData.referenceGraph);
+    const passageFunctionCount = countItems(studyData.passageFunctions);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -3408,6 +3478,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticDomHints").textContent = domHintCount;
     document.getElementById("diagnosticSourceDiscovery").textContent = sourceDiscoveryCount;
     document.getElementById("diagnosticReferenceGraph").textContent = referenceGraphCount;
+    document.getElementById("diagnosticPassageFunctions").textContent = passageFunctionCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

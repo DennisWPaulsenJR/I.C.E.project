@@ -30,7 +30,8 @@ const STORAGE_KEYS = [
   "ICE_ANALYSIS_STATUS",
   "ICE_SCOPE_INTEGRITY",
   "ICE_SOURCE_DISCOVERY_INDEX",
-  "ICE_REFERENCE_GRAPH"
+  "ICE_REFERENCE_GRAPH",
+  "ICE_PASSAGE_FUNCTIONS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -79,7 +80,8 @@ function emptyCounts() {
     semanticEvents: 0,
     semanticFlowChains: 0,
     sourceDiscovery: 0,
-    referenceGraph: 0
+    referenceGraph: 0,
+    passageFunctions: 0
   };
 }
 
@@ -94,7 +96,8 @@ function buildCounts(storageData) {
     semanticEvents: count(storageData.ICE_SEMANTIC_EVENTS),
     semanticFlowChains: count(storageData.ICE_SEMANTIC_FLOW_CHAINS),
     sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX),
-    referenceGraph: count(storageData.ICE_REFERENCE_GRAPH)
+    referenceGraph: count(storageData.ICE_REFERENCE_GRAPH),
+    passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS)
   };
 }
 
@@ -111,6 +114,7 @@ function buildSamples(storageData) {
     scopeIntegrity: storageData.ICE_SCOPE_INTEGRITY || null,
     sourceDiscovery: sample(storageData.ICE_SOURCE_DISCOVERY_INDEX, 200),
     referenceGraph: sample(storageData.ICE_REFERENCE_GRAPH, 200),
+    passageFunctions: sample(storageData.ICE_PASSAGE_FUNCTIONS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -205,6 +209,23 @@ function hasScopedReferenceEdge(data, scopePath, predicate = () => true) {
   );
 }
 
+function hasPassageFunction(data, passageFunction, predicate = () => true) {
+  return (data.ICE_PASSAGE_FUNCTIONS || []).some((item) =>
+    item.passageFunction === passageFunction && predicate(item)
+  );
+}
+
+function isGroundedPassageFunction(item) {
+  return Boolean(
+    item?.scopePath &&
+    item?.verseRange &&
+    item?.plainMeaning &&
+    item?.confidence &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.sourceGrounding
+  );
+}
 function evaluateFailures(data) {
   const failures = [];
   const adapterName = data.ICE_ACTIVE_ADAPTER?.adapterName || "";
@@ -234,6 +255,17 @@ function evaluateFailures(data) {
   if (!hasReferenceEdge(data, "has_chapter_navigation") && !hasReferenceEdge(data, "has_table_of_contents_link") && !hasReferenceEdge(data, "has_source_collection_link")) failures.push("Expected chapter/source navigation edges in reference graph.");
   if (!hasScopedReferenceEdge(data, "scripture.nt.matthew.1.note.20a", (item) => item.relationshipType === "has_study_note")) failures.push("Expected reference graph edge from scripture.nt.matthew.1.note.20a.");
 
+  if (count(data.ICE_PASSAGE_FUNCTIONS) <= 0) failures.push("Expected passage function records count > 0.");
+  for (const passageFunction of [
+    "genealogy_establishes_identity",
+    "divine_message_instruction",
+    "prophecy_fulfillment_identification",
+    "obedient_response_and_naming"
+  ]) {
+    if (!hasPassageFunction(data, passageFunction, isGroundedPassageFunction)) {
+      failures.push(`Expected grounded passage function ${passageFunction}.`);
+    }
+  }
   for (const [fromEntity, toEntity] of [
     ["THE LORD", "Angel of THE LORD"],
     ["Angel of THE LORD", "Joseph"],

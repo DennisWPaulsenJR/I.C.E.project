@@ -1,6 +1,56 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.2 Passage Function Scaffolding
+
+Instruction summary:
+- Create the structural `ICE_PASSAGE_FUNCTIONS` derived-layer foundation without generalized theological reasoning or broad hard-coded passage cards.
+- Add Matthew 1 pilot records only where grounded in current source phrases, semantic events, relationship graph, prophecy links, or canonical identities.
+- Add a compact Study Panel `Passage Functions` section and QA-safe assertions.
+
+Codex action summary:
+- Added `ICE_PASSAGE_FUNCTIONS` storage, status count, and scope-integrity inclusion.
+- Added future-safe passage function records with `sourceCaptureId`, `scopePath`, `verseRange`, `passageFunction`, meanings, evidence, themes, related entities/prophecies, confidence, and source grounding.
+- Added four Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`.
+- Added Study Panel display for function name, verse range, meaning, themes, fulfillment note, evidence, and confidence.
+- Extended Matthew 1 QA to assert grounded passage function records.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 779 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-15 - Repo Coordination Cleanup: Close Phase 8.1 Narrative Timeline Handoff
 
 Instruction summary:
