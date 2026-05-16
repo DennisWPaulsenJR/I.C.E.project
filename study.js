@@ -1010,7 +1010,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (type === "divine_message") return 20;
     if (pair.includes("joseph->mary") && type === "covenant_family_union") return 30;
     if (pair.includes("mary->jesus christ") && type === "birth") return 40;
-    if (pair.includes("joseph->jesus christ") && type === "naming") return 45;
+    if ((pair.includes("joseph->jesus") || pair.includes("joseph->jesus christ")) && type === "naming") return 45;
     if (type === "fulfillment_narration") return 55;
     if (type === "lineage_father_son") return 70;
     return 80;
@@ -2404,7 +2404,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     addMatching(josephPonders, semanticEvents, "semanticEvents", (item) => item.eventType === "reflection_consideration" || narrativeItemMatchesAny(item, [/thought|considered|ponder|privily|just man|not willing|publick example/]));
     addMatching(josephPonders, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [19]) || narrativeItemMatchesAny(item, [/thought|considered|ponder|privily|just man|not willing|publick example/]));
 
-    addMatching(angelInstructs, semanticEvents, "semanticEvents", (item) => ["divine_messenger_appearance", "divine_message_speech", "instruction_concerning_person"].includes(item.eventType) || narrativeItemMatchesAny(item, [/angel|fear not|take unto thee mary|call his name jesus|save his people/]));
+    addMatching(angelInstructs, semanticEvents, "semanticEvents", (item) => ["divine_messenger_appearance", "divine_message_speech", "instruction_concerning_person", "name_revelation", "mission_reason_declaration"].includes(item.eventType) || narrativeItemMatchesAny(item, [/angel|fear not|take unto thee mary|call his name jesus|save his people/]));
     addMatching(angelInstructs, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [20, 21]) && narrativeItemMatchesAny(item, [/angel|fear not|take unto thee mary|call his name jesus|save his people/]));
 
     addMatching(fulfillment, semanticEvents, "semanticEvents", (item) => itemHasVerseNumber(item, [22, 23]) || narrativeItemMatchesAny(item, [/fulfill|fulfilled|prophet|emmanuel|spoken of the lord/]));
@@ -2428,7 +2428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     addNarrativeEntityNames(josephPonders, ["Joseph", "Mary"]);
     addNarrativeEntityNames(angelInstructs, ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary"]);
     addNarrativeEntityNames(fulfillment, ["Scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"]);
-    addNarrativeEntityNames(josephObeys, ["Joseph", "Mary", "JESUS CHRIST"]);
+    addNarrativeEntityNames(josephObeys, ["Joseph", "Mary", "JESUS"]);
 
     for (const entry of displayEntries) {
       for (const edge of relationships) {

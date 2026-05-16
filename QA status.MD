@@ -9,7 +9,7 @@ Current operational state:
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding the Phase 8.2 Passage Function foundation scaffolding.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after preserving the Matthew 1 JESUS narrative naming distinction.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
@@ -23,16 +23,16 @@ Current operational state:
 
 Latest successful Matthew 1 QA counts reported by `pcdx`:
 - DOM hints: 173
-- Mention index: 172
-- Entity registry: 46
-- Relationship graph: 61
-- Canonical identities: 48
-- Semantic events: 48
+- Mention index: 174
+- Entity registry: 48
+- Relationship graph: 64
+- Canonical identities: 50
+- Semantic events: 50
 - Semantic flow chains: 1
 - Source discovery: 136 current-page refs
 - Reference graph: 136 current-page edges
 - Passage functions: 4 derived records
-- Scope integrity: 779 scoped items, 0 missing scope
+- Scope integrity: 788 scoped items, 0 missing scope
 
 ## Validation Commands
 
@@ -112,6 +112,7 @@ Current Matthew 1 harness validates:
 - current-page source discovery assertions for study notes, navigation/source refs, and scoped note `scripture.nt.matthew.1.note.20a`
 - reference graph assertions for study-note edges, navigation/source edges, and scoped note edge `scripture.nt.matthew.1.note.20a`
 - passage function assertions for grounded Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`
+- Matthew 1 naming distinction assertions for name revelation preserving `JESUS`, mission reason declaration, and Joseph naming `JESUS` while canonical identity remains `JESUS CHRIST`
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

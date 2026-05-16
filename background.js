@@ -34,7 +34,7 @@ const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
 const GENEALOGY_PATTERN = /\b(?:begat|generation(?:s)? of|genealogy|lineage)\b/i;
-const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|fear not|fulfilled|spoken of the Lord by the prophet)\b/i;
+const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|call his name|fear not|save his people|fulfilled|spoken of the Lord by the prophet)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -788,14 +788,14 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       scopePath: "scripture.nt.matthew.1.verse.20",
       verseRange: "Matthew 1:20-21",
       passageFunction: "divine_message_instruction",
-      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph concerning Mary and the child.",
-      fulfillmentMeaning: "The divine message reveals the name JESUS and frames His saving mission.",
-      evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "thou shalt call his name JESUS"],
-      linkedThemes: ["divine instruction", "name revelation", "mission naming", "obedience"],
-      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS CHRIST"],
+      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph to take Mary as wife and to call the child JESUS.",
+      fulfillmentMeaning: "The name JESUS is revealed with mission meaning: He shall save His people from their sins.",
+      evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "thou shalt call his name JESUS", "he shall save his people from their sins"],
+      linkedThemes: ["divine instruction", "marriage instruction", "name revelation", "mission meaning", "obedience"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS", "JESUS CHRIST"],
       relatedProphecies: [],
       confidence: "explicit",
-      sourceGrounding: "semantic events and relationship graph show AngEL Of THE LORD instructing Joseph"
+      sourceGrounding: "semantic events distinguish Mary marriage instruction, JESUS name revelation, and mission reason while canonical identity links JESUS to JESUS CHRIST"
     }));
   }
 
@@ -826,10 +826,10 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       fulfillmentMeaning: "The response completes the instruction and applies the revealed mission name.",
       evidence: ["did as the angel of THE LORD had bidden him", "took unto him his wife", "called his name JESUS"],
       linkedThemes: ["obedience", "covenant response", "mission naming", "family stewardship"],
-      relatedEntities: ["Joseph", "Mary", "JESUS CHRIST"],
+      relatedEntities: ["Joseph", "Mary", "JESUS", "JESUS CHRIST"],
       relatedProphecies: [],
       confidence: "explicit",
-      sourceGrounding: "semantic events include Joseph response and naming event"
+      sourceGrounding: "semantic events preserve narrative naming surface form JESUS while canonical identity links JESUS to JESUS CHRIST"
     }));
   }
 
@@ -1122,9 +1122,9 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
     push({
       originalText: "fear not to take unto thee Mary thy wife",
       anchorText: "fear not to take unto thee Mary thy wife",
-      normalizedMeaning: "Joseph received instruction concerning Mary",
+      normalizedMeaning: "Joseph received instruction to take Mary as wife",
       actor: "Angel of THE LORD",
-      action: "instructed",
+      action: "instructed to take Mary as wife",
       recipient: "Joseph",
       concerning: "Mary",
       target: "Joseph",
@@ -1132,7 +1132,43 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
       relationshipType: "instruction_recipient_concerning",
       authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
       eventType: "instruction_concerning_person",
-      semanticCategory: "instruction",
+      semanticCategory: "marriage_instruction",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bthou shalt call his name JESUS\b|\bcall his name JESUS\b/i.test(text)) {
+    push({
+      originalText: "thou shalt call his name JESUS",
+      anchorText: "thou shalt call his name JESUS",
+      normalizedMeaning: "The name JESUS was revealed to Joseph",
+      actor: "Angel of THE LORD",
+      action: "revealed name",
+      recipient: "Joseph",
+      target: "JESUS",
+      participants: ["Angel of THE LORD", "Joseph", "JESUS"],
+      relationshipType: "revealed_name",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "name_revelation",
+      semanticCategory: "naming_identity",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bfor he shall save his people from their sins\b/i.test(text)) {
+    push({
+      originalText: "for he shall save his people from their sins",
+      anchorText: "he shall save his people from their sins",
+      normalizedMeaning: "The mission reason for the name JESUS was declared",
+      actor: "Angel of THE LORD",
+      action: "declared mission/reason",
+      recipient: "Joseph",
+      target: "save His people from their sins",
+      participants: ["Angel of THE LORD", "Joseph", "JESUS"],
+      relationshipType: "mission_reason_revealed",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "mission_reason_declaration",
+      semanticCategory: "mission_revelation",
       confidence: "explicit"
     });
   }
@@ -2724,11 +2760,13 @@ function createSemanticFlowChains(semanticEvents, sceneModels, interactions, ent
     const appearance = findSemanticEvent(ordered, ["divine_messenger_appearance"]);
     const speech = findSemanticEvent(ordered, ["divine_message_speech"]);
     const instruction = findSemanticEvent(ordered, ["instruction_concerning_person"]);
+    const nameRevelation = findSemanticEvent(ordered, ["name_revelation"]);
+    const missionReason = findSemanticEvent(ordered, ["mission_reason_declaration"]);
     const covenant = findSemanticEvent(ordered, ["covenant_family_union"]);
     const birth = findSemanticEvent(ordered, ["birth_event"]);
     const naming = findSemanticEvent(ordered, ["naming_event"]);
     const fulfillment = findSemanticEvent(ordered, ["passive_fulfillment_narration"]);
-    const nodes = [appearance, speech, instruction, covenant, birth, naming, fulfillment]
+    const nodes = [appearance, speech, instruction, nameRevelation, missionReason, covenant, birth, naming, fulfillment]
       .filter(Boolean);
 
     if (nodes.length < 2) continue;
@@ -2736,6 +2774,8 @@ function createSemanticFlowChains(semanticEvents, sceneModels, interactions, ent
     const relationships = [
       semanticFlowRelationship(appearance, speech || instruction, "authority_delegates_message", "inferred-source"),
       semanticFlowRelationship(speech, instruction, "message_instructs_recipient", "explicit"),
+      semanticFlowRelationship(speech, nameRevelation, "message_reveals_name", "explicit"),
+      semanticFlowRelationship(nameRevelation, missionReason, "name_reveals_mission_reason", "explicit"),
       semanticFlowRelationship(instruction, covenant, "recipient_obeys_instruction", "probable"),
       semanticFlowRelationship(instruction, covenant, "instruction_concerns_person", "explicit"),
       semanticFlowRelationship(covenant, birth, "covenant_union_occurs", "probable"),
@@ -2784,6 +2824,8 @@ function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
     "divine_messenger_appearance",
     "divine_message_speech",
     "instruction_concerning_person",
+    "name_revelation",
+    "mission_reason_declaration",
     "passive_fulfillment_narration",
     "covenant_family_union",
     "naming_event",
@@ -2804,7 +2846,9 @@ function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
       .filter((item) => [
         "divine_messenger_appearance",
         "divine_message_speech",
-        "instruction_concerning_person"
+        "instruction_concerning_person",
+        "name_revelation",
+        "mission_reason_declaration"
       ].includes(item.eventType || ""))
       .map((item) => item.action)
       .filter(Boolean)))
@@ -3365,6 +3409,8 @@ function relationshipGraphTypeForSemanticEvent(eventItem) {
   if (eventType === "lineage_birth" || relationshipType === "father_son") return "lineage_father_son";
   if (eventType === "covenant_family_union") return "covenant_family_union";
   if (eventType === "naming_event") return "naming";
+  if (eventType === "name_revelation") return "revealed_name";
+  if (eventType === "mission_reason_declaration") return "mission_reason_revealed";
   if (eventType === "birth_event") return "birth";
   if ([
     "divine_messenger_appearance",
@@ -3385,7 +3431,9 @@ function relationshipTargetForSemanticEvent(eventItem) {
 
 function createRelationshipEdge(config) {
   const fromEntity = canonicalEntityName(config.fromEntity || "");
-  const toEntity = canonicalEntityName(config.toEntity || "");
+  const rawToEntity = normalizeWhitespace(config.toEntity || "");
+  const preserveNarrativeJesus = ["naming", "revealed_name"].includes(config.relationshipType || "") && rawToEntity.toLowerCase() === "jesus";
+  const toEntity = preserveNarrativeJesus ? "JESUS" : canonicalEntityName(rawToEntity);
   if (!fromEntity || !toEntity || fromEntity === toEntity) return null;
 
   const key = [

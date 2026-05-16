@@ -1039,3 +1039,49 @@ Result summary for repo review:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Preserve JESUS naming distinction
+
+Task:
+- Correct Matthew 1 naming/instruction semantics so narrative-time naming and name revelation preserve `JESUS`, while canonical identity may remain `JESUS CHRIST`.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 174
+- Entity registry: 48
+- Relationship graph: 64
+- Canonical identities: 50
+- Semantic events: 50
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 788 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added `name_revelation` and `mission_reason_declaration` semantic events for Matthew 1:21.
+- Kept marriage instruction distinct from name revelation and mission reason.
+- Preserved relationship display targets as `JESUS` for narrative naming/name-revelation edges while canonical identity linking to `JESUS CHRIST` remains available.
+- Updated `divine_message_instruction` Passage Function wording/evidence to say AngEL Of THE LORD instructs Joseph to take Mary as wife and call the child JESUS, with mission meaning: He shall save His people from their sins.
+- QA now asserts the name revelation preserves `JESUS`, mission reason is scoped to Matthew 1:21, and Joseph naming targets `JESUS`.
+
+Status:
+- Implemented by PCDX.

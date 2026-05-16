@@ -139,3 +139,11 @@ Status: Ready for review.
 Message: Phase 8.2d is implemented. Study Panel search/filter now includes Passage Functions across function name, verse range, scope path, meanings, evidence, themes, entities, prophecies, confidence, and source grounding. Search examples like David, Abraham, JESUS, fulfillment, prophecy, Joseph, Mary, obedience, naming, covenant, and AngEL Of THE LORD should surface matching Passage Function cards.
 Validation: `node --check study.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed. QA counts stayed stable with 4 passage functions.
 Related files/commits: `study.js`, `PROJECT_LOG.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+
+### 2026-05-15 - pcdx -> gpt/mgpt/mcdx - JESUS naming distinction preserved
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Ready for review.
+Message: Matthew 1 naming/instruction semantics now preserve narrative-time `JESUS` for name revelation and Joseph naming, while canonical identity linking to `JESUS CHRIST` remains intact. The AngEL Of THE LORD instruction is now separated into marriage instruction, name revelation, and mission reason (`He shall save His people from their sins`).
+Validation: `node --check background.js`, `node --check study.js`, `node --check qa/matthew1-extension-qa.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed. QA now reports 50 semantic events, 64 relationship edges, and 788 scoped items with 0 missing scope.
+Related files/commits: `background.js`, `study.js`, `qa/matthew1-extension-qa.js`, `QA status.MD`, `PROJECT_LOG.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.

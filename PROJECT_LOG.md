@@ -1,6 +1,54 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Semantic Correction: Preserve JESUS Naming Distinction
+
+Instruction summary:
+- Preserve the Matthew 1 narrative-time distinction between the revealed/given name `JESUS` and canonical identity `JESUS CHRIST`.
+- Keep canonical identity linking to `JESUS CHRIST`, but do not imply Joseph names Him CHRIST in Matthew 1:25.
+- Distinguish the AngEL Of THE LORD instruction to take Mary as wife from the revealed-name instruction and mission reason.
+
+Codex action summary:
+- Added explicit semantic events for `name_revelation` and `mission_reason_declaration` from Matthew 1:21.
+- Updated the marriage instruction event wording/category so it remains distinct from the name revelation.
+- Preserved narrative relationship targets as `JESUS` for naming/revealed-name relationships while canonical identity still links `JESUS` to `JESUS CHRIST`.
+- Updated Passage Function wording/evidence for `divine_message_instruction` to include marriage instruction, JESUS name revelation, and mission meaning.
+- Updated QA assertions for the new distinction.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 174
+- Entity registry: 48
+- Relationship graph: 64
+- Canonical identities: 50
+- Semantic events: 50
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 788 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-15 - Phase 8.2d Passage Function Search Focus
 
 Instruction summary:

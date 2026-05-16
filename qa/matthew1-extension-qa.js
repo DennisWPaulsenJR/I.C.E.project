@@ -244,7 +244,9 @@ function evaluateFailures(data) {
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
   if (!hasScopedHint(data, "scripture.nt.matthew.1.verse.20")) failures.push("Expected Matthew 1 verse 20 DOM hints scoped to scripture.nt.matthew.1.verse.20.");
   if (!hasScopedHint(data, "scripture.nt.matthew.1.verse.21")) failures.push("Expected Matthew 1 verse 21 DOM hints scoped to scripture.nt.matthew.1.verse.21.");
-  if (!hasScopedEvent(data, "instruction_concerning_person", "scripture.nt.matthew.1.verse.20")) failures.push("Expected Joseph instruction event scoped to Matthew 1 verse 20.");
+  if (!hasScopedEvent(data, "instruction_concerning_person", "scripture.nt.matthew.1.verse.20")) failures.push("Expected Joseph marriage instruction event scoped to Matthew 1 verse 20.");
+  if (!hasScopedEvent(data, "name_revelation", "scripture.nt.matthew.1.verse.21", (item) => item.target === "JESUS" && /call his name JESUS/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected name revelation event preserving JESUS surface form scoped to Matthew 1 verse 21.");
+  if (!hasScopedEvent(data, "mission_reason_declaration", "scripture.nt.matthew.1.verse.21", (item) => /save.*people.*sins/i.test(item.anchorText || item.sourceSnippet || item.normalizedMeaning || ""))) failures.push("Expected mission reason declaration scoped to Matthew 1 verse 21.");
   if (!hasScopedEvent(data, "covenant_family_union", "scripture.nt.matthew.1.verse.24", (item) => /took unto him his wife/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected Joseph response event scoped to Matthew 1 verse 24.");
   if (count(data.ICE_SOURCE_DISCOVERY_INDEX) <= 0) failures.push("Expected source discovery refs count > 0.");
   if (!hasDiscoveredRef(data, "study_note")) failures.push("Expected study note refs in source discovery index.");
@@ -271,7 +273,8 @@ function evaluateFailures(data) {
     ["Angel of THE LORD", "Joseph"],
     ["Joseph", "Mary"],
     ["Mary", "JESUS CHRIST"],
-    ["Joseph", "JESUS CHRIST"]
+    ["Joseph", "JESUS"],
+    ["Angel of THE LORD", "JESUS"]
   ]) {
     if (!hasRelationship(data, fromEntity, toEntity)) {
       failures.push(`Expected relationship ${fromEntity} -> ${toEntity}.`);
