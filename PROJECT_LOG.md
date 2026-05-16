@@ -1,6 +1,35 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Repo Coordination Cleanup: Close Phase 8.1 Narrative Timeline Handoff
+
+Instruction summary:
+- Mark the old Phase 8.1 Narrative Timeline outbox directive as completed or superseded.
+- Confirm the AngEL Of THE LORD display spelling activity entry is complete.
+- Keep Phase 8.2 Passage Function / Narrative Purpose Layer documented as roadmap only.
+
+Codex action summary:
+- Updated `THREAD_ARCHIVE/AGENT_OUTBOX.md` to mark the original Phase 8.1 Narrative Timeline directive as done / superseded.
+- Added a concise completion note listing the Phase 8.1 refinement path: narrative timeline layer, Moment wording, scope normalization, relationship relevance tightening, displayed count consistency, source preview/canonical display refinement, hierarchy-aware entity ordering, and AngEL Of THE LORD display spelling.
+- Confirmed the latest AngEL Of THE LORD display spelling entry in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` is complete and not truncated.
+- Confirmed Phase 8.2 roadmap documentation already exists in `PROJECT_STATE.md`, `PROJECT_LOG.md`, and `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `git diff --check`
+
+QA result:
+- Documentation/coordination only; browser QA not required.
+
+Commit hash:
+- This commit
+
+Status:
+- Completed
 ## 2026-05-15 - Phase 8.1 Cleanup: Narrative Timeline Display Layer Clarification
 
 Instruction summary:

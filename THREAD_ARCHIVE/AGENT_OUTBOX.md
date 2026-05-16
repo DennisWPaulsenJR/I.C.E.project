@@ -26,7 +26,7 @@ Needed action:
 
 ## 2026-05-14 - gpt -> pcdx - Begin Phase 8.1 narrative timeline layer
 
-Status: open
+Status: done / superseded by Phase 8.2 roadmap
 
 Task:
 - Begin Phase 8.1: Scope-Aware Narrative Timeline Layer.
@@ -78,7 +78,21 @@ Validation:
 - npm run qa:matthew1
 
 Needed action:
-- PCDX should implement, validate, push, and summarize repo-visible results.
+- Completed by PCDX; see completion / superseded note below.
+
+Completion / superseded note:
+- Phase 8.1 Narrative Timeline has been implemented and refined through:
+  - narrative timeline layer
+  - Moment wording
+  - scope normalization
+  - relationship relevance tightening
+  - displayed count consistency
+  - source preview/canonical display refinement
+  - hierarchy-aware entity ordering
+  - AngEL Of THE LORD display spelling
+- Current Matthew 1 narrative labels remain useful as a temporary display-derived layer.
+- Future architecture direction is Phase 8.2 Passage Function / Narrative Purpose Layer using `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES`.
+- No further action is needed on this original Phase 8.1 outbox item unless Dennis/GPT requests targeted refinements.
 
 ## 2026-05-14 - pcdx -> Dennis/gpt - Phase 8.0 approval request
 

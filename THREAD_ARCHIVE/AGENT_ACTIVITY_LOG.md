@@ -843,3 +843,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Close Phase 8.1 and document passage function layer
+
+Task:
+- Close/supersede the old Phase 8.1 Narrative Timeline outbox directive and confirm the next Phase 8.2 roadmap direction is documented.
+
+Files changed:
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Marked the old Phase 8.1 Narrative Timeline outbox item as done / superseded.
+- Added an outbox completion note summarizing the completed Phase 8.1 refinement path: narrative timeline layer, Moment wording, scope normalization, relationship relevance tightening, displayed count consistency, source preview/canonical display refinement, hierarchy-aware entity ordering, and AngEL Of THE LORD display spelling.
+- Confirmed the latest AngEL Of THE LORD display spelling activity entry is complete and not truncated.
+- Confirmed Phase 8.2 Passage Function / Narrative Purpose Layer is already documented as roadmap only with potential keys `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES`.
+- No application code, extraction logic, QA behavior, source phrases, page rendering, crawling/fetching, or storage writes were changed.
+
+Next recommended step:
+- Use the Phase 8.2 roadmap to define a reusable passage-purpose derived layer before replacing the current display-derived Matthew 1 labels.
+
+Status:
+- Completed by PCDX.
