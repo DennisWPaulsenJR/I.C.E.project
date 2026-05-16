@@ -788,14 +788,14 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       scopePath: "scripture.nt.matthew.1.verse.20",
       verseRange: "Matthew 1:20-21",
       passageFunction: "divine_message_instruction",
-      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph to take Mary as wife and to call the child JESUS.",
+      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph, reveal the child is conceived of the Holy Ghost, and reveal the name JESUS.",
       fulfillmentMeaning: "The name JESUS is revealed with mission meaning: He shall save His people from their sins.",
-      evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "thou shalt call his name JESUS", "he shall save his people from their sins"],
-      linkedThemes: ["divine instruction", "marriage instruction", "name revelation", "mission meaning", "obedience"],
-      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS", "JESUS CHRIST"],
+      evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "that which is conceived in her is of the Holy Ghost", "thou shalt call his name JESUS", "he shall save his people from their sins"],
+      linkedThemes: ["divine instruction", "marriage instruction", "conception revelation", "name revelation", "mission meaning", "obedience"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "Holy Ghost", "JESUS", "JESUS CHRIST"],
       relatedProphecies: [],
       confidence: "explicit",
-      sourceGrounding: "semantic events distinguish Mary marriage instruction, JESUS name revelation, and mission reason while canonical identity links JESUS to JESUS CHRIST"
+      sourceGrounding: "semantic events distinguish Mary marriage instruction, conception revelation, JESUS name revelation, and mission reason while canonical identity links JESUS to JESUS CHRIST"
     }));
   }
 
@@ -1133,6 +1133,25 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
       authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
       eventType: "instruction_concerning_person",
       semanticCategory: "marriage_instruction",
+      confidence: "explicit"
+    });
+  }
+
+  if (/\bthat which is conceived in her is of the Holy Ghost\b|\bconceived in her is of the Holy Ghost\b/i.test(text)) {
+    push({
+      originalText: "that which is conceived in her is of the Holy Ghost",
+      anchorText: "that which is conceived in her is of the Holy Ghost",
+      normalizedMeaning: "The child conceived in Mary is of the Holy Ghost",
+      actor: "Angel of THE LORD",
+      action: "revealed divine conception",
+      recipient: "Joseph",
+      target: "child conceived of the Holy Ghost",
+      concerning: "Mary",
+      participants: ["Angel of THE LORD", "Joseph", "Mary", "Holy Ghost", "child"],
+      relationshipType: "conception_revealed",
+      authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
+      eventType: "conception_revelation",
+      semanticCategory: "divine_conception_revelation",
       confidence: "explicit"
     });
   }
@@ -2671,6 +2690,94 @@ function semanticEventDedupKey(item) {
   ].join("|");
 }
 
+function clusterPartFromEvent(eventItem) {
+  const eventType = eventItem.eventType || "semantic_event";
+  const clusterTypeByEvent = {
+    instruction_concerning_person: "marriage_instruction",
+    conception_revelation: "conception_revelation",
+    name_revelation: "revealed_name_instruction",
+    mission_reason_declaration: "mission_declaration"
+  };
+
+  return {
+    semanticEventId: eventItem.id || "",
+    clusterType: clusterTypeByEvent[eventType] || eventType,
+    eventType,
+    actor: eventItem.actor || eventItem.narrator || "",
+    action: eventItem.action || "",
+    target: eventItem.target || eventItem.recipient || eventItem.concerning || "",
+    anchorText: eventItem.anchorText || eventItem.sourceSnippet || "",
+    scopePath: eventItem.scopePath || "",
+    verseRef: eventItem.verseRef || "",
+    confidence: eventItem.confidence || "probable"
+  };
+}
+
+function createDivineMessageClusters(semanticEvents) {
+  const clusterTypes = new Set([
+    "instruction_concerning_person",
+    "conception_revelation",
+    "name_revelation",
+    "mission_reason_declaration"
+  ]);
+  const grouped = new Map();
+
+  for (const eventItem of semanticEvents || []) {
+    if (!clusterTypes.has(eventItem.eventType || "")) continue;
+    const key = [
+      eventItem.sourceCaptureId || eventItem.sourceContext?.sourceCaptureId || "",
+      eventItem.actor || "",
+      eventItem.recipient || ""
+    ].join("|");
+    grouped.set(key, [...(grouped.get(key) || []), eventItem]);
+  }
+
+  const clusters = [];
+  for (const [key, events] of grouped.entries()) {
+    const uniqueTypes = new Set(events.map((item) => item.eventType));
+    if (events.length < 2 || uniqueTypes.size < 2) continue;
+    const clusterOrder = {
+      instruction_concerning_person: 1,
+      conception_revelation: 2,
+      name_revelation: 3,
+      mission_reason_declaration: 4
+    };
+    const ordered = [...events].sort((left, right) =>
+      (clusterOrder[left.eventType] || 99) - (clusterOrder[right.eventType] || 99) ||
+      Number(left.phraseStartHint ?? left.sequenceOrder ?? 0) - Number(right.phraseStartHint ?? right.sequenceOrder ?? 0)
+    );
+    const sourceContext = ordered.find((item) => item.sourceContext)?.sourceContext || {};
+    const sourceSnippet = ordered.map((item) => item.anchorText || item.sourceSnippet || "").filter(Boolean).join(" | ");
+    const scopePath = ordered.find((item) => item.scopePath)?.scopePath || "";
+    const verseRef = ordered.find((item) => item.verseRef)?.verseRef || "";
+
+    clusters.push({
+      id: `${Date.now()}-${textHash(`divine-message-cluster|${key}|${ordered.map((item) => item.id).join("|")}`)}`,
+      sourceCaptureId: ordered[0]?.sourceCaptureId || "",
+      sourceContext,
+      originalText: "divine message cluster",
+      anchorText: trimText(sourceSnippet, 220),
+      normalizedMeaning: "AngEL Of THE LORD message contains multiple linked instructions/revelations",
+      actor: ordered[0]?.actor || "",
+      action: "grouped instruction/revelation",
+      recipient: ordered[0]?.recipient || "",
+      target: ordered.map((item) => item.target || item.concerning || item.recipient || "").filter(Boolean).join("; "),
+      participants: Array.from(new Set(ordered.flatMap((item) => item.participants || []).filter(Boolean))),
+      relationshipType: "divine_message_cluster",
+      eventType: "divine_message_cluster",
+      semanticCategory: "multi_instruction_revelation",
+      confidence: ordered.every((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceSnippet,
+      scopePath,
+      verseRef,
+      subEvents: ordered.map(clusterPartFromEvent),
+      sourceEventIds: ordered.map((item) => item.id).filter(Boolean),
+      sourceGrounding: "derived from existing semantic sub-events in the same source message"
+    });
+  }
+
+  return clusters;
+}
 function createSemanticEvents(eventItems, orderedEvents) {
   const sequenceByEventId = new Map(
     (orderedEvents || []).map((item) => [item.id, item.sequenceOrder])
@@ -2706,6 +2813,10 @@ function createSemanticEvents(eventItems, orderedEvents) {
         sourceSnippet: subEvent.sourceSnippet || trimText(eventItem.eventText || "", 260)
       });
     }
+  }
+
+  for (const cluster of createDivineMessageClusters(semanticEvents)) {
+    push(cluster);
   }
 
   // ICE_SEMANTIC_EVENTS is intentionally a current-page derived index for now.
@@ -2760,13 +2871,14 @@ function createSemanticFlowChains(semanticEvents, sceneModels, interactions, ent
     const appearance = findSemanticEvent(ordered, ["divine_messenger_appearance"]);
     const speech = findSemanticEvent(ordered, ["divine_message_speech"]);
     const instruction = findSemanticEvent(ordered, ["instruction_concerning_person"]);
+    const conception = findSemanticEvent(ordered, ["conception_revelation"]);
     const nameRevelation = findSemanticEvent(ordered, ["name_revelation"]);
     const missionReason = findSemanticEvent(ordered, ["mission_reason_declaration"]);
     const covenant = findSemanticEvent(ordered, ["covenant_family_union"]);
     const birth = findSemanticEvent(ordered, ["birth_event"]);
     const naming = findSemanticEvent(ordered, ["naming_event"]);
     const fulfillment = findSemanticEvent(ordered, ["passive_fulfillment_narration"]);
-    const nodes = [appearance, speech, instruction, nameRevelation, missionReason, covenant, birth, naming, fulfillment]
+    const nodes = [appearance, speech, instruction, conception, nameRevelation, missionReason, covenant, birth, naming, fulfillment]
       .filter(Boolean);
 
     if (nodes.length < 2) continue;
@@ -2774,6 +2886,8 @@ function createSemanticFlowChains(semanticEvents, sceneModels, interactions, ent
     const relationships = [
       semanticFlowRelationship(appearance, speech || instruction, "authority_delegates_message", "inferred-source"),
       semanticFlowRelationship(speech, instruction, "message_instructs_recipient", "explicit"),
+      semanticFlowRelationship(speech, conception, "message_reveals_conception", "explicit"),
+      semanticFlowRelationship(conception, nameRevelation, "conception_revelation_precedes_name_revelation", "explicit"),
       semanticFlowRelationship(speech, nameRevelation, "message_reveals_name", "explicit"),
       semanticFlowRelationship(nameRevelation, missionReason, "name_reveals_mission_reason", "explicit"),
       semanticFlowRelationship(instruction, covenant, "recipient_obeys_instruction", "probable"),
@@ -2824,6 +2938,7 @@ function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
     "divine_messenger_appearance",
     "divine_message_speech",
     "instruction_concerning_person",
+    "conception_revelation",
     "name_revelation",
     "mission_reason_declaration",
     "passive_fulfillment_narration",
@@ -2847,6 +2962,7 @@ function directActorReasonFromSemanticEvents(actorName, semanticEvents) {
         "divine_messenger_appearance",
         "divine_message_speech",
         "instruction_concerning_person",
+        "conception_revelation",
         "name_revelation",
         "mission_reason_declaration"
       ].includes(item.eventType || ""))
@@ -3410,7 +3526,9 @@ function relationshipGraphTypeForSemanticEvent(eventItem) {
   if (eventType === "covenant_family_union") return "covenant_family_union";
   if (eventType === "naming_event") return "naming";
   if (eventType === "name_revelation") return "revealed_name";
+  if (eventType === "conception_revelation") return "conception_revealed";
   if (eventType === "mission_reason_declaration") return "mission_reason_revealed";
+  if (eventType === "divine_message_cluster") return "divine_message_cluster";
   if (eventType === "birth_event") return "birth";
   if ([
     "divine_messenger_appearance",

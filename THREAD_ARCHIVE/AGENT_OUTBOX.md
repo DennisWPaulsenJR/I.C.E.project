@@ -12,6 +12,24 @@ Rules:
 - Do not paste massive raw transcripts; summarize and link/reference files when possible.
 - After action is complete, summarize durable outcomes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
+## 2026-05-15 - pcdx -> gpt/mgpt/mcdx - Revelation sub-event clustering ready
+Status: ready for review
+Task:
+- Phase 8.2e Multi-Instruction / Multi-Revelation Separation.
+Message:
+- Matthew 1:20-21 now has a derived `divine_message_cluster` that preserves four sub-events: marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Narrative-time `JESUS`, canonical `JESUS CHRIST`, AngEL Of THE LORD display, source grounding, and confidence were preserved.
+Files / patch:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+Validation:
+- `node --check background.js`, `node --check study.js`, `node --check qa/matthew1-extension-qa.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed.
+Needed action:
+- Review Study Panel Narrative Timeline clustered revelation preview for Matthew 1:20-21.
 Template:
 
 ```text

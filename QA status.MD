@@ -9,7 +9,7 @@ Current operational state:
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after preserving the Matthew 1 JESUS narrative naming distinction.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2e multi-instruction / multi-revelation clustering.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
@@ -32,7 +32,7 @@ Latest successful Matthew 1 QA counts reported by `pcdx`:
 - Source discovery: 136 current-page refs
 - Reference graph: 136 current-page edges
 - Passage functions: 4 derived records
-- Scope integrity: 788 scoped items, 0 missing scope
+- Scope integrity: 800 scoped items, 0 missing scope
 
 ## Validation Commands
 
@@ -112,7 +112,7 @@ Current Matthew 1 harness validates:
 - current-page source discovery assertions for study notes, navigation/source refs, and scoped note `scripture.nt.matthew.1.note.20a`
 - reference graph assertions for study-note edges, navigation/source edges, and scoped note edge `scripture.nt.matthew.1.note.20a`
 - passage function assertions for grounded Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`
-- Matthew 1 naming distinction assertions for name revelation preserving `JESUS`, mission reason declaration, and Joseph naming `JESUS` while canonical identity remains `JESUS CHRIST`
+- Matthew 1 naming distinction assertions for name revelation preserving `JESUS`, conception revelation, mission reason declaration, and Joseph naming `JESUS` while canonical identity remains `JESUS CHRIST`
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

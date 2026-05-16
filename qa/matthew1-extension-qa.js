@@ -203,6 +203,12 @@ function hasReferenceEdge(data, relationshipType, predicate = () => true) {
   );
 }
 
+function hasEvent(data, eventType, predicate = () => true) {
+  return (data.ICE_SEMANTIC_EVENTS || []).some((item) =>
+    item.eventType === eventType && predicate(item)
+  );
+}
+
 function hasScopedReferenceEdge(data, scopePath, predicate = () => true) {
   return (data.ICE_REFERENCE_GRAPH || []).some((item) =>
     item.fromScopePath === scopePath && predicate(item)
@@ -247,6 +253,8 @@ function evaluateFailures(data) {
   if (!hasScopedEvent(data, "instruction_concerning_person", "scripture.nt.matthew.1.verse.20")) failures.push("Expected Joseph marriage instruction event scoped to Matthew 1 verse 20.");
   if (!hasScopedEvent(data, "name_revelation", "scripture.nt.matthew.1.verse.21", (item) => item.target === "JESUS" && /call his name JESUS/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected name revelation event preserving JESUS surface form scoped to Matthew 1 verse 21.");
   if (!hasScopedEvent(data, "mission_reason_declaration", "scripture.nt.matthew.1.verse.21", (item) => /save.*people.*sins/i.test(item.anchorText || item.sourceSnippet || item.normalizedMeaning || ""))) failures.push("Expected mission reason declaration scoped to Matthew 1 verse 21.");
+  if (!hasScopedEvent(data, "conception_revelation", "scripture.nt.matthew.1.verse.20", (item) => /conceived.*Holy Ghost/i.test(item.anchorText || item.sourceSnippet || item.normalizedMeaning || ""))) failures.push("Expected conception revelation scoped to Matthew 1 verse 20.");
+  if (!hasEvent(data, "divine_message_cluster", (item) => Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "marriage_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "conception_revelation") && item.subEvents.some((subEvent) => subEvent.clusterType === "revealed_name_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "mission_declaration"))) failures.push("Expected divine message cluster with marriage instruction, conception revelation, name revelation, and mission declaration sub-events.");
   if (!hasScopedEvent(data, "covenant_family_union", "scripture.nt.matthew.1.verse.24", (item) => /took unto him his wife/i.test(item.anchorText || item.sourceSnippet || ""))) failures.push("Expected Joseph response event scoped to Matthew 1 verse 24.");
   if (count(data.ICE_SOURCE_DISCOVERY_INDEX) <= 0) failures.push("Expected source discovery refs count > 0.");
   if (!hasDiscoveredRef(data, "study_note")) failures.push("Expected study note refs in source discovery index.");

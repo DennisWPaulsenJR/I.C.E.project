@@ -1,6 +1,53 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.2e Multi-Instruction / Multi-Revelation Separation
+
+Instruction summary:
+- Prevent Matthew 1:20-21 complex revelation from collapsing into one generic instruction event.
+- Separate AngEL Of THE LORD message into marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Preserve narrative-time `JESUS`, canonical `JESUS CHRIST`, AngEL Of THE LORD display, source grounding, and confidence.
+
+Codex action summary:
+- Recovered useful interrupted work in `background.js`, `study.js`, and `qa/matthew1-extension-qa.js` after relaunch.
+- Added a source-grounded `conception_revelation` semantic event for `that which is conceived in her is of the Holy Ghost`.
+- Added derived `divine_message_cluster` events that group related sub-events as marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
+- Added compact Study Panel cluster preview in Narrative Timeline cards.
+- Added Matthew 1 QA assertions for the conception revelation and four-part divine message cluster.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `QA status.MD`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 800 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-15 - Semantic Correction: Preserve JESUS Naming Distinction
 
 Instruction summary:

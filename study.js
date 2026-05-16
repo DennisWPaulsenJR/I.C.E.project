@@ -2578,6 +2578,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     return entry.orderedEvents.slice(0, 2).map((item) => trimText(narrativeTextFromOrderedEvent(item), 120)).join("\n");
   }
 
+  function compactNarrativeClusterPreview(entry) {
+    return entry.semanticEvents
+      .filter((item) => item.eventType === "divine_message_cluster" && asArray(item.subEvents).length)
+      .slice(0, 2)
+      .map((cluster) => {
+        const parts = asArray(cluster.subEvents)
+          .slice(0, 4)
+          .map((part) => {
+            const target = part.target || "";
+            return `- ${part.clusterType || part.eventType || "sub_event"}: ${part.actor || "Unknown"} -> ${part.action || "event"}${target ? ` -> ${target}` : ""}`;
+          })
+          .join("\n");
+        return `${cluster.normalizedMeaning || "Grouped revelation"}\n${parts}`;
+      })
+      .join("\n");
+  }
   function displayedNarrativeRelationships(entry) {
     return asArray(entry.relationships).slice(0, 3);
   }
@@ -2640,6 +2656,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     for (const entry of filtered.slice(0, DISPLAY_LIMIT)) {
       const eventPreview = compactNarrativeEventPreview(entry);
+      const clusterPreview = compactNarrativeClusterPreview(entry);
       const displayedRelationships = displayedNarrativeRelationships(entry);
       const displayedFlowItems = displayedNarrativeFlowItems(entry);
       const relationshipPreview = compactNarrativeRelationshipPreview(entry);
@@ -2651,6 +2668,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         entry.category ? `Category: ${entry.category}` : "",
         entry.meaning ? `Meaning: ${entry.meaning}` : "",
         eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
+        clusterPreview ? `Clustered revelations:\n${clusterPreview}` : "",
         relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
         flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
         entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked"
