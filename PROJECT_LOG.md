@@ -1,6 +1,37 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Narrative Timeline Refinement: Readable Narrative Meaning Order
+
+Instruction summary:
+- Refine Narrative Timeline so Matthew 1 reads in intuitive narrative order instead of raw technical grouping.
+- Promote genealogy to the first major moment, add Mary found with child, separate Joseph pondering from the AngEL instruction, and keep fulfillment and Joseph response/naming distinct.
+- Preserve display-only behavior with no extraction, source phrase, page rendering, crawling, or linked-page fetching changes.
+
+Codex action summary:
+- Added a Matthew 1 display-derived timeline grouping layer with six readable moments: genealogy, Mary found with child, Joseph pondering, AngEL Of THE LORD instruction, fulfillment, and Joseph obedience/naming.
+- Added compact `Category` and `Meaning` lines above technical Events / Relationships / Flow / Entities details.
+- Kept generic fallback timeline behavior for other pages and chapters.
+- Ensured the AngEL instruction moment explicitly includes `THE LORD`, `AngEL Of THE LORD`, `Joseph`, and `Mary` in hierarchy-aware entity display.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts unchanged: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Study Panel Display Refinement: AngEL Of THE LORD Casing
 
 Instruction summary:

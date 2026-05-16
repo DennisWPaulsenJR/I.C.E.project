@@ -2257,7 +2257,196 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function narrativeMomentDisplayTitle(entry) {
+    if (entry.displayTitle) return `${entry.verseLabel || narrativeVerseLabel(entry)} - ${entry.displayTitle}`;
     return `${narrativeVerseLabel(entry)} - ${narrativeMomentLabel(entry)}`;
+  }
+
+  function narrativeItemDisplayText(item = {}) {
+    return normalizeText([
+      item.eventType,
+      item.semanticCategory,
+      item.relationshipType,
+      item.actor,
+      item.narrator,
+      item.action,
+      item.target,
+      item.recipient,
+      item.concerning,
+      item.normalizedMeaning,
+      item.anchorText,
+      item.evidencePhrase,
+      item.sourceSnippet,
+      narrativeTextFromOrderedEvent(item)
+    ].filter(Boolean).join(" ")).toLowerCase();
+  }
+
+  function narrativeIsMatthewOneContext() {
+    const context = activeScopeContext();
+    const sourceText = [
+      context.book,
+      context.chapter,
+      studyData.activeAdapter?.sourceTitle,
+      studyData.latestCapture?.title,
+      studyData.activeAdapter?.sourceUrl,
+      studyData.latestCapture?.url
+    ].join(" ").toLowerCase();
+    return /matthew/.test(sourceText) && /(?:^|\D)1(?:\D|$)/.test(String(context.chapter || "1"));
+  }
+
+  function createNarrativeDisplayEntry(position, verseLabel, displayTitle, category, meaning, scopes = []) {
+    return {
+      timelinePosition: position,
+      verseLabel,
+      displayTitle,
+      category,
+      meaning,
+      scopes: new Set(scopes),
+      orderedEvents: [],
+      semanticEvents: [],
+      relationships: [],
+      flowNodes: [],
+      flowLinks: [],
+      entities: new Set(),
+      title: displayTitle
+    };
+  }
+
+  function addNarrativeDisplayItem(entry, item = {}, collectionName) {
+    for (const scope of narrativeItemScopes(item)) entry.scopes.add(scope);
+    for (const name of narrativeEntityValues(item)) entry.entities.add(name);
+    if (collectionName === "orderedEvents") entry.orderedEvents.push(item);
+    if (collectionName === "semanticEvents") entry.semanticEvents.push(item);
+    if (collectionName === "relationships") entry.relationships.push(item);
+    if (collectionName === "flowNodes") entry.flowNodes.push(item);
+    if (collectionName === "flowLinks") entry.flowLinks.push(item);
+  }
+
+  function addNarrativeEntityNames(entry, names) {
+    for (const name of names) {
+      const normalized = normalizeText(name);
+      if (normalized) entry.entities.add(normalized);
+    }
+  }
+
+  function narrativeSyntheticOrderedEvent(text, scopePath, verseRef) {
+    return {
+      eventType: "display_summary",
+      eventText: text,
+      normalizedMeaning: text,
+      sourceSnippet: text,
+      scopePath,
+      verseRef
+    };
+  }
+
+  function narrativeFinalizeDisplayEntries(entries) {
+    return entries.map((entry) => ({
+      ...entry,
+      scopes: normalizeScopeList(entry.scopes, entry).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      entities: Array.from(entry.entities).sort((a, b) => a.localeCompare(b))
+    }));
+  }
+
+  function itemHasVerseNumber(item, numbers) {
+    const accepted = new Set(numbers.map(String));
+    const scopeHit = normalizeScopeList(item.scopes, item).some((scope) => {
+      const match = scope.match(/\.(?:verse|note)\.(\d+)[a-z]?\b/i);
+      return match && accepted.has(match[1]);
+    });
+    if (scopeHit) return true;
+    const verseRef = normalizeText(item.verseRef || item.sourceContext?.verseRef || "");
+    const verseMatch = verseRef.match(/:(\d+)\b/);
+    if (verseMatch && accepted.has(verseMatch[1])) return true;
+    const verseNumber = String(item.verseNumber || item.sourceContext?.verseNumber || "");
+    return accepted.has(verseNumber);
+  }
+
+  function narrativeItemMatchesAny(item, patterns) {
+    const text = narrativeItemDisplayText(item);
+    return patterns.some((pattern) => pattern.test(text));
+  }
+
+  function refineMatthewOneNarrativeTimeline(entries) {
+    if (!narrativeIsMatthewOneContext()) return entries;
+
+    const semanticEvents = asArray(studyData.semanticEvents);
+    const orderedEvents = asArray(studyData.orderedEvents);
+    const relationships = asArray(studyData.relationshipGraph);
+    const flowChains = asArray(studyData.semanticFlowChains);
+    const lineageScopes = ["scripture.nt.matthew.1.verse.1", "scripture.nt.matthew.1.verse.17"];
+
+    const displayEntries = [
+      createNarrativeDisplayEntry(1, "Matthew 1:1-17", "Genealogy Shows JESUS as Descendant of David", "Genealogy / Prophecy Lineage", "JESUS CHRIST is shown in the lineage of David and Abraham.", lineageScopes),
+      createNarrativeDisplayEntry(2, "Matthew 1:18", "Mary Is Found With Child", "Birth Context", "Mary is found with child before Joseph and Mary come together.", ["scripture.nt.matthew.1.verse.18"]),
+      createNarrativeDisplayEntry(3, "Matthew 1:19-20", "Joseph Ponders What To Do", "Human Response / Discernment", "Joseph considers the matter privately.", ["scripture.nt.matthew.1.verse.19", "scripture.nt.matthew.1.verse.20"]),
+      createNarrativeDisplayEntry(4, "Matthew 1:20-21", "AngEL Of THE LORD Instructs Joseph", "Divine Message / Name Revealed", "THE LORD sends AngEL Of THE LORD; Joseph is instructed to take Mary as wife and name the child JESUS.", ["scripture.nt.matthew.1.verse.20", "scripture.nt.matthew.1.verse.21"]),
+      createNarrativeDisplayEntry(5, "Matthew 1:22-23", "Fulfillment Declared", "Prophecy Fulfillment", "The narrator identifies fulfillment of prophecy.", ["scripture.nt.matthew.1.verse.22", "scripture.nt.matthew.1.verse.23"]),
+      createNarrativeDisplayEntry(6, "Matthew 1:24-25", "Joseph Obeys, Takes Mary To Wife, and JESUS Is Named", "Obedience / Covenant Response / Naming", "Joseph obeys the instruction, takes Mary as wife, and names the child JESUS.", ["scripture.nt.matthew.1.verse.24", "scripture.nt.matthew.1.verse.25"])
+    ];
+    const [lineage, maryFound, josephPonders, angelInstructs, fulfillment, josephObeys] = displayEntries;
+
+    const addMatching = (entry, items, collectionName, predicate) => {
+      for (const item of items) {
+        if (predicate(item)) addNarrativeDisplayItem(entry, item, collectionName);
+      }
+    };
+
+    addMatching(lineage, semanticEvents, "semanticEvents", (item) => item.eventType === "lineage_birth" || item.semanticCategory === "lineage");
+    addMatching(lineage, orderedEvents, "orderedEvents", (item) => item.eventType === "lineage_record" || narrativeItemMatchesAny(item, [/genealogy|generation|begat|son of david|son of abraham/]));
+    addMatching(lineage, relationships, "relationships", narrativeRelationshipIsLineage);
+
+    addMatching(maryFound, semanticEvents, "semanticEvents", (item) => itemHasVerseNumber(item, [18]) || narrativeItemMatchesAny(item, [/found with child|with child|before they came together|holy ghost|birth of jesus christ/]));
+    addMatching(maryFound, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [18]) || narrativeItemMatchesAny(item, [/found with child|with child|before they came together|holy ghost|birth of jesus christ/]));
+
+    addMatching(josephPonders, semanticEvents, "semanticEvents", (item) => item.eventType === "reflection_consideration" || narrativeItemMatchesAny(item, [/thought|considered|ponder|privily|just man|not willing|publick example/]));
+    addMatching(josephPonders, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [19]) || narrativeItemMatchesAny(item, [/thought|considered|ponder|privily|just man|not willing|publick example/]));
+
+    addMatching(angelInstructs, semanticEvents, "semanticEvents", (item) => ["divine_messenger_appearance", "divine_message_speech", "instruction_concerning_person"].includes(item.eventType) || narrativeItemMatchesAny(item, [/angel|fear not|take unto thee mary|call his name jesus|save his people/]));
+    addMatching(angelInstructs, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [20, 21]) && narrativeItemMatchesAny(item, [/angel|fear not|take unto thee mary|call his name jesus|save his people/]));
+
+    addMatching(fulfillment, semanticEvents, "semanticEvents", (item) => itemHasVerseNumber(item, [22, 23]) || narrativeItemMatchesAny(item, [/fulfill|fulfilled|prophet|emmanuel|spoken of the lord/]));
+    addMatching(fulfillment, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [22, 23]) || narrativeItemMatchesAny(item, [/fulfill|fulfilled|prophet|emmanuel|spoken of the lord/]));
+
+    addMatching(josephObeys, semanticEvents, "semanticEvents", (item) => item.eventType === "covenant_family_union" || itemHasVerseNumber(item, [24, 25]) || narrativeItemMatchesAny(item, [/took unto him his wife|knew her not|brought forth|called his name|named jesus/]));
+    addMatching(josephObeys, orderedEvents, "orderedEvents", (item) => itemHasVerseNumber(item, [24, 25]) || narrativeItemMatchesAny(item, [/took unto him his wife|knew her not|brought forth|called his name|named jesus/]));
+
+    if (lineage.semanticEvents.length === 0 && lineage.orderedEvents.length === 0) {
+      addNarrativeDisplayItem(lineage, narrativeSyntheticOrderedEvent(lineage.meaning, "scripture.nt.matthew.1.verse.1", "1:1"), "orderedEvents");
+    }
+    if (maryFound.semanticEvents.length === 0 && maryFound.orderedEvents.length === 0) {
+      addNarrativeDisplayItem(maryFound, narrativeSyntheticOrderedEvent(maryFound.meaning, "scripture.nt.matthew.1.verse.18", "1:18"), "orderedEvents");
+    }
+    if (fulfillment.semanticEvents.length === 0 && fulfillment.orderedEvents.length === 0) {
+      addNarrativeDisplayItem(fulfillment, narrativeSyntheticOrderedEvent(fulfillment.meaning, "scripture.nt.matthew.1.verse.22", "1:22"), "orderedEvents");
+    }
+
+    addNarrativeEntityNames(lineage, ["JESUS CHRIST", "David", "Abraham"]);
+    addNarrativeEntityNames(maryFound, ["Mary", "JESUS CHRIST"]);
+    addNarrativeEntityNames(josephPonders, ["Joseph", "Mary"]);
+    addNarrativeEntityNames(angelInstructs, ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary"]);
+    addNarrativeEntityNames(fulfillment, ["Scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"]);
+    addNarrativeEntityNames(josephObeys, ["Joseph", "Mary", "JESUS CHRIST"]);
+
+    for (const entry of displayEntries) {
+      for (const edge of relationships) {
+        if (entry === lineage) continue;
+        if (narrativeRelationshipBelongsToEntry(entry, edge)) addNarrativeDisplayItem(entry, edge, "relationships");
+      }
+      for (const chain of flowChains) {
+        for (const node of asArray(chain.nodes)) {
+          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          if (entry.semanticEvents.some((eventItem) => eventItem.id && nodeItem.semanticEventId === eventItem.id) || narrativeItemHasNarrowScopeMatch(entry, nodeItem) || narrativeEntryHasVerseRefMatch(entry, nodeItem)) {
+            addNarrativeDisplayItem(entry, nodeItem, "flowNodes");
+          }
+        }
+        for (const link of asArray(chain.relationships)) {
+          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          if (narrativeItemHasNarrowScopeMatch(entry, linkItem) || narrativeSourcePhraseOverlap(entry, linkItem)) addNarrativeDisplayItem(entry, linkItem, "flowLinks");
+        }
+      }
+    }
+
+    return narrativeFinalizeDisplayEntries(displayEntries);
   }
 
   function createNarrativeTimelineEntries() {
@@ -2322,16 +2511,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    return Array.from(entries.values()).map((entry) => ({
+    const normalizedEntries = Array.from(entries.values()).map((entry) => ({
       ...entry,
       scopes: normalizeScopeList(entry.scopes, entry).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
       entities: Array.from(entry.entities).sort((a, b) => a.localeCompare(b))
     })).sort(narrativeTimelineSort);
+    return refineMatthewOneNarrativeTimeline(normalizedEntries);
   }
 
   function narrativeTimelineSearchText(entry) {
     return [
       entry.title,
+      entry.displayTitle,
+      entry.category,
+      entry.meaning,
+      entry.verseLabel,
       normalizeScopeList(entry.scopes, entry).join(" "),
       entry.entities.join(" "),
       entry.orderedEvents.map(narrativeTextFromOrderedEvent).join(" "),
@@ -2446,11 +2640,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const hiddenSemantic = Math.max(entry.semanticEvents.length - 3, 0);
       const body = [
         `Scope: ${narrativeReadableScopes(normalizeScopeList(entry.scopes, entry))}`,
+        entry.category ? `Category: ${entry.category}` : "",
+        entry.meaning ? `Meaning: ${entry.meaning}` : "",
         eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
         relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
         flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
         entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked"
-      ].join("\n");
+      ].filter(Boolean).join("\n");
       const meta = [
         `timeline ${entry.timelinePosition}`,
         `${entry.semanticEvents.length} semantic`,

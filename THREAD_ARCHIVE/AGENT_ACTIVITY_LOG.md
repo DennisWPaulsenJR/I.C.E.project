@@ -753,3 +753,34 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Refine narrative timeline meaning
+
+Task:
+- Refine Narrative Timeline display so Matthew 1 reads in readable narrative meaning order instead of raw technical grouping.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with unchanged counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Matthew 1 Narrative Timeline now presents six readable display-derived moments: genealogy, Mary found with child, Joseph pondering, AngEL Of THE LORD instruction, fulfillment declared, and Joseph obedience/naming.
+- Moment cards now include `Category` and `Meaning` above the compact technical Events / Relationships / Flow / Entities details.
+- The AngEL instruction moment explicitly carries hierarchy-aware entity display with `THE LORD`, `AngEL Of THE LORD`, `Joseph`, and `Mary` visible.
+- Generic timeline behavior remains available for other pages/chapters.
+- No extraction logic, stored source phrases, page rendering, crawling/fetching, or QA expectations were changed.
+
+Next recommended step:
+- Recheck Study Panel Narrative Timeline for Matthew 1 with no filter, then search `1:20`, `Joseph`, and `AngEL Of THE LORD` to confirm the display order matches the intended review flow.
+
+Status:
+- Implemented by PCDX.
