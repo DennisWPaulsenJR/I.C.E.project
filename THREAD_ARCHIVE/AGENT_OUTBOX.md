@@ -123,3 +123,11 @@ Validation:
 Needed action:
 - Dennis/GPT should approve Phase 8.0 as complete or request targeted refinements for the entity focus view.
 - If approved, next likely direction is deeper pronoun/entity resolution after reviewing whether scoped references and pronoun mentions are useful enough in the current focus view.
+
+### 2026-05-15 - pcdx -> gpt/mgpt/mcdx - Study Panel review snapshot
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Open for review.
+Message: Dennis requested a repo-readable text version of the Study Panel / Matthew 1 QA data because copying the UI panel is awkward. PCDX generated `THREAD_ARCHIVE/STUDY_PANEL_REVIEW_SNAPSHOT.md` from a fresh passing `npm.cmd run qa:matthew1` bundle.
+Requested action: GPT/mgpt can review the snapshot directly from the repo and use it for coordination without requiring Dennis to paste the full Study Panel UI.
+Related files/commits: `THREAD_ARCHIVE/STUDY_PANEL_REVIEW_SNAPSHOT.md`.

@@ -924,3 +924,41 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Add Study Panel review snapshot
+
+Task:
+- Create a repo-readable text snapshot of the current Matthew 1 Study Panel / QA data so Dennis and GPT can review it without copying the full UI panel by hand.
+
+Files changed:
+- `THREAD_ARCHIVE/STUDY_PANEL_REVIEW_SNAPSHOT.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `npm.cmd run qa:matthew1` passed before snapshot generation.
+- `git diff --check` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Scope integrity: 779 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added a committed markdown snapshot generated from `qa-output/latest-qa-bundle.json`.
+- Included copy-format summary, counts, failures, active adapter, analysis status, scope integrity, passage functions, key semantic samples, source discovery, reference graph, and HTML samples.
+- Left generated `qa-output/` uncommitted.
+
+Status:
+- Implemented by PCDX.
