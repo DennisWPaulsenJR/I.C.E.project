@@ -1,6 +1,35 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.1 Cleanup: Narrative Timeline Display Layer Clarification
+
+Instruction summary:
+- Keep the readable Matthew 1 Narrative Timeline useful while making clear it is temporary display-derived labeling, not final semantic architecture.
+- Do not remove current labels, change extraction logic, or change QA counts.
+
+Codex action summary:
+- Added a Study Panel `Narrative Label Note` under Narrative Timeline: narrative labels are display-derived from current semantic data and the future passage-function layer will generalize this.
+- Renamed the Matthew 1 helper to `applyTemporaryMatthewOneDisplayTimeline` and added a code comment pointing future agents toward `ICE_PASSAGE_FUNCTIONS` / `ICE_NARRATIVE_PURPOSES`.
+- Preserved current readable Matthew 1 labels and generic fallback behavior.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+
+QA result:
+- PASS. Counts unchanged: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit hash:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-15 - Phase 8.2 Roadmap: Passage Function / Narrative Purpose Layer
 
 Instruction summary:

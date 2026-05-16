@@ -2366,7 +2366,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return patterns.some((pattern) => pattern.test(text));
   }
 
-  function refineMatthewOneNarrativeTimeline(entries) {
+  function applyTemporaryMatthewOneDisplayTimeline(entries) {
+    // Temporary Matthew 1 display grouping only. Future ICE_PASSAGE_FUNCTIONS /
+    // ICE_NARRATIVE_PURPOSES should generalize these labels as derived data.
     if (!narrativeIsMatthewOneContext()) return entries;
 
     const semanticEvents = asArray(studyData.semanticEvents);
@@ -2516,7 +2518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       scopes: normalizeScopeList(entry.scopes, entry).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
       entities: Array.from(entry.entities).sort((a, b) => a.localeCompare(b))
     })).sort(narrativeTimelineSort);
-    return refineMatthewOneNarrativeTimeline(normalizedEntries);
+    return applyTemporaryMatthewOneDisplayTimeline(normalizedEntries);
   }
 
   function narrativeTimelineSearchText(entry) {
@@ -2628,6 +2630,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         `Filter: ${term || "all current-page narrative data"}`
       ].join("\n"),
       "scope-aware event progression"
+    ));
+    container.appendChild(createCard(
+      "Narrative Label Note",
+      "Narrative labels are display-derived from current semantic data; future passage-function layer will generalize this.",
+      "temporary display layer"
     ));
 
     for (const entry of filtered.slice(0, DISPLAY_LIMIT)) {

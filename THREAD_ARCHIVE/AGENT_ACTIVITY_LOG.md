@@ -813,3 +813,33 @@ Next recommended step:
 
 Status:
 - Documented by PCDX.
+
+## 2026-05-15 - pcdx - Clarify narrative timeline display layer
+
+Task:
+- Mark current readable Narrative Timeline labels as temporary display-derived labels until the future Passage Function / Narrative Purpose Layer is implemented.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with unchanged counts: DOM hints 173, mentions 172, entity registry 46, relationship graph 61, canonical identities 48, semantic events 48, semantic flow chains 1, source discovery 136, reference graph 136.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Added a visible Study Panel note under Narrative Timeline: `Narrative labels are display-derived from current semantic data; future passage-function layer will generalize this.`
+- Renamed the Matthew 1 display helper to make its temporary/presentation-only purpose clear for future agents.
+- Kept current readable labels and generic fallback behavior intact.
+- No extraction logic, source phrases, stored semantic records, page rendering, crawling/fetching, or QA count expectations were changed.
+
+Next recommended step:
+- Treat current Matthew 1 labels as useful review scaffolding until Phase 8.2 implements reusable `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES` records.
+
+Status:
+- Implemented by PCDX.
