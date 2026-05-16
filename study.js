@@ -2694,6 +2694,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join(" ");
   }
 
+  function passageFunctionBulletList(items, limit = 4) {
+    const values = asArray(items).map((item) => normalizeText(item)).filter(Boolean);
+    if (values.length === 0) return "";
+
+    const shown = values.slice(0, limit).map((item) => `- ${item}`);
+    if (values.length > limit) shown.push(`- ${values.length - limit} more evidence item(s) hidden by preview limit.`);
+    return shown.join("\n");
+  }
+
+  function passageFunctionLineList(label, items, limit = 6) {
+    const values = asArray(items).map((item) => normalizeText(item)).filter(Boolean);
+    if (values.length === 0) return "";
+    const shown = values.slice(0, limit).join(", ");
+    const hidden = values.length > limit ? ` (${values.length - limit} more)` : "";
+    return `${label}:\n${shown}${hidden}`;
+  }
+
   function renderPassageFunctions(term) {
     const container = document.getElementById("passageFunctionCards");
     const count = document.getElementById("passageFunctionCount");
@@ -2719,22 +2736,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       [
         `Derived records: ${functions.length}`,
         `Layer: ICE_PASSAGE_FUNCTIONS`,
-        "Purpose: why a passage or section exists, grounded in current semantic data."
+        "Purpose: why a passage or section exists, grounded in current semantic data.",
+        "Review posture: inspect meaning, evidence, confidence, and source grounding together."
       ].join("\n"),
       "derived semantic layer"
     ));
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      const evidence = passageFunctionBulletList(item.evidence);
       container.appendChild(createCard(
         passageFunctionTitle(item.passageFunction),
         [
           item.verseRange || item.scopePath || "Current scope",
           item.plainMeaning ? `Meaning:\n${item.plainMeaning}` : "",
-          asArray(item.linkedThemes).length ? `Themes:\n${asArray(item.linkedThemes).join(", ")}` : "",
-          item.fulfillmentMeaning ? `Fulfillment:\n${item.fulfillmentMeaning}` : "",
-          asArray(item.evidence).length ? `Evidence:\n${asArray(item.evidence).slice(0, 3).join(" | ")}` : ""
-        ].filter(Boolean).join("\n"),
-        `Confidence: ${displayConfidence(item.confidence || "probable")}`
+          item.fulfillmentMeaning ? `Fulfillment Meaning:\n${item.fulfillmentMeaning}` : "",
+          evidence ? `Evidence:\n${evidence}` : "Evidence:\nNo evidence phrases stored.",
+          passageFunctionLineList("Themes", item.linkedThemes),
+          passageFunctionLineList("Related entities", item.relatedEntities),
+          `Confidence:\n${displayConfidence(item.confidence || "probable")}`,
+          item.sourceGrounding ? `Source grounding:\n${item.sourceGrounding}` : "Source grounding:\nNot recorded."
+        ].filter(Boolean).join("\n\n"),
+        item.scopePath ? `Scope: ${item.scopePath}` : "review derived claim"
       ));
     });
   }

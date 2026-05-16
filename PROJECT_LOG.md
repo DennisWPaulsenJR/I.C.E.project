@@ -1,6 +1,46 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.2c Passage Function Evidence Review View
+
+Instruction summary:
+- Make `ICE_PASSAGE_FUNCTIONS` transparent, reviewable, and evidence-centered in the Study Panel.
+- Show what each function claim is, why the app believes it, what evidence supports it, confidence, and source grounding.
+- Keep the change display-only with no reasoning broadening, crawling/fetching, extraction rewrite, or pilot-record changes.
+
+Codex action summary:
+- Refined the Study Panel `Passage Functions` card body to show verse range, meaning, fulfillment meaning, evidence bullets, linked themes, related entities, confidence, source grounding, and scope.
+- Added compact list helpers for evidence and line-list fields so long arrays stay reviewable.
+- Preserved existing `ICE_PASSAGE_FUNCTIONS` records and QA counts.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-15 - Phase 8.2 Passage Function Scaffolding
 
 Instruction summary:

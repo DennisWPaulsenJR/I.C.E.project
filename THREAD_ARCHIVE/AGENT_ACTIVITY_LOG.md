@@ -962,3 +962,40 @@ Result summary for repo review:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Add passage function evidence view
+
+Task:
+- Begin Phase 8.2c by making `ICE_PASSAGE_FUNCTIONS` visibly evidence-centered in the Study Panel.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 172
+- Entity registry: 46
+- Relationship graph: 61
+- Canonical identities: 48
+- Semantic events: 48
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Passage Function cards now show meaning, fulfillment meaning, evidence bullets, themes, related entities, confidence, source grounding, and scope.
+- This is display-only: existing pilot records, extraction logic, QA counts, source phrases, crawling/fetching behavior, and reasoning scope are unchanged.
+
+Status:
+- Implemented by PCDX.
