@@ -68,6 +68,13 @@ Next planned phase:
 - Reference graph layer
 - Development QA automation harness
 
+Future planned derived layer:
+- Phase 8.2 Passage Function / Narrative Purpose Layer
+- Potential key: `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES`
+- Goal: identify why a passage or section exists, not only what events occur.
+- This should become a reusable derived semantic layer using source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.
+- Do not implement as hard-coded cards for every passage.
+
 ## Current Architecture
 
 Architecture direction:
@@ -270,3 +277,58 @@ Preserve:
 
 Important product principle:
 I.C.E. should support human agency, personal interpretation, faith development, independent study, and source-grounded comprehension. It should not replace individual revelation, conscience, prayer, clergy, scripture, or human judgment.
+
+## Phase 8.2 Roadmap: Passage Function / Narrative Purpose Layer
+
+Status: planned documentation only; not implemented yet.
+
+Goal:
+- Create a derived semantic layer that identifies why a passage or section exists, not only what events occur.
+
+Potential storage key:
+- `ICE_PASSAGE_FUNCTIONS`
+- or `ICE_NARRATIVE_PURPOSES`
+
+Example record shape:
+
+```json
+{
+  "id": "purpose-matthew-1-lineage",
+  "sourceCaptureId": "...",
+  "scopePath": "scripture.nt.matthew.1.verse.1-17",
+  "verseRange": "Matthew 1:1-17",
+  "passageFunction": "messianic_lineage_establishment",
+  "plainMeaning": "JESUS CHRIST is presented as son of David and son of Abraham.",
+  "fulfillmentMeaning": "The lineage establishes covenant and messianic identity before the fulfillment narrative.",
+  "evidence": ["son of David", "son of Abraham"],
+  "linkedThemes": ["Davidic kingship", "Abrahamic promise", "covenant lineage", "fulfillment"],
+  "relatedEntities": ["JESUS CHRIST", "David", "Abraham"],
+  "relatedProphecies": [],
+  "confidence": "probable",
+  "sourceGrounding": "explicit phrase plus scoped scripture context"
+}
+```
+
+Matthew 1 examples:
+- Genealogy / lineage: `messianic_lineage_establishment`; JESUS CHRIST is presented as son of David and son of Abraham; themes include Davidic kingship, Abrahamic promise, covenant lineage, and fulfillment.
+- Mary found with child: `birth_context_establishment`; the birth is introduced as divine in origin before Joseph and Mary come together.
+- AngEL Of THE LORD instructs Joseph: `divine_instruction_and_name_revelation`; THE LORD sends AngEL Of THE LORD to instruct Joseph and reveal the name JESUS.
+- Fulfillment declared: `prophecy_fulfillment_identification`; the narrator identifies the event as fulfilling prophecy.
+- Joseph obeys and JESUS is named: `obedient_response_and_mission_naming`; Joseph obeys divine instruction and the child is named JESUS.
+
+Reusable passage function types:
+- `genealogy_establishes_identity`
+- `prophecy_fulfillment_identification`
+- `divine_message_instruction`
+- `covenant_response`
+- `naming_reveals_mission`
+- `miracle_reveals_authority`
+- `temptation_tests_identity`
+- `teaching_declares_doctrine`
+- `warning_declares_consequence`
+- `witness_confirms_truth`
+
+Important implementation direction:
+- This should not become hard-coded cards for every passage.
+- Keep it source-grounded, scope-aware, confidence-bearing, and derived from existing semantic layers.
+- Inputs should include source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.

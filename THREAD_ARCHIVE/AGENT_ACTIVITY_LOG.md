@@ -784,3 +784,32 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-15 - pcdx - Document passage function layer roadmap
+
+Task:
+- Add roadmap documentation for future Phase 8.2 Passage Function / Narrative Purpose Layer without implementing the layer yet.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Result summary for repo review:
+- Documented future derived storage key options: `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES`.
+- Captured the proposed record shape, Matthew 1 examples, reusable passage function types, and implementation direction.
+- Clarified that the layer should identify why a passage exists, not only what events occur.
+- Clarified that this should become a reusable derived semantic layer, not hard-coded cards for every passage.
+- No application code, extraction logic, QA behavior, source phrases, page rendering, crawling/fetching, or storage writes were changed.
+
+Next recommended step:
+- Use this roadmap when GPT/mgpt/pcdx next define Phase 8.2 implementation scope and QA assertions.
+
+Status:
+- Documented by PCDX.

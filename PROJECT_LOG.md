@@ -1,6 +1,34 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-15 - Phase 8.2 Roadmap: Passage Function / Narrative Purpose Layer
+
+Instruction summary:
+- Document a future derived layer that identifies why a passage or section exists, not only what events occur.
+- Do not implement yet.
+
+Codex action summary:
+- Added Phase 8.2 roadmap notes for a future `ICE_PASSAGE_FUNCTIONS` or `ICE_NARRATIVE_PURPOSES` layer.
+- Captured the proposed record shape with scope, verse range, passage function, meanings, evidence, linked themes, entities, prophecies, confidence, and source grounding.
+- Documented Matthew 1 examples and reusable passage function types.
+- Clarified that this should not become hard-coded cards for every passage; it should become a reusable source-grounded derived semantic layer.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `git diff --check`
+
+QA result:
+- Documentation only; browser QA not required.
+
+Commit hash:
+- This commit
+
+Status:
+- Roadmap documented
 ## 2026-05-15 - Narrative Timeline Refinement: Readable Narrative Meaning Order
 
 Instruction summary:
