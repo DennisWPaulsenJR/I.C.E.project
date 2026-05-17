@@ -1,6 +1,56 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-16 - Semantic Reference Role Layer
+
+Instruction summary:
+- Add a lightweight derived layer that explains why discovered references are attached to a scope.
+- Use existing Source Discovery, Reference Graph, Passage Functions, Revelation Patterns, Canonical Identities, and Themes.
+- Preserve source grounding, confidence, narrative-time `JESUS`, canonical `JESUS CHRIST`, and existing extraction behavior.
+
+Codex action summary:
+- Added `ICE_REFERENCE_ROLES` as a derived semantic role layer generated from current-page discovered references.
+- Added conservative Matthew 1 pilot roles for davidic lineage support, Abrahamic covenant support, prophecy fulfillment support, messianic identity support, and name meaning support.
+- Linked roles back to source discovery ids, scope paths, verse ranges, themes, passage functions, entities, evidence, confidence, and source grounding.
+- Added Reference Roles cards to the Study Panel with discovered reference, semantic role, linked themes/entities/functions, evidence, confidence, grounding, and scope.
+- Extended Matthew 1 QA to validate grounded reference roles and include reference-role counts/samples.
+- Recovered and completed the partial `background.js` work from the interrupted session; no partial changes were discarded.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-16 - Revelation Patterns Display Refinement: Readable Semantic Cards
 
 Instruction summary:
@@ -335,6 +385,7 @@ Files changed:
 - `qa/matthew1-extension-qa.js`
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
+- `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 - `QA status.MD`
 
@@ -437,6 +488,7 @@ Codex action summary:
 Files changed:
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
+- `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
 Validation run:
@@ -852,6 +904,7 @@ Files changed:
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
 - `QA status.MD`
+- `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
 Validation run:
@@ -925,6 +978,7 @@ Files changed:
 - `qa/matthew1-extension-qa.js`
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
+- `QA status.MD`
 - `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
@@ -1001,6 +1055,7 @@ Codex action summary:
 Files changed:
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
+- `QA status.MD`
 - `THREAD_ARCHIVE/README.md`
 - `THREAD_ARCHIVE/2026-05-project-architecture-notes.md`
 

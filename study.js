@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     referenceGraph: "ICE_REFERENCE_GRAPH",
     passageFunctions: "ICE_PASSAGE_FUNCTIONS",
     revelationPatterns: "ICE_REVELATION_PATTERNS",
+    referenceRoles: "ICE_REFERENCE_ROLES",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -3050,6 +3051,99 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createPassageFunctionCard(item));
     });
   }
+
+  function referenceRoleSearchText(item = {}) {
+    return [
+      item.discoveredReference,
+      item.referenceRole,
+      item.verseRange,
+      item.scopePath,
+      item.sourceDiscoveryId,
+      asArray(item.linkedThemes).join(" "),
+      asArray(item.linkedEntities).join(" "),
+      asArray(item.linkedPassageFunctions).join(" "),
+      asArray(item.evidence).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function referenceRoleRelatedEntities(item = {}) {
+    return passageFunctionOrderedEntities(item.linkedEntities).map((entry) => entry.display);
+  }
+
+  function createReferenceRoleCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const themes = asArray(item.linkedThemes).map((value) => normalizeText(value)).filter(Boolean);
+    const entities = referenceRoleRelatedEntities(item);
+    const functions = asArray(item.linkedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const shownEvidence = evidence.slice(0, 5).map((value) => renderDivineDisplayText(value));
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card reference-role-card";
+    header.className = "semantic-card-header";
+    heading.textContent = passageFunctionTitle(item.referenceRole || "reference_role");
+    range.className = "semantic-card-range";
+    range.textContent = item.verseRange || item.scopePath || "Current scope";
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Discovered Reference", item.discoveredReference || item.referenceHref || "reference"),
+      createPassageFunctionSection("Semantic Role", passageFunctionTitle(item.referenceRole || "reference_role")),
+      createPassageFunctionSection("Linked Themes", "", { list: themes }),
+      createPassageFunctionSection("Linked Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Linked Passage Functions", "", { list: functions, plainList: true }),
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length) }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded."),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.")
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderReferenceRoles(term) {
+    const container = document.getElementById("referenceRoleCards");
+    const count = document.getElementById("referenceRoleCount");
+    const roles = asArray(studyData.referenceRoles);
+    const filtered = roles.filter((item) => matchesSearchQuery(referenceRoleSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} role(s)`;
+
+    if (roles.length === 0) {
+      appendEmpty(container, "No semantic reference roles derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No reference roles match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Reference Roles",
+      [
+        `Derived records: ${roles.length}`,
+        `Layer: ICE_REFERENCE_ROLES`,
+        "Purpose: explain why discovered references are attached to this passage or note.",
+        "Review posture: inspect discovered reference, semantic role, linked themes/entities, evidence, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createReferenceRoleCard(item));
+    });
+  }
   function sourceDiscoverySearchText(item) {
     return [
       item.refType,
@@ -3680,6 +3774,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderNarrativeTimeline(term);
       renderPassageFunctions(term);
       renderRevelationPatterns(term);
+      renderReferenceRoles(term);
       renderSourceDiscovery(term);
       renderReferenceGraph(term);
       renderDomSemanticHints(term);
@@ -3738,6 +3833,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       referenceGraph: countItems(studyData.referenceGraph),
       passageFunctions: countItems(studyData.passageFunctions),
       revelationPatterns: countItems(studyData.revelationPatterns),
+      referenceRoles: countItems(studyData.referenceRoles),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -3767,12 +3863,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const referenceGraphCount = countItems(studyData.referenceGraph);
     const passageFunctionCount = countItems(studyData.passageFunctions);
     const revelationPatternCount = countItems(studyData.revelationPatterns);
+    const referenceRoleCount = countItems(studyData.referenceRoles);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -3795,6 +3892,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticReferenceGraph").textContent = referenceGraphCount;
     document.getElementById("diagnosticPassageFunctions").textContent = passageFunctionCount;
     document.getElementById("diagnosticRevelationPatterns").textContent = revelationPatternCount;
+    document.getElementById("diagnosticReferenceRoles").textContent = referenceRoleCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

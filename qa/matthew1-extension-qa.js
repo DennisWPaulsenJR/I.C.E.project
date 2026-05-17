@@ -32,7 +32,8 @@ const STORAGE_KEYS = [
   "ICE_SOURCE_DISCOVERY_INDEX",
   "ICE_REFERENCE_GRAPH",
   "ICE_PASSAGE_FUNCTIONS",
-  "ICE_REVELATION_PATTERNS"
+  "ICE_REVELATION_PATTERNS",
+  "ICE_REFERENCE_ROLES"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -83,7 +84,8 @@ function emptyCounts() {
     sourceDiscovery: 0,
     referenceGraph: 0,
     passageFunctions: 0,
-    revelationPatterns: 0
+    revelationPatterns: 0,
+    referenceRoles: 0
   };
 }
 
@@ -100,7 +102,8 @@ function buildCounts(storageData) {
     sourceDiscovery: count(storageData.ICE_SOURCE_DISCOVERY_INDEX),
     referenceGraph: count(storageData.ICE_REFERENCE_GRAPH),
     passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS),
-    revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS)
+    revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS),
+    referenceRoles: count(storageData.ICE_REFERENCE_ROLES)
   };
 }
 
@@ -119,6 +122,7 @@ function buildSamples(storageData) {
     referenceGraph: sample(storageData.ICE_REFERENCE_GRAPH, 200),
     passageFunctions: sample(storageData.ICE_PASSAGE_FUNCTIONS, 20),
     revelationPatterns: sample(storageData.ICE_REVELATION_PATTERNS, 20),
+    referenceRoles: sample(storageData.ICE_REFERENCE_ROLES, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -225,6 +229,23 @@ function hasPassageFunction(data, passageFunction, predicate = () => true) {
   );
 }
 
+function hasReferenceRole(data, referenceRole, predicate = () => true) {
+  return (data.ICE_REFERENCE_ROLES || []).some((item) =>
+    item.referenceRole === referenceRole && predicate(item)
+  );
+}
+
+function isGroundedReferenceRole(item) {
+  return Boolean(
+    item?.sourceDiscoveryId &&
+    item?.scopePath &&
+    item?.referenceRole &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
 function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
@@ -275,6 +296,18 @@ function evaluateFailures(data) {
 
   if (count(data.ICE_PASSAGE_FUNCTIONS) <= 0) failures.push("Expected passage function records count > 0.");
   if (count(data.ICE_REVELATION_PATTERNS) <= 0) failures.push("Expected revelation pattern records count > 0.");
+  if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected reference role records count > 0.");
+  for (const referenceRole of [
+    "davidic_lineage_support",
+    "abrahamic_covenant_support",
+    "prophecy_fulfillment_support",
+    "messianic_identity_support",
+    "name_meaning_support"
+  ]) {
+    if (!hasReferenceRole(data, referenceRole, isGroundedReferenceRole)) {
+      failures.push(`Expected grounded reference role ${referenceRole}.`);
+    }
+  }
   if (!hasRevelationPattern(data, (item) => item.speaker === "AngEL Of THE LORD" && item.authoritySource === "THE LORD" && item.recipient === "Joseph" && item.revelationType === "divine_message_revelation_pattern" && Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "marriage_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "conception_revelation") && item.subEvents.some((subEvent) => subEvent.clusterType === "revealed_name_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "mission_declaration") && Array.isArray(item.evidence) && item.evidence.some((phrase) => /call his name JESUS/i.test(phrase)) && item.confidence === "explicit")) failures.push("Expected grounded revelation pattern for AngEL Of THE LORD speech to Joseph with four ordered sub-events.");
   for (const passageFunction of [
     "genealogy_establishes_identity",

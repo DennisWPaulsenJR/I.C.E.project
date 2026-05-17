@@ -9,7 +9,7 @@ Current operational state:
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2f revelation pattern / speech structure layer.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2g semantic reference role layer.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`

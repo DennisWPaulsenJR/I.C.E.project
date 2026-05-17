@@ -84,6 +84,15 @@ Current speech/revelation derived layer:
 - Goal: structure one speech/revelation block into ordered semantic parts such as command, warning, promise, revealed name, mission declaration, identity revelation, fulfillment declaration, covenant instruction, or prophecy explanation.
 - Matthew 1 pilot: THE LORD authorizes AngEL Of THE LORD speaking to Joseph, with ordered sub-events for marriage instruction, conception revelation, revealed-name instruction, and mission declaration.
 - Keep this as a derived semantic layer; do not broaden extraction or crawl/fetch sources for it.
+
+Current semantic reference role layer:
+- Phase 8.2g Semantic Reference Role Layer
+- Active key: `ICE_REFERENCE_ROLES`
+- Status: Matthew 1 pilot implemented from existing source discovery, reference graph, passage functions, revelation patterns, canonical identities, and themes.
+- Goal: explain why a discovered reference is attached to a passage, note, theme, fulfillment, entity, lineage, covenant, or revelation context.
+- Matthew 1 pilot roles: davidic_lineage_support, abrahamic_covenant_support, prophecy_fulfillment_support, messianic_identity_support, and name_meaning_support.
+- Keep this as a derived semantic layer; do not broaden extraction, crawl/fetch sources, or replace source grounding/confidence.
+
 ## Current Architecture
 
 Architecture direction:

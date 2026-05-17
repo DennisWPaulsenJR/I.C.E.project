@@ -26,6 +26,7 @@ const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
 const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
+const REFERENCE_ROLES_KEY = "ICE_REFERENCE_ROLES";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -407,6 +408,7 @@ function scopeKindForItem(item = {}, type = "item") {
   if (type === "identity") return "identity";
   if (type === "flow_chain") return "flow_chain";
   if (type === "revelation_pattern") return "revelation_pattern";
+  if (type === "reference_role") return "reference_role";
   if (type === "source_discovery") return item.refType || "source_discovery";
   return type;
 }
@@ -468,7 +470,9 @@ function enrichScopeItem(item, type, index, activeAdapter) {
   item.sourceCaptureId = sourceCaptureId;
   item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
   item.timelinePosition = timelinePosition;
-  item.scopePath = scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
+  item.scopePath = type === "reference_role" && item.scopePath
+    ? item.scopePath
+    : scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
   return item;
 }
 
@@ -506,6 +510,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichSemanticFlowChainScopes(data.semanticFlowChains, activeAdapter);
   enrichScopeCollection(data.sourceDiscoveryIndex, "source_discovery", activeAdapter);
   enrichScopeCollection(data.revelationPatterns, "revelation_pattern", activeAdapter);
+  enrichScopeCollection(data.referenceRoles, "reference_role", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -519,7 +524,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.sourceDiscoveryIndex || []).map((item) => ({ ...item, scopeLayer: "source_discovery" })),
     ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" })),
     ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" })),
-    ...(data.revelationPatterns || []).map((item) => ({ ...item, scopeLayer: "revelation_pattern" }))
+    ...(data.revelationPatterns || []).map((item) => ({ ...item, scopeLayer: "revelation_pattern" })),
+    ...(data.referenceRoles || []).map((item) => ({ ...item, scopeLayer: "reference_role" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -720,6 +726,143 @@ function createReferenceGraph(sourceDiscoveryIndex, activeAdapter) {
   );
 }
 
+function verseRangeFromReferenceScope(scopePath = "") {
+  const verseMatch = String(scopePath || "").match(/^scripture\.nt\.([^.]+)\.(\d+)\.(?:verse|note)\.(\d+)/i);
+  if (verseMatch) return `${capitalizeWordForReferenceRole(verseMatch[1])} ${verseMatch[2]}:${verseMatch[3]}`;
+  const chapterMatch = String(scopePath || "").match(/^scripture\.nt\.([^.]+)\.(\d+)/i);
+  if (chapterMatch) return `${capitalizeWordForReferenceRole(chapterMatch[1])} ${chapterMatch[2]}`;
+  return scopePath || "Current scope";
+}
+
+function capitalizeWordForReferenceRole(value) {
+  const text = normalizeWhitespace(value || "");
+  if (!text) return "";
+  return `${text.charAt(0).toUpperCase()}${text.slice(1).toLowerCase()}`;
+}
+
+function passageFunctionsForReferenceRole(role, passageFunctions = []) {
+  const byRole = {
+    davidic_lineage_support: ["genealogy_establishes_identity"],
+    abrahamic_covenant_support: ["genealogy_establishes_identity"],
+    messianic_identity_support: ["genealogy_establishes_identity", "divine_message_instruction"],
+    prophecy_fulfillment_support: ["prophecy_fulfillment_identification"],
+    name_meaning_support: ["divine_message_instruction", "obedient_response_and_naming"]
+  };
+  const allowed = new Set(byRole[role] || []);
+  return (passageFunctions || [])
+    .filter((item) => allowed.has(item.passageFunction))
+    .map((item) => item.passageFunction || item.id)
+    .filter(Boolean);
+}
+
+function referenceRoleConfigForItem(item = {}) {
+  const linkText = normalizeWhitespace(item.linkText || "");
+  const haystack = normalizeWhitespace([item.linkText, item.href, item.scopePath, item.verseRef].filter(Boolean).join(" ")).toLowerCase();
+  const scopePath = item.scopePath || "";
+  if (item.refType !== "study_note" && item.refType !== "cross_reference") return null;
+
+  if (/\bdavid\b/i.test(linkText)) {
+    return {
+      referenceRole: "davidic_lineage_support",
+      linkedThemes: ["Davidic kingship", "covenant lineage", "messianic identity", "fulfillment framing"],
+      linkedEntities: ["David", "JESUS CHRIST"],
+      confidence: "explicit"
+    };
+  }
+
+  if (/\babraham\b/i.test(linkText)) {
+    return {
+      referenceRole: "abrahamic_covenant_support",
+      linkedThemes: ["Abrahamic covenant", "covenant lineage", "messianic identity", "fulfillment framing"],
+      linkedEntities: ["Abraham", "JESUS CHRIST"],
+      confidence: "explicit"
+    };
+  }
+
+  if (/\bjesus christ\b|\bchrist\b/i.test(linkText) || /matthew\.1\.(?:verse|note)\.1\b/i.test(scopePath)) {
+    return {
+      referenceRole: "messianic_identity_support",
+      linkedThemes: ["messianic identity", "covenant lineage", "fulfillment framing"],
+      linkedEntities: ["JESUS CHRIST", "David", "Abraham"],
+      confidence: "probable"
+    };
+  }
+
+  if (/fulfill|fulfilled|prophet|prophecy|esaias|isaiah|emmanuel|spoken/i.test(linkText) || /matthew\.1\.(?:verse|note)\.(?:22|23|22a|23a|23b|23c|23d)\b/i.test(scopePath)) {
+    return {
+      referenceRole: "prophecy_fulfillment_support",
+      linkedThemes: ["prophecy fulfillment", "narrator witness", "divine speech", "Emmanuel"],
+      linkedEntities: ["THE LORD", "prophet", "Scripture narrator", "JESUS CHRIST"],
+      confidence: /fulfill|prophet|prophecy|emmanuel/i.test(linkText) ? "explicit" : "probable"
+    };
+  }
+
+  if (/\bname\b|\bjesus\b|save|sins/i.test(linkText) || /matthew\.1\.(?:verse|note)\.(?:21|21a|21b|21c|25)\b/i.test(scopePath) || haystack.includes("note21")) {
+    return {
+      referenceRole: "name_meaning_support",
+      linkedThemes: ["name revelation", "mission meaning", "mission naming", "salvation"],
+      linkedEntities: ["JESUS", "JESUS CHRIST", "Joseph", "AngEL Of THE LORD"],
+      confidence: /name|jesus|save|sins/i.test(linkText) ? "explicit" : "probable"
+    };
+  }
+
+  return null;
+}
+
+function createReferenceRoles(sourceDiscoveryIndex = [], referenceGraph = [], passageFunctions = [], revelationPatterns = [], canonicalIdentities = []) {
+  const roles = [];
+  const seen = new Set();
+  const graphByDiscovery = new Map((referenceGraph || [])
+    .filter((edge) => edge.sourceDiscoveryId)
+    .map((edge) => [edge.sourceDiscoveryId, edge]));
+  const hasCanonicalJesus = (canonicalIdentities || []).some((item) => normalizeWhitespace(item.canonicalName || "").toLowerCase() === "jesus christ");
+
+  for (const item of sourceDiscoveryIndex || []) {
+    const config = referenceRoleConfigForItem(item);
+    if (!config) continue;
+    const graphEdge = graphByDiscovery.get(item.id || "") || {};
+    const linkedEntities = Array.from(new Set([
+      ...(config.linkedEntities || []),
+      ...(hasCanonicalJesus && (config.linkedEntities || []).includes("JESUS") ? ["JESUS CHRIST"] : [])
+    ].filter(Boolean)));
+    const linkedPassageFunctions = passageFunctionsForReferenceRole(config.referenceRole, passageFunctions);
+    const key = [item.id || "", item.scopePath || "", item.linkText || "", config.referenceRole].join("|").toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    roles.push({
+      id: `${Date.now()}-${textHash(`reference-role|${key}`)}`,
+      sourceDiscoveryId: item.id || "",
+      sourceCaptureId: item.sourceCaptureId || item.sourceContext?.sourceCaptureId || "",
+      sourceContext: item.sourceContext || {},
+      scopePath: item.scopePath || graphEdge.fromScopePath || "",
+      verseRange: verseRangeFromReferenceScope(item.scopePath || graphEdge.fromScopePath || ""),
+      discoveredReference: item.linkText || graphEdge.toText || item.href || "reference",
+      referenceHref: item.href || graphEdge.toHref || "",
+      referenceRole: config.referenceRole,
+      linkedThemes: config.linkedThemes || [],
+      linkedPassageFunctions,
+      linkedEntities,
+      relatedRevelationPatterns: (revelationPatterns || [])
+        .filter((pattern) => config.referenceRole === "name_meaning_support" && /Matthew 1:20-21/i.test(pattern.verseRange || ""))
+        .map((pattern) => pattern.revelationType || pattern.id)
+        .filter(Boolean),
+      evidence: [
+        item.linkText ? `discovered reference: ${item.linkText}` : "",
+        item.scopePath ? `scope: ${item.scopePath}` : "",
+        graphEdge.relationshipType ? `reference graph: ${graphEdge.relationshipType}` : ""
+      ].filter(Boolean),
+      confidence: config.confidence || item.confidence || "probable",
+      sourceGrounding: "derived from current-page source discovery, reference graph edge, and matching passage-function/revelation context"
+    });
+  }
+
+  return roles.sort((left, right) =>
+    (left.scopePath || "").localeCompare(right.scopePath || "", undefined, { numeric: true }) ||
+    left.referenceRole.localeCompare(right.referenceRole) ||
+    left.discoveredReference.localeCompare(right.discoveredReference)
+  );
+}
 function sourceCaptureText(captures) {
   return normalizeWhitespace((captures || []).map((capture) => [capture?.title, capture?.text].join(" ")).join(" "));
 }
@@ -4200,6 +4343,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticEvents,
       passageFunctions
     );
+    const referenceRoles = createReferenceRoles(
+      sourceDiscoveryIndex,
+      referenceGraph,
+      passageFunctions,
+      revelationPatterns,
+      canonicalIdentities
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -4210,7 +4360,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sourceDiscoveryIndex,
       referenceGraph,
       passageFunctions,
-      revelationPatterns
+      revelationPatterns,
+      referenceRoles
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -4222,7 +4373,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sourceDiscoveryIndex,
       referenceGraph,
       passageFunctions,
-      revelationPatterns
+      revelationPatterns,
+      referenceRoles
     }, activeAdapter);
     const status = {
       reason,
@@ -4248,6 +4400,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceGraphCount: referenceGraph.length,
       passageFunctionCount: passageFunctions.length,
       revelationPatternCount: revelationPatterns.length,
+      referenceRoleCount: referenceRoles.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -4274,6 +4427,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [REFERENCE_GRAPH_KEY]: referenceGraph,
       [PASSAGE_FUNCTIONS_KEY]: passageFunctions,
       [REVELATION_PATTERNS_KEY]: revelationPatterns,
+      [REFERENCE_ROLES_KEY]: referenceRoles,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

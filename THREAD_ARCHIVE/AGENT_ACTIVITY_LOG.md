@@ -303,6 +303,7 @@ Files changed:
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
 - `QA status.MD`
+- `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
 Validation:
@@ -360,6 +361,7 @@ Files changed:
 - `qa/matthew1-extension-qa.js`
 - `PROJECT_STATE.md`
 - `PROJECT_LOG.md`
+- `QA status.MD`
 - `QA status.MD`
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
@@ -1258,6 +1260,59 @@ Result summary for repo review:
 - Ordered revelation parts show numbered semantic parts with source phrases.
 - Related entities are hierarchy-aware and preserve the display distinction between revealed `JESUS` and canonical `JESUS CHRIST` where relevant.
 - This is display-only; no semantic records, extraction, reasoning, crawling/fetching, evidence, confidence, or source grounding changed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
+## 2026-05-16 - pcdx - Add semantic reference roles
+
+Task:
+- Begin Phase 8.2g Semantic Reference Role Layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Recovered partial changes:
+- Reused the interrupted `background.js` reference-role scaffold.
+- Removed one duplicate `ICE_REFERENCE_ROLES` declaration left by the partial edit.
+- Preserved role scope paths during scope-integrity enrichment.
+- No partial work was discarded.
+
+Result summary for repo review:
+- `ICE_REFERENCE_ROLES` now explains why selected discovered references are attached to Matthew 1 scopes.
+- The pilot includes davidic lineage support, Abrahamic covenant support, prophecy fulfillment support, messianic identity support, and name meaning support.
+- Study Panel now includes Reference Roles cards with discovered reference, semantic role, themes, entities, passage functions, evidence, confidence, source grounding, and scope.
+- This is a derived layer only; no crawling/fetching or broad extraction rewrite was added.
 
 Commit:
 - This commit
