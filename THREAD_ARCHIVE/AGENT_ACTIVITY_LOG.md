@@ -1441,3 +1441,45 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-17 - pcdx - Reorder study panel review flow
+
+Task:
+- Reorder Study Panel sections into a coherent semantic investigation hierarchy.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Result summary for repo review:
+- Study Panel now opens with semantic interpretation layers before technical extraction/debug sections.
+- Existing sections remain intact; the change is ordering/display only.
+- Render order now matches the DOM review hierarchy.
+- No semantic data, extraction logic, counts, divine display compliance, or JESUS / JESUS CHRIST distinction behavior changed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.

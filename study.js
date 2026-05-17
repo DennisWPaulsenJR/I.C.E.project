@@ -3902,35 +3902,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       const term = normalizeText(document.getElementById("searchInput").value)
         .toLowerCase();
 
-      renderDiagnostics();
+      renderPassageFunctions(term);
+      renderRevelationPatterns(term);
+      renderReferenceRoles(term);
+      renderNarrativeTimeline(term);
+      renderEntityScopeFocus(term);
+      renderVerseScopeFocus(term);
+      renderCanonicalIdentities(term);
+      renderRelationshipGraph(term);
+      renderSemanticEvents(term);
+      renderSemanticFlowChains(term);
+      renderReferenceGraph(term);
+      renderSourceDiscovery(term);
+      renderDomSemanticHints(term);
       renderFocusedGraph(term);
       renderCurrentPage(term);
       renderSourceContext(term);
       renderSourceAdapter(term);
       renderScopeIntegrity(term);
-      renderVerseScopeFocus(term);
-      renderEntityScopeFocus(term);
-      renderNarrativeTimeline(term);
-      renderPassageFunctions(term);
-      renderRevelationPatterns(term);
-      renderReferenceRoles(term);
-      renderSourceDiscovery(term);
-      renderReferenceGraph(term);
-      renderDomSemanticHints(term);
       renderEntityRoles(term);
       renderEntityRegistry(term);
-      renderRelationshipGraph(term);
-      renderCanonicalIdentities(term);
       renderMentionIndex(term);
       renderActors(term);
       renderScenes(term);
-      renderSemanticEvents(term);
-      renderSemanticFlowChains(term);
       renderOrderedEvents(term);
       renderInteractions(term);
       renderPrinciples(term);
       renderProphecyLinks(term);
       renderTimeline(term);
+      renderDiagnostics();
     } catch (error) {
       showDiagnosticMessage(`Study Panel render error: ${error.message}`);
       console.debug("I.C.E. study render failed", {
