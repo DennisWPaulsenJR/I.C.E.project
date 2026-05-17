@@ -1,6 +1,49 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-17 - Hierarchy Compliance Display Refinement
+
+Instruction summary:
+- Refine Study Panel hierarchy/exaltation formatting so narrator and semantic displays consistently reflect I.C.E. entity classes.
+- Ensure `Scripture narrator` displays as `Class III - Human` and is not visually elevated into divine authority.
+- Preserve distinctions between narrator, prophet, divine speech, THE LORD, and AngEL Of THE LORD.
+
+Codex action summary:
+- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class IIIIII - Anti-GOD / adversary`, and `AI_Actor - artificial/tool actor category` wording.
+- Added display fallback classification for `Scripture narrator`, `narrator`, `prophet`, and `the prophet` as `Class III - Human` when they appear as related display entities without a full registry record.
+- Added hierarchy lines to derived semantic displays, including Passage Functions, Revelation Patterns, Reference Roles, and Narrative Timeline entity previews.
+- Removed duplicated `Class:` prefixing in entity, canonical identity, focus, and role displays so hierarchy labels are visually consistent.
+- Did not change stored semantic data, extraction logic, source grounding, divine display compliance, JESUS / JESUS CHRIST distinction behavior, or QA semantics.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-17 - Semantic Flow Paths Display Rename
 
 Instruction summary:
