@@ -264,3 +264,28 @@ body {
 .passage-function-card {
   min-height: 0;
 }
+.semantic-ordered-parts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  color: #2f3a48;
+}
+
+.semantic-ordered-parts li {
+  display: grid;
+  gap: 3px;
+  line-height: 1.4;
+}
+
+.semantic-ordered-parts strong {
+  color: #17202a;
+}
+
+.semantic-ordered-parts span {
+  color: #445064;
+}
+
+.revelation-pattern-card {
+  min-height: 0;
+}

@@ -2818,7 +2818,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const shownEvidence = evidence.slice(0, 5).map((value) => `"${renderDivineDisplayText(value)}"`);
     const themes = asArray(item.linkedThemes).map((value) => normalizeText(value)).filter(Boolean);
-    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+    const entities = revelationPatternRelatedEntities(item);
     const prophecies = asArray(item.relatedProphecies).map((value) => normalizeText(value)).filter(Boolean);
     const grounding = trimText(item.sourceGrounding || "", 190);
 
@@ -2873,6 +2873,100 @@ document.addEventListener("DOMContentLoaded", async () => {
   function revelationPatternTitle(value) {
     return passageFunctionTitle(value || "revelation_pattern");
   }
+  function revelationPatternTypeLabel(value) {
+    const normalized = normalizeText(value || "").toLowerCase();
+    if (normalized === "divine_message_revelation_pattern") return "Divine instruction / revelation cluster";
+    return passageFunctionTitle(value || "revelation_pattern");
+  }
+
+  function revelationPartTitle(value) {
+    return passageFunctionTitle(value || "revelation_part");
+  }
+
+  function createRevelationPartList(subEvents, limit = 8) {
+    const values = asArray(subEvents).slice(0, limit);
+    if (values.length === 0) return null;
+
+    const list = document.createElement("ol");
+    list.className = "semantic-ordered-parts";
+
+    for (const part of values) {
+      const item = document.createElement("li");
+      const title = document.createElement("strong");
+      const quote = document.createElement("span");
+
+      title.textContent = revelationPartTitle(part.clusterType || part.eventType);
+      quote.textContent = part.anchorText ? `"${renderDivineDisplayText(part.anchorText)}"` : "No source phrase stored.";
+      item.append(title, quote);
+      list.appendChild(item);
+    }
+
+    return list;
+  }
+  function createRevelationPartsSection(subEvents) {
+    const list = createRevelationPartList(subEvents);
+    if (!list) return null;
+    const section = document.createElement("section");
+    const heading = document.createElement("h4");
+    heading.textContent = "Ordered Revelation Parts";
+    section.className = "semantic-section";
+    heading.className = "semantic-section-title";
+    section.append(heading, list);
+    return section;
+  }
+
+  function revelationPatternRelatedEntities(item = {}) {
+    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "jesus", "jesus christ"]);
+    const entities = asArray(item.relatedEntities).filter((name) => {
+      const normalized = normalizedEntityName(name);
+      return allowed.has(normalized) || Boolean(passageFunctionEntityRecord(name));
+    });
+    const hasJesus = entities.some((name) => normalizedEntityName(name) === "jesus");
+    const hasJesusChrist = entities.some((name) => normalizedEntityName(name) === "jesus christ");
+    if (hasJesus && !hasJesusChrist && passageFunctionEntityRecord("JESUS CHRIST")) {
+      entities.push("JESUS CHRIST");
+    }
+    return passageFunctionOrderedEntities(entities).map((entry) => entry.display);
+  }
+
+  function createRevelationPatternCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const shownEvidence = evidence.slice(0, 6).map((value) => `"${renderDivineDisplayText(value)}"`);
+    const entities = revelationPatternRelatedEntities(item);
+    const grounding = trimText(item.sourceGrounding || "", 190);
+    const partList = createRevelationPartList(item.subEvents);
+
+    card.className = "study-card semantic-card revelation-pattern-card";
+    header.className = "semantic-card-header";
+    heading.textContent = "Revelation Pattern";
+    range.className = "semantic-card-range";
+    range.textContent = item.verseRange || item.scopePath || "Current scope";
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Authority Source", item.authoritySource || "unknown"),
+      createPassageFunctionSection("Speaker", item.speaker || "unknown"),
+      createPassageFunctionSection("Recipient", item.recipient || "unknown"),
+      createPassageFunctionSection("Pattern Type", revelationPatternTypeLabel(item.revelationType)),
+      createRevelationPartsSection(item.subEvents)
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    [
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length) }),
+      createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.")
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
 
   function revelationPatternSubEventList(subEvents, limit = 8) {
     const values = asArray(subEvents).map((item, index) => {
@@ -2919,24 +3013,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ));
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
-      const subEvents = revelationPatternSubEventList(item.subEvents);
-      const evidence = passageFunctionBulletList(item.evidence, 6);
-      container.appendChild(createCard(
-        revelationPatternTitle(item.revelationType),
-        [
-          item.verseRange || item.scopePath || "Current scope",
-          `Authority source:\n${item.authoritySource || "unknown"}`,
-          `Speaker:\n${renderDivineDisplayText(item.speaker || "unknown")}`,
-          `Recipient:\n${item.recipient || "unknown"}`,
-          subEvents ? `Ordered sub-events:\n${subEvents}` : "Ordered sub-events:\nNone stored.",
-          evidence ? `Evidence:\n${evidence}` : "Evidence:\nNo evidence phrases stored.",
-          passageFunctionLineList("Related entities", item.relatedEntities),
-          passageFunctionLineList("Related passage functions", item.relatedPassageFunctions),
-          `Confidence:\n${displayConfidence(item.confidence || "probable")}`,
-          item.sourceGrounding ? `Source grounding:\n${item.sourceGrounding}` : "Source grounding:\nNot recorded."
-        ].filter(Boolean).join("\n\n"),
-        item.scopePath ? `Scope: ${item.scopePath}` : "review derived speech pattern"
-      ));
+      container.appendChild(createRevelationPatternCard(item));
     });
   }
   function renderPassageFunctions(term) {
