@@ -1,6 +1,47 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-17 - Semantic Flow Paths Display Rename
+
+Instruction summary:
+- Rename Study Panel and display terminology from Semantic Flow Chains to Semantic Flow Paths.
+- Preserve existing semantic flow data, storage keys, scope integrity, QA semantics, and counts.
+
+Codex action summary:
+- Updated Study Panel section headers, diagnostics labels, bucket labels, empty states, compact summaries, card fallback text, and Narrative Timeline flow wording to use `Semantic Flow Paths` / `flow path` terminology.
+- Kept the internal `ICE_SEMANTIC_FLOW_CHAINS` storage key and `semanticFlowChains` data alias intact for backward compatibility.
+- Did not change extraction logic, semantic data, flow relationships, scope integrity behavior, or QA assertions.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-17 - Study Panel Review Flow Ordering
 
 Instruction summary:

@@ -1347,8 +1347,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const note = semanticEventDisplayNote(item);
       return `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${target ? ` -> ${target}` : ""} | ${item.anchorText || trimText(item.sourceSnippet, 80)}${note ? ` | ${note}` : ""}`;
     });
-    renderBucket("Flow Chains", buckets.flowChains, (chain) =>
-      `${chain.chainTitle || "Semantic flow chain"} | ${trimText(chain.summary, 90)}`
+    renderBucket("Flow Paths", buckets.flowChains, (chain) =>
+      `${chain.chainTitle || "Semantic flow path"} | ${trimText(chain.summary, 90)}`
     );
 
     // Phase 6.4 focus mode has one dynamic mount point. Future work can turn
@@ -1693,7 +1693,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const chain of asArray(studyData.semanticFlowChains)) {
       for (const node of asArray(chain.nodes)) {
         if (!itemMatchesVerseFocus(node, focus)) continue;
-        matches.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow chain" });
+        matches.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow path" });
       }
     }
     return matches;
@@ -1783,9 +1783,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       `${referenceRelationshipLabel(item.relationshipType)}: ${trimText(item.toText || item.toHref, 78)} | ${item.fromScopePath || "unscoped"}`,
       "No reference edges tied to this verse scope."
     );
-    scopedBucketCard(container, "Flow Chain Nodes", buckets.flowNodes, (item) =>
+    scopedBucketCard(container, "Flow Path Nodes", buckets.flowNodes, (item) =>
       `${item.chainTitle}: ${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""} | ${item.scopePath || "unscoped"}`,
-      "No flow chain nodes tied to this verse scope."
+      "No flow path nodes tied to this verse scope."
     );
   }
   function normalizedEntityName(value) {
@@ -1937,7 +1937,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const chain of asArray(studyData.semanticFlowChains)) {
       for (const node of asArray(chain.nodes)) {
         if (!flowNodeMatchesEntityFocus(node, focus)) continue;
-        flowNodes.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow chain" });
+        flowNodes.push({ ...node, chainTitle: chain.chainTitle || "Semantic flow path" });
       }
     }
 
@@ -2029,7 +2029,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.relationshipType) return `${referenceRelationshipLabel(item.relationshipType)}: ${trimText(item.toText || item.toHref, 76)} | ${item.fromScopePath || "unscoped"}`;
       return `${item.refType || "ref"}: ${trimText(item.linkText || item.href, 76)} | ${item.scopePath || "unscoped"}`;
     }, "No scoped references found for this entity.");
-    scopedBucketCard(container, "Flow Chains", focus.flowNodes, (item) =>
+    scopedBucketCard(container, "Flow Paths", focus.flowNodes, (item) =>
       `${item.chainTitle}: ${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""} | ${item.scopePath || "unscoped"}`,
       "No flow-chain nodes found for this entity."
     );
@@ -2535,13 +2535,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       for (const chain of flowChains) {
         for (const node of asArray(chain.nodes)) {
-          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow path" };
           if (entry.semanticEvents.some((eventItem) => eventItem.id && nodeItem.semanticEventId === eventItem.id) || narrativeItemHasNarrowScopeMatch(entry, nodeItem) || narrativeEntryHasVerseRefMatch(entry, nodeItem)) {
             addNarrativeDisplayItem(entry, nodeItem, "flowNodes");
           }
         }
         for (const link of asArray(chain.relationships)) {
-          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow path" };
           if (narrativeItemHasNarrowScopeMatch(entry, linkItem) || narrativeSourcePhraseOverlap(entry, linkItem)) addNarrativeDisplayItem(entry, linkItem, "flowLinks");
         }
       }
@@ -2590,7 +2590,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       for (const chain of asArray(studyData.semanticFlowChains)) {
         for (const node of asArray(chain.nodes)) {
-          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          const nodeItem = { ...node, chainTitle: chain.chainTitle || "Semantic flow path" };
           const linkedToEntry = entry.semanticEvents.some((eventItem) =>
             eventItem.id && nodeItem.semanticEventId === eventItem.id
           );
@@ -2604,7 +2604,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             link.toEventId
           ].filter(Boolean));
           const linkedToEntry = entry.semanticEvents.some((eventItem) => linkedEventIds.has(eventItem.id));
-          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow chain" };
+          const linkItem = { ...link, chainTitle: chain.chainTitle || "Semantic flow path" };
           if (linkedToEntry || narrativeItemHasNarrowScopeMatch(entry, linkItem) || narrativeSourcePhraseOverlap(entry, linkItem)) {
             addNarrativeEntryItem(entry, linkItem, "flowLinks");
           }
@@ -2741,7 +2741,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `Timeline moments: ${filtered.length}`,
         `Semantic events: ${semanticCount}`,
         `Displayed relationship edges: ${relationshipCount}`,
-        `Displayed flow links/nodes: ${flowCount}`,
+        `Displayed flow path links/nodes: ${flowCount}`,
         `Filter: ${term || "all current-page narrative data"}`
       ].join("\n"),
       "scope-aware event progression"
@@ -2769,7 +2769,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         clusterPreview ? `Clustered revelations:\n${clusterPreview}` : "",
         relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
         christIdentityDisplayNote(entry.entities) ? `Name / Title Distinction: ${christIdentityDisplayNote(entry.entities)}` : "",
-        flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
+        flowPreview ? `Flow Path:\n${flowPreview}` : "Flow Path: none linked",
         entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked"
       ].filter(Boolean).join("\n");
       const meta = [
@@ -3822,8 +3822,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         .filter(Boolean)
         .join(" | ");
 
-      return createCard(chain.chainTitle || "Semantic flow chain", body, meta);
-    }, "No semantic flow chains match.", "semantic flow chain");
+      return createCard(chain.chainTitle || "Semantic flow path", body, meta);
+    }, "No semantic flow paths match.", "semantic flow path");
   }
   function renderSemanticEvents(term) {
     const container = document.getElementById("semanticEventCards");
