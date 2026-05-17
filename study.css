@@ -192,3 +192,75 @@ body {
     padding: 16px;
   }
 }
+
+.semantic-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.semantic-card-header {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.semantic-card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.semantic-card-range {
+  color: #687587;
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.semantic-card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.semantic-section {
+  display: grid;
+  gap: 5px;
+}
+
+.semantic-section-title {
+  margin: 0;
+  color: #445064;
+  font-size: .76rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.semantic-section p,
+.semantic-list,
+.semantic-plain-list {
+  margin: 0;
+  color: #2f3a48;
+  line-height: 1.4;
+}
+
+.semantic-list,
+.semantic-plain-list {
+  display: grid;
+  gap: 4px;
+  padding-left: 18px;
+}
+
+.semantic-plain-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.semantic-hidden-count {
+  color: #687587;
+  font-size: .82rem;
+}
+
+.passage-function-card {
+  min-height: 0;
+}

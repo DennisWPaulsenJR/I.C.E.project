@@ -2731,6 +2731,121 @@ document.addEventListener("DOMContentLoaded", async () => {
     const hidden = values.length > limit ? ` (${values.length - limit} more)` : "";
     return `${label}:\n${shown}${hidden}`;
   }
+  function passageFunctionEntityRecord(name) {
+    const normalized = normalizedEntityName(name);
+    if (!normalized) return null;
+    return [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]
+      .find((item) => entityNameCandidates(item).some((candidate) =>
+        candidate === normalized || entityQueryMatchesName(normalized, candidate) || entityQueryMatchesName(candidate, normalized)
+      )) || null;
+  }
+
+  function passageFunctionEntityDisplayName(name) {
+    const record = passageFunctionEntityRecord(name);
+    return renderDivineDisplayText(entityDisplayNameFromRecord(record || { displayName: name }) || name);
+  }
+
+  function passageFunctionEntityRank(name) {
+    const normalized = normalizedEntityName(name);
+    const record = passageFunctionEntityRecord(name);
+    const entityClass = classifyEntityDisplay(record || { displayName: name });
+    const type = normalizeText(record?.entityType || "").toLowerCase();
+    const registryRank = record ? entityRegistryDisplayRank(record) : 90;
+
+    if (normalized === "the lord" || type === "divine_authority") return 10;
+    if (normalized === "angel of the lord" || entityClass === "II" || type === "divine_messenger") return 20;
+    if (normalized === "jesus christ") return 30;
+    if (normalized === "jesus") return 31;
+    if (entityClass === "III" || type === "human") return 40;
+    if (type === "lineage_person") return 50;
+    return registryRank || 90;
+  }
+
+  function passageFunctionOrderedEntities(items) {
+    const seen = new Set();
+    return asArray(items)
+      .map((name) => ({ raw: normalizeText(name), display: passageFunctionEntityDisplayName(name), rank: passageFunctionEntityRank(name) }))
+      .filter((item) => item.raw && item.display)
+      .sort((left, right) => left.rank - right.rank || left.display.localeCompare(right.display))
+      .filter((item) => {
+        const key = normalizedEntityName(item.display);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function createPassageFunctionSection(title, content, options = {}) {
+    if (!content && !options.list?.length) return null;
+    const section = document.createElement("section");
+    const heading = document.createElement("h4");
+    heading.textContent = title;
+    section.className = "semantic-section";
+    heading.className = "semantic-section-title";
+    section.appendChild(heading);
+
+    if (options.list?.length) {
+      const list = document.createElement(options.ordered ? "ol" : "ul");
+      list.className = options.plainList ? "semantic-plain-list" : "semantic-list";
+      for (const item of options.list) {
+        const listItem = document.createElement("li");
+        listItem.textContent = renderDivineDisplayText(item);
+        list.appendChild(listItem);
+      }
+      section.appendChild(list);
+    } else {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = renderDivineDisplayText(content);
+      section.appendChild(paragraph);
+    }
+
+    if (options.hiddenCount > 0) {
+      const hidden = document.createElement("div");
+      hidden.className = "semantic-hidden-count";
+      hidden.textContent = `${options.hiddenCount} more item(s) hidden by preview limit.`;
+      section.appendChild(hidden);
+    }
+
+    return section;
+  }
+
+  function createPassageFunctionCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const shownEvidence = evidence.slice(0, 5).map((value) => `"${renderDivineDisplayText(value)}"`);
+    const themes = asArray(item.linkedThemes).map((value) => normalizeText(value)).filter(Boolean);
+    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+    const prophecies = asArray(item.relatedProphecies).map((value) => normalizeText(value)).filter(Boolean);
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card passage-function-card";
+    header.className = "semantic-card-header";
+    heading.textContent = passageFunctionTitle(item.passageFunction);
+    range.className = "semantic-card-range";
+    range.textContent = item.verseRange || item.scopePath || "Current scope";
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Meaning", item.plainMeaning || ""),
+      createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || ""),
+      createPassageFunctionSection("Themes", "", { list: themes }),
+      createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length) }),
+      createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Related Prophecies", "", { list: prophecies, plainList: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded."),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.")
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
 
   function revelationPatternSearchText(item = {}) {
     return [
@@ -2854,24 +2969,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ].join("\n"),
       "derived semantic layer"
     ));
-
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
-      const evidence = passageFunctionBulletList(item.evidence);
-      container.appendChild(createCard(
-        passageFunctionTitle(item.passageFunction),
-        [
-          item.verseRange || item.scopePath || "Current scope",
-          item.plainMeaning ? `Meaning:\n${item.plainMeaning}` : "",
-          item.fulfillmentMeaning ? `Fulfillment Meaning:\n${item.fulfillmentMeaning}` : "",
-          evidence ? `Evidence:\n${evidence}` : "Evidence:\nNo evidence phrases stored.",
-          passageFunctionLineList("Themes", item.linkedThemes),
-          passageFunctionLineList("Related entities", item.relatedEntities),
-          passageFunctionLineList("Related prophecies", item.relatedProphecies),
-          `Confidence:\n${displayConfidence(item.confidence || "probable")}`,
-          item.sourceGrounding ? `Source grounding:\n${item.sourceGrounding}` : "Source grounding:\nNot recorded."
-        ].filter(Boolean).join("\n\n"),
-        item.scopePath ? `Scope: ${item.scopePath}` : "review derived claim"
-      ));
+      container.appendChild(createPassageFunctionCard(item));
     });
   }
   function sourceDiscoverySearchText(item) {

@@ -1,6 +1,48 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-16 - Passage Functions Display Refinement: Readable Semantic Cards
+
+Instruction summary:
+- Make Passage Functions intuitive, readable, hierarchical, and quickly scannable.
+- Preserve semantic data, evidence, confidence, source grounding, narrative-time `JESUS`, canonical `JESUS CHRIST`, and existing extraction behavior.
+
+Codex action summary:
+- Replaced flattened Passage Function text blocks with structured semantic cards in the Study Panel.
+- Added distinct card sections for meaning, fulfillment meaning, themes, key evidence, related entities, related prophecies, confidence, source grounding, and scope.
+- Added hierarchy-aware related entity ordering while preserving the visible `JESUS` / `JESUS CHRIST` distinction where records contain both.
+- Added compact semantic-card CSS for spacing, section headers, lists, and hidden evidence count display.
+- Did not change stored semantic data, extraction, reasoning scope, crawling/fetching, or QA counts.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-16 - Phase 8.2f Revelation Pattern / Speech Structure Layer
 
 Instruction summary:
