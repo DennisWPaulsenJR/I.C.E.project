@@ -3107,6 +3107,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     return passageFunctionOrderedEntities(item.linkedEntities).map((entry) => entry.display);
   }
 
+  function referenceRoleSemanticPurpose(item = {}) {
+    const role = item.referenceRole || "";
+    const reference = item.discoveredReference || "This reference";
+    const purposes = {
+      davidic_lineage_support: `${reference} supports the Davidic lineage frame for the passage.`,
+      abrahamic_covenant_support: `${reference} supports the Abrahamic covenant and lineage frame for the passage.`,
+      prophecy_fulfillment_support: `${reference} supports the prophecy fulfillment frame attached to this scope.`,
+      messianic_identity_support: `${reference} supports the messianic identity linkage for this scope.`,
+      name_meaning_support: `${reference} supports the revealed-name and mission-meaning frame for this scope.`
+    };
+    return purposes[role] || `${reference} explains why this discovered source reference is attached to the current scope.`;
+  }
+
+  function referenceRoleReferenceDetails(item = {}) {
+    return [
+      item.discoveredReference || "reference",
+      item.verseRange ? `Verse range: ${item.verseRange}` : "",
+      item.referenceHref ? `Href: ${item.referenceHref}` : ""
+    ].filter(Boolean);
+  }
+
   function createReferenceRoleCard(item) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -3123,18 +3144,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     card.className = "study-card semantic-card reference-role-card";
     header.className = "semantic-card-header";
-    heading.textContent = passageFunctionTitle(item.referenceRole || "reference_role");
+    heading.textContent = "Reference Role";
     range.className = "semantic-card-range";
-    range.textContent = item.verseRange || item.scopePath || "Current scope";
+    range.textContent = passageFunctionTitle(item.referenceRole || "reference_role");
     body.className = "semantic-card-body";
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Discovered Reference", item.discoveredReference || item.referenceHref || "reference", { divineContext }),
-      createPassageFunctionSection("Semantic Role", passageFunctionTitle(item.referenceRole || "reference_role")),
+      createPassageFunctionSection("Role", passageFunctionTitle(item.referenceRole || "reference_role")),
+      createPassageFunctionSection("Reference", "", { list: referenceRoleReferenceDetails(item), plainList: true, divineContext }),
+      createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext }),
       createPassageFunctionSection("Linked Themes", "", { list: themes }),
-      createPassageFunctionSection("Linked Entities", "", { list: entities, plainList: true }),
       createPassageFunctionSection("Linked Passage Functions", "", { list: functions, plainList: true }),
+      createPassageFunctionSection("Linked Entities", "", { list: entities, plainList: true }),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext }),

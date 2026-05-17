@@ -1,6 +1,47 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-16 - Reference Roles Display Refinement
+
+Instruction summary:
+- Make `ICE_REFERENCE_ROLES` readable like Passage Functions and Revelation Patterns.
+- Keep the pass display-only, preserving counts, stored reference role data, source text, hrefs, divine display compliance, and source grounding.
+
+Codex action summary:
+- Refined Reference Role cards to lead with a clear `Reference Role` heading and role display name.
+- Added compact sections for Role, Reference, Semantic Purpose, Linked Themes, Linked Passage Functions, Linked Entities, Evidence, Confidence, Source Grounding, and Scope.
+- Added display-only semantic purpose text derived from the existing `referenceRole` value without changing stored records.
+- Preserved hierarchy-aware entity ordering and context-gated divine display compliance.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-16 - Divine Display Compliance Refinement
 
 Instruction summary:
