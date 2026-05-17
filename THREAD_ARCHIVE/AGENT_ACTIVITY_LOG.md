@@ -1565,3 +1565,25 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-17 21:30 - pcdx - Add semantic card compression
+Summary:
+- Added progressive-detail semantic cards so Passage Functions, Revelation Patterns, Reference Roles, Narrative Timeline, and Semantic Flow Paths keep compact default summaries while preserving expandable exhaustive detail.
+- Preserved semantic data, extraction behavior, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST distinction.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented

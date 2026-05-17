@@ -2730,6 +2730,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).join("\n");
   }
 
+  function createNarrativeTimelineCard(entry) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const clusterPreview = compactNarrativeClusterPreview(entry);
+    const relationshipPreview = compactNarrativeRelationshipPreview(entry);
+    const flowPreview = compactNarrativeFlowPreview(entry);
+    const entities = sortedNarrativeEntityLabels(entry);
+    const hierarchy = hierarchyEntityLines(entry.entities);
+    const eventLabels = entry.semanticEvents.length
+      ? entry.semanticEvents.map((item) => {
+        const target = item.target || item.recipient || item.concerning || "";
+        return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+      })
+      : entry.orderedEvents.map((item) => trimText(narrativeTextFromOrderedEvent(item), 120));
+    const divineContext = hasDivineDisplayContext([
+      entry.displayTitle,
+      entry.category,
+      entry.meaning,
+      entry.entities,
+      entry.semanticEvents.map((item) => [item.actor, item.target, item.eventType, item.anchorText]),
+      entry.relationships.map((item) => [item.fromEntity, item.toEntity, item.evidencePhrase])
+    ]);
+
+    card.className = "study-card semantic-card narrative-timeline-card";
+    header.className = "semantic-card-header";
+    heading.textContent = renderIceDivineDisplayText(`Moment ${entry.timelinePosition}: ${narrativeMomentDisplayTitle(entry)}`, divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = narrativeReadableScopes(normalizeScopeList(entry.scopes, entry));
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Meaning", entry.meaning || "No meaning summary recorded.", { divineContext }),
+      createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext }),
+      eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
+      createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
+      createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
+      createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext }),
+      createPassageFunctionSection("Relationships", "", { collapsed: true, list: relationshipPreview ? relationshipPreview.split("\n") : [], plainList: true, divineContext }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entry.entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("Flow Path", "", { collapsed: true, list: flowPreview ? flowPreview.split("\n") : [], plainList: true, divineContext }),
+      createPassageFunctionSection("All Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchy, plainList: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
   function renderNarrativeTimeline(term) {
     const container = document.getElementById("narrativeTimelineCards");
     const count = document.getElementById("narrativeTimelineCount");
@@ -2766,45 +2818,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ));
 
     for (const entry of filtered.slice(0, DISPLAY_LIMIT)) {
-      const eventPreview = compactNarrativeEventPreview(entry);
-      const clusterPreview = compactNarrativeClusterPreview(entry);
-      const displayedRelationships = displayedNarrativeRelationships(entry);
-      const displayedFlowItems = displayedNarrativeFlowItems(entry);
-      const relationshipPreview = compactNarrativeRelationshipPreview(entry);
-      const flowPreview = compactNarrativeFlowPreview(entry);
-      const entityPreview = sortedNarrativeEntityLabels(entry).slice(0, 6).join(", ");
-      const hiddenSemantic = Math.max(entry.semanticEvents.length - 3, 0);
-      const body = [
-        `Scope: ${narrativeReadableScopes(normalizeScopeList(entry.scopes, entry))}`,
-        entry.category ? `Category: ${entry.category}` : "",
-        entry.meaning ? `Meaning: ${entry.meaning}` : "",
-        eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
-        clusterPreview ? `Clustered revelations:\n${clusterPreview}` : "",
-        relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
-        christIdentityDisplayNote(entry.entities) ? `Name / Title Distinction: ${christIdentityDisplayNote(entry.entities)}` : "",
-        flowPreview ? `Flow Path:\n${flowPreview}` : "Flow Path: none linked",
-        entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked",
-        hierarchyEntityLines(entry.entities).length ? `Hierarchy:\n${hierarchyEntityLines(entry.entities).slice(0, 6).join("\n")}` : ""
-      ].filter(Boolean).join("\n");
-      const meta = [
-        `timeline ${entry.timelinePosition}`,
-        `${entry.semanticEvents.length} semantic`,
-        `${displayedRelationships.length} displayed relationships`,
-        `${displayedFlowItems.length} displayed flow`
-      ].join(" | ");
-      const divineContext = hasDivineDisplayContext([
-        entry.displayTitle,
-        entry.category,
-        entry.meaning,
-        entry.entities,
-        entry.semanticEvents.map((item) => [item.actor, item.target, item.eventType, item.anchorText]),
-        entry.relationships.map((item) => [item.fromEntity, item.toEntity, item.evidencePhrase])
-      ]);
-      container.appendChild(createCard(
-        renderIceDivineDisplayText(`Moment ${entry.timelinePosition}: ${narrativeMomentDisplayTitle(entry)}`, divineContext),
-        renderIceDivineDisplayText(body, divineContext),
-        meta
-      ));
+      container.appendChild(createNarrativeTimelineCard(entry));
     }
 
     if (filtered.length > DISPLAY_LIMIT) {
@@ -2922,14 +2936,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
   }
 
-  function createPassageFunctionSection(title, content, options = {}) {
-    if (!content && !options.list?.length) return null;
-    const section = document.createElement("section");
-    const heading = document.createElement("h4");
-    heading.textContent = title;
-    section.className = "semantic-section";
-    heading.className = "semantic-section-title";
-    section.appendChild(heading);
+  function semanticSectionBody(content, options = {}) {
+    const fragment = document.createDocumentFragment();
 
     if (options.list?.length) {
       const list = document.createElement(options.ordered ? "ol" : "ul");
@@ -2939,20 +2947,43 @@ document.addEventListener("DOMContentLoaded", async () => {
         listItem.textContent = renderIceDivineDisplayText(item, options.divineContext);
         list.appendChild(listItem);
       }
-      section.appendChild(list);
+      fragment.appendChild(list);
     } else {
       const paragraph = document.createElement("p");
       paragraph.textContent = renderIceDivineDisplayText(content, options.divineContext);
-      section.appendChild(paragraph);
+      fragment.appendChild(paragraph);
     }
 
     if (options.hiddenCount > 0) {
       const hidden = document.createElement("div");
       hidden.className = "semantic-hidden-count";
-      hidden.textContent = `${options.hiddenCount} more item(s) hidden by preview limit.`;
-      section.appendChild(hidden);
+      hidden.textContent = `${options.hiddenCount} more item(s) available in expanded detail.`;
+      fragment.appendChild(hidden);
     }
 
+    return fragment;
+  }
+
+  function createPassageFunctionSection(title, content, options = {}) {
+    if (!content && !options.list?.length) return null;
+    const section = document.createElement("section");
+    section.className = options.collapsed ? "semantic-section semantic-section-collapsible" : "semantic-section";
+
+    if (options.collapsed) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = options.summaryLabel || `Show ${title.toLowerCase()}`;
+      details.appendChild(summary);
+      details.appendChild(semanticSectionBody(content, options));
+      section.appendChild(details);
+      return section;
+    }
+
+    const heading = document.createElement("h4");
+    heading.textContent = title;
+    heading.className = "semantic-section-title";
+    section.appendChild(heading);
+    section.appendChild(semanticSectionBody(content, options));
     return section;
   }
 
@@ -2964,7 +2995,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.passageFunction, item.relatedEntities, item.linkedThemes, item.evidence, item.sourceGrounding]);
-    const shownEvidence = evidence.slice(0, 5).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
     const themes = asArray(item.linkedThemes).map((value) => normalizeText(value)).filter(Boolean);
     const entities = revelationPatternRelatedEntities(item);
     const prophecies = asArray(item.relatedProphecies).map((value) => normalizeText(value)).filter(Boolean);
@@ -2980,15 +3012,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     [
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext }),
-      createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { divineContext }),
-      createPassageFunctionSection("Themes", "", { list: themes }),
-      createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
-      createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
-      createPassageFunctionSection("Related Prophecies", "", { list: prophecies, plainList: true }),
+      createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext }),
-      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.")
+      createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Themes", "", { collapsed: true, list: themes }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("Related Prophecies", "", { collapsed: true, list: prophecies, plainList: true }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);
@@ -3086,7 +3121,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.authoritySource, item.speaker, item.relatedEntities, item.revelationType, item.evidence]);
-    const shownEvidence = evidence.slice(0, 6).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
     const entities = revelationPatternRelatedEntities(item);
     const grounding = trimText(item.sourceGrounding || "", 190);
     const partList = createRevelationPartList(item.subEvents);
@@ -3108,11 +3144,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     [
-      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
-      createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext })
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);
@@ -3254,7 +3292,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const functions = asArray(item.linkedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.discoveredReference, item.referenceRole, item.linkedEntities, item.linkedThemes, item.evidence]);
-    const shownEvidence = evidence.slice(0, 5).map((value) => renderIceDivineDisplayText(value, divineContext));
+    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceDivineDisplayText(value, divineContext));
+    const fullEvidence = evidence.map((value) => renderIceDivineDisplayText(value, divineContext));
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card reference-role-card";
@@ -3269,14 +3308,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Role", passageFunctionTitle(item.referenceRole || "reference_role")),
       createPassageFunctionSection("Reference", "", { list: referenceRoleReferenceDetails(item), plainList: true, divineContext }),
       createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext }),
-      createPassageFunctionSection("Linked Themes", "", { list: themes }),
-      createPassageFunctionSection("Linked Passage Functions", "", { list: functions, plainList: true }),
-      createPassageFunctionSection("Linked Entities", "", { list: entities, plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
-      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext }),
-      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.")
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
+      createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
+      createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);
@@ -3834,37 +3875,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     ), "No timeline items match.");
   }
 
+  function createSemanticFlowPathCard(chain) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const nodes = asArray(chain.nodes);
+    const authority = asArray(chain.authorityChain);
+    const divineContext = hasDivineDisplayContext([chain.chainTitle, chain.summary, authority, nodes.map((node) => [node.actor, node.target, node.eventType, node.action])]);
+    const nodeLabels = nodes.map((node) => {
+      const target = semanticEventDisplayTarget(node);
+      const note = semanticEventDisplayNote(node);
+      return `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${target ? ` -> ${target}` : ""}${note ? ` | ${note}` : ""}`;
+    });
+
+    card.className = "study-card semantic-card semantic-flow-path-card";
+    header.className = "semantic-card-header";
+    heading.textContent = renderIceDivineDisplayText(chain.chainTitle || "Semantic Flow Path", divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [chain.chainType, displayConfidence(chain.confidence)].filter(Boolean).join(" | ") || "semantic flow path";
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Summary", trimText(chain.summary, 170), { divineContext }),
+      createPassageFunctionSection("Authority Flow Path", "", { list: authority, plainList: true, divineContext }),
+      createPassageFunctionSection("Confidence", displayConfidence(chain.confidence || "probable")),
+      createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext }),
+      nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext }) : null
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
   function renderSemanticFlowChains(term) {
     const container = document.getElementById("semanticFlowChainCards");
     const count = document.getElementById("semanticFlowChainCount");
     const filtered = filteredSemanticFlowChains(term);
 
-    renderLimited(container, filtered, count, (chain) => {
-      const nodePreview = asArray(chain.nodes)
-        .slice(0, 5)
-        .map((node) => {
-          const target = semanticEventDisplayTarget(node);
-          const note = semanticEventDisplayNote(node);
-          return `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${target ? ` -> ${target}` : ""}${note ? ` | ${note}` : ""}`;
-        })
-        .join("\n");
-      const hidden = asArray(chain.nodes).length > 5
-        ? `\n${asArray(chain.nodes).length - 5} more node(s) hidden.`
-        : "";
-      const authority = asArray(chain.authorityChain).length
-        ? `Authority: ${asArray(chain.authorityChain).join(" -> ")}`
-        : "";
-      const body = [
-        trimText(chain.summary, 170),
-        authority,
-        nodePreview ? `Nodes:\n${nodePreview}${hidden}` : ""
-      ].filter(Boolean).join("\n");
-      const meta = [chain.chainType, displayConfidence(chain.confidence)]
-        .filter(Boolean)
-        .join(" | ");
-
-      return createCard(chain.chainTitle || "Semantic flow path", body, meta);
-    }, "No semantic flow paths match.", "semantic flow path");
+    renderLimited(container, filtered, count, (chain) => createSemanticFlowPathCard(chain), "No semantic flow paths match.", "semantic flow path");
   }
   function renderSemanticEvents(term) {
     const container = document.getElementById("semanticEventCards");

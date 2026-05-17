@@ -1,7 +1,50 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
-## 2026-05-17 - Hierarchy Compliance Display Refinement
+## 2026-05-17 - Semantic Card Compression / Progressive Detail
+
+Instruction summary:
+- Add compact progressive-detail behavior for semantic cards while preserving exhaustive semantic review ability.
+- Focus Passage Functions, Revelation Patterns, Reference Roles, Narrative Timeline, and Semantic Flow Paths.
+- Preserve hierarchy formatting, divine display compliance, JESUS / JESUS CHRIST distinction, and all semantic data.
+
+Codex action summary:
+- Added reusable collapsible semantic sections backed by native `details` / `summary` controls.
+- Compressed Passage Function, Revelation Pattern, and Reference Role cards so highest-value meaning, primary entities, confidence, and short evidence stay visible by default.
+- Moved long evidence, source grounding, scope, hierarchy, related lists, and technical semantic detail behind expandable rows.
+- Converted Narrative Timeline and Semantic Flow Path cards to the same semantic-card structure with compact visible summaries and expandable full detail.
+- Did not change extraction logic, stored semantic records, source phrases, source grounding data, QA counts, or semantic storage keys.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.## 2026-05-17 - Hierarchy Compliance Display Refinement
 
 Instruction summary:
 - Refine Study Panel hierarchy/exaltation formatting so narrator and semantic displays consistently reflect I.C.E. entity classes.
