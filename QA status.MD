@@ -9,7 +9,7 @@ Current operational state:
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.
 - Generated `qa-output/` files should remain uncommitted unless explicitly requested.
-- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after adding Phase 8.2g semantic reference role layer.
+- Current desktop status from `pcdx`: `npm.cmd run qa:matthew1` passed after the divine display compliance refinement.
 - Latest successful desktop bridge commits reported by `pcdx`:
   - `985f1b3 pcdx: Bridge mcdx optional page overlay`
   - `e049ddb pcdx: Bridge mcdx QA readiness`
@@ -22,7 +22,7 @@ Current operational state:
   - Phase 8.2 passage function scaffolding: this commit
 
 Latest successful Matthew 1 QA counts reported by `pcdx`:
-- DOM hints: 173
+- DOM hints: 151
 - Mention index: 178
 - Entity registry: 52
 - Relationship graph: 66
@@ -33,7 +33,8 @@ Latest successful Matthew 1 QA counts reported by `pcdx`:
 - Reference graph: 136 current-page edges
 - Passage functions: 4 derived records
 - Revelation patterns: 1 derived speech/revelation record
-- Scope integrity: 801 scoped items, 0 missing scope
+- Reference roles: 20 derived semantic role records
+- Scope integrity: 799 scoped items, 0 missing scope
 ## Validation Commands
 
 Run syntax checks:
@@ -114,6 +115,7 @@ Current Matthew 1 harness validates:
 - passage function assertions for grounded Matthew 1 pilot records: `genealogy_establishes_identity`, `divine_message_instruction`, `prophecy_fulfillment_identification`, and `obedient_response_and_naming`
 - Matthew 1 naming distinction assertions for name revelation preserving `JESUS`, conception revelation, mission reason declaration, and Joseph naming `JESUS` while canonical identity remains `JESUS CHRIST`
 - revelation pattern assertions for AngEL Of THE LORD speech to Joseph with THE LORD as authority source and four ordered sub-events
+- reference role assertions for davidic lineage support, Abrahamic covenant support, prophecy fulfillment support, messianic identity support, and name meaning support
 - QA bundle creation at `qa-output/latest-qa-bundle.json`
 - structured failure reporting for:
   - `missing-playwright`

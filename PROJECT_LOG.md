@@ -1,6 +1,50 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-16 - Divine Display Compliance Refinement
+
+Instruction summary:
+- Apply display-only I.C.E. capitalization compliance for divine pronouns/titles in Study Panel derived layers.
+- Focus derived displays such as Passage Functions, Revelation Patterns, Reference Roles, Narrative Timeline, and safe evidence/source phrase previews.
+- Preserve stored source text, extracted phrases, narrative-time `JESUS`, canonical `JESUS CHRIST`, AngEL Of THE LORD display, and source grounding.
+
+Codex action summary:
+- Added a context-gated divine display formatter in `study.js` that only upgrades pronoun/mission phrasing when surrounding semantic data already identifies divine context.
+- Applied display compliance to Passage Function, Revelation Pattern, Reference Role, and Narrative Timeline card text/evidence previews.
+- Targeted cases such as `HE shall SAVE HIS People from their sins`, `HIS name JESUS`, `THE LORD`, `AngEL Of THE LORD`, `JESUS`, `JESUS CHRIST`, and Holy Ghost display contexts.
+- Kept this as display-only; no stored semantic records, extraction, source phrases, crawling/fetching, or page rendering behavior changed.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 151
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+- Scope integrity: 799 scoped items, 0 missing scope
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-16 - Semantic Reference Role Layer
 
 Instruction summary:
