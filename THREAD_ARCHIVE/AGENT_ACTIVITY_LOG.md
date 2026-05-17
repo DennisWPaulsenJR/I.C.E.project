@@ -1401,3 +1401,43 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
+## 2026-05-17 - pcdx - Clarify CHRIST title distinction
+
+Task:
+- Correct Study Panel display wording so CHRIST / JESUS CHRIST appears as title/source/canonical identity, not Joseph's narrative naming action.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 151
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Result summary for repo review:
+- Derived Study Panel cards now explicitly distinguish narrative name `JESUS` from canonical/source-title identity `JESUS CHRIST`.
+- Relationship and semantic-event previews avoid implying Joseph named the child `JESUS CHRIST`; Joseph naming displays as `JESUS` with canonical identity notes where needed.
+- Stored semantic data, source phrases, extraction logic, source grounding, divine display compliance, and counts were preserved.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.

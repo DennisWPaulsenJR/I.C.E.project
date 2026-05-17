@@ -1,6 +1,48 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+## 2026-05-17 - CHRIST Title Distinction Display Correction
+
+Instruction summary:
+- Clarify Study Panel display wording so `CHRIST` / `JESUS CHRIST` is shown as title/source/canonical identity, not Joseph's given-name action.
+- Preserve narrative-time `JESUS`, canonical `JESUS CHRIST`, divine display compliance, stored source phrases, and semantic records.
+
+Codex action summary:
+- Added display-only helpers that distinguish narrative name `JESUS` from canonical/source-title identity `JESUS CHRIST`.
+- Added Name / Title Distinction notes to Passage Function, Revelation Pattern, Reference Role, and Narrative Timeline derived displays when `JESUS` / `JESUS CHRIST` appears.
+- Updated Canonical Identity displays to state that `CHRIST` is title/source identity and not Joseph's naming action.
+- Updated Relationship Graph, focused relationship buckets, Semantic Event previews, and Semantic Flow node previews so Joseph naming displays as `JESUS` while retaining canonical linkage notes where relevant.
+- No stored source text, extracted source phrases, semantic records, crawling/fetching behavior, or broad extraction logic changed.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 151
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow chains: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-16 - Reference Roles Display Refinement
 
 Instruction summary:

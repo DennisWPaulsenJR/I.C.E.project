@@ -131,6 +131,66 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bHis people\b/g, "HIS People")
       .replace(/\bhis people\b/g, "HIS People");
   }
+
+  function isJesusChristDisplayName(value) {
+    return normalizedEntityName(value) === "jesus christ";
+  }
+
+  function isJesusNarrativeName(value) {
+    return normalizedEntityName(value) === "jesus";
+  }
+
+  function christTitleDistinctionNote() {
+    return "Narrative name: JESUS. Canonical identity: JESUS CHRIST. CHRIST appears as title/source identity, not Joseph's naming action.";
+  }
+
+  function christIdentityDisplayNote(values) {
+    const hasJesus = asArray(values).some(isJesusNarrativeName);
+    const hasJesusChrist = asArray(values).some(isJesusChristDisplayName);
+    if (!hasJesus && !hasJesusChrist) return "";
+    return hasJesus && hasJesusChrist
+      ? christTitleDistinctionNote()
+      : hasJesusChrist
+        ? "Canonical identity: JESUS CHRIST. CHRIST appears as title/source identity, not Joseph's naming action."
+        : "Narrative name: JESUS.";
+  }
+
+  function relationshipDisplayTarget(edge = {}) {
+    const from = normalizedEntityName(edge.fromEntity || "");
+    const to = normalizedEntityName(edge.toEntity || edge.target || "");
+    const type = normalizeText(edge.relationshipType || "").toLowerCase();
+    if (from === "joseph" && to === "jesus christ" && type === "naming") return "JESUS";
+    return edge.toEntity || edge.target || "Entity";
+  }
+
+  function relationshipDisplayNote(edge = {}) {
+    const from = normalizedEntityName(edge.fromEntity || "");
+    const to = normalizedEntityName(edge.toEntity || edge.target || "");
+    const type = normalizeText(edge.relationshipType || "").toLowerCase();
+    if (from === "joseph" && type === "naming") {
+      return to === "jesus christ"
+        ? "Joseph names the child JESUS; JESUS CHRIST is the canonical identity linkage."
+        : "Joseph names the child JESUS.";
+    }
+    return christIdentityDisplayNote([edge.fromEntity, edge.toEntity, edge.target]);
+  }
+
+  function semanticEventDisplayTarget(item = {}) {
+    const target = item.target || item.recipient || item.concerning || "";
+    const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
+    if (normalizedEntityName(target) === "jesus christ" && /name|naming|revealed_name/.test(type)) return "JESUS";
+    return target;
+  }
+
+  function semanticEventDisplayNote(item = {}) {
+    const target = item.target || item.recipient || item.concerning || "";
+    const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
+    if (/name|naming|revealed_name/.test(type)) {
+      if (normalizedEntityName(target) === "jesus christ") return "Narrative name: JESUS; canonical identity: JESUS CHRIST.";
+      if (normalizedEntityName(target) === "jesus") return "Narrative name: JESUS.";
+    }
+    return christIdentityDisplayNote([item.actor, target, item.recipient, item.concerning]);
+  }
   function includesTerm(value, term) {
     if (!term) return true;
     return normalizeText(value).toLowerCase().includes(term);
@@ -489,7 +549,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "narrative voice identifying fulfillment";
     }
     if (normalizedReason === "captured divine title") {
-      return "source title: JESUS CHRIST; narrative identity: JESUS / child; retrospective identity: CHRIST";
+      return "source-title phrase: JESUS CHRIST; narrative name: JESUS / child; CHRIST is title/source identity, not Joseph's naming action";
     }
     return reason || "";
   }
@@ -1037,7 +1097,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (type === "divine_message") return 20;
     if (pair.includes("joseph->mary") && type === "covenant_family_union") return 30;
     if (pair.includes("mary->jesus christ") && type === "birth") return 40;
-    if ((pair.includes("joseph->jesus") || pair.includes("joseph->jesus christ")) && type === "naming") return 45;
+    if (pair.includes("joseph->jesus") && type === "naming") return 45;
     if (type === "fulfillment_narration") return 55;
     if (type === "lineage_father_son") return 70;
     return 80;
@@ -1269,20 +1329,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       cards.appendChild(preview);
     };
 
-    renderBucket("Relationships", buckets.relationships, (edge) =>
-      `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"} | ${edge.relationshipType || "relationship"} | ${edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 80)}` : edge.derivedFrom || "derived"}`
-    );
+    renderBucket("Relationships", buckets.relationships, (edge) => {
+      const note = relationshipDisplayNote(edge);
+      return `${edge.fromEntity || "Entity"} -> ${relationshipDisplayTarget(edge)} | ${edge.relationshipType || "relationship"} | ${edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 80)}` : edge.derivedFrom || "derived"}${note ? ` | ${note}` : ""}`;
+    });
     renderBucket("Entity Registry nodes", buckets.entities, (entity) => {
       const entityClass = classifyEntityDisplay(entity);
       return `${entity.displayName || entity.canonicalName || "Entity"} | ${entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified"} | ${entity.entityType || "entity"} | ${asArray(entity.roleTypes).slice(0, 4).join(", ") || "No roles yet"}`;
     });
     renderBucket("Canonical Identities", buckets.canonicalIdentities, (identity) => {
       const entityClass = classifyEntityDisplay(identity);
-      return `${identity.canonicalName || "Canonical identity"} | ${entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified"} | ${identity.identityScope || "source-mentioned"}`;
+      const distinction = isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? " | Narrative name: JESUS; CHRIST is title/source identity" : "";
+      return `${identity.canonicalName || "Canonical identity"} | ${entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified"} | ${identity.identityScope || "source-mentioned"}${distinction}`;
     });
     renderBucket("Semantic Events", buckets.semanticEvents, (item) => {
-      const target = item.target || item.recipient || item.concerning || "";
-      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${target ? ` -> ${target}` : ""} | ${item.anchorText || trimText(item.sourceSnippet, 80)}`;
+      const target = semanticEventDisplayTarget(item);
+      const note = semanticEventDisplayNote(item);
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${target ? ` -> ${target}` : ""} | ${item.anchorText || trimText(item.sourceSnippet, 80)}${note ? ` | ${note}` : ""}`;
     });
     renderBucket("Flow Chains", buckets.flowChains, (chain) =>
       `${chain.chainTitle || "Semantic flow chain"} | ${trimText(chain.summary, 90)}`
@@ -1298,11 +1361,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const count = document.getElementById("relationshipGraphCount");
     const filtered = filteredRelationshipGraph(term);
 
-    renderLimited(container, filtered, count, (edge) => createCard(
-      `${edge.fromEntity || "Entity"} -> ${edge.toEntity || "Entity"}`,
-      `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
-      edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
-    ), "No relationship graph edges match.", "relationship");
+    renderLimited(container, filtered, count, (edge) => {
+      const note = relationshipDisplayNote(edge);
+      return createCard(
+        `${edge.fromEntity || "Entity"} -> ${relationshipDisplayTarget(edge)}`,
+        [
+          `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
+          note
+        ].filter(Boolean).join("\n"),
+        edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
+      );
+    }, "No relationship graph edges match.", "relationship");
   }
   function renderCanonicalIdentities(term) {
     const container = document.getElementById("canonicalIdentityCards");
@@ -1319,6 +1388,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           entityClass ? `Class: ${entityClassLabel(entityClass)}` : "Class: Unclassified",
           `Aliases: ${aliases}`,
           `Identity scope: ${identity.identityScope || "source-mentioned"}`,
+          isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "Narrative name: JESUS" : "",
+          isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "CHRIST appears as title/source identity, not Joseph's naming action." : "",
           surfaces ? `Surface forms: ${surfaces}` : ""
         ].filter(Boolean).join("\n"),
         `${identity.entityType || "entity"} | ${displayConfidence(identity.confidence || "probable")}`
@@ -2697,6 +2768,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         eventPreview ? `Events:\n${eventPreview}${hiddenSemantic ? `\n${hiddenSemantic} more semantic event(s).` : ""}` : "Events: none linked",
         clusterPreview ? `Clustered revelations:\n${clusterPreview}` : "",
         relationshipPreview ? `Relationships:\n${relationshipPreview}` : "Relationships: none linked",
+        christIdentityDisplayNote(entry.entities) ? `Name / Title Distinction: ${christIdentityDisplayNote(entry.entities)}` : "",
         flowPreview ? `Flow:\n${flowPreview}` : "Flow: none linked",
         entityPreview ? `Entities: ${entityPreview}` : "Entities: none linked"
       ].filter(Boolean).join("\n");
@@ -2871,6 +2943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Themes", "", { list: themes }),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
       createPassageFunctionSection("Related Prophecies", "", { list: prophecies, plainList: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext }),
@@ -2996,6 +3069,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     [
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Related Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
@@ -3157,6 +3231,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Linked Themes", "", { list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { list: functions, plainList: true }),
       createPassageFunctionSection("Linked Entities", "", { list: entities, plainList: true }),
+      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { divineContext }),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext }),
@@ -3726,7 +3801,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderLimited(container, filtered, count, (chain) => {
       const nodePreview = asArray(chain.nodes)
         .slice(0, 5)
-        .map((node) => `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${node.target ? ` -> ${node.target}` : ""}`)
+        .map((node) => {
+          const target = semanticEventDisplayTarget(node);
+          const note = semanticEventDisplayNote(node);
+          return `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${target ? ` -> ${target}` : ""}${note ? ` | ${note}` : ""}`;
+        })
         .join("\n");
       const hidden = asArray(chain.nodes).length > 5
         ? `\n${asArray(chain.nodes).length - 5} more node(s) hidden.`
@@ -3752,7 +3831,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const filtered = filteredSemanticEvents(term);
 
     renderLimited(container, filtered, count, (item) => {
-      const target = item.target || item.recipient || item.concerning || "";
+      const target = semanticEventDisplayTarget(item);
+      const distinction = semanticEventDisplayNote(item);
       const arrow = target ? ` -> ${target}` : "";
       const title = `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${arrow}`;
       const anchor = item.anchorText || item.sourceSnippet || "";
@@ -3761,6 +3841,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         anchor ? `Source phrase: ${trimText(anchor, 90)}${item.verseNumber ? ` (v${item.verseNumber})` : ""}` : "",
         item.narratorRole ? `Narrator: ${item.narratorRole}` : "",
         item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
+        distinction ? `Name / Title Distinction: ${distinction}` : "",
         item.sourceSnippet && item.sourceSnippet !== anchor ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
       ].filter(Boolean).join("\n");
       const meta = [item.eventType, item.semanticCategory, displayConfidence(item.confidence)]
