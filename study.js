@@ -2769,6 +2769,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext }),
       eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext }) : null,
       createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines({ ...entry, relatedEntities: entry.entities }, "timeline"), plainList: true, divineContext }),
       createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
       createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext }),
@@ -2987,6 +2988,175 @@ document.addEventListener("DOMContentLoaded", async () => {
     return section;
   }
 
+  function semanticUniqueLines(lines, limit = 8) {
+    const seen = new Set();
+    const values = [];
+    for (const line of asArray(lines).map((value) => normalizeText(value)).filter(Boolean)) {
+      const key = line.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      values.push(line);
+    }
+    if (values.length <= limit) return values;
+    return [...values.slice(0, limit), `${values.length - limit} more related item(s) available in their native sections.`];
+  }
+
+  function semanticRecordEntityNames(item = {}) {
+    return [
+      item.relatedEntities,
+      item.linkedEntities,
+      item.authoritySource,
+      item.speaker,
+      item.recipient,
+      item.actor,
+      item.target,
+      item.narrator,
+      item.concerning,
+      asArray(item.subEvents).map((subEvent) => [subEvent.actor, subEvent.target]),
+      asArray(item.nodes).map((node) => [node.actor, node.target]),
+      asArray(item.authorityChain)
+    ].flat(Infinity).map((value) => normalizedEntityName(value)).filter(Boolean);
+  }
+
+  function semanticRecognizedEntityNames(item = {}) {
+    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "jesus", "jesus christ", "david", "abraham", "scripture narrator", "prophet"]);
+    return semanticRecordEntityNames(item).filter((name) => allowed.has(name) || Boolean(passageFunctionEntityRecord(name)));
+  }
+
+  function semanticEntityOverlap(left = {}, right = {}) {
+    const leftSet = new Set(semanticRecognizedEntityNames(left));
+    if (leftSet.size === 0) return false;
+    return semanticRecognizedEntityNames(right).some((name) => leftSet.has(name));
+  }
+  function semanticAddVerseToken(tokens, verse) {
+    const value = String(verse || "").match(/\d+/)?.[0];
+    if (value) tokens.add(value);
+  }
+
+  function semanticAddVerseRange(tokens, start, end) {
+    const first = Number(String(start || "").match(/\d+/)?.[0] || 0);
+    const last = Number(String(end || start || "").match(/\d+/)?.[0] || first);
+    if (!first) return;
+    for (let value = first; value <= Math.max(first, last); value += 1) tokens.add(String(value));
+  }
+
+  function semanticVerseTokensFromText(text, tokens) {
+    const value = normalizeText(text || "");
+    if (!value) return;
+
+    for (const match of value.matchAll(/\b\d+:(\d+)(?:\s*[-–]\s*(\d+))?/g)) {
+      semanticAddVerseRange(tokens, match[1], match[2] || match[1]);
+    }
+    for (const match of value.matchAll(/\.verse\.(\d+)(?:[-.]?(\d+))?/gi)) {
+      semanticAddVerseRange(tokens, match[1], match[2] || match[1]);
+    }
+    for (const match of value.matchAll(/\bverse\s+(\d+)\b/gi)) {
+      semanticAddVerseToken(tokens, match[1]);
+    }
+  }
+
+  function semanticVerseTokens(item = {}) {
+    const tokens = new Set();
+    [item.scopePath, item.fromScopePath, item.sourceScopePath, item.verseRange, item.verseRef, item.verseNumber].forEach((value) => semanticVerseTokensFromText(value, tokens));
+    for (const scope of normalizeScopeList(item.scopes, item)) semanticVerseTokensFromText(scope, tokens);
+    for (const subEvent of asArray(item.subEvents)) [subEvent.scopePath, subEvent.verseRange, subEvent.verseRef, subEvent.verseNumber].forEach((value) => semanticVerseTokensFromText(value, tokens));
+    for (const node of asArray(item.nodes)) [node.scopePath, node.verseRange, node.verseRef, node.verseNumber].forEach((value) => semanticVerseTokensFromText(value, tokens));
+    return tokens;
+  }
+
+  function semanticVerseOverlap(left = {}, right = {}) {
+    const leftSet = semanticVerseTokens(left);
+    const rightSet = semanticVerseTokens(right);
+    if (leftSet.size === 0 || rightSet.size === 0) return false;
+    return Array.from(leftSet).some((value) => rightSet.has(value));
+  }
+
+  function semanticScopeLabels(item = {}) {
+    const labels = [];
+    if (item.verseRange) labels.push(item.verseRange);
+    if (item.verseRef) labels.push(`Matthew ${item.verseRef}`);
+    normalizeScopeList(item.scopes, item).forEach((scope) => labels.push(scope));
+    return semanticUniqueLines(labels, 4);
+  }
+
+  function semanticEventLabel(item = {}) {
+    const target = item.target || item.recipient || item.concerning || "";
+    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+  }
+
+  function semanticFlowPathMatchesRecord(chain = {}, item = {}) {
+    if (semanticVerseOverlap(chain, item) || semanticEntityOverlap(chain, item)) return true;
+    const ids = new Set([
+      item.id,
+      item.semanticEventId,
+      asArray(item.subEvents).map((subEvent) => subEvent.semanticEventId)
+    ].flat(Infinity).filter(Boolean));
+    return asArray(chain.nodes).some((node) => ids.has(node.semanticEventId) || semanticVerseOverlap(node, item) || semanticEntityOverlap(node, item));
+  }
+
+  function semanticNarrativeMatchesRecord(entry = {}, item = {}) {
+    if (semanticVerseOverlap({ scopes: entry.scopes }, item) || semanticEntityOverlap({ relatedEntities: entry.entities }, item)) return true;
+    return asArray(entry.semanticEvents).some((eventItem) => semanticVerseOverlap(eventItem, item) || semanticEntityOverlap(eventItem, item));
+  }
+
+  function relatedSemanticLayerLines(item = {}, mode = "generic") {
+    const lines = [];
+    const itemFunction = normalizeText(item.passageFunction || item.referenceRole || "");
+    const relatedFunctionKeys = new Set([
+      item.passageFunction,
+      asArray(item.relatedPassageFunctions),
+      asArray(item.linkedPassageFunctions)
+    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean));
+    const subEventIds = new Set(asArray(item.subEvents).map((subEvent) => subEvent.semanticEventId).filter(Boolean));
+    const timelineEntries = createNarrativeTimelineEntries();
+
+    if (mode !== "passage") {
+      asArray(studyData.passageFunctions)
+        .filter((passage) => relatedFunctionKeys.has(normalizeText(passage.passageFunction)) || semanticVerseOverlap(passage, item) || semanticEntityOverlap(passage, item))
+        .forEach((passage) => lines.push(`Passage Function: ${passageFunctionTitle(passage.passageFunction)} | ${passage.verseRange || passage.scopePath || "current scope"}`));
+    }
+
+    if (mode !== "revelation") {
+      asArray(studyData.revelationPatterns)
+        .filter((pattern) => asArray(pattern.relatedPassageFunctions).map((value) => normalizeText(value)).includes(itemFunction) || semanticVerseOverlap(pattern, item) || semanticEntityOverlap(pattern, item))
+        .forEach((pattern) => lines.push(`Revelation Pattern: ${revelationPatternTypeLabel(pattern.revelationType)} | ${pattern.verseRange || pattern.scopePath || "current scope"}`));
+    }
+
+    if (mode !== "reference") {
+      asArray(studyData.referenceRoles)
+        .filter((role) => asArray(role.linkedPassageFunctions).some((value) => relatedFunctionKeys.has(normalizeText(value)) || normalizeText(value) === itemFunction) || semanticVerseOverlap(role, item) || semanticEntityOverlap(role, item))
+        .forEach((role) => lines.push(`Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${trimText(role.discoveredReference || role.sourceDiscoveryId, 80)}`));
+    }
+
+    if (mode === "revelation") {
+      asArray(studyData.semanticEvents)
+        .filter((eventItem) => subEventIds.has(eventItem.semanticEventId) || semanticVerseOverlap(eventItem, item) || semanticEntityOverlap(eventItem, item))
+        .forEach((eventItem) => lines.push(`Semantic Event: ${semanticEventLabel(eventItem)} | ${eventItem.scopePath || eventItem.verseRef || "current scope"}`));
+    }
+
+    if (mode !== "flow") {
+      asArray(studyData.semanticFlowChains)
+        .filter((chain) => semanticFlowPathMatchesRecord(chain, item))
+        .forEach((chain) => lines.push(`Semantic Flow Path: ${chain.chainTitle || "Semantic flow path"}`));
+    }
+
+    if (mode !== "timeline") {
+      timelineEntries
+        .filter((entry) => semanticNarrativeMatchesRecord(entry, item))
+        .forEach((entry) => lines.push(`Narrative Timeline: Moment ${entry.timelinePosition} | ${narrativeMomentDisplayTitle(entry)}`));
+    }
+
+    if (mode === "reference") {
+      asArray(studyData.referenceGraph)
+        .filter((edge) => edge.sourceDiscoveryId && edge.sourceDiscoveryId === item.sourceDiscoveryId)
+        .forEach((edge) => lines.push(`Reference Graph: ${edge.relationshipType || "reference edge"} | ${trimText(edge.toText || edge.toHref || edge.id, 80)}`));
+    }
+
+    semanticScopeLabels(item).forEach((scope) => lines.push(`Verse Scope: ${scope}`));
+    passageFunctionOrderedEntities(semanticRecognizedEntityNames(item)).map((entry) => entry.display).forEach((entity) => lines.push(`Entity Scope: ${entity}`));
+
+    return semanticUniqueLines(lines, 10);
+  }
   function createPassageFunctionCard(item) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -3018,6 +3188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Themes", "", { collapsed: true, list: themes }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "passage"), plainList: true, divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3147,6 +3318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "revelation"), plainList: true, divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3311,6 +3483,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "reference"), plainList: true, divineContext }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
       createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
@@ -3903,7 +4076,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Authority Flow Path", "", { list: authority, plainList: true, divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(chain.confidence || "probable")),
       createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext }),
-      nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext }) : null
+      nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(chain, "flow"), plainList: true, divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);

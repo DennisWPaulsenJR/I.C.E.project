@@ -1,6 +1,50 @@
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
+
+## 2026-05-18 - Cross-Layer Semantic Linking
+
+Instruction summary:
+- Add display-level cross-links so major semantic layers connect without being merged into one generic layer.
+- Link Passage Functions, Revelation Patterns, Reference Roles, Semantic Flow Paths, Narrative Timeline, Entity Scope Focus, and Verse Scope Focus through existing evidence only.
+- Preserve hierarchy formatting, divine display compliance, JESUS / JESUS CHRIST distinction, semantic data, and extraction logic.
+
+Codex action summary:
+- Added a display-only related-layer resolver that matches records through shared verse scope, scope path evidence, related passage function keys, recognized entity overlap, semantic event IDs, reference discovery IDs, and reference graph edges.
+- Added collapsed `Related Semantic Layers` buckets to Passage Function, Revelation Pattern, Reference Role, Narrative Timeline, and Semantic Flow Path cards.
+- Kept cross-layer references compact, leaving each semantic layer in its native section rather than flattening records together.
+- Restricted entity-scope links to recognized entity records and established Matthew 1 entities so meaning phrases are not presented as entity links.
+- Did not change extraction logic, stored semantic records, source phrases, source grounding data, semantic counts, or storage keys.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-17 - Semantic Card Compression / Progressive Detail
 
 Instruction summary:
@@ -44,7 +88,9 @@ Commit:
 - This commit
 
 Status:
-- Implemented by PCDX.## 2026-05-17 - Hierarchy Compliance Display Refinement
+- Implemented by PCDX.
+
+## 2026-05-17 - Hierarchy Compliance Display Refinement
 
 Instruction summary:
 - Refine Study Panel hierarchy/exaltation formatting so narrator and semantic displays consistently reflect I.C.E. entity classes.

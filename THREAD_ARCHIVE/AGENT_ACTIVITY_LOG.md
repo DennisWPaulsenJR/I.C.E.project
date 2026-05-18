@@ -1587,3 +1587,25 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-18 00:20 - pcdx - Add cross-layer semantic links
+Summary:
+- Added display-level related semantic layer buckets for Passage Functions, Revelation Patterns, Reference Roles, Narrative Timeline, and Semantic Flow Paths.
+- Links are derived only from existing scope, verse, entity, passage-function, semantic-event, source-discovery, and reference-graph evidence.
+- Preserved semantic data, extraction behavior, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST distinction.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
