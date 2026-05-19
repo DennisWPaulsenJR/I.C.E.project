@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function entityDisplayNameFromRecord(item = {}) {
     const displayName = normalizeText(item.displayName || item.canonicalName || item.entityName || item.name || "");
     if (/^angel of the lord$/i.test(displayName)) return "AngEL Of THE LORD";
+    if (/^holy (ghost|spirit)$/i.test(displayName)) return "HOLY SPIRIT";
     return displayName;
   }
 
@@ -164,6 +165,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bnarrative name: JESUS\b/g, "narrative NAME: JESUS");
   }
 
+  function renderDerivedSemanticDisplayText(text, divineContext = false) {
+    return renderIceDivineDisplayText(text, divineContext)
+      .replace(/\bHoly Ghost\b/g, "HOLY SPIRIT")
+      .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT");
+  }
+
   function isJesusChristDisplayName(value) {
     return normalizedEntityName(value) === "jesus christ";
   }
@@ -213,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const target = edge.toEntity || edge.target || "";
     const type = normalizeText(edge.relationshipType || "").toLowerCase();
     if (from === "joseph" && isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingTargetDisplay(type);
-    return target || "Entity";
+    return target ? renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, edge.relationshipType])) : "Entity";
   }
 
   function relationshipDisplayNote(edge = {}) {
@@ -228,7 +235,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const target = item.target || item.recipient || item.concerning || "";
     const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
     if (isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingTargetDisplay(type);
-    return target;
+    return target ? renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.relationshipType, item.action])) : target;
   }
 
   function semanticEventDisplayNote(item = {}) {
@@ -2137,7 +2144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function narrativeTitleFromSemanticEvent(item = {}) {
     const target = item.target || item.recipient || item.concerning || "";
-    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
   }
 
   function narrativeTextFromOrderedEvent(item = {}) {
@@ -2730,7 +2737,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function compactNarrativeEventPreview(entry) {
     const semanticPreview = entry.semanticEvents.slice(0, 3).map((item) => {
       const target = item.target || item.recipient || item.concerning || "";
-      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
     });
     if (semanticPreview.length) return semanticPreview.join("\n");
     return entry.orderedEvents.slice(0, 2).map((item) => trimText(narrativeTextFromOrderedEvent(item), 120)).join("\n");
@@ -2745,10 +2752,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           .slice(0, 4)
           .map((part) => {
             const target = part.target || "";
-            return `- ${part.clusterType || part.eventType || "sub_event"}: ${part.actor || "Unknown"} -> ${part.action || "event"}${target ? ` -> ${target}` : ""}`;
+            return `- ${part.clusterType || part.eventType || "sub_event"}: ${part.actor || "Unknown"} -> ${part.action || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, part.eventType, part.action]))}` : ""}`;
           })
           .join("\n");
-        return `${cluster.normalizedMeaning || "Grouped revelation"}\n${parts}`;
+        return `${renderDerivedSemanticDisplayText(cluster.normalizedMeaning || "Grouped revelation", true)}\n${parts}`;
       })
       .join("\n");
   }
@@ -2764,7 +2771,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function compactNarrativeRelationshipPreview(entry) {
     return displayedNarrativeRelationships(entry).map((edge) =>
-      `${edge.fromEntity || "Unknown"} -> ${edge.toEntity || "Unknown"} | ${edge.relationshipType || "relationship"}`
+      `${edge.fromEntity || "Unknown"} -> ${edge.toEntity ? renderDerivedSemanticDisplayText(edge.toEntity, hasDivineDisplayContext([edge.toEntity, edge.relationshipType])) : "Unknown"} | ${edge.relationshipType || "relationship"}`
     ).join("\n");
   }
 
@@ -2773,7 +2780,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item.displayKind === "link") {
         return `${item.relationType || "flow_link"} (${displayConfidence(item.confidence || "probable")})`;
       }
-      return `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""}`;
+      return `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${renderDerivedSemanticDisplayText(item.target, hasDivineDisplayContext([item.target, item.eventType, item.action]))}` : ""}`;
     }).join("\n");
   }
 
@@ -2791,7 +2798,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const eventLabels = entry.semanticEvents.length
       ? entry.semanticEvents.map((item) => {
         const target = item.target || item.recipient || item.concerning || "";
-        return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+        return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
       })
       : entry.orderedEvents.map((item) => trimText(narrativeTextFromOrderedEvent(item), 120));
     const divineContext = hasDivineDisplayContext([
@@ -2813,17 +2820,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Meaning", entry.meaning || "No meaning summary recorded.", { divineContext }),
-      createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext }),
-      eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext }) : null,
+      createPassageFunctionSection("Meaning", entry.meaning || "No meaning summary recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
+      eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems({ ...entry, relatedEntities: entry.entities }, "timeline"), divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems({ ...entry, relatedEntities: entry.entities }, "timeline"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
-      createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext }),
-      createPassageFunctionSection("Relationships", "", { collapsed: true, list: relationshipPreview ? relationshipPreview.split("\n") : [], plainList: true, divineContext }),
+      createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationships", "", { collapsed: true, list: relationshipPreview ? relationshipPreview.split("\n") : [], plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entry.entities), { collapsed: true, divineContext }),
-      createPassageFunctionSection("Flow Path", "", { collapsed: true, list: flowPreview ? flowPreview.split("\n") : [], plainList: true, divineContext }),
+      createPassageFunctionSection("Flow Path", "", { collapsed: true, list: flowPreview ? flowPreview.split("\n") : [], plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("All Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchy, plainList: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
@@ -3023,7 +3030,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "semantic-nav-button";
-        button.textContent = renderIceDivineDisplayText(item.label, options.divineContext);
+        button.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(item.label, options.divineContext) : renderIceDivineDisplayText(item.label, options.divineContext);
         button.dataset.targetSection = item.targetSection || "";
         button.dataset.targetKey = item.targetKey || "";
         button.dataset.searchTerm = item.searchTerm || "";
@@ -3037,13 +3044,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       list.className = options.plainList ? "semantic-plain-list" : "semantic-list";
       for (const item of options.list) {
         const listItem = document.createElement("li");
-        listItem.textContent = renderIceDivineDisplayText(item, options.divineContext);
+        listItem.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(item, options.divineContext) : renderIceDivineDisplayText(item, options.divineContext);
         list.appendChild(listItem);
       }
       fragment.appendChild(list);
     } else {
       const paragraph = document.createElement("p");
-      paragraph.textContent = renderIceDivineDisplayText(content, options.divineContext);
+      paragraph.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(content, options.divineContext) : renderIceDivineDisplayText(content, options.divineContext);
       fragment.appendChild(paragraph);
     }
 
@@ -3289,7 +3296,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function semanticEventLabel(item = {}) {
     const target = item.target || item.recipient || item.concerning || "";
-    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+    return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
   }
 
   function semanticFlowPathMatchesRecord(chain = {}, item = {}) {
@@ -3440,14 +3447,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext }),
+      createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
-      createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext }),
+      createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Themes", "", { collapsed: true, list: themes }),
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "passage"), divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "passage"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3579,7 +3586,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3741,11 +3748,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     [
       createPassageFunctionSection("Role", passageFunctionTitle(item.referenceRole || "reference_role")),
       createPassageFunctionSection("Reference", "", { list: referenceRoleReferenceDetails(item), plainList: true, divineContext }),
-      createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext }),
+      createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
       createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
@@ -4335,11 +4342,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Summary", trimText(chain.summary, 170), { divineContext }),
+      createPassageFunctionSection("Summary", trimText(chain.summary, 170), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Authority Flow Path", "", { list: authority, plainList: true, divineContext }),
       createPassageFunctionSection("Confidence", displayConfidence(chain.confidence || "probable")),
-      createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext }),
-      nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext }) : null,
+      createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
+      nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(chain, "flow"), divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
@@ -4365,7 +4372,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const title = `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${arrow}`;
       const anchor = item.anchorText || item.sourceSnippet || "";
       const body = [
-        trimText(item.normalizedMeaning || item.sourceSnippet, 130),
+        item.normalizedMeaning ? trimText(renderDerivedSemanticDisplayText(item.normalizedMeaning, hasDivineDisplayContext([item.normalizedMeaning, item.target, item.eventType])), 130) : trimText(item.sourceSnippet, 130),
         anchor ? `Source phrase: ${trimText(anchor, 90)}${item.verseNumber ? ` (v${item.verseNumber})` : ""}` : "",
         item.narratorRole ? `Narrator: ${item.narratorRole}` : "",
         item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
