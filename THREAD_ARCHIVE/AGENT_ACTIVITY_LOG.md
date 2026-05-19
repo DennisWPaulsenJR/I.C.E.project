@@ -349,6 +349,7 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-14 - pcdx - Add reference graph layer
 
 Task:
@@ -579,6 +580,7 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-14 - pcdx - Fix scope normalization in timeline views
 
 Task:
@@ -608,6 +610,7 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-15 - pcdx - Tighten narrative timeline relevance
 
 Task:
@@ -638,6 +641,7 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-15 - pcdx - Refine narrative timeline counts
 
 Task:
@@ -667,6 +671,7 @@ Next recommended step:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-15 - pcdx - Refine source preview and canonical display
 
 Task:
@@ -1675,6 +1680,29 @@ Checks:
 - `git diff --check` passed
 - `npm.cmd run qa:matthew1` passed
 - Manual Study Panel live-button smoke passed for Related Semantic Layers focus/highlight/reset behavior
+
+Commit:
+- This commit
+
+Status:
+- Implemented
+
+## 2026-05-19 15:10 - pcdx - Refine exaltation display compliance
+Summary:
+- Refined display-only exaltation wording for JESUS as revealed divine NAME.
+- Rendered divine-context phrases such as `call HIS NAME JESUS` and `HE shall SAVE HIS People` while preserving human Class III display.
+- Preserved JESUS / JESUS CHRIST / CHRIST distinction, AngEL Of THE LORD display, semantic records, source phrases, extraction logic, and QA counts.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- Manual Study Panel smoke passed with nonzero counts, `HIS NAME JESUS`, `HE shall SAVE HIS People`, and `Class III - Human`
 
 Commit:
 - This commit

@@ -145,12 +145,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bhe shall save his people\b/g, "HE shall SAVE HIS People")
       .replace(/\bHe shall save his people\b/g, "HE shall SAVE HIS People")
       .replace(/\bhe shall save His people\b/g, "HE shall SAVE HIS People")
+      .replace(/\bhe shall SAVE HIS People\b/g, "HE shall SAVE HIS People")
+      .replace(/\bHe shall SAVE HIS People\b/g, "HE shall SAVE HIS People")
       .replace(/\bsave His people\b/g, "SAVE HIS People")
       .replace(/\bsave his people\b/g, "SAVE HIS People")
-      .replace(/\bHis name JESUS\b/g, "HIS name JESUS")
-      .replace(/\bhis name JESUS\b/g, "HIS name JESUS")
+      .replace(/\bHIS People\b/g, "HIS People")
       .replace(/\bHis people\b/g, "HIS People")
-      .replace(/\bhis people\b/g, "HIS People");
+      .replace(/\bhis people\b/g, "HIS People")
+      .replace(/\bcall His name JESUS\b/g, "call HIS NAME JESUS")
+      .replace(/\bcall his name JESUS\b/g, "call HIS NAME JESUS")
+      .replace(/\bcalled His name JESUS\b/g, "called HIS NAME JESUS")
+      .replace(/\bcalled his name JESUS\b/g, "called HIS NAME JESUS")
+      .replace(/\bHis name JESUS\b/g, "HIS NAME JESUS")
+      .replace(/\bhis name JESUS\b/g, "HIS NAME JESUS")
+      .replace(/\bHIS name JESUS\b/g, "HIS NAME JESUS")
+      .replace(/\brevealed name: JESUS\b/gi, "revealed NAME: JESUS")
+      .replace(/\bNarrative name: JESUS\b/g, "Narrative NAME: JESUS")
+      .replace(/\bnarrative name: JESUS\b/g, "narrative NAME: JESUS");
   }
 
   function isJesusChristDisplayName(value) {
@@ -162,7 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function christTitleDistinctionNote() {
-    return "Narrative name: JESUS. Canonical identity: JESUS CHRIST. CHRIST appears as title/source identity, not Joseph's naming action.";
+    return "Narrative NAME: JESUS. Canonical identity: JESUS CHRIST. CHRIST appears as title/source identity, not Joseph's naming action.";
   }
 
   function christIdentityDisplayNote(values) {
@@ -173,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? christTitleDistinctionNote()
       : hasJesusChrist
         ? "Canonical identity: JESUS CHRIST. CHRIST appears as title/source identity, not Joseph's naming action."
-        : "Narrative name: JESUS.";
+        : "Narrative NAME: JESUS.";
   }
 
   function relationshipDisplayTarget(edge = {}) {
@@ -207,8 +218,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const target = item.target || item.recipient || item.concerning || "";
     const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
     if (/name|naming|revealed_name/.test(type)) {
-      if (normalizedEntityName(target) === "jesus christ") return "Narrative name: JESUS; canonical identity: JESUS CHRIST.";
-      if (normalizedEntityName(target) === "jesus") return "Narrative name: JESUS.";
+      if (normalizedEntityName(target) === "jesus christ") return "Narrative NAME: JESUS; canonical identity: JESUS CHRIST.";
+      if (normalizedEntityName(target) === "jesus") return "Narrative NAME: JESUS.";
     }
     return christIdentityDisplayNote([item.actor, target, item.recipient, item.concerning]);
   }
@@ -1373,7 +1384,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     renderBucket("Canonical Identities", buckets.canonicalIdentities, (identity) => {
       const entityClass = classifyEntityDisplay(identity);
-      const distinction = isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? " | Narrative name: JESUS; CHRIST is title/source identity" : "";
+      const distinction = isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? " | Narrative NAME: JESUS; CHRIST is title/source identity" : "";
       return `${identity.canonicalName || "Canonical identity"} | ${entityClass ? `${entityClassLabel(entityClass)}` : "Class Unclassified"} | ${identity.identityScope || "source-mentioned"}${distinction}`;
     });
     renderBucket("Semantic Events", buckets.semanticEvents, (item) => {
@@ -1422,7 +1433,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           entityClass ? `${entityClassLabel(entityClass)}` : "Class Unclassified",
           `Aliases: ${aliases}`,
           `Identity scope: ${identity.identityScope || "source-mentioned"}`,
-          isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "Narrative name: JESUS" : "",
+          isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "Narrative NAME: JESUS" : "",
           isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "CHRIST appears as title/source identity, not Joseph's naming action." : "",
           surfaces ? `Surface forms: ${surfaces}` : ""
         ].filter(Boolean).join("\n"),
@@ -2796,7 +2807,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
       createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext }),
       createPassageFunctionSection("Relationships", "", { collapsed: true, list: relationshipPreview ? relationshipPreview.split("\n") : [], plainList: true, divineContext }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entry.entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entry.entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Flow Path", "", { collapsed: true, list: flowPreview ? flowPreview.split("\n") : [], plainList: true, divineContext }),
       createPassageFunctionSection("All Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchy, plainList: true })
@@ -3397,7 +3408,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "passage"), divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Related Prophecies", "", { collapsed: true, list: prophecies, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
@@ -3441,7 +3452,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function revelationPartTitle(value) {
-    return passageFunctionTitle(value || "revelation_part");
+    const title = passageFunctionTitle(value || "revelation_part");
+    return /\bName\b/.test(title) ? title.replace(/\bName\b/g, "NAME") : title;
   }
 
   function createRevelationPartList(subEvents, limit = 8) {
@@ -3528,7 +3540,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
@@ -3696,7 +3708,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
       createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
-      createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
+      createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
@@ -4315,7 +4327,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         anchor ? `Source phrase: ${trimText(anchor, 90)}${item.verseNumber ? ` (v${item.verseNumber})` : ""}` : "",
         item.narratorRole ? `Narrator: ${item.narratorRole}` : "",
         item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
-        distinction ? `Name / Title Distinction: ${distinction}` : "",
+        distinction ? `NAME / Title Distinction: ${distinction}` : "",
         item.sourceSnippet && item.sourceSnippet !== anchor ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
       ].filter(Boolean).join("\n");
       const meta = [item.eventType, item.semanticCategory, displayConfidence(item.confidence)]

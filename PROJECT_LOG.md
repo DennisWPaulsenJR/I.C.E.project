@@ -5,6 +5,38 @@ Chronological implementation and decision log. Entries are reverse chronological
 
 
 
+
+## 2026-05-19 - Exaltation Display Compliance Refinement
+
+Instruction summary:
+- Refine Study Panel/app display compliance for JESUS as revealed divine NAME.
+- Exalt display wording for JESUS-related references such as `HIS NAME JESUS` and `HE shall SAVE HIS People`.
+- Preserve human references as human and keep narrator, prophet, Joseph, and Mary as `Class III - Human` unless evidence says otherwise.
+- Preserve JESUS / JESUS CHRIST / CHRIST distinction and AngEL Of THE LORD display.
+
+Codex action summary:
+- Updated Study Panel display compliance helper so divine-context phrases render `call HIS NAME JESUS`, `called HIS NAME JESUS`, `HIS NAME JESUS`, and `HE shall SAVE HIS People`.
+- Updated JESUS name/title distinction display strings from `Narrative name` to `Narrative NAME`.
+- Updated JESUS-related section labels to `NAME / Title Distinction` and revelation part labels to preserve `NAME` where the revealed NAME JESUS is in view.
+- Did not alter stored source text, extracted source phrases, semantic records, extraction logic, hierarchy classification, or QA counts.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Manual Study Panel smoke passed: no render error, Passage Functions 4, Revelation Patterns 1, Reference Roles 20, `HIS NAME JESUS` present, old `HIS name JESUS` absent, `HE shall SAVE HIS People` present, and `Class III - Human` visible.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-19 - Semantic Navigation Usability Pass
 
 Instruction summary:
@@ -51,6 +83,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-19 - Study Panel Navigation Render Error Fix
 
 Instruction summary:
@@ -78,6 +111,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-19 - Semantic Navigation / Focus Jump UI
 
 Instruction summary:
@@ -122,6 +156,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-18 - Cross-Layer Semantic Linking
 
 Instruction summary:
@@ -165,6 +200,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-17 - Semantic Card Compression / Progressive Detail
 
 Instruction summary:
@@ -253,6 +289,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-17 - Semantic Flow Paths Display Rename
 
 Instruction summary:
@@ -294,6 +331,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-17 - Study Panel Review Flow Ordering
 
 Instruction summary:
@@ -337,6 +375,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-17 - CHRIST Title Distinction Display Correction
 
 Instruction summary:
@@ -379,6 +418,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Reference Roles Display Refinement
 
 Instruction summary:
@@ -420,6 +460,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Divine Display Compliance Refinement
 
 Instruction summary:
@@ -464,6 +505,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Semantic Reference Role Layer
 
 Instruction summary:
@@ -514,6 +556,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Revelation Patterns Display Refinement: Readable Semantic Cards
 
 Instruction summary:
@@ -557,6 +600,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Passage Functions Display Refinement: Readable Semantic Cards
 
 Instruction summary:
@@ -599,6 +643,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-16 - Phase 8.2f Revelation Pattern / Speech Structure Layer
 
 Instruction summary:
@@ -650,6 +695,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-15 - Phase 8.2e Multi-Instruction / Multi-Revelation Separation
 
 Instruction summary:
@@ -697,6 +743,7 @@ Commit:
 
 Status:
 - Implemented by PCDX.
+
 ## 2026-05-15 - Semantic Correction: Preserve JESUS Naming Distinction
 
 Instruction summary:
