@@ -32,6 +32,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let studyData = {};
   let pendingSemanticFocus = null;
+  let currentSemanticFocus = null;
+  let semanticFocusInputUpdate = false;
   console.log("[FOCUS DEBUG] study.js loaded", {
     rendererVersion: "v2",
     focusedMountCount: document.querySelectorAll("#focused-relationship-view").length
@@ -3048,6 +3050,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     return range || normalizeScopeList(item.scopes, item)[0] || item.scopePath || "";
   }
 
+  function semanticFocusKindLabel(nav = {}) {
+    const label = normalizeText(nav.focusLabel || "semantic focus");
+    const prefix = label.split(":")[0];
+    if (/^passage function$/i.test(prefix)) return "Passage Function";
+    if (/^revelation pattern$/i.test(prefix)) return "Revelation Pattern";
+    if (/^reference role$/i.test(prefix)) return "Reference Role";
+    if (/^semantic event$/i.test(prefix)) return "Semantic Event";
+    if (/^semantic flow path$/i.test(prefix)) return "Semantic Flow Path";
+    if (/^narrative timeline$/i.test(prefix)) return "Narrative Timeline";
+    if (/^verse scope$/i.test(prefix)) return "Verse Scope";
+    if (/^entity scope$/i.test(prefix)) return "Entity Scope";
+    if (/^reference graph$/i.test(prefix)) return "Reference Graph";
+    return "Semantic Focus";
+  }
+
+  function semanticFocusValueLabel(nav = {}) {
+    const label = normalizeText(nav.focusLabel || nav.searchTerm || "semantic focus");
+    const parts = label.split(":");
+    return parts.length > 1 ? parts.slice(1).join(":").trim() : label;
+  }
+
+  function updateSemanticFocusStatus() {
+    const status = document.getElementById("semanticFocusStatus");
+    const statusText = document.getElementById("semanticFocusStatusText");
+    if (!status || !statusText) return;
+    if (!currentSemanticFocus) {
+      status.hidden = true;
+      statusText.textContent = "Current semantic focus: none";
+      return;
+    }
+    const kind = semanticFocusKindLabel(currentSemanticFocus);
+    const value = semanticFocusValueLabel(currentSemanticFocus);
+    status.hidden = false;
+    statusText.textContent = `Current semantic focus: ${renderIceDivineDisplayText(kind, true)} -> ${renderIceDivineDisplayText(value, true)}`;
+  }
+
+  function clearSemanticFocus() {
+    currentSemanticFocus = null;
+    pendingSemanticFocus = null;
+    const input = document.getElementById("searchInput");
+    if (input) {
+      semanticFocusInputUpdate = true;
+      input.value = "";
+      semanticFocusInputUpdate = false;
+    }
+    updateSemanticFocusStatus();
+    renderStudy();
+    document.getElementById("passageFunctionsSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   function semanticSectionForNav(type) {
     return {
       passage: "passageFunctionsSection",
@@ -3065,6 +3116,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   function semanticApplyFocus() {
     if (!pendingSemanticFocus) return;
     const { targetSection, targetKey, focusLabel } = pendingSemanticFocus;
+    currentSemanticFocus = pendingSemanticFocus;
+    updateSemanticFocusStatus();
     pendingSemanticFocus = null;
     const target = targetKey ? Array.from(document.querySelectorAll("[data-semantic-key]")).find((element) => element.dataset.semanticKey === targetKey) : null;
     const section = document.getElementById(targetSection);
@@ -3083,7 +3136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const input = document.getElementById("searchInput");
     pendingSemanticFocus = nav;
     if (input && nav.searchTerm && input.value !== nav.searchTerm) {
+      semanticFocusInputUpdate = true;
       input.value = nav.searchTerm;
+      semanticFocusInputUpdate = false;
       renderStudy();
     }
     window.requestAnimationFrame(semanticApplyFocus);
@@ -4513,6 +4568,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("[FOCUS DEBUG] search input event", {
       value: document.getElementById("searchInput").value
     });
+    if (!semanticFocusInputUpdate) {
+      currentSemanticFocus = null;
+      updateSemanticFocusStatus();
+    }
     renderStudy();
   });
   document.addEventListener("click", (event) => {
@@ -4526,6 +4585,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusLabel: button.dataset.focusLabel || button.textContent || "semantic focus"
     });
   });
+  document.getElementById("clearSemanticFocus")?.addEventListener("click", clearSemanticFocus);
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
   window.addEventListener("focus", refreshStudyData);
   window.addEventListener("pageshow", refreshStudyData);

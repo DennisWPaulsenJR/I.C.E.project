@@ -66,6 +66,44 @@ body {
   margin: 0 auto;
 }
 
+.semantic-focus-status {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cfd9e6;
+  border-radius: 8px;
+  color: #25364d;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.semantic-focus-status[hidden] {
+  display: none;
+}
+
+.semantic-focus-status span {
+  font-size: .92rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.semantic-focus-status button {
+  background: #ffffff;
+  border: 1px solid #9db5d1;
+  border-radius: 6px;
+  color: #1f334d;
+  cursor: pointer;
+  font: inherit;
+  padding: 6px 8px;
+}
+
+.semantic-focus-status button:hover,
+.semantic-focus-status button:focus-visible {
+  background: #eef4fb;
+  outline: none;
+}
+
 .diagnostic-panel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

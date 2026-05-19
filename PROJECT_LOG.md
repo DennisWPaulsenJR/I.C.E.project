@@ -4,6 +4,53 @@ Chronological implementation and decision log. Entries are reverse chronological
 
 
 
+
+## 2026-05-19 - Semantic Navigation Usability Pass
+
+Instruction summary:
+- Improve UX feedback for Phase 8.2j semantic navigation focus jumps.
+- Add a visible current semantic focus status line and a clear/reset control.
+- Preserve normal search behavior, semantic data, extraction logic, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST distinction.
+
+Codex action summary:
+- Added a compact `Current semantic focus` status panel near the top of the Study Panel.
+- Added `Clear semantic focus` to reset search-driven semantic focus and return to the normal full Study Panel view.
+- Updated semantic navigation clicks to populate the status line, preserve focused search terms, scroll to the destination, open destination details when targeting a card, and apply a temporary highlight.
+- Updated manual search input behavior so ordinary typing clears semantic-focus status and remains a normal filter action.
+- Did not change semantic records, extraction logic, stored source phrases, or QA counts.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Manual Study Panel smoke passed: clicked live Related Semantic Layers buttons, confirmed focus status, search focus text, destination highlight, and clear/reset behavior.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-19 - Study Panel Navigation Render Error Fix
 
 Instruction summary:

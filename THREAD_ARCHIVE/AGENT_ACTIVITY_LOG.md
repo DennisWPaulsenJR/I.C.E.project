@@ -1655,3 +1655,29 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 14:40 - pcdx - Refine semantic navigation focus UX
+Summary:
+- Added a visible current semantic focus status line near the top of the Study Panel.
+- Added Clear semantic focus reset behavior.
+- Preserved normal search behavior by clearing semantic-focus status on manual search input.
+- Confirmed semantic navigation clicks update status/search, scroll/highlight destinations, and reset cleanly.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- Manual Study Panel live-button smoke passed for Related Semantic Layers focus/highlight/reset behavior
+
+Commit:
+- This commit
+
+Status:
+- Implemented
