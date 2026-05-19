@@ -2,6 +2,43 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-19 - Semantic Distinction Layer
+
+Instruction summary:
+- Add Phase 8.2l Semantic Contrast / Distinction Layer.
+- Prevent distinct concepts such as name, title, role, office, narrator, authority, messenger, source phrase, derived meaning, canonical identity, revealed identity, narrative-time identity, and retrospective identity from collapsing into one meaning bucket.
+- Keep Matthew 1 pilot conservative and evidence-backed.
+
+Codex action summary:
+- Added `ICE_SEMANTIC_DISTINCTIONS` as a derived semantic layer generated from existing Matthew 1 semantic records.
+- Added 8 pilot distinction records for JESUS, CHRIST, JESUS CHRIST, HOLY SPIRIT, Holy Ghost, Scripture narrator, THE LORD, and AngEL Of THE LORD.
+- Added Study Panel `Semantic Distinctions` cards showing semantic item, distinction type, narrative role, canonical role, source wording, derived wording, confidence, and source grounding.
+- Added Matthew 1 QA coverage for the new storage key and pilot distinction records.
+- Preserved source text, extraction logic, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST / CHRIST distinctions.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticDistinctions: 8`.
+- `git diff --check` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
+
 
 
 

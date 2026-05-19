@@ -33,7 +33,8 @@ const STORAGE_KEYS = [
   "ICE_REFERENCE_GRAPH",
   "ICE_PASSAGE_FUNCTIONS",
   "ICE_REVELATION_PATTERNS",
-  "ICE_REFERENCE_ROLES"
+  "ICE_REFERENCE_ROLES",
+  "ICE_SEMANTIC_DISTINCTIONS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -85,7 +86,8 @@ function emptyCounts() {
     referenceGraph: 0,
     passageFunctions: 0,
     revelationPatterns: 0,
-    referenceRoles: 0
+    referenceRoles: 0,
+    semanticDistinctions: 0
   };
 }
 
@@ -103,7 +105,8 @@ function buildCounts(storageData) {
     referenceGraph: count(storageData.ICE_REFERENCE_GRAPH),
     passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS),
     revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS),
-    referenceRoles: count(storageData.ICE_REFERENCE_ROLES)
+    referenceRoles: count(storageData.ICE_REFERENCE_ROLES),
+    semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS)
   };
 }
 
@@ -123,6 +126,7 @@ function buildSamples(storageData) {
     passageFunctions: sample(storageData.ICE_PASSAGE_FUNCTIONS, 20),
     revelationPatterns: sample(storageData.ICE_REVELATION_PATTERNS, 20),
     referenceRoles: sample(storageData.ICE_REFERENCE_ROLES, 20),
+    semanticDistinctions: sample(storageData.ICE_SEMANTIC_DISTINCTIONS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -246,6 +250,11 @@ function isGroundedReferenceRole(item) {
     item.sourceGrounding
   );
 }
+function hasSemanticDistinction(data, semanticItem, distinctionType) {
+  return (data.ICE_SEMANTIC_DISTINCTIONS || []).some((item) =>
+    item.semanticItem === semanticItem && item.distinctionType === distinctionType && item.sourceGrounding && item.confidence
+  );
+}
 function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
@@ -297,6 +306,21 @@ function evaluateFailures(data) {
   if (count(data.ICE_PASSAGE_FUNCTIONS) <= 0) failures.push("Expected passage function records count > 0.");
   if (count(data.ICE_REVELATION_PATTERNS) <= 0) failures.push("Expected revelation pattern records count > 0.");
   if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected reference role records count > 0.");
+  if (count(data.ICE_SEMANTIC_DISTINCTIONS) <= 0) failures.push("Expected semantic distinction records count > 0.");
+  for (const [semanticItem, distinctionType] of [
+    ["JESUS", "revealed_given_name"],
+    ["CHRIST", "title_messianic_office"],
+    ["JESUS CHRIST", "canonical_source_identity_phrase"],
+    ["HOLY SPIRIT", "preferred_derived_semantic_display"],
+    ["Holy Ghost", "preserved_source_phrase_wording"],
+    ["Scripture narrator", "narrator_human_classification"],
+    ["THE LORD", "divine_authority_source"],
+    ["AngEL Of THE LORD", "divine_messenger_role"]
+  ]) {
+    if (!hasSemanticDistinction(data, semanticItem, distinctionType)) {
+      failures.push(`Expected semantic distinction ${semanticItem} / ${distinctionType}.`);
+    }
+  }
   for (const referenceRole of [
     "davidic_lineage_support",
     "abrahamic_covenant_support",

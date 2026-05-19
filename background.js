@@ -27,6 +27,7 @@ const SCOPE_INTEGRITY_KEY = "ICE_SCOPE_INTEGRITY";
 const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
 const REFERENCE_ROLES_KEY = "ICE_REFERENCE_ROLES";
+const SEMANTIC_DISTINCTIONS_KEY = "ICE_SEMANTIC_DISTINCTIONS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -470,7 +471,7 @@ function enrichScopeItem(item, type, index, activeAdapter) {
   item.sourceCaptureId = sourceCaptureId;
   item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
   item.timelinePosition = timelinePosition;
-  item.scopePath = type === "reference_role" && item.scopePath
+  item.scopePath = (type === "reference_role" || type === "semantic_distinction") && item.scopePath
     ? item.scopePath
     : scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
   return item;
@@ -511,6 +512,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.sourceDiscoveryIndex, "source_discovery", activeAdapter);
   enrichScopeCollection(data.revelationPatterns, "revelation_pattern", activeAdapter);
   enrichScopeCollection(data.referenceRoles, "reference_role", activeAdapter);
+  enrichScopeCollection(data.semanticDistinctions, "semantic_distinction", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -525,7 +527,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.referenceGraph || []).map((item) => ({ ...item, scopePath: item.fromScopePath, scopeLayer: "reference_graph" })),
     ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" })),
     ...(data.revelationPatterns || []).map((item) => ({ ...item, scopeLayer: "revelation_pattern" })),
-    ...(data.referenceRoles || []).map((item) => ({ ...item, scopeLayer: "reference_role" }))
+    ...(data.referenceRoles || []).map((item) => ({ ...item, scopeLayer: "reference_role" })),
+    ...(data.semanticDistinctions || []).map((item) => ({ ...item, scopeLayer: "semantic_distinction" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -914,6 +917,175 @@ function revelationPatternVerseRange(cluster = {}) {
   return cluster.scopePath || "Current scope";
 }
 
+function semanticDistinctionRecord(record = {}) {
+  const key = [
+    "semantic-distinction",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.semanticItem || "",
+    record.distinctionType || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Matthew 1",
+    semanticItem: record.semanticItem || "",
+    distinctionType: record.distinctionType || "semantic_distinction",
+    narrativeRole: record.narrativeRole || "",
+    canonicalRole: record.canonicalRole || "",
+    sourceWording: record.sourceWording || "",
+    derivedWording: record.derivedWording || "",
+    relatedEntities: record.relatedEntities || [],
+    relatedLayers: record.relatedLayers || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded semantic records"
+  };
+}
+
+function createSemanticDistinctions(captures = [], canonicalIdentities = [], semanticEvents = [], relationshipGraph = [], revelationPatterns = [], passageFunctions = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  if (!isMatthewOne) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const hasJesusChrist = (canonicalIdentities || []).some((item) => normalizeWhitespace(item.canonicalName || "").toLowerCase() === "jesus christ") || /JESUS CHRIST|Jesus Christ/i.test(sourceText);
+  const hasJesusName = /call(?:ed)? his name JESUS|called his name JESUS|thou shalt call his name JESUS/i.test(sourceText) || (semanticEvents || []).some((item) => item.eventType === "name_revelation" || item.eventType === "naming_event");
+  const hasChrist = /\bCHRIST\b|\bChrist\b/i.test(sourceText) || hasJesusChrist;
+  const hasHolyGhost = /Holy Ghost/i.test(sourceText);
+  const hasNarrator = (passageFunctions || []).some((item) => /narrator/i.test(`${item.plainMeaning || ""} ${item.relatedEntities || ""}`));
+  const hasLord = /THE LORD|the Lord/i.test(sourceText) || (relationshipGraph || []).some((edge) => /lord/i.test(`${edge.fromEntity || ""} ${edge.toEntity || ""}`));
+  const hasAngel = /angel of THE LORD|angel of the Lord/i.test(sourceText) || (revelationPatterns || []).some((item) => item.speaker === "AngEL Of THE LORD");
+  const records = [];
+  const add = (record) => records.push(semanticDistinctionRecord({ sourceCaptureId, sourceContext: context, ...record }));
+
+  if (hasJesusName) add({
+    scopePath: "scripture.nt.matthew.1.verse.21",
+    verseRange: "Matthew 1:21, 25",
+    semanticItem: "JESUS",
+    distinctionType: "revealed_given_name",
+    narrativeRole: "revealed/given NAME in the narrative-time naming instruction and Joseph's naming action",
+    canonicalRole: "linked to JESUS CHRIST as canonical/source identity without making CHRIST the given NAME",
+    sourceWording: "thou shalt call his name JESUS; called his name JESUS",
+    derivedWording: "Narrative NAME: JESUS",
+    relatedEntities: ["JESUS", "JESUS CHRIST", "Joseph", "AngEL Of THE LORD"],
+    relatedLayers: ["ICE_SEMANTIC_EVENTS", "ICE_REVELATION_PATTERNS", "ICE_PASSAGE_FUNCTIONS", "ICE_CANONICAL_IDENTITIES"],
+    confidence: "explicit",
+    sourceGrounding: "Matthew 1:21 and 1:25 preserve JESUS as the revealed and given NAME"
+  });
+
+  if (hasChrist) add({
+    scopePath: "scripture.nt.matthew.1.verse.1",
+    verseRange: "Matthew 1:1",
+    semanticItem: "CHRIST",
+    distinctionType: "title_messianic_office",
+    narrativeRole: "title/source identity reference, not Joseph's given-name action",
+    canonicalRole: "messianic title/office within the source identity phrase JESUS CHRIST",
+    sourceWording: "JESUS CHRIST",
+    derivedWording: "CHRIST as title/source identity",
+    relatedEntities: ["JESUS CHRIST", "JESUS"],
+    relatedLayers: ["ICE_CANONICAL_IDENTITIES", "ICE_PASSAGE_FUNCTIONS"],
+    confidence: hasJesusChrist ? "explicit" : "probable",
+    sourceGrounding: "Matthew 1:1 uses JESUS CHRIST as source identity phrase; Matthew 1:21 and 1:25 give JESUS as NAME"
+  });
+
+  if (hasJesusChrist) add({
+    scopePath: "scripture.nt.matthew.1.verse.1",
+    verseRange: "Matthew 1:1",
+    semanticItem: "JESUS CHRIST",
+    distinctionType: "canonical_source_identity_phrase",
+    narrativeRole: "retrospective/source-title identity framing for the passage",
+    canonicalRole: "canonical/source identity linkage for JESUS",
+    sourceWording: "The book of the generation of JESUS CHRIST",
+    derivedWording: "Canonical identity: JESUS CHRIST",
+    relatedEntities: ["JESUS CHRIST", "JESUS", "CHRIST"],
+    relatedLayers: ["ICE_CANONICAL_IDENTITIES", "ICE_PASSAGE_FUNCTIONS"],
+    confidence: "explicit",
+    sourceGrounding: "Matthew 1:1 source phrase grounds JESUS CHRIST as canonical/source identity"
+  });
+
+  if (hasHolyGhost) {
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20",
+      semanticItem: "HOLY SPIRIT",
+      distinctionType: "preferred_derived_semantic_display",
+      narrativeRole: "divine conception revelation in derived semantic display",
+      canonicalRole: "Class I divine reference displayed as HOLY SPIRIT for semantic clarity",
+      sourceWording: "Holy Ghost",
+      derivedWording: "HOLY SPIRIT",
+      relatedEntities: ["HOLY SPIRIT", "Holy Ghost", "Mary", "JESUS"],
+      relatedLayers: ["ICE_SEMANTIC_EVENTS", "ICE_REVELATION_PATTERNS", "ICE_PASSAGE_FUNCTIONS"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 1:20 source phrase says Holy Ghost; derived display prefers HOLY SPIRIT without rewriting quoted source wording"
+    });
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20",
+      semanticItem: "Holy Ghost",
+      distinctionType: "preserved_source_phrase_wording",
+      narrativeRole: "source phrase wording preserved in direct quotations/evidence",
+      canonicalRole: "alias/source wording linked to HOLY SPIRIT derived display",
+      sourceWording: "that which is conceived in her is of the Holy Ghost",
+      derivedWording: "Conception revelation through HOLY SPIRIT",
+      relatedEntities: ["HOLY SPIRIT", "Holy Ghost", "Mary", "JESUS"],
+      relatedLayers: ["ICE_SEMANTIC_EVENTS", "ICE_REVELATION_PATTERNS", "ICE_PASSAGE_FUNCTIONS"],
+      confidence: "explicit",
+      sourceGrounding: "direct source phrase is preserved while derived semantic cards may display HOLY SPIRIT"
+    });
+  }
+
+  if (hasNarrator) add({
+    scopePath: "scripture.nt.matthew.1.verse.22",
+    verseRange: "Matthew 1:22-23",
+    semanticItem: "Scripture narrator",
+    distinctionType: "narrator_human_classification",
+    narrativeRole: "narrator voice reports fulfillment and source framing",
+    canonicalRole: "Class III - Human; not direct divine authority",
+    sourceWording: "Now all this was done, that it might be fulfilled",
+    derivedWording: "Scripture narrator: Class III - Human",
+    relatedEntities: ["Scripture narrator", "THE LORD", "prophet"],
+    relatedLayers: ["ICE_PASSAGE_FUNCTIONS", "ICE_ENTITY_REGISTRY"],
+    confidence: "probable",
+    sourceGrounding: "fulfillment narration is distinguished from divine speech and prophetic source"
+  });
+
+  if (hasLord) add({
+    scopePath: "scripture.nt.matthew.1.verse.20",
+    verseRange: "Matthew 1:20-22",
+    semanticItem: "THE LORD",
+    distinctionType: "divine_authority_source",
+    narrativeRole: "authority source behind divine message and prophecy fulfillment",
+    canonicalRole: "Class I - GOD / Divine Authority",
+    sourceWording: "THE LORD; spoken of THE LORD by the prophet",
+    derivedWording: "THE LORD: Class I - GOD / Divine Authority",
+    relatedEntities: ["THE LORD", "AngEL Of THE LORD", "prophet"],
+    relatedLayers: ["ICE_REVELATION_PATTERNS", "ICE_RELATIONSHIP_GRAPH", "ICE_PASSAGE_FUNCTIONS"],
+    confidence: "explicit",
+    sourceGrounding: "current semantic layers distinguish THE LORD as authority source from messenger and narrator"
+  });
+
+  if (hasAngel) add({
+    scopePath: "scripture.nt.matthew.1.verse.20",
+    verseRange: "Matthew 1:20-21",
+    semanticItem: "AngEL Of THE LORD",
+    distinctionType: "divine_messenger_role",
+    narrativeRole: "messenger/speaker delivering THE LORD's instruction and revelation to Joseph",
+    canonicalRole: "Class II - AngEL / Messenger of GOD",
+    sourceWording: "the angel of THE LORD appeared unto him",
+    derivedWording: "AngEL Of THE LORD: Class II - AngEL / Messenger of GOD",
+    relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph"],
+    relatedLayers: ["ICE_REVELATION_PATTERNS", "ICE_RELATIONSHIP_GRAPH", "ICE_PASSAGE_FUNCTIONS"],
+    confidence: "explicit",
+    sourceGrounding: "revelation pattern keeps authority source THE LORD distinct from speaker AngEL Of THE LORD"
+  });
+
+  return records;
+}
 function createRevelationPatterns(semanticEvents = [], passageFunctions = []) {
   const patterns = [];
   const clusters = semanticEvents.filter((item) =>
@@ -4350,6 +4522,14 @@ async function runFullAnalysisPipeline(reason = "manual") {
       revelationPatterns,
       canonicalIdentities
     );
+    const semanticDistinctions = createSemanticDistinctions(
+      captures,
+      canonicalIdentities,
+      semanticEvents,
+      relationshipGraph,
+      revelationPatterns,
+      passageFunctions
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -4361,7 +4541,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceGraph,
       passageFunctions,
       revelationPatterns,
-      referenceRoles
+      referenceRoles,
+      semanticDistinctions
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -4374,7 +4555,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceGraph,
       passageFunctions,
       revelationPatterns,
-      referenceRoles
+      referenceRoles,
+      semanticDistinctions
     }, activeAdapter);
     const status = {
       reason,
@@ -4401,6 +4583,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       passageFunctionCount: passageFunctions.length,
       revelationPatternCount: revelationPatterns.length,
       referenceRoleCount: referenceRoles.length,
+      semanticDistinctionCount: semanticDistinctions.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -4428,6 +4611,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [PASSAGE_FUNCTIONS_KEY]: passageFunctions,
       [REVELATION_PATTERNS_KEY]: revelationPatterns,
       [REFERENCE_ROLES_KEY]: referenceRoles,
+      [SEMANTIC_DISTINCTIONS_KEY]: semanticDistinctions,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

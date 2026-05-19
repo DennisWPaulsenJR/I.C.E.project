@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     passageFunctions: "ICE_PASSAGE_FUNCTIONS",
     revelationPatterns: "ICE_REVELATION_PATTERNS",
     referenceRoles: "ICE_REFERENCE_ROLES",
+    semanticDistinctions: "ICE_SEMANTIC_DISTINCTIONS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -3164,6 +3165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       passage: "passageFunctionsSection",
       revelation: "revelationPatternsSection",
       reference: "referenceRolesSection",
+      distinction: "semanticDistinctionsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -3799,6 +3801,95 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createReferenceRoleCard(item));
+    });
+  }
+  function semanticDistinctionSearchText(item = {}) {
+    return [
+      item.semanticItem,
+      item.distinctionType,
+      item.narrativeRole,
+      item.canonicalRole,
+      item.sourceWording,
+      item.derivedWording,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.relatedLayers).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function createSemanticDistinctionCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const divineContext = hasDivineDisplayContext([item.semanticItem, item.narrativeRole, item.canonicalRole, item.sourceWording, item.derivedWording, item.relatedEntities]);
+    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+    const layers = asArray(item.relatedLayers).map((value) => normalizeText(value)).filter(Boolean);
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card semantic-distinction-card";
+    assignSemanticCardTarget(card, "distinction", item, item.semanticItem || item.distinctionType);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(item.semanticItem || "Semantic Distinction", divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [passageFunctionTitle(item.distinctionType || "semantic_distinction"), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Distinction Type", passageFunctionTitle(item.distinctionType || "semantic_distinction"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Narrative Role", item.narrativeRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Wording", item.sourceWording || "Not recorded.", { divineContext }),
+      createPassageFunctionSection("Derived Wording", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderSemanticDistinctions(term) {
+    const container = document.getElementById("semanticDistinctionCards");
+    const count = document.getElementById("semanticDistinctionCount");
+    const distinctions = asArray(studyData.semanticDistinctions);
+    const filtered = distinctions.filter((item) => matchesSearchQuery(semanticDistinctionSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} distinction(s)`;
+
+    if (distinctions.length === 0) {
+      appendEmpty(container, "No semantic distinctions derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic distinctions match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Semantic Distinctions",
+      [
+        `Derived records: ${distinctions.length}`,
+        `Layer: ICE_SEMANTIC_DISTINCTIONS`,
+        "Purpose: prevent different concepts such as name, title, role, source phrase, and canonical identity from collapsing into one bucket.",
+        "Review posture: inspect item, distinction type, narrative role, canonical role, source wording, derived wording, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createSemanticDistinctionCard(item));
     });
   }
   function sourceDiscoverySearchText(item) {
@@ -4442,6 +4533,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderPassageFunctions(term);
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
+      renderSemanticDistinctions(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
       renderVerseScopeFocus(term);
@@ -4510,6 +4602,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       passageFunctions: countItems(studyData.passageFunctions),
       revelationPatterns: countItems(studyData.revelationPatterns),
       referenceRoles: countItems(studyData.referenceRoles),
+      semanticDistinctions: countItems(studyData.semanticDistinctions),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -4540,12 +4633,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const passageFunctionCount = countItems(studyData.passageFunctions);
     const revelationPatternCount = countItems(studyData.revelationPatterns);
     const referenceRoleCount = countItems(studyData.referenceRoles);
+    const semanticDistinctionCount = countItems(studyData.semanticDistinctions);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -4569,6 +4663,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticPassageFunctions").textContent = passageFunctionCount;
     document.getElementById("diagnosticRevelationPatterns").textContent = revelationPatternCount;
     document.getElementById("diagnosticReferenceRoles").textContent = referenceRoleCount;
+    document.getElementById("diagnosticSemanticDistinctions").textContent = semanticDistinctionCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

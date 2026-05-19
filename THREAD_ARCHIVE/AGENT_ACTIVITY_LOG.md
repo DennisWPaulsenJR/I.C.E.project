@@ -1709,3 +1709,32 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 15:45 - pcdx - Add semantic distinction layer
+Summary:
+- Added `ICE_SEMANTIC_DISTINCTIONS` as a derived semantic contrast/distinction layer.
+- Added Matthew 1 pilot distinctions for JESUS, CHRIST, JESUS CHRIST, HOLY SPIRIT, Holy Ghost, Scripture narrator, THE LORD, and AngEL Of THE LORD.
+- Added a Study Panel `Semantic Distinctions` section and Matthew 1 QA assertions.
+- Preserved source text, extraction logic, source grounding, confidence, hierarchy formatting, divine display compliance, and narrative-time/canonical distinctions.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `npm.cmd run qa:matthew1` passed with `semanticDistinctions: 8`
+- `git diff --check` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented

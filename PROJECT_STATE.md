@@ -93,6 +93,13 @@ Current semantic reference role layer:
 - Matthew 1 pilot roles: davidic_lineage_support, abrahamic_covenant_support, prophecy_fulfillment_support, messianic_identity_support, and name_meaning_support.
 - Keep this as a derived semantic layer; do not broaden extraction, crawl/fetch sources, or replace source grounding/confidence.
 
+Current semantic distinction layer:
+- Phase 8.2l Semantic Contrast / Distinction Layer
+- Active key: `ICE_SEMANTIC_DISTINCTIONS`
+- Status: Matthew 1 pilot implemented from existing canonical identities, semantic events, relationship graph, revelation patterns, and passage functions.
+- Goal: prevent distinct concepts such as name, title, role, office, narrator, authority, messenger, source phrase, derived meaning, canonical identity, revealed identity, narrative-time identity, and retrospective identity from collapsing into one generic meaning bucket.
+- Matthew 1 pilot distinctions: JESUS as revealed/given NAME, CHRIST as title/messianic office/source identity, JESUS CHRIST as canonical/source identity phrase, HOLY SPIRIT as preferred derived semantic display, Holy Ghost as preserved source phrase wording, Scripture narrator as Class III - Human, THE LORD as Class I - GOD / Divine Authority, and AngEL Of THE LORD as Class II - AngEL / Messenger of GOD.
+- Keep this as a derived semantic layer; preserve source text, confidence, hierarchy formatting, divine display compliance, and narrative-time versus canonical distinctions.
 ## Current Architecture
 
 Architecture direction:
