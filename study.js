@@ -2899,6 +2899,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     const hidden = values.length > limit ? ` (${values.length - limit} more)` : "";
     return `${label}:\n${shown}${hidden}`;
   }
+
+  function passageEvidenceRoleLabel(value, item = {}) {
+    const text = normalizeText(value);
+    const normalized = text.toLowerCase();
+    const passageFunction = normalizeText(item.passageFunction || "").toLowerCase();
+    const themes = asArray(item.linkedThemes).map((theme) => normalizeText(theme).toLowerCase()).join(" ");
+
+    if (!normalized) return "";
+    if (/book of the generation of jesus christ|jesus christ/.test(normalized)) return "Source identity phrase";
+    if (/call his name jesus|called his name jesus|his name jesus/.test(normalized)) return "Revealed NAME instruction";
+    if (/save his people from their sins|shall save/.test(normalized)) return "Mission declaration";
+    if (/fulfilled|spoken of the lord|prophet/.test(normalized)) return "Fulfillment declaration";
+    if (/prophet|esaias|jeremias|isaiah|jeremiah|prophecy/.test(normalized)) return "Prophecy source phrase";
+    if (/son of david|david/.test(normalized)) return "Davidic lineage reference";
+    if (/son of abraham/.test(normalized)) return "Abrahamic covenant lineage reference";
+    if (/abraham/.test(normalized) && /covenant|abrahamic/.test(`${passageFunction} ${themes}`)) return "Abrahamic covenant lineage reference";
+    if (/lineage|generation|begat|son of/.test(normalized)) return "Lineage reference";
+    if (/covenant/.test(normalized)) return "Covenant lineage reference";
+    return "";
+  }
+
+  function passageEvidenceDisplayLine(value, item = {}, divineContext = false) {
+    const text = renderIceDivineDisplayText(value, divineContext);
+    const label = passageEvidenceRoleLabel(value, item);
+    return label ? `${label}: "${text}"` : `"${text}"`;
+  }
+
   function passageFunctionEntityRecord(name) {
     const normalized = normalizedEntityName(name);
     if (!normalized) return null;
@@ -3381,8 +3408,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.passageFunction, item.relatedEntities, item.linkedThemes, item.evidence, item.sourceGrounding]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => passageEvidenceDisplayLine(value, item, divineContext));
+    const fullEvidence = evidence.map((value) => passageEvidenceDisplayLine(value, item, divineContext));
     const themes = asArray(item.linkedThemes).map((value) => normalizeText(value)).filter(Boolean);
     const entities = revelationPatternRelatedEntities(item);
     const prophecies = asArray(item.relatedProphecies).map((value) => normalizeText(value)).filter(Boolean);
