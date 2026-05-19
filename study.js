@@ -187,42 +187,57 @@ document.addEventListener("DOMContentLoaded", async () => {
         : "Narrative NAME: JESUS.";
   }
 
+  function isJesusNamingType(value) {
+    return /name|naming|revealed_name|called/.test(normalizeText(value || "").toLowerCase());
+  }
+
+  function isJesusNamingTarget(value) {
+    const target = normalizedEntityName(value || "");
+    return target === "jesus" || target === "jesus christ";
+  }
+
+  function narrativeNamingTargetDisplay(type) {
+    return /revealed_name|reveal|call/.test(normalizeText(type || "").toLowerCase())
+      ? "revealed NAME given: JESUS"
+      : "narrative naming action: JESUS";
+  }
+
+  function narrativeNamingDisplayNote(target) {
+    return normalizedEntityName(target) === "jesus christ"
+      ? "Revealed NAME: JESUS. Canonical linkage: JESUS CHRIST. CHRIST is title/source identity, not Joseph's given-name action."
+      : "Revealed NAME: JESUS.";
+  }
+
   function relationshipDisplayTarget(edge = {}) {
     const from = normalizedEntityName(edge.fromEntity || "");
-    const to = normalizedEntityName(edge.toEntity || edge.target || "");
+    const target = edge.toEntity || edge.target || "";
     const type = normalizeText(edge.relationshipType || "").toLowerCase();
-    if (from === "joseph" && to === "jesus christ" && type === "naming") return "JESUS";
-    return edge.toEntity || edge.target || "Entity";
+    if (from === "joseph" && isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingTargetDisplay(type);
+    return target || "Entity";
   }
 
   function relationshipDisplayNote(edge = {}) {
     const from = normalizedEntityName(edge.fromEntity || "");
-    const to = normalizedEntityName(edge.toEntity || edge.target || "");
+    const target = edge.toEntity || edge.target || "";
     const type = normalizeText(edge.relationshipType || "").toLowerCase();
-    if (from === "joseph" && type === "naming") {
-      return to === "jesus christ"
-        ? "Joseph names the child JESUS; JESUS CHRIST is the canonical identity linkage."
-        : "Joseph names the child JESUS.";
-    }
+    if (from === "joseph" && isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingDisplayNote(target);
     return christIdentityDisplayNote([edge.fromEntity, edge.toEntity, edge.target]);
   }
 
   function semanticEventDisplayTarget(item = {}) {
     const target = item.target || item.recipient || item.concerning || "";
     const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
-    if (normalizedEntityName(target) === "jesus christ" && /name|naming|revealed_name/.test(type)) return "JESUS";
+    if (isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingTargetDisplay(type);
     return target;
   }
 
   function semanticEventDisplayNote(item = {}) {
     const target = item.target || item.recipient || item.concerning || "";
     const type = normalizeText(item.eventType || item.relationshipType || item.action || "").toLowerCase();
-    if (/name|naming|revealed_name/.test(type)) {
-      if (normalizedEntityName(target) === "jesus christ") return "Narrative NAME: JESUS; canonical identity: JESUS CHRIST.";
-      if (normalizedEntityName(target) === "jesus") return "Narrative NAME: JESUS.";
-    }
+    if (isJesusNamingType(type) && isJesusNamingTarget(target)) return narrativeNamingDisplayNote(target);
     return christIdentityDisplayNote([item.actor, target, item.recipient, item.concerning]);
   }
+
   function includesTerm(value, term) {
     if (!term) return true;
     return normalizeText(value).toLowerCase().includes(term);
