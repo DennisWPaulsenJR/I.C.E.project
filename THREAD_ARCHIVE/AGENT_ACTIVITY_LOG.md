@@ -1738,3 +1738,31 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 16:05 - pcdx - Normalize naming and reference display
+Summary:
+- Lowercased generic narrator/prophet labels in current generated semantic/display records, including `scripture narrator` and `quoted prophet`.
+- Updated derived HOLY SPIRIT summaries/entities while preserving direct `Holy Ghost` source phrase/evidence wording.
+- Kept section headings and approved exalted/I.C.E. terms intact.
+- Reviewed risky file rename candidates and left files in place; proposed a future coordinated rename pass for `QA status.MD`, `Rules.json`, and `DIVINE_TITLES.json`.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `semanticDistinctions: 8`
+
+Commit:
+- This commit
+
+Status:
+- Implemented

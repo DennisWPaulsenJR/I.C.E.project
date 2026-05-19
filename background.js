@@ -795,7 +795,7 @@ function referenceRoleConfigForItem(item = {}) {
     return {
       referenceRole: "prophecy_fulfillment_support",
       linkedThemes: ["prophecy fulfillment", "narrator witness", "divine speech", "Emmanuel"],
-      linkedEntities: ["THE LORD", "prophet", "Scripture narrator", "JESUS CHRIST"],
+      linkedEntities: ["THE LORD", "prophet", "scripture narrator", "JESUS CHRIST"],
       confidence: /fulfill|prophet|prophecy|emmanuel/i.test(linkText) ? "explicit" : "probable"
     };
   }
@@ -1042,13 +1042,13 @@ function createSemanticDistinctions(captures = [], canonicalIdentities = [], sem
   if (hasNarrator) add({
     scopePath: "scripture.nt.matthew.1.verse.22",
     verseRange: "Matthew 1:22-23",
-    semanticItem: "Scripture narrator",
+    semanticItem: "scripture narrator",
     distinctionType: "narrator_human_classification",
     narrativeRole: "narrator voice reports fulfillment and source framing",
     canonicalRole: "Class III - Human; not direct divine authority",
     sourceWording: "Now all this was done, that it might be fulfilled",
-    derivedWording: "Scripture narrator: Class III - Human",
-    relatedEntities: ["Scripture narrator", "THE LORD", "prophet"],
+    derivedWording: "scripture narrator: Class III - Human",
+    relatedEntities: ["scripture narrator", "THE LORD", "prophet"],
     relatedLayers: ["ICE_PASSAGE_FUNCTIONS", "ICE_ENTITY_REGISTRY"],
     confidence: "probable",
     sourceGrounding: "fulfillment narration is distinguished from divine speech and prophetic source"
@@ -1183,11 +1183,11 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       scopePath: "scripture.nt.matthew.1.verse.20",
       verseRange: "Matthew 1:20-21",
       passageFunction: "divine_message_instruction",
-      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph, reveal the child is conceived of the Holy Ghost, and reveal the name JESUS.",
+      plainMeaning: "THE LORD sends AngEL Of THE LORD to instruct Joseph, reveal the child is conceived of the HOLY SPIRIT, and reveal the NAME JESUS.",
       fulfillmentMeaning: "The name JESUS is revealed with mission meaning: He shall save His people from their sins.",
       evidence: ["the angel of THE LORD appeared unto him", "fear not to take unto thee Mary thy wife", "that which is conceived in her is of the Holy Ghost", "thou shalt call his name JESUS", "he shall save his people from their sins"],
       linkedThemes: ["divine instruction", "marriage instruction", "conception revelation", "name revelation", "mission meaning", "obedience"],
-      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "Holy Ghost", "JESUS", "JESUS CHRIST"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "HOLY SPIRIT", "JESUS", "JESUS CHRIST"],
       relatedProphecies: [],
       confidence: "explicit",
       sourceGrounding: "semantic events distinguish Mary marriage instruction, conception revelation, JESUS name revelation, and mission reason while canonical identity links JESUS to JESUS CHRIST"
@@ -1204,7 +1204,7 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       fulfillmentMeaning: "The passage connects the birth narrative to prophecy fulfillment.",
       evidence: ["that it might be fulfilled", "spoken of the Lord by the prophet"],
       linkedThemes: ["prophecy fulfillment", "narrator witness", "divine speech", "Emmanuel"],
-      relatedEntities: ["Scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"],
+      relatedEntities: ["scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"],
       relatedProphecies: (prophecyLinks || []).map((item) => item.id).filter(Boolean),
       confidence: "explicit",
       sourceGrounding: "fulfillment semantic event or prophecy link evidence"
@@ -1536,13 +1536,13 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
     push({
       originalText: "that which is conceived in her is of the Holy Ghost",
       anchorText: "that which is conceived in her is of the Holy Ghost",
-      normalizedMeaning: "The child conceived in Mary is of the Holy Ghost",
+      normalizedMeaning: "The child conceived in Mary is of the HOLY SPIRIT",
       actor: "Angel of THE LORD",
       action: "revealed divine conception",
       recipient: "Joseph",
-      target: "child conceived of the Holy Ghost",
+      target: "child conceived of the HOLY SPIRIT",
       concerning: "Mary",
-      participants: ["Angel of THE LORD", "Joseph", "Mary", "Holy Ghost", "child"],
+      participants: ["Angel of THE LORD", "Joseph", "Mary", "HOLY SPIRIT", "child"],
       relationshipType: "conception_revealed",
       authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"],
       eventType: "conception_revelation",
@@ -1658,17 +1658,17 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
     push({
       originalText: "Now all this was done, that it might be fulfilled",
       anchorText: /\bthat it might be fulfilled\b/i.test(text) ? "that it might be fulfilled" : "Now all this was done",
-      normalizedMeaning: "Scripture narrator frames the event as fulfillment of prophetic speech",
-      actor: "Scripture narrator",
+      normalizedMeaning: "scripture narrator frames the event as fulfillment of prophetic speech",
+      actor: "scripture narrator",
       action: "narrates fulfillment",
       eventType: "passive_fulfillment_narration",
       semanticCategory: "prophecy_fulfillment_context",
-      participants: ["Scripture narrator", "Quoted prophet"],
+      participants: ["scripture narrator", "quoted prophet"],
       relationshipType: "fulfillment_narration",
-      narrator: "Scripture narrator",
+      narrator: "scripture narrator",
       narratorRole: "passive fulfillment narration",
       quotedSpeaker: /\bspoken of the Lord\b/i.test(text) ? "THE LORD" : "",
-      quotedProphet: /\bprophet\b/i.test(text) ? "Quoted prophet" : "",
+      quotedProphet: /\bprophet\b/i.test(text) ? "quoted prophet" : "",
       confidence: "explicit"
     });
   }
@@ -1823,7 +1823,7 @@ function explicitContextActor(eventItem) {
   const text = normalizeWhitespace(eventItem.eventText || "");
 
   if (/\bNow all this was done\b|\bthat it might be fulfilled\b/i.test(text)) {
-    return "Scripture narrator";
+    return "scripture narrator";
   }
 
   if (/\bvoice from heaven\b/i.test(text) || /\bmy beloved Son\b/i.test(text)) {
@@ -3525,8 +3525,8 @@ function canonicalEntityName(name) {
     ["jesus", "JESUS CHRIST"],
     ["christ", "JESUS CHRIST"],
     ["jesus christ", "JESUS CHRIST"],
-    ["scripture narrator", "Scripture narrator"],
-    ["quoted prophet", "Quoted prophet"]
+    ["scripture narrator", "scripture narrator"],
+    ["quoted prophet", "quoted prophet"]
   ]);
 
   return aliases.get(normalized) || clean;

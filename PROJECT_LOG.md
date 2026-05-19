@@ -2,6 +2,46 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-19 - Naming and Reference Display Normalization
+
+Instruction summary:
+- Normalize file/reference/display naming against I.C.E. naming instructions.
+- Keep general/common names lower case unless used as section headings or approved exalted/I.C.E. terms.
+- Preserve GOD, THE LORD, JESUS, JESUS CHRIST, CHRIST, HOLY SPIRIT, AngEL Of THE LORD, NAME, class labels, and actor lane names.
+
+Codex action summary:
+- Lowercased generic narrator/prophet-derived labels in current generated semantic records and semantic distinction references, including `scripture narrator` and `quoted prophet`.
+- Updated derived HOLY SPIRIT semantic summaries/entities while preserving direct `Holy Ghost` quoted source phrases/evidence and source-wording distinction records.
+- Tightened the displayed `narrative NAME: JESUS` wording in entity-role display text.
+- Reviewed repo filename candidates and did not rename files because `QA status.MD`, `Rules.json`, and `DIVINE_TITLES.json` have existing references or manifest/engine coupling; proposed coordinated future renames instead.
+
+Proposed future rename review:
+- `QA status.MD` -> `qa-status.md` after updating repo memory references.
+- `Rules.json` -> `rules.json` after updating `manifest.json` and `engine.js`.
+- `DIVINE_TITLES.json` -> `divine-titles.json` after updating `manifest.json` and `engine.js`.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticDistinctions: 8`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
+
 ## 2026-05-19 - Semantic Distinction Layer
 
 Instruction summary:

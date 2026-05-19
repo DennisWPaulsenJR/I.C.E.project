@@ -604,7 +604,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "narrative voice identifying fulfillment";
     }
     if (normalizedReason === "captured divine title") {
-      return "source-title phrase: JESUS CHRIST; narrative name: JESUS / child; CHRIST is title/source identity, not Joseph's naming action";
+      return "source-title phrase: JESUS CHRIST; narrative NAME: JESUS / child; CHRIST is title/source identity, not Joseph's naming action";
     }
     return reason || "";
   }
@@ -2593,7 +2593,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     addNarrativeEntityNames(maryFound, ["Mary", "JESUS CHRIST"]);
     addNarrativeEntityNames(josephPonders, ["Joseph", "Mary"]);
     addNarrativeEntityNames(angelInstructs, ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary"]);
-    addNarrativeEntityNames(fulfillment, ["Scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"]);
+    addNarrativeEntityNames(fulfillment, ["scripture narrator", "THE LORD", "prophet", "JESUS CHRIST"]);
     addNarrativeEntityNames(josephObeys, ["Joseph", "Mary", "JESUS"]);
 
     for (const entry of displayEntries) {

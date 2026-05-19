@@ -313,7 +313,7 @@ function evaluateFailures(data) {
     ["JESUS CHRIST", "canonical_source_identity_phrase"],
     ["HOLY SPIRIT", "preferred_derived_semantic_display"],
     ["Holy Ghost", "preserved_source_phrase_wording"],
-    ["Scripture narrator", "narrator_human_classification"],
+    ["scripture narrator", "narrator_human_classification"],
     ["THE LORD", "divine_authority_source"],
     ["AngEL Of THE LORD", "divine_messenger_role"]
   ]) {
