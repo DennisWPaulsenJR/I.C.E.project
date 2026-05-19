@@ -261,6 +261,42 @@ body {
   font-size: .82rem;
 }
 
+.semantic-nav-list {
+  gap: 5px;
+}
+
+.semantic-nav-button {
+  appearance: none;
+  background: #f7f9fc;
+  border: 1px solid #d9e1ec;
+  border-radius: 6px;
+  color: #1f334d;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  line-height: 1.35;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.semantic-nav-button:hover,
+.semantic-nav-button:focus-visible {
+  background: #eef4fb;
+  border-color: #9db5d1;
+  outline: none;
+}
+
+.semantic-focus-jump {
+  animation: semanticFocusPulse 1.4s ease-out;
+  outline: 2px solid #4f7db3;
+  outline-offset: 3px;
+}
+
+@keyframes semanticFocusPulse {
+  0% { background-color: #eef6ff; }
+  100% { background-color: transparent; }
+}
 
 .semantic-section-collapsible details {
   border-top: 1px solid #eef1f5;

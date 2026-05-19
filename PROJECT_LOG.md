@@ -2,6 +2,51 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+
+## 2026-05-19 - Semantic Navigation / Focus Jump UI
+
+Instruction summary:
+- Make related semantic layers navigable instead of only visually related.
+- Allow Study Panel users to jump from related semantic buckets into Passage Functions, Revelation Patterns, Reference Roles, Semantic Events, Semantic Flow Paths, Narrative Timeline, Verse Scope Focus, Entity Scope Focus, and Reference Graph sections.
+- Preserve semantic data, extraction logic, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST distinction.
+
+Codex action summary:
+- Converted collapsed `Related Semantic Layers` entries from static text into lightweight navigation buttons.
+- Added semantic card target keys for Passage Functions, Revelation Patterns, Reference Roles, Narrative Timeline cards, Semantic Flow Path cards, and Semantic Event cards.
+- Added focus-jump behavior that updates the Study Panel search/filter when needed, opens focused semantic cards, scrolls to the destination, and applies a temporary focus highlight.
+- Added Verse Scope and Entity Scope jump behavior by reusing the existing search-driven focus sections.
+- Kept links display-only and derived from existing cross-layer evidence; no semantic records or extraction behavior changed.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+QA counts:
+- DOM hints: 173
+- Mention index: 178
+- Entity registry: 52
+- Relationship graph: 66
+- Canonical identities: 54
+- Semantic events: 52
+- Semantic flow paths: 1
+- Source discovery: 136
+- Reference graph: 136
+- Passage functions: 4
+- Revelation patterns: 1
+- Reference roles: 20
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-18 - Cross-Layer Semantic Linking
 
 Instruction summary:

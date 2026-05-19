@@ -1609,3 +1609,26 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 00:00 - pcdx - Add semantic navigation focus jumps
+Summary:
+- Converted related semantic layer entries into clickable Study Panel navigation buttons.
+- Added focus jumps that can scroll to/open matching semantic cards or activate Verse Scope / Entity Scope focus through the existing search filter.
+- Preserved semantic data, extraction behavior, hierarchy formatting, divine display compliance, and JESUS / JESUS CHRIST distinction.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented

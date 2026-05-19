@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const DISPLAY_LIMIT = 5;
 
   let studyData = {};
+  let pendingSemanticFocus = null;
   console.log("[FOCUS DEBUG] study.js loaded", {
     rendererVersion: "v2",
     focusedMountCount: document.querySelectorAll("#focused-relationship-view").length
@@ -2757,6 +2758,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ]);
 
     card.className = "study-card semantic-card narrative-timeline-card";
+    assignSemanticCardTarget(card, "timeline", entry, entry.timelinePosition);
     header.className = "semantic-card-header";
     heading.textContent = renderIceDivineDisplayText(`Moment ${entry.timelinePosition}: ${narrativeMomentDisplayTitle(entry)}`, divineContext);
     range.className = "semantic-card-range";
@@ -2769,7 +2771,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext }),
       eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext }) : null,
       createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines({ ...entry, relatedEntities: entry.entities }, "timeline"), plainList: true, divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems({ ...entry, relatedEntities: entry.entities }, "timeline"), divineContext }),
       createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
       createPassageFunctionSection("Clustered Revelations", "", { collapsed: true, list: clusterPreview ? clusterPreview.split("\n") : [], plainList: true, divineContext }),
@@ -2940,7 +2942,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   function semanticSectionBody(content, options = {}) {
     const fragment = document.createDocumentFragment();
 
-    if (options.list?.length) {
+    if (options.navItems?.length) {
+      const list = document.createElement("ul");
+      list.className = "semantic-plain-list semantic-nav-list";
+      for (const item of options.navItems) {
+        const listItem = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "semantic-nav-button";
+        button.textContent = renderIceDivineDisplayText(item.label, options.divineContext);
+        button.dataset.targetSection = item.targetSection || "";
+        button.dataset.targetKey = item.targetKey || "";
+        button.dataset.searchTerm = item.searchTerm || "";
+        button.dataset.focusLabel = item.label || "";
+        listItem.appendChild(button);
+        list.appendChild(listItem);
+      }
+      fragment.appendChild(list);
+    } else if (options.list?.length) {
       const list = document.createElement(options.ordered ? "ol" : "ul");
       list.className = options.plainList ? "semantic-plain-list" : "semantic-list";
       for (const item of options.list) {
@@ -2966,7 +2985,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createPassageFunctionSection(title, content, options = {}) {
-    if (!content && !options.list?.length) return null;
+    if (!content && !options.list?.length && !options.navItems?.length) return null;
     const section = document.createElement("section");
     section.className = options.collapsed ? "semantic-section semantic-section-collapsible" : "semantic-section";
 
@@ -2988,6 +3007,69 @@ document.addEventListener("DOMContentLoaded", async () => {
     return section;
   }
 
+  function semanticKey(type, value) {
+    return `${type}:${normalizeText(value || "")}`.toLowerCase().replace(/[^a-z0-9:_-]+/g, "-");
+  }
+
+  function semanticCardKey(type, item = {}, fallback = "") {
+    return semanticKey(type, item.id || item.semanticEventId || item.sourceDiscoveryId || item.passageFunction || item.referenceRole || item.chainTitle || fallback);
+  }
+
+  function assignSemanticCardTarget(card, type, item = {}, fallback = "") {
+    card.dataset.semanticKey = semanticCardKey(type, item, fallback);
+  }
+
+  function semanticNavItem(label, targetSection, searchTerm = "", targetKey = "") {
+    return { label: normalizeText(label), targetSection, searchTerm: normalizeText(searchTerm), targetKey };
+  }
+
+  function semanticVerseSearchTerm(item = {}) {
+    const tokens = Array.from(semanticVerseTokens(item)).sort((left, right) => Number(left) - Number(right));
+    if (tokens.length) return `Matthew 1:${tokens[0]}`;
+    const range = normalizeText(item.verseRange || item.verseRef || "");
+    return range || normalizeScopeList(item.scopes, item)[0] || item.scopePath || "";
+  }
+
+  function semanticSectionForNav(type) {
+    return {
+      passage: "passageFunctionsSection",
+      revelation: "revelationPatternsSection",
+      reference: "referenceRolesSection",
+      event: "semanticEventsSection",
+      flow: "semanticFlowChainsSection",
+      timeline: "narrativeTimelineSection",
+      verse: "verseScopeFocusSection",
+      entity: "entityScopeFocusSection",
+      referenceGraph: "referenceGraphSection"
+    }[type] || "";
+  }
+
+  function semanticApplyFocus() {
+    if (!pendingSemanticFocus) return;
+    const { targetSection, targetKey, focusLabel } = pendingSemanticFocus;
+    pendingSemanticFocus = null;
+    const target = targetKey ? Array.from(document.querySelectorAll("[data-semantic-key]")).find((element) => element.dataset.semanticKey === targetKey) : null;
+    const section = document.getElementById(targetSection);
+    const destination = target || section;
+    if (!destination) return;
+    destination.classList.add("semantic-focus-jump");
+    destination.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (target?.querySelector("details")) {
+      target.querySelectorAll("details").forEach((details) => { details.open = true; });
+    }
+    if (focusLabel) destination.setAttribute("aria-label", `Semantic focus: ${focusLabel}`);
+    window.setTimeout(() => destination.classList.remove("semantic-focus-jump"), 1400);
+  }
+
+  function navigateSemanticFocus(nav = {}) {
+    const input = document.getElementById("searchInput");
+    pendingSemanticFocus = nav;
+    if (input && nav.searchTerm && input.value !== nav.searchTerm) {
+      input.value = nav.searchTerm;
+      renderStudy();
+    }
+    window.requestAnimationFrame(semanticApplyFocus);
+  }
   function semanticUniqueLines(lines, limit = 8) {
     const seen = new Set();
     const values = [];
@@ -3099,8 +3181,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     return asArray(entry.semanticEvents).some((eventItem) => semanticVerseOverlap(eventItem, item) || semanticEntityOverlap(eventItem, item));
   }
 
-  function relatedSemanticLayerLines(item = {}, mode = "generic") {
-    const lines = [];
+  function semanticUniqueNavItems(items, limit = 10) {
+    const seen = new Set();
+    const values = [];
+    for (const item of asArray(items)) {
+      if (!item?.label) continue;
+      const key = [item.label, item.targetSection, item.targetKey, item.searchTerm].map((value) => normalizeText(value).toLowerCase()).join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      values.push(item);
+    }
+    if (values.length <= limit) return values;
+    return [...values.slice(0, limit), semanticNavItem(`${values.length - limit} more related item(s) available in their native sections.`, "")];
+  }
+
+  function relatedSemanticLayerNavItems(item = {}, mode = "generic") {
+    const links = [];
     const itemFunction = normalizeText(item.passageFunction || item.referenceRole || "");
     const relatedFunctionKeys = new Set([
       item.passageFunction,
@@ -3113,50 +3209,86 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (mode !== "passage") {
       asArray(studyData.passageFunctions)
         .filter((passage) => relatedFunctionKeys.has(normalizeText(passage.passageFunction)) || semanticVerseOverlap(passage, item) || semanticEntityOverlap(passage, item))
-        .forEach((passage) => lines.push(`Passage Function: ${passageFunctionTitle(passage.passageFunction)} | ${passage.verseRange || passage.scopePath || "current scope"}`));
+        .forEach((passage) => links.push(semanticNavItem(
+          `Passage Function: ${passageFunctionTitle(passage.passageFunction)} | ${passage.verseRange || passage.scopePath || "current scope"}`,
+          semanticSectionForNav("passage"),
+          passage.passageFunction || passage.verseRange || "",
+          semanticCardKey("passage", passage, passage.passageFunction)
+        )));
     }
 
     if (mode !== "revelation") {
       asArray(studyData.revelationPatterns)
         .filter((pattern) => asArray(pattern.relatedPassageFunctions).map((value) => normalizeText(value)).includes(itemFunction) || semanticVerseOverlap(pattern, item) || semanticEntityOverlap(pattern, item))
-        .forEach((pattern) => lines.push(`Revelation Pattern: ${revelationPatternTypeLabel(pattern.revelationType)} | ${pattern.verseRange || pattern.scopePath || "current scope"}`));
+        .forEach((pattern) => links.push(semanticNavItem(
+          `Revelation Pattern: ${revelationPatternTypeLabel(pattern.revelationType)} | ${pattern.verseRange || pattern.scopePath || "current scope"}`,
+          semanticSectionForNav("revelation"),
+          pattern.verseRange || pattern.revelationType || "",
+          semanticCardKey("revelation", pattern, pattern.revelationType)
+        )));
     }
 
     if (mode !== "reference") {
       asArray(studyData.referenceRoles)
         .filter((role) => asArray(role.linkedPassageFunctions).some((value) => relatedFunctionKeys.has(normalizeText(value)) || normalizeText(value) === itemFunction) || semanticVerseOverlap(role, item) || semanticEntityOverlap(role, item))
-        .forEach((role) => lines.push(`Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${trimText(role.discoveredReference || role.sourceDiscoveryId, 80)}`));
+        .forEach((role) => links.push(semanticNavItem(
+          `Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${trimText(role.discoveredReference || role.sourceDiscoveryId, 80)}`,
+          semanticSectionForNav("reference"),
+          role.discoveredReference || role.referenceRole || "",
+          semanticCardKey("reference", role, role.referenceRole)
+        )));
     }
 
     if (mode === "revelation") {
       asArray(studyData.semanticEvents)
         .filter((eventItem) => subEventIds.has(eventItem.semanticEventId) || semanticVerseOverlap(eventItem, item) || semanticEntityOverlap(eventItem, item))
-        .forEach((eventItem) => lines.push(`Semantic Event: ${semanticEventLabel(eventItem)} | ${eventItem.scopePath || eventItem.verseRef || "current scope"}`));
+        .forEach((eventItem) => links.push(semanticNavItem(
+          `Semantic Event: ${semanticEventLabel(eventItem)} | ${eventItem.scopePath || eventItem.verseRef || "current scope"}`,
+          semanticSectionForNav("event"),
+          eventItem.anchorText || eventItem.action || eventItem.eventType || "",
+          semanticCardKey("event", eventItem, eventItem.semanticEventId)
+        )));
     }
 
     if (mode !== "flow") {
       asArray(studyData.semanticFlowChains)
         .filter((chain) => semanticFlowPathMatchesRecord(chain, item))
-        .forEach((chain) => lines.push(`Semantic Flow Path: ${chain.chainTitle || "Semantic flow path"}`));
+        .forEach((chain) => links.push(semanticNavItem(
+          `Semantic Flow Path: ${chain.chainTitle || "Semantic flow path"}`,
+          semanticSectionForNav("flow"),
+          chain.chainTitle || chain.chainType || "",
+          semanticCardKey("flow", chain, chain.chainTitle)
+        )));
     }
 
     if (mode !== "timeline") {
       timelineEntries
         .filter((entry) => semanticNarrativeMatchesRecord(entry, item))
-        .forEach((entry) => lines.push(`Narrative Timeline: Moment ${entry.timelinePosition} | ${narrativeMomentDisplayTitle(entry)}`));
+        .forEach((entry) => links.push(semanticNavItem(
+          `Narrative Timeline: Moment ${entry.timelinePosition} | ${narrativeMomentDisplayTitle(entry)}`,
+          semanticSectionForNav("timeline"),
+          semanticVerseSearchTerm({ scopes: entry.scopes, semanticEvents: entry.semanticEvents }) || narrativeMomentDisplayTitle(entry),
+          semanticCardKey("timeline", entry, entry.timelinePosition)
+        )));
     }
 
     if (mode === "reference") {
       asArray(studyData.referenceGraph)
         .filter((edge) => edge.sourceDiscoveryId && edge.sourceDiscoveryId === item.sourceDiscoveryId)
-        .forEach((edge) => lines.push(`Reference Graph: ${edge.relationshipType || "reference edge"} | ${trimText(edge.toText || edge.toHref || edge.id, 80)}`));
+        .forEach((edge) => links.push(semanticNavItem(
+          `Reference Graph: ${edge.relationshipType || "reference edge"} | ${trimText(edge.toText || edge.toHref || edge.id, 80)}`,
+          semanticSectionForNav("referenceGraph"),
+          edge.toText || edge.toHref || edge.relationshipType || "",
+          ""
+        )));
     }
 
-    semanticScopeLabels(item).forEach((scope) => lines.push(`Verse Scope: ${scope}`));
-    passageFunctionOrderedEntities(semanticRecognizedEntityNames(item)).map((entry) => entry.display).forEach((entity) => lines.push(`Entity Scope: ${entity}`));
+    semanticScopeLabels(item).forEach((scope) => links.push(semanticNavItem(`Verse Scope: ${scope}`, semanticSectionForNav("verse"), scope)));
+    passageFunctionOrderedEntities(semanticRecognizedEntityNames(item)).map((entry) => entry.display).forEach((entity) => links.push(semanticNavItem(`Entity Scope: ${entity}`, semanticSectionForNav("entity"), entity)));
 
-    return semanticUniqueLines(lines, 10);
+    return semanticUniqueNavItems(links, 10);
   }
+
   function createPassageFunctionCard(item) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -3173,6 +3305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card passage-function-card";
+    assignSemanticCardTarget(card, "passage", item, item.passageFunction);
     header.className = "semantic-card-header";
     heading.textContent = passageFunctionTitle(item.passageFunction);
     range.className = "semantic-card-range";
@@ -3188,7 +3321,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Themes", "", { collapsed: true, list: themes }),
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "passage"), plainList: true, divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "passage"), divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3299,6 +3432,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const partList = createRevelationPartList(item.subEvents);
 
     card.className = "study-card semantic-card revelation-pattern-card";
+    assignSemanticCardTarget(card, "revelation", item, item.revelationType);
     header.className = "semantic-card-header";
     heading.textContent = "Revelation Pattern";
     range.className = "semantic-card-range";
@@ -3318,7 +3452,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "revelation"), plainList: true, divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("Name / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
@@ -3469,6 +3603,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card reference-role-card";
+    assignSemanticCardTarget(card, "reference", item, item.referenceRole);
     header.className = "semantic-card-header";
     heading.textContent = "Reference Role";
     range.className = "semantic-card-range";
@@ -3483,7 +3618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(item, "reference"), plainList: true, divineContext }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
       createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
@@ -4064,6 +4199,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     card.className = "study-card semantic-card semantic-flow-path-card";
+    assignSemanticCardTarget(card, "flow", chain, chain.chainTitle);
     header.className = "semantic-card-header";
     heading.textContent = renderIceDivineDisplayText(chain.chainTitle || "Semantic Flow Path", divineContext);
     range.className = "semantic-card-range";
@@ -4077,7 +4213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Confidence", displayConfidence(chain.confidence || "probable")),
       createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext }),
       nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext }) : null,
-      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: relatedSemanticLayerLines(chain, "flow"), plainList: true, divineContext })
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(chain, "flow"), divineContext })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);
@@ -4113,7 +4249,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         .filter(Boolean)
         .join(" | ");
 
-      return createCard(title, body, meta);
+      const card = createCard(title, body, meta);
+      assignSemanticCardTarget(card, "event", item, item.semanticEventId || title);
+      return card;
     }, "No semantic events match.", "semantic event");
   }
   function renderPrinciples(term) {
@@ -4358,6 +4496,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       value: document.getElementById("searchInput").value
     });
     renderStudy();
+  });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(".semantic-nav-button");
+    if (!button) return;
+    event.preventDefault();
+    navigateSemanticFocus({
+      targetSection: button.dataset.targetSection || "",
+      targetKey: button.dataset.targetKey || "",
+      searchTerm: button.dataset.searchTerm || "",
+      focusLabel: button.dataset.focusLabel || button.textContent || "semantic focus"
+    });
   });
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
   window.addEventListener("focus", refreshStudyData);
