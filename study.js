@@ -37,8 +37,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     focusedMountCount: document.querySelectorAll("#focused-relationship-view").length
   });
 
+  function toDisplayText(value) {
+    if (value == null) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (Array.isArray(value)) return value.map(toDisplayText).filter(Boolean).join(", ");
+    if (value && typeof value === "object") {
+      for (const key of ["label", "name", "title", "displayName", "canonicalName", "id"]) {
+        if (value[key] != null) return toDisplayText(value[key]);
+      }
+      try {
+        return JSON.stringify(value);
+      } catch (_error) {
+        return String(value);
+      }
+    }
+    return String(value);
+  }
+
   function normalizeText(text) {
-    return (text || "").replace(/\s+/g, " ").trim();
+    return toDisplayText(text).replace(/\s+/g, " ").trim();
   }
 
   function trimText(text, maxLength = 160) {

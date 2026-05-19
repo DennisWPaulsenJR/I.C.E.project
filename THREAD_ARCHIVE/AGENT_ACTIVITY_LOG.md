@@ -1632,3 +1632,26 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 14:05 - pcdx - Fix study panel navigation render error
+Summary:
+- Fixed Study Panel render crash caused by display helpers receiving object-shaped navigation/focus values after Phase 8.2j.
+- Added object-safe display normalization before `.replace` display compliance paths.
+- Preserved semantic navigation focus jumps and all semantic data behavior.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- Manual Study Panel reload smoke passed with Passage Functions 4, Revelation Patterns 1, Reference Roles 20, adapter `lds_scripture_adapter`, and no render error
+
+Commit:
+- This commit
+
+Status:
+- Implemented

@@ -3,6 +3,34 @@
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
 
+
+## 2026-05-19 - Study Panel Navigation Render Error Fix
+
+Instruction summary:
+- Fix Study Panel render crash after Phase 8.2j: `(text || "").replace is not a function`.
+- Preserve semantic navigation focus jumps, semantic data, divine display compliance, JESUS / JESUS CHRIST distinction, and hierarchy formatting.
+
+Codex action summary:
+- Added object-safe `toDisplayText` normalization ahead of `normalizeText` so arrays, numbers, booleans, object labels, entity records, scope objects, and navigation payloads become strings before display helpers call `.replace`.
+- Kept Phase 8.2j navigation buttons and focus-jump behavior intact.
+- Did not change semantic records, extraction logic, stored source phrases, or QA counts.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Manual Study Panel reload smoke passed: no render error, adapter `lds_scripture_adapter`, Passage Functions 4, Revelation Patterns 1, Reference Roles 20.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-19 - Semantic Navigation / Focus Jump UI
 
 Instruction summary:
