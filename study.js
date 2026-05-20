@@ -216,6 +216,36 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? "Revealed NAME: JESUS. Canonical linkage: JESUS CHRIST. CHRIST is title/source identity, not Joseph's given-name action."
       : "Revealed NAME: JESUS.";
   }
+  function hasNarrativeJesusNameContext(values) {
+    const text = asArray(values)
+      .flat(Infinity)
+      .map((value) => normalizeText(value).toLowerCase())
+      .join(" ");
+    return /\b(name|naming|named|revealed_name|called|call his name|birth|born|brought forth|obedient_response_and_naming|divine_message_instruction|matthew 1:2[0145])\b/.test(text);
+  }
+
+  function primaryEntityDistinctionLines(items, contextValues = []) {
+    const values = Array.isArray(items) ? items : items instanceof Set ? Array.from(items) : [];
+    const ordered = passageFunctionOrderedEntities(values);
+    const rawNames = values.map((value) => normalizedEntityName(value));
+    const hasJesus = rawNames.includes("jesus");
+    const hasJesusChrist = rawNames.includes("jesus christ");
+    const narrativeNameContext = hasNarrativeJesusNameContext([contextValues, values]);
+    if (!narrativeNameContext || (!hasJesus && !hasJesusChrist)) {
+      return ordered.map((entry) => entry.display);
+    }
+
+    const lines = [];
+    lines.push("JESUS - Narrative NAME");
+    if (hasJesusChrist) lines.push("JESUS CHRIST - Canonical/source identity");
+
+    for (const entry of ordered) {
+      const normalized = normalizedEntityName(entry.display);
+      if (normalized === "jesus" || normalized === "jesus christ") continue;
+      lines.push(entry.display);
+    }
+    return lines;
+  }
 
   function relationshipDisplayTarget(edge = {}) {
     const from = normalizedEntityName(edge.fromEntity || "");
@@ -2825,7 +2855,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Meaning", entry.meaning || "No meaning summary recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
       eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
-      createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
+      createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(entry.entities, [entry.displayTitle, entry.category, entry.meaning, eventLabels]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems({ ...entry, relatedEntities: entry.entities }, "timeline"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
@@ -2833,7 +2863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Relationships", "", { collapsed: true, list: relationshipPreview ? relationshipPreview.split("\n") : [], plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entry.entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Flow Path", "", { collapsed: true, list: flowPreview ? flowPreview.split("\n") : [], plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("All Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("All Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(entry.entities, [entry.displayTitle, entry.category, entry.meaning, eventLabels]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchy, plainList: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
@@ -3468,14 +3498,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     [
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Primary Entities", "", { list: entities.slice(0, 4), plainList: true }),
+      createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "passage"), divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Related Prophecies", "", { collapsed: true, list: prophecies, plainList: true }),
@@ -3607,7 +3637,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.revelationType, item.verseRange, asArray(item.subEvents).map((part) => [part.clusterType, part.eventType, part.action, part.target, part.anchorText])]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext })
@@ -3775,7 +3805,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
-      createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Linked Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.linkedEntities, [item.referenceRole, item.verseRange, item.discoveredReference, item.sourceGrounding]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
       createPassageFunctionSection("NAME / Title Distinction", christIdentityDisplayNote(entities), { collapsed: true, divineContext }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext }),
@@ -3865,7 +3895,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Source Wording", item.sourceWording || "Not recorded.", { divineContext }),
       createPassageFunctionSection("Derived Wording", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.distinctionType, item.narrativeRole, item.canonicalRole, item.derivedWording]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
@@ -3979,7 +4009,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "originAuthority"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: [item.authorityClass, item.recipientClass].filter(Boolean), plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.pathType, item.verseRange, item.response, item.result, item.mission]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
