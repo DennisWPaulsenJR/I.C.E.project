@@ -196,6 +196,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderIceBeingDisplayText(text, options = {}) {
+    if (options.sourceQuote) {
+      return renderDivineDisplayText(text);
+    }
     const divineContext = Boolean(options.divineContext);
     const humanContext = Boolean(options.humanContext);
     const preferHolySpirit = Boolean(options.preferHolySpirit);
@@ -203,6 +206,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? renderDerivedSemanticDisplayText(text, divineContext)
       : renderIceDivineDisplayText(text, divineContext);
     return renderHumanExhaltedDisplayText(divineText, humanContext);
+  }
+
+  function renderStudyCardBodyText(text, options = {}) {
+    return toDisplayText(text).split(/\r?\n/).map((line) => {
+      const normalizedLine = normalizeText(line);
+      const sourceQuote = /\b(source phrase|snippet):/i.test(normalizedLine);
+      return renderIceBeingDisplayText(normalizedLine, { ...options, sourceQuote });
+    }).join("\n");
   }
   function isJesusChristDisplayName(value) {
     return normalizedEntityName(value) === "jesus christ";
@@ -415,7 +426,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     card.className = "study-card";
     heading.textContent = renderIceBeingDisplayText(title || "Untitled", { divineContext: hasDivineDisplayContext([title]), humanContext: hasHumanBeingDisplayContext([title]), preferHolySpirit: true });
-    content.textContent = renderIceBeingDisplayText(body || "No detail available.", { divineContext: hasDivineDisplayContext([title, body]), humanContext: hasHumanBeingDisplayContext([title, body]), preferHolySpirit: true });
+    content.textContent = renderStudyCardBodyText(body || "No detail available.", { divineContext: hasDivineDisplayContext([title, body]), humanContext: hasHumanBeingDisplayContext([title, body]), preferHolySpirit: true });
 
     card.append(heading, content);
 
@@ -3006,7 +3017,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function passageEvidenceDisplayLine(value, item = {}, divineContext = false) {
-    const text = renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) });
+    const text = renderIceBeingDisplayText(value, { sourceQuote: true });
     const label = passageEvidenceRoleLabel(value, item);
     return label ? `${label}: "${text}"` : `"${text}"`;
   }
@@ -3603,7 +3614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const quote = document.createElement("span");
 
       title.textContent = revelationPartTitle(part.clusterType || part.eventType);
-      quote.textContent = part.anchorText ? `"${renderIceBeingDisplayText(part.anchorText, { divineContext: hasDivineDisplayContext([part.actor, part.target, part.eventType, part.clusterType, part.anchorText]), humanContext: hasHumanBeingDisplayContext([part.actor, part.target, part.action, part.eventType, part.clusterType, part.anchorText]) })}"` : "No source phrase stored.";
+      quote.textContent = part.anchorText ? `"${renderIceBeingDisplayText(part.anchorText, { sourceQuote: true })}"` : "No source phrase stored.";
       item.append(title, quote);
       list.appendChild(item);
     }
@@ -3644,8 +3655,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.authoritySource, item.speaker, item.relatedEntities, item.revelationType, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
     const entities = revelationPatternRelatedEntities(item);
     const grounding = trimText(item.sourceGrounding || "", 190);
     const partList = createRevelationPartList(item.subEvents);
@@ -3817,8 +3828,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const functions = asArray(item.linkedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.discoveredReference, item.referenceRole, item.linkedEntities, item.linkedThemes, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) }));
-    const fullEvidence = evidence.map((value) => renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) }));
+    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceBeingDisplayText(value, { sourceQuote: true }));
+    const fullEvidence = evidence.map((value) => renderIceBeingDisplayText(value, { sourceQuote: true }));
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card reference-role-card";
@@ -4017,8 +4028,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.origin, item.messenger, item.result, item.mission, item.relatedEntities, item.evidence, item.sourceGrounding]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
     const entities = originAuthorityPathRelatedEntities(item);
     const functions = asArray(item.relatedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const grounding = trimText(item.sourceGrounding || "", 190);
