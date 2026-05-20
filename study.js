@@ -3601,6 +3601,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     return /\bName\b/.test(title) ? title.replace(/\bName\b/g, "NAME") : title;
   }
 
+  function revelationPartDerivedMeaning(part = {}) {
+    const type = normalizeText(part.clusterType || part.eventType).toLowerCase();
+    const text = normalizeText(part.anchorText || part.action || "").toLowerCase();
+
+    if (type === "marriage_instruction" || /take unto thee mary thy wife/.test(text)) {
+      return "Joseph is instructed to take Mary as wife";
+    }
+    if (type === "conception_revelation" || /conceived.*holy ghost|conceived.*holy spirit/.test(text)) {
+      return "conceived of HOLY SPIRIT";
+    }
+    if (type === "revealed_name_instruction" || /call.*name.*jesus/.test(text)) {
+      return "call HIS NAME JESUS";
+    }
+    if (type === "mission_declaration" || /save.*people.*sins/.test(text)) {
+      return "HE shall SAVE HIS People from their sins";
+    }
+
+    return part.action || part.anchorText || "Derived meaning not recorded.";
+  }
+
   function createRevelationPartList(subEvents, limit = 8) {
     const values = asArray(subEvents).slice(0, limit);
     if (values.length === 0) return null;
@@ -3611,11 +3631,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const part of values) {
       const item = document.createElement("li");
       const title = document.createElement("strong");
-      const quote = document.createElement("span");
+      const sourceLabel = document.createElement("span");
+      const sourcePhrase = document.createElement("span");
+      const derivedLabel = document.createElement("span");
+      const derivedMeaning = document.createElement("span");
+      const derivedContext = hasDivineDisplayContext([part.actor, part.target, part.eventType, part.clusterType, part.anchorText]);
 
       title.textContent = revelationPartTitle(part.clusterType || part.eventType);
-      quote.textContent = part.anchorText ? `"${renderIceBeingDisplayText(part.anchorText, { sourceQuote: true })}"` : "No source phrase stored.";
-      item.append(title, quote);
+      sourceLabel.textContent = "Source phrase:";
+      sourcePhrase.textContent = part.anchorText ? `"${renderIceBeingDisplayText(part.anchorText, { sourceQuote: true })}"` : "No source phrase stored.";
+      derivedLabel.textContent = "Derived meaning:";
+      derivedMeaning.textContent = renderIceBeingDisplayText(revelationPartDerivedMeaning(part), {
+        divineContext: derivedContext,
+        humanContext: hasHumanBeingDisplayContext([part.actor, part.target, part.action, part.eventType, part.clusterType, part.anchorText]),
+        preferHolySpirit: true
+      });
+
+      item.append(title, sourceLabel, sourcePhrase, derivedLabel, derivedMeaning);
       list.appendChild(item);
     }
 
