@@ -173,6 +173,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT");
   }
 
+  function hasHumanBeingDisplayContext(values) {
+    const text = asArray(values)
+      .flat(Infinity)
+      .map((value) => normalizeText(value).toLowerCase())
+      .join(" ");
+    return /\b(joseph|mary|scripture narrator|quoted prophet|prophet|human|class iii|wife|husband|obedient response|ponder|privily|just man)\b/.test(text);
+  }
+
+  function renderHumanExhaltedDisplayText(text, humanContext = false) {
+    if (!humanContext) return text;
+    return normalizeText(text)
+      .replace(/\bthee\b/g, "Thee")
+      .replace(/\bthou\b/g, "Thou")
+      .replace(/\bthy\b/g, "Thy")
+      .replace(/\bthine\b/g, "Thine")
+      .replace(/\bhe\b/g, "He")
+      .replace(/\bhim\b/g, "Him")
+      .replace(/\bhis\b/g, "His")
+      .replace(/\bher\b/g, "Her")
+      .replace(/\bshe\b/g, "She");
+  }
+
+  function renderIceBeingDisplayText(text, options = {}) {
+    const divineContext = Boolean(options.divineContext);
+    const humanContext = Boolean(options.humanContext);
+    const preferHolySpirit = Boolean(options.preferHolySpirit);
+    const divineText = preferHolySpirit
+      ? renderDerivedSemanticDisplayText(text, divineContext)
+      : renderIceDivineDisplayText(text, divineContext);
+    return renderHumanExhaltedDisplayText(divineText, humanContext);
+  }
   function isJesusChristDisplayName(value) {
     return normalizedEntityName(value) === "jesus christ";
   }
@@ -383,15 +414,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const content = document.createElement("p");
 
     card.className = "study-card";
-    heading.textContent = renderDivineDisplayText(title || "Untitled");
-    content.textContent = renderDivineDisplayText(body || "No detail available.");
+    heading.textContent = renderIceBeingDisplayText(title || "Untitled", { divineContext: hasDivineDisplayContext([title]), humanContext: hasHumanBeingDisplayContext([title]), preferHolySpirit: true });
+    content.textContent = renderIceBeingDisplayText(body || "No detail available.", { divineContext: hasDivineDisplayContext([title, body]), humanContext: hasHumanBeingDisplayContext([title, body]), preferHolySpirit: true });
 
     card.append(heading, content);
 
     if (meta) {
       const metaText = document.createElement("span");
       metaText.className = "meta";
-      metaText.textContent = renderDivineDisplayText(meta);
+      metaText.textContent = renderIceBeingDisplayText(meta, { divineContext: hasDivineDisplayContext([title, body, meta]), humanContext: hasHumanBeingDisplayContext([title, body, meta]), preferHolySpirit: true });
       card.appendChild(metaText);
     }
 
@@ -2975,7 +3006,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function passageEvidenceDisplayLine(value, item = {}, divineContext = false) {
-    const text = renderIceDivineDisplayText(value, divineContext);
+    const text = renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) });
     const label = passageEvidenceRoleLabel(value, item);
     return label ? `${label}: "${text}"` : `"${text}"`;
   }
@@ -3062,7 +3093,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "semantic-nav-button";
-        button.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(item.label, options.divineContext) : renderIceDivineDisplayText(item.label, options.divineContext);
+        button.textContent = renderIceBeingDisplayText(item.label, options);
         button.dataset.targetSection = item.targetSection || "";
         button.dataset.targetKey = item.targetKey || "";
         button.dataset.searchTerm = item.searchTerm || "";
@@ -3076,13 +3107,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       list.className = options.plainList ? "semantic-plain-list" : "semantic-list";
       for (const item of options.list) {
         const listItem = document.createElement("li");
-        listItem.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(item, options.divineContext) : renderIceDivineDisplayText(item, options.divineContext);
+        listItem.textContent = renderIceBeingDisplayText(item, options);
         list.appendChild(listItem);
       }
       fragment.appendChild(list);
     } else {
       const paragraph = document.createElement("p");
-      paragraph.textContent = options.preferHolySpirit ? renderDerivedSemanticDisplayText(content, options.divineContext) : renderIceDivineDisplayText(content, options.divineContext);
+      paragraph.textContent = renderIceBeingDisplayText(content, options);
       fragment.appendChild(paragraph);
     }
 
@@ -3098,6 +3129,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function createPassageFunctionSection(title, content, options = {}) {
     if (!content && !options.list?.length && !options.navItems?.length) return null;
+    const bodyOptions = { ...options };
+    if (bodyOptions.humanContext == null) {
+      bodyOptions.humanContext = hasHumanBeingDisplayContext([title, content, options.list, asArray(options.navItems).map((item) => item.label), options.summaryLabel]);
+    }
     const section = document.createElement("section");
     section.className = options.collapsed ? "semantic-section semantic-section-collapsible" : "semantic-section";
 
@@ -3106,7 +3141,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const summary = document.createElement("summary");
       summary.textContent = options.summaryLabel || `Show ${title.toLowerCase()}`;
       details.appendChild(summary);
-      details.appendChild(semanticSectionBody(content, options));
+      details.appendChild(semanticSectionBody(content, bodyOptions));
       section.appendChild(details);
       return section;
     }
@@ -3115,7 +3150,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     heading.textContent = title;
     heading.className = "semantic-section-title";
     section.appendChild(heading);
-    section.appendChild(semanticSectionBody(content, options));
+    section.appendChild(semanticSectionBody(content, bodyOptions));
     return section;
   }
 
@@ -3568,7 +3603,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const quote = document.createElement("span");
 
       title.textContent = revelationPartTitle(part.clusterType || part.eventType);
-      quote.textContent = part.anchorText ? `"${renderIceDivineDisplayText(part.anchorText, hasDivineDisplayContext([part.actor, part.target, part.eventType, part.clusterType, part.anchorText]))}"` : "No source phrase stored.";
+      quote.textContent = part.anchorText ? `"${renderIceBeingDisplayText(part.anchorText, { divineContext: hasDivineDisplayContext([part.actor, part.target, part.eventType, part.clusterType, part.anchorText]), humanContext: hasHumanBeingDisplayContext([part.actor, part.target, part.action, part.eventType, part.clusterType, part.anchorText]) })}"` : "No source phrase stored.";
       item.append(title, quote);
       list.appendChild(item);
     }
@@ -3609,8 +3644,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.authoritySource, item.speaker, item.relatedEntities, item.revelationType, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
     const entities = revelationPatternRelatedEntities(item);
     const grounding = trimText(item.sourceGrounding || "", 190);
     const partList = createRevelationPartList(item.subEvents);
@@ -3782,8 +3817,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const functions = asArray(item.linkedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.discoveredReference, item.referenceRole, item.linkedEntities, item.linkedThemes, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceDivineDisplayText(value, divineContext));
-    const fullEvidence = evidence.map((value) => renderIceDivineDisplayText(value, divineContext));
+    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) }));
+    const fullEvidence = evidence.map((value) => renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) }));
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card reference-role-card";
@@ -3982,8 +4017,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.origin, item.messenger, item.result, item.mission, item.relatedEntities, item.evidence, item.sourceGrounding]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { divineContext, humanContext: hasHumanBeingDisplayContext([item, value]) })}"`);
     const entities = originAuthorityPathRelatedEntities(item);
     const functions = asArray(item.relatedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const grounding = trimText(item.sourceGrounding || "", 190);
