@@ -2,6 +2,34 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-19 - Source and Derived Display Standardization
+
+Instruction summary:
+- Standardize Study Panel display so semantic interpretation separates preserved source wording from derived I.C.E. meaning.
+- Apply the Revelation Pattern source phrase / derived meaning display pattern across major semantic layers.
+- Preserve source quote casing, Human referents, JESUS / JESUS CHRIST / CHRIST distinction, and HOLY SPIRIT derived preference.
+
+Codex action summary:
+- Added reusable source phrase / derived meaning display helpers in `study.js`.
+- Applied source/derived blocks to Passage Function evidence, Revelation Pattern evidence, Reference Role evidence, Origin / Authority Path evidence, Semantic Event previews, Relationship Graph previews, Narrative Timeline event/relationship/flow snippets, and Semantic Flow Path nodes.
+- Standardized Semantic Distinctions section labels to `Source phrase` and `Derived meaning`.
+- Kept stored source phrases and semantic records unchanged.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `passageFunctions: 4`, `revelationPatterns: 1`, `referenceRoles: 20`, `semanticDistinctions: 8`, and `originAuthorityPaths: 1`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
 ## 2026-05-19 - Origin Authority Path Layer
 
 Instruction summary:

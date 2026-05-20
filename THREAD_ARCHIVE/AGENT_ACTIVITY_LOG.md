@@ -1795,3 +1795,25 @@ Commit:
 
 Status:
 - Implemented
+## 2026-05-19 17:20 - pcdx - Standardize source and derived displays
+Summary:
+- Added reusable source phrase / derived meaning display blocks in `study.js`.
+- Applied the pattern across Passage Functions, Reference Roles, Semantic Events, Relationship Graph, Narrative Timeline snippets, Semantic Flow Paths, Origin / Authority Paths, and Semantic Distinctions.
+- Preserved source quote casing and kept I.C.E. compliance in derived meaning lines.
+- Preserved Human referents, JESUS / JESUS CHRIST / CHRIST distinction, HOLY SPIRIT derived preference, and stored semantic data.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with stable semantic counts
+
+Commit:
+- This commit
+
+Status:
+- Implemented

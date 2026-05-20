@@ -1504,13 +1504,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderLimited(container, filtered, count, (edge) => {
       const note = relationshipDisplayNote(edge);
+      const derived = [
+        `${edge.fromEntity || "Entity"} -> ${relationshipDisplayTarget(edge)} | ${edge.relationshipType || "relationship"}`,
+        note
+      ].filter(Boolean).join("\n");
       return createCard(
         `${edge.fromEntity || "Entity"} -> ${relationshipDisplayTarget(edge)}`,
         [
           `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
-          note
+          sourceDerivedDisplayBlock(edge.evidencePhrase || "", derived, { context: edge })
         ].filter(Boolean).join("\n"),
-        edge.evidencePhrase ? `source phrase: ${trimText(edge.evidencePhrase, 90)}` : edge.derivedFrom || "derived relationship"
+        edge.derivedFrom || "derived relationship"
       );
     }, "No relationship graph edges match.", "relationship");
   }
@@ -2810,11 +2814,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function compactNarrativeEventPreview(entry) {
     const semanticPreview = entry.semanticEvents.slice(0, 3).map((item) => {
-      const target = item.target || item.recipient || item.concerning || "";
-      return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
+      const target = semanticEventDisplayTarget(item);
+      const derived = `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+      return sourceDerivedDisplayBlock(item.anchorText || item.sourceSnippet || "", derived, { context: item });
     });
-    if (semanticPreview.length) return semanticPreview.join("\n");
-    return entry.orderedEvents.slice(0, 2).map((item) => trimText(narrativeTextFromOrderedEvent(item), 120)).join("\n");
+    if (semanticPreview.length) return semanticPreview.join("\n\n");
+    return entry.orderedEvents.slice(0, 2).map((item) => sourceDerivedDisplayBlock(narrativeTextFromOrderedEvent(item), trimText(narrativeTextFromOrderedEvent(item), 120), { context: item })).join("\n\n");
   }
 
   function compactNarrativeClusterPreview(entry) {
@@ -2825,8 +2830,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const parts = asArray(cluster.subEvents)
           .slice(0, 4)
           .map((part) => {
-            const target = part.target || "";
-            return `- ${part.clusterType || part.eventType || "sub_event"}: ${part.actor || "Unknown"} -> ${part.action || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, part.eventType, part.action]))}` : ""}`;
+            const target = semanticEventDisplayTarget(part);
+            const derived = `${part.clusterType || part.eventType || "sub_event"}: ${part.actor || "Unknown"} -> ${part.action || "event"}${target ? ` -> ${target}` : ""}`;
+            return sourceDerivedDisplayBlock(part.anchorText || "", derived, { context: part });
           })
           .join("\n");
         return `${renderDerivedSemanticDisplayText(cluster.normalizedMeaning || "Grouped revelation", true)}\n${parts}`;
@@ -2844,18 +2850,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function compactNarrativeRelationshipPreview(entry) {
-    return displayedNarrativeRelationships(entry).map((edge) =>
-      `${edge.fromEntity || "Unknown"} -> ${edge.toEntity ? renderDerivedSemanticDisplayText(edge.toEntity, hasDivineDisplayContext([edge.toEntity, edge.relationshipType])) : "Unknown"} | ${edge.relationshipType || "relationship"}`
-    ).join("\n");
+    return displayedNarrativeRelationships(entry).map((edge) => {
+      const derived = `${edge.fromEntity || "Unknown"} -> ${relationshipDisplayTarget(edge)} | ${edge.relationshipType || "relationship"}`;
+      return sourceDerivedDisplayBlock(edge.evidencePhrase || "", derived, { context: edge });
+    }).join("\n\n");
   }
 
   function compactNarrativeFlowPreview(entry) {
     return displayedNarrativeFlowItems(entry).map((item) => {
       if (item.displayKind === "link") {
-        return `${item.relationType || "flow_link"} (${displayConfidence(item.confidence || "probable")})`;
+        return sourceDerivedDisplayBlock(item.evidenceSnippet || "", `${item.relationType || "flow_link"} (${displayConfidence(item.confidence || "probable")})`, { context: item });
       }
-      return `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${renderDerivedSemanticDisplayText(item.target, hasDivineDisplayContext([item.target, item.eventType, item.action]))}` : ""}`;
-    }).join("\n");
+      const target = semanticEventDisplayTarget(item);
+      const derived = `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+      return sourceDerivedDisplayBlock(item.anchorText || item.sourceSnippet || "", derived, { context: item });
+    }).join("\n\n");
   }
 
   function createNarrativeTimelineCard(entry) {
@@ -2871,10 +2880,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const hierarchy = hierarchyEntityLines(entry.entities);
     const eventLabels = entry.semanticEvents.length
       ? entry.semanticEvents.map((item) => {
-        const target = item.target || item.recipient || item.concerning || "";
-        return `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${renderDerivedSemanticDisplayText(target, hasDivineDisplayContext([target, item.eventType, item.action]))}` : ""}`;
+        const target = semanticEventDisplayTarget(item);
+        const derived = `${item.actor || item.narrator || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
+        return sourceDerivedDisplayBlock(item.anchorText || item.sourceSnippet || "", derived, { context: item });
       })
-      : entry.orderedEvents.map((item) => trimText(narrativeTextFromOrderedEvent(item), 120));
+      : entry.orderedEvents.map((item) => sourceDerivedDisplayBlock(narrativeTextFromOrderedEvent(item), trimText(narrativeTextFromOrderedEvent(item), 120), { context: item }));
     const divineContext = hasDivineDisplayContext([
       entry.displayTitle,
       entry.category,
@@ -3016,10 +3026,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "";
   }
 
+  function derivedMeaningFromSourcePhrase(value, item = {}) {
+    const text = normalizeText(value);
+    const normalized = text.toLowerCase();
+    const context = normalizeText([
+      item.passageFunction,
+      item.referenceRole,
+      item.eventType,
+      item.relationshipType,
+      item.semanticCategory,
+      item.pathType,
+      item.distinctionType,
+      item.sourceGrounding
+    ].join(" ")).toLowerCase();
+
+    if (!normalized) return "Derived meaning not recorded.";
+    if (/call(?:ed)?\s+(?:his|His|HIS)\s+name\s+jesus/i.test(text) || /name_revelation|revealed_name|naming/.test(context)) return "called HIS NAME JESUS";
+    if (/save\s+(?:his|His|HIS)\s+people\s+from\s+their\s+sins/i.test(text) || /mission_reason|mission_declaration/.test(context)) return "HE shall SAVE HIS People from their sins";
+    if (/conceived.*holy ghost|conceived.*holy spirit/i.test(text) || /conception_revelation/.test(context)) return "conceived of HOLY SPIRIT";
+    if (/take unto thee mary thy wife/i.test(text) || /marriage_instruction|instruction_concerning_person/.test(context)) return "Joseph is instructed to take Mary as wife";
+    if (/book of the generation of jesus christ/i.test(text)) return "Canonical/source identity phrase: JESUS CHRIST";
+    if (/son of david/i.test(text)) return "Davidic lineage support";
+    if (/son of abraham/i.test(text)) return "Abrahamic covenant lineage support";
+    if (/fulfilled|spoken of the lord|prophet/i.test(text)) return "prophecy fulfillment support";
+    if (item.normalizedMeaning) return item.normalizedMeaning;
+    if (item.derivedFrom) return item.derivedFrom;
+    return renderDerivedSemanticDisplayText(text, hasDivineDisplayContext([text, item]));
+  }
+
+  function sourceDerivedDisplayBlock(sourcePhrase, derivedMeaning, options = {}) {
+    const source = normalizeText(sourcePhrase);
+    const derived = normalizeText(derivedMeaning);
+    const lines = [];
+    if (source) {
+      lines.push("Source phrase:");
+      lines.push(`"${renderIceBeingDisplayText(source, { sourceQuote: true })}"`);
+    }
+    if (derived) {
+      lines.push("Derived meaning:");
+      lines.push(renderIceBeingDisplayText(derived, {
+        divineContext: options.divineContext ?? hasDivineDisplayContext([derived, options.context]),
+        humanContext: options.humanContext ?? hasHumanBeingDisplayContext([derived, options.context]),
+        preferHolySpirit: true
+      }));
+    }
+    return lines.join("\n");
+  }
+
   function passageEvidenceDisplayLine(value, item = {}, divineContext = false) {
-    const text = renderIceBeingDisplayText(value, { sourceQuote: true });
     const label = passageEvidenceRoleLabel(value, item);
-    return label ? `${label}: "${text}"` : `"${text}"`;
+    const block = sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item });
+    return label ? `${label}\n${block}` : block;
   }
 
   function passageFunctionEntityRecord(name) {
@@ -3687,8 +3744,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.authoritySource, item.speaker, item.relatedEntities, item.revelationType, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
     const entities = revelationPatternRelatedEntities(item);
     const grounding = trimText(item.sourceGrounding || "", 190);
     const partList = createRevelationPartList(item.subEvents);
@@ -3860,8 +3917,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const functions = asArray(item.linkedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.discoveredReference, item.referenceRole, item.linkedEntities, item.linkedThemes, item.evidence]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => renderIceBeingDisplayText(value, { sourceQuote: true }));
-    const fullEvidence = evidence.map((value) => renderIceBeingDisplayText(value, { sourceQuote: true }));
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
     const grounding = trimText(item.sourceGrounding || "", 190);
 
     card.className = "study-card semantic-card reference-role-card";
@@ -3970,8 +4027,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Distinction Type", passageFunctionTitle(item.distinctionType || "semantic_distinction"), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Narrative Role", item.narrativeRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Source Wording", item.sourceWording || "Not recorded.", { divineContext }),
-      createPassageFunctionSection("Derived Wording", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived meaning", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.distinctionType, item.narrativeRole, item.canonicalRole, item.derivedWording]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
@@ -4060,8 +4117,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.origin, item.messenger, item.result, item.mission, item.relatedEntities, item.evidence, item.sourceGrounding]);
-    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
-    const fullEvidence = evidence.map((value) => `"${renderIceBeingDisplayText(value, { sourceQuote: true })}"`);
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
     const entities = originAuthorityPathRelatedEntities(item);
     const functions = asArray(item.relatedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
     const grounding = trimText(item.sourceGrounding || "", 190);
@@ -4660,7 +4717,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nodeLabels = nodes.map((node) => {
       const target = semanticEventDisplayTarget(node);
       const note = semanticEventDisplayNote(node);
-      return `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${target ? ` -> ${target}` : ""}${note ? ` | ${note}` : ""}`;
+      const derived = `${node.actor || "Unknown"} -> ${node.action || node.eventType || "event"}${target ? ` -> ${target}` : ""}${note ? ` | ${note}` : ""}`;
+      return sourceDerivedDisplayBlock(node.anchorText || node.sourceSnippet || "", derived, { context: node });
     });
 
     card.className = "study-card semantic-card semantic-flow-path-card";
@@ -4702,13 +4760,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const arrow = target ? ` -> ${target}` : "";
       const title = `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${arrow}`;
       const anchor = item.anchorText || item.sourceSnippet || "";
+      const derivedMeaning = item.normalizedMeaning || `${item.actor || item.narrator || "Unknown"} -> ${item.action || "acts"}${arrow}`;
       const body = [
-        item.normalizedMeaning ? trimText(renderDerivedSemanticDisplayText(item.normalizedMeaning, hasDivineDisplayContext([item.normalizedMeaning, item.target, item.eventType])), 130) : trimText(item.sourceSnippet, 130),
-        anchor ? `Source phrase: ${trimText(anchor, 90)}${item.verseNumber ? ` (v${item.verseNumber})` : ""}` : "",
+        sourceDerivedDisplayBlock(anchor || item.sourceSnippet || "", derivedMeaning, { context: item }),
         item.narratorRole ? `Narrator: ${item.narratorRole}` : "",
         item.relationshipType ? `Relationship: ${item.relationshipType}` : "",
         distinction ? `NAME / Title Distinction: ${distinction}` : "",
-        item.sourceSnippet && item.sourceSnippet !== anchor ? `Snippet: ${trimText(item.sourceSnippet, 120)}` : ""
+        item.sourceSnippet && item.sourceSnippet !== anchor ? sourceDerivedDisplayBlock(item.sourceSnippet, derivedMeaning, { context: item }) : ""
       ].filter(Boolean).join("\n");
       const meta = [item.eventType, item.semanticCategory, displayConfidence(item.confidence)]
         .filter(Boolean)
