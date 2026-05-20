@@ -2,6 +2,42 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-19 - Origin Authority Path Layer
+
+Instruction summary:
+- Add Phase 8.2m Semantic Origin / Authority Path Layer.
+- Formalize the distinction between grammar, capitalization, semantic authority, origin, messenger path, Human response, and divine causality.
+- Keep Matthew 1 pilot conservative, source-grounded, and derived from existing semantic layers.
+
+Codex action summary:
+- Added `ICE_ORIGIN_AUTHORITY_PATHS` as a derived semantic layer generated from existing revelation patterns, semantic events, passage functions, semantic flow paths, relationship graph, and canonical identities.
+- Added a Matthew 1 pilot path: THE LORD -> AngEL Of THE LORD -> Joseph -> obedient response -> JESUS is named, with mission `HE shall SAVE HIS People from their sins`.
+- Added Study Panel `Origin / Authority Paths` cards showing origin, messenger/means, recipient, response, result, mission/fulfillment, hierarchy, evidence, confidence, source grounding, and related semantic navigation.
+- Added Matthew 1 QA coverage for the new storage key and grounded pilot path.
+- Preserved source text, extraction logic, hierarchy formatting, divine display compliance, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinctions.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `originAuthorityPaths: 1`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by PCDX.
+
 ## 2026-05-19 - Naming and Reference Display Normalization
 
 Instruction summary:

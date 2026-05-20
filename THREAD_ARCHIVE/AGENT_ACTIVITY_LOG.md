@@ -1766,3 +1766,32 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-19 16:35 - pcdx - Add origin authority paths
+Summary:
+- Added `ICE_ORIGIN_AUTHORITY_PATHS` as a derived semantic origin/authority path layer.
+- Added Matthew 1 pilot path: THE LORD -> AngEL Of THE LORD -> Joseph -> obedient response -> JESUS is named.
+- Displayed Origin / Authority Paths in the Study Panel with origin, messenger/means, recipient, response, result, mission, hierarchy, evidence, confidence, source grounding, and related semantic navigation.
+- Preserved Class III - Human for Joseph and preserved divine display compliance, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinction.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `originAuthorityPaths: 1`
+
+Commit:
+- This commit
+
+Status:
+- Implemented

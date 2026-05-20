@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     revelationPatterns: "ICE_REVELATION_PATTERNS",
     referenceRoles: "ICE_REFERENCE_ROLES",
     semanticDistinctions: "ICE_SEMANTIC_DISTINCTIONS",
+    originAuthorityPaths: "ICE_ORIGIN_AUTHORITY_PATHS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -3166,6 +3167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       revelation: "revelationPatternsSection",
       reference: "referenceRolesSection",
       distinction: "semanticDistinctionsSection",
+      originAuthority: "originAuthorityPathsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -3229,6 +3231,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.target,
       item.narrator,
       item.concerning,
+      item.origin,
+      item.messenger,
+      item.response,
+      item.result,
+      item.mission,
       asArray(item.subEvents).map((subEvent) => [subEvent.actor, subEvent.target]),
       asArray(item.nodes).map((node) => [node.actor, node.target]),
       asArray(item.authorityChain)
@@ -3236,7 +3243,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function semanticRecognizedEntityNames(item = {}) {
-    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "jesus", "jesus christ", "david", "abraham", "scripture narrator", "prophet"]);
+    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "holy spirit", "jesus", "jesus christ", "david", "abraham", "scripture narrator", "prophet"]);
     return semanticRecordEntityNames(item).filter((name) => allowed.has(name) || Boolean(passageFunctionEntityRecord(name)));
   }
 
@@ -3261,7 +3268,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const value = normalizeText(text || "");
     if (!value) return;
 
-    for (const match of value.matchAll(/\b\d+:(\d+)(?:\s*[-–]\s*(\d+))?/g)) {
+    for (const match of value.matchAll(/\b\d+:(\d+)(?:\s*(?:-|\u2013)\s*(\d+))?/g)) {
       semanticAddVerseRange(tokens, match[1], match[2] || match[1]);
     }
     for (const match of value.matchAll(/\.verse\.(\d+)(?:[-.]?(\d+))?/gi)) {
@@ -3371,6 +3378,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           semanticSectionForNav("reference"),
           role.discoveredReference || role.referenceRole || "",
           semanticCardKey("reference", role, role.referenceRole)
+        )));
+    }
+
+    if (mode !== "originAuthority") {
+      asArray(studyData.originAuthorityPaths)
+        .filter((path) => asArray(path.relatedPassageFunctions).some((value) => relatedFunctionKeys.has(normalizeText(value)) || normalizeText(value) === itemFunction) || semanticVerseOverlap(path, item) || semanticEntityOverlap(path, item))
+        .forEach((path) => links.push(semanticNavItem(
+          `Origin / Authority Path: ${passageFunctionTitle(path.pathType || "origin_authority_path")} | ${path.verseRange || path.scopePath || "current scope"}`,
+          semanticSectionForNav("originAuthority"),
+          path.verseRange || path.pathType || "",
+          semanticCardKey("originAuthority", path, path.pathType)
         )));
     }
 
@@ -3540,7 +3558,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function revelationPatternRelatedEntities(item = {}) {
-    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "jesus", "jesus christ"]);
+    const allowed = new Set(["the lord", "angel of the lord", "joseph", "mary", "holy ghost", "holy spirit", "jesus", "jesus christ"]);
     const entities = asArray(item.relatedEntities).filter((name) => {
       const normalized = normalizedEntityName(name);
       return allowed.has(normalized) || Boolean(passageFunctionEntityRecord(name));
@@ -3890,6 +3908,120 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createSemanticDistinctionCard(item));
+    });
+  }
+  function originAuthorityPathSearchText(item = {}) {
+    return [
+      item.pathType,
+      item.verseRange,
+      item.scopePath,
+      item.origin,
+      item.messenger,
+      item.means,
+      item.recipient,
+      item.response,
+      item.result,
+      item.mission,
+      item.authorityClass,
+      item.recipientClass,
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.relatedSemanticEvents).join(" "),
+      asArray(item.relatedRevelationPatterns).join(" "),
+      asArray(item.relatedPassageFunctions).join(" "),
+      asArray(item.evidence).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function originAuthorityPathRelatedEntities(item = {}) {
+    return passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+  }
+
+  function originAuthorityPathLabel(value) {
+    const normalized = normalizeText(value || "origin_authority_path").toLowerCase();
+    if (normalized === "divine_message_to_obedient_response") return "Divine origin -> messenger -> obedient Human response";
+    return passageFunctionTitle(value || "origin_authority_path");
+  }
+
+  function createOriginAuthorityPathCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.origin, item.messenger, item.result, item.mission, item.relatedEntities, item.evidence, item.sourceGrounding]);
+    const shownEvidence = evidence.slice(0, 3).map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const fullEvidence = evidence.map((value) => `"${renderIceDivineDisplayText(value, divineContext)}"`);
+    const entities = originAuthorityPathRelatedEntities(item);
+    const functions = asArray(item.relatedPassageFunctions).map((value) => passageFunctionTitle(value)).filter(Boolean);
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card origin-authority-path-card";
+    assignSemanticCardTarget(card, "originAuthority", item, item.pathType);
+    header.className = "semantic-card-header";
+    heading.textContent = "Origin / Authority Path";
+    range.className = "semantic-card-range";
+    range.textContent = [originAuthorityPathLabel(item.pathType), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Origin", item.origin || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Messenger / Means", [item.messenger, item.means].filter(Boolean).join(" / ") || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Recipient", item.recipient || "Not recorded."),
+      createPassageFunctionSection("Response", item.response || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Result", item.result || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Mission / Fulfillment", item.mission || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "originAuthority"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: [item.authorityClass, item.recipientClass].filter(Boolean), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: entities, plainList: true }),
+      createPassageFunctionSection("Related Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderOriginAuthorityPaths(term) {
+    const container = document.getElementById("originAuthorityPathCards");
+    const count = document.getElementById("originAuthorityPathCount");
+    const paths = asArray(studyData.originAuthorityPaths);
+    const filtered = paths.filter((item) => matchesSearchQuery(originAuthorityPathSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} path(s)`;
+
+    if (paths.length === 0) {
+      appendEmpty(container, "No origin / authority paths derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No origin / authority paths match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Origin / Authority Paths",
+      [
+        `Derived records: ${paths.length}`,
+        `Layer: ICE_ORIGIN_AUTHORITY_PATHS`,
+        "Purpose: distinguish grammar, capitalization, origin, messenger path, Human response, and divine causality without flattening them into one action.",
+        "Review posture: inspect origin, messenger/means, recipient, response, result, mission, evidence, confidence, and source grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createOriginAuthorityPathCard(item));
     });
   }
   function sourceDiscoverySearchText(item) {
@@ -4534,6 +4666,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
       renderSemanticDistinctions(term);
+      renderOriginAuthorityPaths(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
       renderVerseScopeFocus(term);
@@ -4603,6 +4736,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       revelationPatterns: countItems(studyData.revelationPatterns),
       referenceRoles: countItems(studyData.referenceRoles),
       semanticDistinctions: countItems(studyData.semanticDistinctions),
+      originAuthorityPaths: countItems(studyData.originAuthorityPaths),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -4634,12 +4768,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const revelationPatternCount = countItems(studyData.revelationPatterns);
     const referenceRoleCount = countItems(studyData.referenceRoles);
     const semanticDistinctionCount = countItems(studyData.semanticDistinctions);
+    const originAuthorityPathCount = countItems(studyData.originAuthorityPaths);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + originAuthorityPathCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -4664,6 +4799,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticRevelationPatterns").textContent = revelationPatternCount;
     document.getElementById("diagnosticReferenceRoles").textContent = referenceRoleCount;
     document.getElementById("diagnosticSemanticDistinctions").textContent = semanticDistinctionCount;
+    document.getElementById("diagnosticOriginAuthorityPaths").textContent = originAuthorityPathCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

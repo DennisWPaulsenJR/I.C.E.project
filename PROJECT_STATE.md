@@ -100,6 +100,16 @@ Current semantic distinction layer:
 - Goal: prevent distinct concepts such as name, title, role, office, narrator, authority, messenger, source phrase, derived meaning, canonical identity, revealed identity, narrative-time identity, and retrospective identity from collapsing into one generic meaning bucket.
 - Matthew 1 pilot distinctions: JESUS as revealed/given NAME, CHRIST as title/messianic office/source identity, JESUS CHRIST as canonical/source identity phrase, HOLY SPIRIT as preferred derived semantic display, Holy Ghost as preserved source phrase wording, scripture narrator as Class III - Human, THE LORD as Class I - GOD / Divine Authority, and AngEL Of THE LORD as Class II - AngEL / Messenger of GOD.
 - Keep this as a derived semantic layer; preserve source text, confidence, hierarchy formatting, divine display compliance, and narrative-time versus canonical distinctions.
+
+Current semantic origin / authority path layer:
+- Phase 8.2m Semantic Origin / Authority Path Layer
+- Active key: `ICE_ORIGIN_AUTHORITY_PATHS`
+- Status: Matthew 1 pilot implemented from existing revelation patterns, semantic events, passage functions, semantic flow paths, relationship graph, canonical identities, and source grounding.
+- Goal: distinguish grammar, capitalization, semantic authority, origin, messenger path, Human response, result, and divine causality without flattening them into one generic action.
+- Matthew 1 pilot path: THE LORD -> AngEL Of THE LORD -> Joseph -> obedient response -> JESUS is named; mission: HE shall SAVE HIS People from their sins.
+- Joseph, Mary, narrator, and prophet remain Class III - Human where applicable; originating authority remains Divine through THE LORD and AngEL Of THE LORD.
+- Keep this as a derived semantic layer; preserve source text, evidence, confidence, hierarchy formatting, divine display compliance, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinctions.
+
 ## Current Architecture
 
 Architecture direction:
@@ -128,6 +138,10 @@ Core keys:
 - `ICE_SOURCE_DISCOVERY_INDEX`
 - `ICE_REFERENCE_GRAPH`
 - `ICE_PASSAGE_FUNCTIONS`
+- `ICE_REVELATION_PATTERNS`
+- `ICE_REFERENCE_ROLES`
+- `ICE_SEMANTIC_DISTINCTIONS`
+- `ICE_ORIGIN_AUTHORITY_PATHS`
 - `ICE_QA_LATEST_EXPORT`
 
 Other active local/derived keys:

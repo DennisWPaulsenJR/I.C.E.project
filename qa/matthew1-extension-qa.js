@@ -34,7 +34,8 @@ const STORAGE_KEYS = [
   "ICE_PASSAGE_FUNCTIONS",
   "ICE_REVELATION_PATTERNS",
   "ICE_REFERENCE_ROLES",
-  "ICE_SEMANTIC_DISTINCTIONS"
+  "ICE_SEMANTIC_DISTINCTIONS",
+  "ICE_ORIGIN_AUTHORITY_PATHS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -87,7 +88,8 @@ function emptyCounts() {
     passageFunctions: 0,
     revelationPatterns: 0,
     referenceRoles: 0,
-    semanticDistinctions: 0
+    semanticDistinctions: 0,
+    originAuthorityPaths: 0
   };
 }
 
@@ -106,7 +108,8 @@ function buildCounts(storageData) {
     passageFunctions: count(storageData.ICE_PASSAGE_FUNCTIONS),
     revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS),
     referenceRoles: count(storageData.ICE_REFERENCE_ROLES),
-    semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS)
+    semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS),
+    originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS)
   };
 }
 
@@ -127,6 +130,7 @@ function buildSamples(storageData) {
     revelationPatterns: sample(storageData.ICE_REVELATION_PATTERNS, 20),
     referenceRoles: sample(storageData.ICE_REFERENCE_ROLES, 20),
     semanticDistinctions: sample(storageData.ICE_SEMANTIC_DISTINCTIONS, 20),
+    originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -259,6 +263,9 @@ function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
 
+function hasOriginAuthorityPath(data, predicate = () => true) {
+  return (data.ICE_ORIGIN_AUTHORITY_PATHS || []).some((item) => predicate(item));
+}
 function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
@@ -307,6 +314,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_REVELATION_PATTERNS) <= 0) failures.push("Expected revelation pattern records count > 0.");
   if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected reference role records count > 0.");
   if (count(data.ICE_SEMANTIC_DISTINCTIONS) <= 0) failures.push("Expected semantic distinction records count > 0.");
+  if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected origin / authority path records count > 0.");
   for (const [semanticItem, distinctionType] of [
     ["JESUS", "revealed_given_name"],
     ["CHRIST", "title_messianic_office"],
@@ -332,6 +340,7 @@ function evaluateFailures(data) {
       failures.push(`Expected grounded reference role ${referenceRole}.`);
     }
   }
+  if (!hasOriginAuthorityPath(data, (item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph" && /Joseph obeys/i.test(item.response || "") && /JESUS is named/i.test(item.result || "") && /HE shall SAVE HIS People from their sins/i.test(item.mission || "") && /Class III - Human/i.test(item.recipientClass || "") && item.confidence === "explicit" && Array.isArray(item.evidence) && item.evidence.length > 0 && item.sourceGrounding)) failures.push("Expected grounded origin / authority path THE LORD -> AngEL Of THE LORD -> Joseph -> obedient response -> JESUS is named.");
   if (!hasRevelationPattern(data, (item) => item.speaker === "AngEL Of THE LORD" && item.authoritySource === "THE LORD" && item.recipient === "Joseph" && item.revelationType === "divine_message_revelation_pattern" && Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "marriage_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "conception_revelation") && item.subEvents.some((subEvent) => subEvent.clusterType === "revealed_name_instruction") && item.subEvents.some((subEvent) => subEvent.clusterType === "mission_declaration") && Array.isArray(item.evidence) && item.evidence.some((phrase) => /call his name JESUS/i.test(phrase)) && item.confidence === "explicit")) failures.push("Expected grounded revelation pattern for AngEL Of THE LORD speech to Joseph with four ordered sub-events.");
   for (const passageFunction of [
     "genealogy_establishes_identity",

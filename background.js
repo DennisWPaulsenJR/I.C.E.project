@@ -28,6 +28,7 @@ const SOURCE_DISCOVERY_INDEX_KEY = "ICE_SOURCE_DISCOVERY_INDEX";
 const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
 const REFERENCE_ROLES_KEY = "ICE_REFERENCE_ROLES";
 const SEMANTIC_DISTINCTIONS_KEY = "ICE_SEMANTIC_DISTINCTIONS";
+const ORIGIN_AUTHORITY_PATHS_KEY = "ICE_ORIGIN_AUTHORITY_PATHS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -471,7 +472,7 @@ function enrichScopeItem(item, type, index, activeAdapter) {
   item.sourceCaptureId = sourceCaptureId;
   item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
   item.timelinePosition = timelinePosition;
-  item.scopePath = (type === "reference_role" || type === "semantic_distinction") && item.scopePath
+  item.scopePath = (type === "reference_role" || type === "semantic_distinction" || type === "origin_authority_path") && item.scopePath
     ? item.scopePath
     : scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
   return item;
@@ -513,6 +514,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.revelationPatterns, "revelation_pattern", activeAdapter);
   enrichScopeCollection(data.referenceRoles, "reference_role", activeAdapter);
   enrichScopeCollection(data.semanticDistinctions, "semantic_distinction", activeAdapter);
+  enrichScopeCollection(data.originAuthorityPaths, "origin_authority_path", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -528,7 +530,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.passageFunctions || []).map((item) => ({ ...item, scopeLayer: "passage_function" })),
     ...(data.revelationPatterns || []).map((item) => ({ ...item, scopeLayer: "revelation_pattern" })),
     ...(data.referenceRoles || []).map((item) => ({ ...item, scopeLayer: "reference_role" })),
-    ...(data.semanticDistinctions || []).map((item) => ({ ...item, scopeLayer: "semantic_distinction" }))
+    ...(data.semanticDistinctions || []).map((item) => ({ ...item, scopeLayer: "semantic_distinction" })),
+    ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -1085,6 +1088,105 @@ function createSemanticDistinctions(captures = [], canonicalIdentities = [], sem
   });
 
   return records;
+}
+function originAuthorityPathRecord(record = {}) {
+  const key = [
+    "origin-authority-path",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.origin || "",
+    record.messenger || "",
+    record.recipient || "",
+    record.result || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Matthew 1",
+    pathType: record.pathType || "origin_authority_path",
+    origin: record.origin || "",
+    messenger: record.messenger || "",
+    means: record.means || "",
+    recipient: record.recipient || "",
+    response: record.response || "",
+    result: record.result || "",
+    mission: record.mission || "",
+    authorityClass: record.authorityClass || "",
+    recipientClass: record.recipientClass || "",
+    relatedEntities: record.relatedEntities || [],
+    relatedSemanticEvents: record.relatedSemanticEvents || [],
+    relatedRevelationPatterns: record.relatedRevelationPatterns || [],
+    relatedPassageFunctions: record.relatedPassageFunctions || [],
+    evidence: record.evidence || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from existing source-grounded semantic authority, messenger, response, and result records"
+  };
+}
+
+function createOriginAuthorityPaths(semanticEvents = [], revelationPatterns = [], passageFunctions = [], semanticFlowChains = [], relationshipGraph = [], canonicalIdentities = []) {
+  const divinePattern = (revelationPatterns || []).find((item) =>
+    item.authoritySource === "THE LORD" &&
+    item.speaker === "AngEL Of THE LORD" &&
+    item.recipient === "Joseph" &&
+    Array.isArray(item.subEvents) &&
+    item.subEvents.some((subEvent) => subEvent.clusterType === "revealed_name_instruction") &&
+    item.subEvents.some((subEvent) => subEvent.clusterType === "mission_declaration")
+  );
+  if (!divinePattern) return [];
+
+  const namingEvent = (semanticEvents || []).find((item) =>
+    (item.eventType === "naming_event" || item.eventType === "name_revelation") && /JESUS/i.test(`${item.target || ""} ${item.anchorText || ""} ${item.sourceSnippet || ""}`)
+  );
+  const responseEvent = (semanticEvents || []).find((item) =>
+    item.eventType === "covenant_family_union" || /did as the angel|took unto him his wife/i.test(`${item.anchorText || ""} ${item.sourceSnippet || ""} ${item.normalizedMeaning || ""}`)
+  );
+  const missionEvent = (semanticEvents || []).find((item) =>
+    item.eventType === "mission_reason_declaration" || /save.*people.*sins/i.test(`${item.anchorText || ""} ${item.sourceSnippet || ""} ${item.normalizedMeaning || ""}`)
+  );
+  const relevantFunctions = (passageFunctions || [])
+    .filter((item) => ["divine_message_instruction", "obedient_response_and_naming"].includes(item.passageFunction))
+    .map((item) => item.passageFunction || item.id)
+    .filter(Boolean);
+  const relatedEvents = [
+    divinePattern.semanticEventId,
+    ...(divinePattern.subEvents || []).map((item) => item.semanticEventId || item.id || item.eventType || item.clusterType),
+    responseEvent?.semanticEventId,
+    namingEvent?.semanticEventId,
+    missionEvent?.semanticEventId
+  ].filter(Boolean);
+  const evidence = Array.from(new Set([
+    ...(divinePattern.evidence || []),
+    responseEvent?.anchorText || responseEvent?.sourceSnippet || "",
+    namingEvent?.anchorText || namingEvent?.sourceSnippet || "",
+    missionEvent?.anchorText || missionEvent?.sourceSnippet || ""
+  ].filter(Boolean)));
+
+  return [originAuthorityPathRecord({
+    sourceCaptureId: divinePattern.sourceCaptureId || "",
+    sourceContext: divinePattern.sourceContext || {},
+    scopePath: divinePattern.scopePath || "scripture.nt.matthew.1.verse.20",
+    verseRange: "Matthew 1:20-25",
+    pathType: "divine_message_to_obedient_response",
+    origin: "THE LORD",
+    messenger: "AngEL Of THE LORD",
+    means: "dream / divine message",
+    recipient: "Joseph",
+    response: "Joseph obeys",
+    result: "JESUS is named",
+    mission: "HE shall SAVE HIS People from their sins",
+    authorityClass: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD",
+    recipientClass: "Joseph: Class III - Human",
+    relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS", "JESUS CHRIST"],
+    relatedSemanticEvents: Array.from(new Set(relatedEvents)),
+    relatedRevelationPatterns: [divinePattern.id].filter(Boolean),
+    relatedPassageFunctions: relevantFunctions,
+    evidence,
+    confidence: "explicit",
+    sourceGrounding: "derived from existing divine message revelation pattern, Joseph obedience/naming semantic events, passage functions, relationship graph, and source-grounded mission declaration"
+  })];
 }
 function createRevelationPatterns(semanticEvents = [], passageFunctions = []) {
   const patterns = [];
@@ -4530,6 +4632,14 @@ async function runFullAnalysisPipeline(reason = "manual") {
       revelationPatterns,
       passageFunctions
     );
+    const originAuthorityPaths = createOriginAuthorityPaths(
+      semanticEvents,
+      revelationPatterns,
+      passageFunctions,
+      semanticFlowChains,
+      relationshipGraph,
+      canonicalIdentities
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -4542,7 +4652,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       passageFunctions,
       revelationPatterns,
       referenceRoles,
-      semanticDistinctions
+      semanticDistinctions,
+      originAuthorityPaths
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -4556,7 +4667,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       passageFunctions,
       revelationPatterns,
       referenceRoles,
-      semanticDistinctions
+      semanticDistinctions,
+      originAuthorityPaths
     }, activeAdapter);
     const status = {
       reason,
@@ -4584,6 +4696,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       revelationPatternCount: revelationPatterns.length,
       referenceRoleCount: referenceRoles.length,
       semanticDistinctionCount: semanticDistinctions.length,
+      originAuthorityPathCount: originAuthorityPaths.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -4612,6 +4725,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [REVELATION_PATTERNS_KEY]: revelationPatterns,
       [REFERENCE_ROLES_KEY]: referenceRoles,
       [SEMANTIC_DISTINCTIONS_KEY]: semanticDistinctions,
+      [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
