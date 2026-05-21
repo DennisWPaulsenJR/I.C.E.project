@@ -101,6 +101,13 @@ Current semantic distinction layer:
 - Matthew 1 pilot distinctions: JESUS as revealed/given NAME, CHRIST as title/messianic office/source identity, JESUS CHRIST as canonical/source identity phrase, HOLY SPIRIT as preferred derived semantic display, Holy Ghost as preserved source phrase wording, scripture narrator as Class III - Human, THE LORD as Class I - GOD / Divine Authority, and AngEL Of THE LORD as Class II - AngEL / Messenger of GOD.
 - Keep this as a derived semantic layer; preserve source text, confidence, hierarchy formatting, divine display compliance, and narrative-time versus canonical distinctions.
 
+Current semantic ontology role layer:
+- Phase 8.2n Semantic Ontology / Role Classification Expansion
+- Active key: `ICE_ONTOLOGY_ROLES`
+- Status: Matthew 1 pilot implemented from existing semantic distinctions, semantic events, revelation patterns, passage functions, origin / authority paths, and source grounding.
+- Goal: distinguish NAME, title, office, role, authority, messenger, narrator, Human response, covenant role, mission role, fulfillment role, lineage role, and semantic origin role without collapsing them into generic entity grouping.
+- Matthew 1 pilot roles include JESUS as revealed NAME / divine identity / salvific mission role; CHRIST as title and messianic office; JESUS CHRIST as canonical/source identity phrase; THE LORD as Class I origin authority; AngEL Of THE LORD as Class II messenger; Joseph, Mary, scripture narrator, and quoted prophet as Class III - Human roles; and HOLY SPIRIT as divine conception origin.
+- Keep this as a derived semantic layer; preserve source phrase vs Derived meaning separation, source text, confidence, hierarchy formatting, divine display compliance, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinctions.
 Current semantic origin / authority path layer:
 - Phase 8.2m Semantic Origin / Authority Path Layer
 - Active key: `ICE_ORIGIN_AUTHORITY_PATHS`
@@ -141,6 +148,7 @@ Core keys:
 - `ICE_REVELATION_PATTERNS`
 - `ICE_REFERENCE_ROLES`
 - `ICE_SEMANTIC_DISTINCTIONS`
+- `ICE_ONTOLOGY_ROLES`
 - `ICE_ORIGIN_AUTHORITY_PATHS`
 - `ICE_QA_LATEST_EXPORT`
 

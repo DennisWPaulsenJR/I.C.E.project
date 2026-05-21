@@ -35,6 +35,7 @@ const STORAGE_KEYS = [
   "ICE_REVELATION_PATTERNS",
   "ICE_REFERENCE_ROLES",
   "ICE_SEMANTIC_DISTINCTIONS",
+  "ICE_ONTOLOGY_ROLES",
   "ICE_ORIGIN_AUTHORITY_PATHS"
 ];
 const CLEAR_KEYS = [
@@ -89,6 +90,7 @@ function emptyCounts() {
     revelationPatterns: 0,
     referenceRoles: 0,
     semanticDistinctions: 0,
+    ontologyRoles: 0,
     originAuthorityPaths: 0
   };
 }
@@ -109,6 +111,7 @@ function buildCounts(storageData) {
     revelationPatterns: count(storageData.ICE_REVELATION_PATTERNS),
     referenceRoles: count(storageData.ICE_REFERENCE_ROLES),
     semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS),
+    ontologyRoles: count(storageData.ICE_ONTOLOGY_ROLES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS)
   };
 }
@@ -130,6 +133,7 @@ function buildSamples(storageData) {
     revelationPatterns: sample(storageData.ICE_REVELATION_PATTERNS, 20),
     referenceRoles: sample(storageData.ICE_REFERENCE_ROLES, 20),
     semanticDistinctions: sample(storageData.ICE_SEMANTIC_DISTINCTIONS, 20),
+    ontologyRoles: sample(storageData.ICE_ONTOLOGY_ROLES, 20),
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
@@ -259,6 +263,16 @@ function hasSemanticDistinction(data, semanticItem, distinctionType) {
     item.semanticItem === semanticItem && item.distinctionType === distinctionType && item.sourceGrounding && item.confidence
   );
 }
+function hasOntologyRole(data, semanticItem, role) {
+  return (data.ICE_ONTOLOGY_ROLES || []).some((item) =>
+    item.semanticItem === semanticItem &&
+    (item.ontologyRoles || []).some((value) => String(value).toLowerCase() === role.toLowerCase()) &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
 function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
@@ -314,6 +328,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_REVELATION_PATTERNS) <= 0) failures.push("Expected revelation pattern records count > 0.");
   if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected reference role records count > 0.");
   if (count(data.ICE_SEMANTIC_DISTINCTIONS) <= 0) failures.push("Expected semantic distinction records count > 0.");
+  if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected semantic ontology role records count > 0.");
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected origin / authority path records count > 0.");
   for (const [semanticItem, distinctionType] of [
     ["JESUS", "revealed_given_name"],
@@ -329,7 +344,22 @@ function evaluateFailures(data) {
       failures.push(`Expected semantic distinction ${semanticItem} / ${distinctionType}.`);
     }
   }
-  for (const referenceRole of [
+  for (const [semanticItem, role] of [
+    ["JESUS", "revealed NAME"],
+    ["CHRIST", "messianic office"],
+    ["JESUS CHRIST", "canonical/source identity phrase"],
+    ["THE LORD", "semantic origin role"],
+    ["AngEL Of THE LORD", "messenger"],
+    ["Joseph", "obedient recipient"],
+    ["Mary", "mother role"],
+    ["HOLY SPIRIT", "divine conception origin"],
+    ["scripture narrator", "Human witness role"],
+    ["quoted prophet", "prophecy witness role"]
+  ]) {
+    if (!hasOntologyRole(data, semanticItem, role)) {
+      failures.push(`Expected semantic ontology role ${semanticItem} / ${role}.`);
+    }
+  }  for (const referenceRole of [
     "davidic_lineage_support",
     "abrahamic_covenant_support",
     "prophecy_fulfillment_support",

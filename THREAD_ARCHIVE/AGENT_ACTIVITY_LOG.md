@@ -21,6 +21,33 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 18:48 - pcdx - Add semantic ontology roles
+Summary:
+- Added Phase 8.2n `ICE_ONTOLOGY_ROLES` derived layer for ontology-aware roles such as NAME, title, office, authority, messenger, Human response, mission role, fulfillment role, lineage role, and semantic origin role.
+- Added Matthew 1 pilot records for JESUS, CHRIST, JESUS CHRIST, THE LORD, AngEL Of THE LORD, Joseph, Mary, HOLY SPIRIT, scripture narrator, and quoted prophet.
+- Added Study Panel `Semantic Ontology Roles` cards and Matthew 1 QA coverage.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `ontologyRoles: 10`
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-12 - pcdx - Add multi-agent identity/logging convention
 
 Summary:

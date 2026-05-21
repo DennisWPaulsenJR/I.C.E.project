@@ -2,6 +2,40 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Semantic Ontology Role Layer
+
+Instruction summary:
+- Add Phase 8.2n Semantic Ontology / Role Classification Expansion.
+- Formalize role categories beyond simple entity grouping while preserving source phrase vs Derived meaning separation.
+- Keep Matthew 1 pilot conservative and evidence-backed.
+
+Codex action summary:
+- Added `ICE_ONTOLOGY_ROLES` as a derived semantic layer generated from existing source-grounded semantic records.
+- Added Matthew 1 pilot records for JESUS, CHRIST, JESUS CHRIST, THE LORD, AngEL Of THE LORD, Joseph, Mary, HOLY SPIRIT, scripture narrator, and quoted prophet.
+- Added Study Panel `Semantic Ontology Roles` cards showing ontology roles, authority/origin class, narrative role, canonical role, source phrase, derived meaning, confidence, source grounding, related entities, and related layers.
+- Added scope integrity, storage, diagnostics, and Matthew 1 QA coverage for the new layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `ontologyRoles: 10`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-19 - Source and Derived Display Standardization
 
 Instruction summary:

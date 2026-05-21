@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     revelationPatterns: "ICE_REVELATION_PATTERNS",
     referenceRoles: "ICE_REFERENCE_ROLES",
     semanticDistinctions: "ICE_SEMANTIC_DISTINCTIONS",
+    ontologyRoles: "ICE_ONTOLOGY_ROLES",
     originAuthorityPaths: "ICE_ORIGIN_AUTHORITY_PATHS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
@@ -3300,6 +3301,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       revelation: "revelationPatternsSection",
       reference: "referenceRolesSection",
       distinction: "semanticDistinctionsSection",
+      ontology: "ontologyRolesSection",
       originAuthority: "originAuthorityPathsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -4075,6 +4077,97 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createSemanticDistinctionCard(item));
     });
   }
+  function ontologyRoleSearchText(item = {}) {
+    return [
+      item.semanticItem,
+      asArray(item.ontologyRoles).join(" "),
+      item.authorityOriginClass,
+      item.narrativeRole,
+      item.canonicalRole,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.relatedLayers).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function createOntologyRoleCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const roles = asArray(item.ontologyRoles).map((value) => passageFunctionTitle(value)).filter(Boolean);
+    const layers = asArray(item.relatedLayers).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.semanticItem, item.authorityOriginClass, item.narrativeRole, item.canonicalRole, item.derivedMeaning, item.relatedEntities]);
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card ontology-role-card";
+    assignSemanticCardTarget(card, "ontology", item, item.semanticItem || asArray(item.ontologyRoles).join(" "));
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(item.semanticItem || "Semantic Ontology Role", divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [roles.slice(0, 2).join(" / ") || "Ontology role", item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Ontology Roles", "", { list: roles, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Authority / Origin Class", item.authorityOriginClass || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Narrative Role", item.narrativeRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.narrativeRole, item.canonicalRole, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderOntologyRoles(term) {
+    const container = document.getElementById("ontologyRoleCards");
+    const count = document.getElementById("ontologyRoleCount");
+    const roles = asArray(studyData.ontologyRoles);
+    const filtered = roles.filter((item) => matchesSearchQuery(ontologyRoleSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} role(s)`;
+
+    if (roles.length === 0) {
+      appendEmpty(container, "No semantic ontology roles derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic ontology roles match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Semantic Ontology Roles",
+      [
+        `Derived records: ${roles.length}`,
+        `Layer: ICE_ONTOLOGY_ROLES`,
+        "Purpose: distinguish NAME, title, office, role, authority, messenger, narrator, Human response, covenant role, mission role, fulfillment role, lineage role, and semantic origin role.",
+        "Review posture: inspect semantic item, ontology roles, authority/origin class, narrative role, canonical role, source phrase, derived meaning, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createOntologyRoleCard(item));
+    });
+  }
   function originAuthorityPathSearchText(item = {}) {
     return [
       item.pathType,
@@ -4832,6 +4925,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
       renderSemanticDistinctions(term);
+      renderOntologyRoles(term);
       renderOriginAuthorityPaths(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
@@ -4902,6 +4996,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       revelationPatterns: countItems(studyData.revelationPatterns),
       referenceRoles: countItems(studyData.referenceRoles),
       semanticDistinctions: countItems(studyData.semanticDistinctions),
+      ontologyRoles: countItems(studyData.ontologyRoles),
       originAuthorityPaths: countItems(studyData.originAuthorityPaths),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
@@ -4934,13 +5029,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const revelationPatternCount = countItems(studyData.revelationPatterns);
     const referenceRoleCount = countItems(studyData.referenceRoles);
     const semanticDistinctionCount = countItems(studyData.semanticDistinctions);
+    const ontologyRoleCount = countItems(studyData.ontologyRoles);
     const originAuthorityPathCount = countItems(studyData.originAuthorityPaths);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + originAuthorityPathCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + originAuthorityPathCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -4965,6 +5061,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticRevelationPatterns").textContent = revelationPatternCount;
     document.getElementById("diagnosticReferenceRoles").textContent = referenceRoleCount;
     document.getElementById("diagnosticSemanticDistinctions").textContent = semanticDistinctionCount;
+    document.getElementById("diagnosticOntologyRoles").textContent = ontologyRoleCount;
     document.getElementById("diagnosticOriginAuthorityPaths").textContent = originAuthorityPathCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
