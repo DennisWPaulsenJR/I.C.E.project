@@ -169,10 +169,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\bnarrative name: JESUS\b/g, "narrative NAME: JESUS");
   }
 
+  function hasDerivedDivineChildContext(text, divineContext = false) {
+    if (!divineContext) return false;
+    const normalized = normalizeText(text).toLowerCase();
+    return /\bchild\b/.test(normalized) &&
+      /\b(jesus|holy spirit|holy ghost|conceived|conception|mission|save|name|named|call|called|revealed|brought forth|birth|divine|the lord|angel of the lord)\b/.test(normalized);
+  }
+
+  function renderDerivedDivineChildDisplayText(text, divineContext = false) {
+    const value = normalizeText(text);
+    if (!hasDerivedDivineChildContext(value, divineContext)) return value;
+    return value.replace(/\bchild\b/gi, "CHILD");
+  }
   function renderDerivedSemanticDisplayText(text, divineContext = false) {
-    return renderIceDivineDisplayText(text, divineContext)
+    const value = renderIceDivineDisplayText(text, divineContext)
       .replace(/\bHoly Ghost\b/g, "HOLY SPIRIT")
       .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT");
+    return renderDerivedDivineChildDisplayText(value, divineContext);
   }
 
   function hasHumanBeingDisplayContext(values) {

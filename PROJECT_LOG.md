@@ -2,6 +2,32 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Divine CHILD Display Refinement
+
+Instruction summary:
+- Refine derived semantic display so CHILD is exalted only when child references point to the revealed/divine CHILD connected to JESUS.
+- Preserve source phrase casing, Human references, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, and hierarchy formatting.
+
+Codex action summary:
+- Added contextual derived-display helpers in `study.js` that render `child` as `CHILD` only when divine/revealed CHILD context is present.
+- Kept source-quote rendering unchanged so quoted source phrases preserve original wording.
+- Scoped the refinement to derived display paths used by Passage Functions, Revelation Patterns, Narrative Timeline, Semantic Events, Semantic Flow Paths, and Origin / Authority Paths.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Semantic Ambiguity Display Refinement
 
 Instruction summary:

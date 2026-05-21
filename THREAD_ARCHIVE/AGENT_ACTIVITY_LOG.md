@@ -21,6 +21,26 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 19:19 - pcdx - Refine divine CHILD display
+Summary:
+- Added contextual derived-display handling so revealed/divine CHILD references render as `CHILD` when connected to JESUS, HOLY SPIRIT conception, mission, or NAME context.
+- Preserved quoted source phrase casing and avoided global child capitalization.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 19:12 - pcdx - Refine semantic ambiguity display
 Summary:
 - Refined Study Panel `Semantic Ambiguities / Contrasts` cards with readable contrast labels, source phrase, derived meaning, resolved status, why-it-matters summary, confidence, source grounding, and expandable evidence.
