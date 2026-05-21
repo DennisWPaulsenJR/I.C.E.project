@@ -382,6 +382,60 @@ body {
   min-height: 0;
 }
 
+.ice-confidence {
+  border-left: 3px solid #cbd5df;
+  border-radius: 0 6px 6px 0;
+  padding: 6px 9px;
+}
+
+.ice-confidence p {
+  font-weight: 700;
+}
+
+.ice-confidence-explicit {
+  background: #f7fbf8;
+  border-left-color: #6f9271;
+}
+
+.ice-confidence-explicit p {
+  color: #24462a;
+}
+
+.ice-confidence-probable {
+  background: #f8fafc;
+  border-left-color: #7f9fbd;
+}
+
+.ice-confidence-probable p {
+  color: #243b53;
+}
+
+.ice-confidence-possible {
+  background: #fbfcfd;
+  border-left-color: #b5c2cf;
+}
+
+.ice-confidence-possible p {
+  color: #526070;
+}
+
+.ice-confidence-attributed {
+  background: #fbfaf7;
+  border-left-color: #b7a77a;
+}
+
+.ice-confidence-attributed p {
+  color: #554b32;
+}
+
+.ice-confidence-unresolved {
+  background: #fcf9f8;
+  border-left-color: #b68f86;
+}
+
+.ice-confidence-unresolved p {
+  color: #653c36;
+}
 .ice-source-phrase {
   border-left: 2px solid #d7e0ea;
   padding-left: 9px;

@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-21 - Semantic Confidence Visualization
+
+Instruction summary:
+- Add Phase 8.2s restrained semantic confidence visualization.
+- Make explicit, probable, possible, attributed, and unresolved confidence levels visually distinguishable without treating confidence as truth styling.
+- Preserve semantic records, source phrases, source phrase vs Derived meaning separation, hierarchy formatting, divine display compliance, and semantic-card compression.
+
+Codex action summary:
+- Added section-level confidence CSS hooks in `study.js` for existing `Confidence` sections.
+- Added restrained CSS classes: `ice-confidence-explicit`, `ice-confidence-probable`, `ice-confidence-possible`, `ice-confidence-attributed`, and `ice-confidence-unresolved`.
+- Kept confidence rendering textual and stable while adding low-noise grounding visibility in semantic cards.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Manual smoke: reviewed CSS diff for readable, restrained, non-alarming confidence styling.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Semantic Visual Ontology Styling
 
 Instruction summary:

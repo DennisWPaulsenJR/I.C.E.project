@@ -355,6 +355,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Array.isArray(value) ? value.length : 0;
   }
 
+  function confidenceClassName(value) {
+    const normalized = normalizeText(displayConfidence(value || "")).toLowerCase();
+    if (/^explicit$|direct|source-grounded|source grounded/.test(normalized)) return "ice-confidence-explicit";
+    if (/^probable$|semantic agreement|multiple semantic/.test(normalized)) return "ice-confidence-probable";
+    if (/^possible$|weak|limited/.test(normalized)) return "ice-confidence-possible";
+    if (/^attributed$|believed|traditional|narrator|source attribution/.test(normalized)) return "ice-confidence-attributed";
+    if (/^unresolved$|context required|ambiguous|uncertain/.test(normalized)) return "ice-confidence-unresolved";
+    return "ice-confidence-probable";
+  }
   function displayConfidence(value) {
     if (value === "inferred-source") return "attributed";
     if (value === "traditional-attribution") return "believed";
@@ -3223,6 +3232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalizedTitle = normalizeText(title).toLowerCase();
     if (/source phrase|source wording/.test(normalizedTitle)) section.classList.add("ice-source-phrase");
     if (/derived meaning|semantic purpose|meaning/.test(normalizedTitle)) section.classList.add("ice-derived-meaning");
+    if (normalizedTitle === "confidence") section.classList.add("ice-confidence", confidenceClassName(content));
 
     if (options.collapsed) {
       const details = document.createElement("details");
