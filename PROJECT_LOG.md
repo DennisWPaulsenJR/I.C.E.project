@@ -2,6 +2,34 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Class Transfer Display
+
+Instruction summary:
+- Refine HOLY Origin / class-transfer display so instruction and revelation show as class-mediated authority transfer.
+- Display THE LORD -> AngEL Of THE LORD -> Joseph and Class I -> Class II -> Class III without implying AngEL Of THE LORD is origin authority.
+- Preserve source phrases, source phrase vs Derived meaning split, JESUS / JESUS CHRIST / CHRIST distinction, HOLY SPIRIT preference, CHILD display, and hierarchy formatting.
+
+Codex action summary:
+- Added reusable Study Panel Authority Path / Class Transfer display blocks in `study.js`.
+- Mounted the class transfer display on Divine Message Instruction, Revelation Pattern, and Origin / Authority Path cards when THE LORD, AngEL Of THE LORD, and Joseph are present in semantic context.
+- Added CSS hooks/classes for class transfer display: `ice-class-i`, `ice-class-ii`, `ice-class-iii`, `ice-transfer-action`, `ice-authority-path`, and `ice-derived-meaning`.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Divine CHILD Display Refinement
 
 Instruction summary:

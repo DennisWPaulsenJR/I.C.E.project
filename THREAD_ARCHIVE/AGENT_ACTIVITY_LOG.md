@@ -21,6 +21,28 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 20:17 - pcdx - Add class transfer display
+Summary:
+- Added derived Authority Path / Class Transfer display for THE LORD -> AngEL Of THE LORD -> Joseph and Class I -> Class II -> Class III.
+- Mounted the display on Divine Message Instruction, Revelation Pattern, and Origin / Authority Path cards.
+- Added CSS hooks for class-level and transfer-action styling while keeping the visual treatment restrained.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 19:19 - pcdx - Refine divine CHILD display
 Summary:
 - Added contextual derived-display handling so revealed/divine CHILD references render as `CHILD` when connected to JESUS, HOLY SPIRIT conception, mission, or NAME context.

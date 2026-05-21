@@ -381,3 +381,55 @@ body {
 .revelation-pattern-card {
   min-height: 0;
 }
+
+.ice-derived-meaning.ice-authority-path {
+  border-left: 3px solid #9db5d1;
+  gap: 8px;
+  padding-left: 10px;
+}
+
+.ice-authority-path-line {
+  display: grid;
+  gap: 6px;
+}
+
+.ice-class-node {
+  display: grid;
+  gap: 2px;
+}
+
+.ice-class-node strong {
+  color: #17202a;
+  font-size: .95rem;
+  font-weight: 800;
+}
+
+.ice-class-node span,
+.ice-class-transfer-line,
+.ice-transfer-action-title {
+  color: #445064;
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.ice-class-i strong {
+  font-size: 1rem;
+}
+
+.ice-class-ii strong {
+  font-size: .94rem;
+}
+
+.ice-class-iii strong {
+  font-size: .9rem;
+}
+
+.ice-transfer-action {
+  color: #526070;
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.ice-transfer-actions {
+  gap: 3px;
+}

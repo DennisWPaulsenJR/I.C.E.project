@@ -3237,6 +3237,100 @@ document.addEventListener("DOMContentLoaded", async () => {
     return section;
   }
 
+  function semanticTransferActs(item = {}) {
+    const acts = new Set();
+    const context = normalizeText([
+      item.passageFunction,
+      item.revelationType,
+      item.pathType,
+      item.plainMeaning,
+      item.sourceGrounding,
+      item.mission,
+      asArray(item.subEvents).map((part) => [part.clusterType, part.eventType, part.action, part.target]).join(" ")
+    ].join(" ")).toLowerCase();
+
+    if (/instruction|instruct|marriage_instruction|take mary/.test(context)) acts.add("Instruction");
+    if (/revelation|reveal|conception_revelation|holy spirit|holy ghost/.test(context)) acts.add("Revelation");
+    if (/name|naming|revealed_name|jesus/.test(context)) acts.add("NAME revelation");
+    if (/mission|save his people|save his people|mission_declaration/.test(context)) acts.add("Mission declaration");
+    return Array.from(acts);
+  }
+
+  function hasClassTransferDisplayContext(item = {}) {
+    const text = normalizeText([
+      item.passageFunction,
+      item.revelationType,
+      item.pathType,
+      item.plainMeaning,
+      item.sourceGrounding,
+      item.authoritySource,
+      item.speaker,
+      item.origin,
+      item.messenger,
+      item.recipient,
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.subEvents).map((part) => [part.clusterType, part.eventType, part.action, part.target]).join(" ")
+    ].join(" ")).toLowerCase();
+    return /the lord/.test(text) && /angel of the lord/.test(text) && /joseph/.test(text) && /(instruction|instruct|revelation|reveal|message|origin|authority|name|mission)/.test(text);
+  }
+
+  function createClassTransferDisplaySection(item = {}) {
+    if (!hasClassTransferDisplayContext(item)) return null;
+    const section = document.createElement("section");
+    const heading = document.createElement("h4");
+    const path = document.createElement("div");
+    const classTransfer = document.createElement("div");
+    const actsTitle = document.createElement("div");
+    const actsList = document.createElement("ul");
+    const acts = semanticTransferActs(item);
+
+    section.className = "semantic-section ice-derived-meaning ice-authority-path";
+    heading.className = "semantic-section-title";
+    heading.textContent = "Authority Path / Class Transfer";
+
+    path.className = "ice-authority-path-line";
+    path.append(
+      iceClassNode("THE LORD", "Class I - GOD / Divine Authority", "ice-class-i"),
+      iceTransferArrow("Sends / Authorizes"),
+      iceClassNode("AngEL Of THE LORD", "Class II - AngEL / Messenger of GOD", "ice-class-ii"),
+      iceTransferArrow("Instructs / Reveals"),
+      iceClassNode("Joseph", "Class III - Human", "ice-class-iii")
+    );
+
+    classTransfer.className = "ice-class-transfer-line";
+    classTransfer.textContent = "Class Transfer: Class I -> Class II -> Class III";
+
+    actsTitle.className = "ice-transfer-action-title";
+    actsTitle.textContent = "Transferred Acts";
+    actsList.className = "semantic-plain-list ice-transfer-actions";
+    for (const act of acts.length ? acts : ["Instruction", "Revelation"]) {
+      const itemNode = document.createElement("li");
+      itemNode.className = "ice-transfer-action";
+      itemNode.textContent = act;
+      actsList.appendChild(itemNode);
+    }
+
+    section.append(heading, path, classTransfer, actsTitle, actsList);
+    return section;
+  }
+
+  function iceClassNode(label, classLabel, className) {
+    const node = document.createElement("div");
+    const name = document.createElement("strong");
+    const meta = document.createElement("span");
+    node.className = `ice-class-node ${className}`;
+    name.textContent = renderDerivedSemanticDisplayText(label, true);
+    meta.textContent = classLabel;
+    node.append(name, meta);
+    return node;
+  }
+
+  function iceTransferArrow(label) {
+    const node = document.createElement("div");
+    node.className = "ice-transfer-action";
+    node.textContent = `↓ ${label}`;
+    return node;
+  }
   function semanticKey(type, value) {
     return `${type}:${normalizeText(value || "")}`.toLowerCase().replace(/[^a-z0-9:_-]+/g, "-");
   }
@@ -3618,7 +3712,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     [
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
+            createClassTransferDisplaySection(item),
+createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
@@ -3781,7 +3876,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Speaker", item.speaker || "unknown", { divineContext }),
       createPassageFunctionSection("Recipient", item.recipient || "unknown"),
       createPassageFunctionSection("Pattern Type", revelationPatternTypeLabel(item.revelationType)),
-      createRevelationPartsSection(item.subEvents)
+            createClassTransferDisplaySection(item),
+createRevelationPartsSection(item.subEvents)
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     [
@@ -4384,6 +4480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
 
     [
+            createClassTransferDisplaySection(item),
       createPassageFunctionSection("Origin", item.origin || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Messenger / Means", [item.messenger, item.means].filter(Boolean).join(" / ") || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Recipient", item.recipient || "Not recorded."),
