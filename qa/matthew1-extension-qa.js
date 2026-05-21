@@ -36,6 +36,7 @@ const STORAGE_KEYS = [
   "ICE_REFERENCE_ROLES",
   "ICE_SEMANTIC_DISTINCTIONS",
   "ICE_ONTOLOGY_ROLES",
+  "ICE_SEMANTIC_AMBIGUITIES",
   "ICE_ORIGIN_AUTHORITY_PATHS"
 ];
 const CLEAR_KEYS = [
@@ -91,6 +92,7 @@ function emptyCounts() {
     referenceRoles: 0,
     semanticDistinctions: 0,
     ontologyRoles: 0,
+    semanticAmbiguities: 0,
     originAuthorityPaths: 0
   };
 }
@@ -112,6 +114,7 @@ function buildCounts(storageData) {
     referenceRoles: count(storageData.ICE_REFERENCE_ROLES),
     semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS),
     ontologyRoles: count(storageData.ICE_ONTOLOGY_ROLES),
+    semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS)
   };
 }
@@ -134,6 +137,7 @@ function buildSamples(storageData) {
     referenceRoles: sample(storageData.ICE_REFERENCE_ROLES, 20),
     semanticDistinctions: sample(storageData.ICE_SEMANTIC_DISTINCTIONS, 20),
     ontologyRoles: sample(storageData.ICE_ONTOLOGY_ROLES, 20),
+    semanticAmbiguities: sample(storageData.ICE_SEMANTIC_AMBIGUITIES, 20),
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
@@ -273,6 +277,20 @@ function hasOntologyRole(data, semanticItem, role) {
     item.sourceGrounding
   );
 }
+function hasSemanticAmbiguity(data, ambiguityType, resolutionStatus) {
+  return (data.ICE_SEMANTIC_AMBIGUITIES || []).some((item) =>
+    item.ambiguityType === ambiguityType &&
+    item.resolutionStatus === resolutionStatus &&
+    Array.isArray(item.semanticItems) &&
+    item.semanticItems.length > 0 &&
+    item.sourceWording &&
+    item.derivedInterpretation &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
 function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
@@ -329,6 +347,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected reference role records count > 0.");
   if (count(data.ICE_SEMANTIC_DISTINCTIONS) <= 0) failures.push("Expected semantic distinction records count > 0.");
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected semantic ontology role records count > 0.");
+  if (count(data.ICE_SEMANTIC_AMBIGUITIES) <= 0) failures.push("Expected semantic ambiguity / contrast records count > 0.");
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected origin / authority path records count > 0.");
   for (const [semanticItem, distinctionType] of [
     ["JESUS", "revealed_given_name"],
@@ -342,6 +361,17 @@ function evaluateFailures(data) {
   ]) {
     if (!hasSemanticDistinction(data, semanticItem, distinctionType)) {
       failures.push(`Expected semantic distinction ${semanticItem} / ${distinctionType}.`);
+    }
+  }
+  for (const [ambiguityType, resolutionStatus] of [
+    ["narrative_name_vs_canonical_identity", "resolved"],
+    ["title_office_not_revealed_name", "resolved"],
+    ["source_wording_vs_derived_display_preference", "resolved"],
+    ["human_narration_vs_divine_authority_source", "resolved"],
+    ["pronoun_referent_requires_semantic_context", "context_required"]
+  ]) {
+    if (!hasSemanticAmbiguity(data, ambiguityType, resolutionStatus)) {
+      failures.push(`Expected semantic ambiguity / contrast ${ambiguityType} / ${resolutionStatus}.`);
     }
   }
   for (const [semanticItem, role] of [
@@ -359,7 +389,8 @@ function evaluateFailures(data) {
     if (!hasOntologyRole(data, semanticItem, role)) {
       failures.push(`Expected semantic ontology role ${semanticItem} / ${role}.`);
     }
-  }  for (const referenceRole of [
+  }
+  for (const referenceRole of [
     "davidic_lineage_support",
     "abrahamic_covenant_support",
     "prophecy_fulfillment_support",

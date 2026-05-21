@@ -2,6 +2,40 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Semantic Ambiguity / Contrast Layer
+
+Instruction summary:
+- Add Phase 8.2o Semantic Contradiction / Ambiguity Detection Layer.
+- Teach I.C.E. to recognize resolved contrasts and context-required interpretation points without fabricating contradictions.
+- Preserve source phrase vs Derived meaning separation, ontology roles, hierarchy formatting, divine display compliance, and source grounding.
+
+Codex action summary:
+- Added `ICE_SEMANTIC_AMBIGUITIES` as a derived semantic layer generated from existing source-grounded semantic records.
+- Added Matthew 1 pilot contrasts for JESUS versus JESUS CHRIST, CHRIST versus revealed NAME, Holy Ghost versus HOLY SPIRIT, scripture narrator versus divine authority source, and pronoun referent context requirements.
+- Added Study Panel `Semantic Ambiguities / Contrasts` cards showing semantic items, ambiguity/contrast type, source phrase, derived meaning, resolution status, confidence, evidence, source grounding, and related layers.
+- Added storage, scope integrity, diagnostics, and Matthew 1 QA coverage for the new layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticAmbiguities: 5`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Semantic Ontology Role Layer
 
 Instruction summary:

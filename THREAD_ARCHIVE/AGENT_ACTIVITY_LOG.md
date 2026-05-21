@@ -21,6 +21,33 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 18:57 - pcdx - Add semantic ambiguity layer
+Summary:
+- Added Phase 8.2o `ICE_SEMANTIC_AMBIGUITIES` derived layer for resolved semantic contrasts and context-required interpretation points.
+- Added Matthew 1 pilot contrasts for JESUS / JESUS CHRIST, CHRIST / revealed NAME, Holy Ghost / HOLY SPIRIT, scripture narrator / divine authority source, and pronoun referent context.
+- Added Study Panel `Semantic Ambiguities / Contrasts` cards and Matthew 1 QA coverage.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `semanticAmbiguities: 5`
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 18:48 - pcdx - Add semantic ontology roles
 Summary:
 - Added Phase 8.2n `ICE_ONTOLOGY_ROLES` derived layer for ontology-aware roles such as NAME, title, office, authority, messenger, Human response, mission role, fulfillment role, lineage role, and semantic origin role.

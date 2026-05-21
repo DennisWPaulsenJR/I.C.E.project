@@ -108,6 +108,13 @@ Current semantic ontology role layer:
 - Goal: distinguish NAME, title, office, role, authority, messenger, narrator, Human response, covenant role, mission role, fulfillment role, lineage role, and semantic origin role without collapsing them into generic entity grouping.
 - Matthew 1 pilot roles include JESUS as revealed NAME / divine identity / salvific mission role; CHRIST as title and messianic office; JESUS CHRIST as canonical/source identity phrase; THE LORD as Class I origin authority; AngEL Of THE LORD as Class II messenger; Joseph, Mary, scripture narrator, and quoted prophet as Class III - Human roles; and HOLY SPIRIT as divine conception origin.
 - Keep this as a derived semantic layer; preserve source phrase vs Derived meaning separation, source text, confidence, hierarchy formatting, divine display compliance, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinctions.
+Current semantic ambiguity / contrast layer:
+- Phase 8.2o Semantic Contradiction / Ambiguity Detection Layer
+- Active key: `ICE_SEMANTIC_AMBIGUITIES`
+- Status: Matthew 1 pilot implemented from existing semantic distinctions, ontology roles, revelation patterns, origin / authority paths, and source grounding.
+- Goal: identify resolved contrasts and context-required interpretation points such as unresolved referents, overlapping titles, narrative-time versus retrospective identity tension, uncertain ontology roles, ambiguous pronouns, possible semantic conflicts, and uncertain source grounding without fabricating contradictions.
+- Matthew 1 pilot contrasts: JESUS versus JESUS CHRIST as narrative NAME versus canonical/source identity; CHRIST as title/office and not revealed NAME; Holy Ghost versus HOLY SPIRIT as preserved source wording versus derived semantic preference; scripture narrator versus divine speech as Human narration versus Divine authority source; and pronoun referents requiring semantic context.
+- Keep this as a derived semantic layer; preserve source phrase vs Derived meaning separation, source text, evidence, confidence, hierarchy formatting, divine display compliance, ontology roles, HOLY SPIRIT preference, and JESUS / JESUS CHRIST / CHRIST distinctions.
 Current semantic origin / authority path layer:
 - Phase 8.2m Semantic Origin / Authority Path Layer
 - Active key: `ICE_ORIGIN_AUTHORITY_PATHS`
@@ -149,6 +156,7 @@ Core keys:
 - `ICE_REFERENCE_ROLES`
 - `ICE_SEMANTIC_DISTINCTIONS`
 - `ICE_ONTOLOGY_ROLES`
+- `ICE_SEMANTIC_AMBIGUITIES`
 - `ICE_ORIGIN_AUTHORITY_PATHS`
 - `ICE_QA_LATEST_EXPORT`
 

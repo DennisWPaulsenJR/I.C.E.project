@@ -29,6 +29,7 @@ const REFERENCE_GRAPH_KEY = "ICE_REFERENCE_GRAPH";
 const REFERENCE_ROLES_KEY = "ICE_REFERENCE_ROLES";
 const SEMANTIC_DISTINCTIONS_KEY = "ICE_SEMANTIC_DISTINCTIONS";
 const ONTOLOGY_ROLES_KEY = "ICE_ONTOLOGY_ROLES";
+const SEMANTIC_AMBIGUITIES_KEY = "ICE_SEMANTIC_AMBIGUITIES";
 const ORIGIN_AUTHORITY_PATHS_KEY = "ICE_ORIGIN_AUTHORITY_PATHS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
@@ -473,7 +474,7 @@ function enrichScopeItem(item, type, index, activeAdapter) {
   item.sourceCaptureId = sourceCaptureId;
   item.adapterId = item.adapterId || activeAdapter?.adapterId || "";
   item.timelinePosition = timelinePosition;
-  item.scopePath = (type === "reference_role" || type === "semantic_distinction" || type === "ontology_role" || type === "origin_authority_path") && item.scopePath
+  item.scopePath = (type === "reference_role" || type === "semantic_distinction" || type === "ontology_role" || type === "semantic_ambiguity" || type === "origin_authority_path") && item.scopePath
     ? item.scopePath
     : scopePathForItem(item, type, index, enrichedContext, verseNumber, timelinePosition);
   return item;
@@ -516,6 +517,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.referenceRoles, "reference_role", activeAdapter);
   enrichScopeCollection(data.semanticDistinctions, "semantic_distinction", activeAdapter);
   enrichScopeCollection(data.ontologyRoles, "ontology_role", activeAdapter);
+  enrichScopeCollection(data.semanticAmbiguities, "semantic_ambiguity", activeAdapter);
   enrichScopeCollection(data.originAuthorityPaths, "origin_authority_path", activeAdapter);
 }
 
@@ -534,6 +536,7 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.referenceRoles || []).map((item) => ({ ...item, scopeLayer: "reference_role" })),
     ...(data.semanticDistinctions || []).map((item) => ({ ...item, scopeLayer: "semantic_distinction" })),
     ...(data.ontologyRoles || []).map((item) => ({ ...item, scopeLayer: "ontology_role" })),
+    ...(data.semanticAmbiguities || []).map((item) => ({ ...item, scopeLayer: "semantic_ambiguity" })),
     ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
@@ -1282,6 +1285,111 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
       relatedLayers: ["ICE_SEMANTIC_DISTINCTIONS", "ICE_PASSAGE_FUNCTIONS", "ICE_REFERENCE_ROLES"],
       confidence: "probable",
       sourceGrounding: "Matthew 1:22 distinguishes THE LORD as source from the prophet as Human witness"
+    })
+  ];
+}
+function semanticAmbiguityRecord(record = {}) {
+  const key = [
+    "semantic-ambiguity",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.ambiguityType || "",
+    (record.semanticItems || []).join("|")
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Matthew 1",
+    semanticItems: record.semanticItems || [],
+    ambiguityType: record.ambiguityType || "semantic_contrast",
+    sourceWording: record.sourceWording || "",
+    derivedInterpretation: record.derivedInterpretation || "",
+    resolutionStatus: record.resolutionStatus || "resolved",
+    confidence: record.confidence || "probable",
+    evidence: record.evidence || [],
+    relatedLayers: record.relatedLayers || [],
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded semantic records"
+  };
+}
+
+function createSemanticAmbiguities(captures = [], semanticDistinctions = [], ontologyRoles = [], revelationPatterns = [], originAuthorityPaths = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  if (!isMatthewOne) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const add = (record) => semanticAmbiguityRecord({ sourceCaptureId, sourceContext: context, ...record });
+  const commonLayers = ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS"];
+
+  return [
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.21",
+      verseRange: "Matthew 1:1, 21, 25",
+      semanticItems: ["JESUS", "JESUS CHRIST"],
+      ambiguityType: "narrative_name_vs_canonical_identity",
+      sourceWording: "thou shalt call his name JESUS; called his name JESUS; The book of the generation of JESUS CHRIST",
+      derivedInterpretation: "Resolved contrast: JESUS is the narrative revealed NAME; JESUS CHRIST is the canonical/source identity phrase.",
+      resolutionStatus: "resolved",
+      confidence: "explicit",
+      evidence: ["thou shalt call his name JESUS", "called his name JESUS", "The book of the generation of JESUS CHRIST"],
+      relatedLayers: commonLayers,
+      sourceGrounding: "Semantic distinctions and ontology roles preserve JESUS as NAME while keeping JESUS CHRIST as canonical/source identity linkage."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.1",
+      verseRange: "Matthew 1:1, 21, 25",
+      semanticItems: ["CHRIST", "JESUS"],
+      ambiguityType: "title_office_not_revealed_name",
+      sourceWording: "JESUS CHRIST; thou shalt call his name JESUS",
+      derivedInterpretation: "Resolved contrast: CHRIST is title/source identity and messianic office, not the NAME Joseph is instructed to give.",
+      resolutionStatus: "resolved",
+      confidence: "explicit",
+      evidence: ["JESUS CHRIST", "thou shalt call his name JESUS"],
+      relatedLayers: ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_CANONICAL_IDENTITIES"],
+      sourceGrounding: "Matthew 1:1 supplies CHRIST within the source identity phrase; Matthew 1:21 and 1:25 preserve JESUS as the given NAME."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20",
+      semanticItems: ["Holy Ghost", "HOLY SPIRIT"],
+      ambiguityType: "source_wording_vs_derived_display_preference",
+      sourceWording: "that which is conceived in her is of the Holy Ghost",
+      derivedInterpretation: "Resolved contrast: preserve Holy Ghost in quoted source wording; prefer HOLY SPIRIT in derived semantic display.",
+      resolutionStatus: "resolved",
+      confidence: "explicit",
+      evidence: ["that which is conceived in her is of the Holy Ghost"],
+      relatedLayers: ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_REVELATION_PATTERNS"],
+      sourceGrounding: "Source phrase uses Holy Ghost; derived semantic records intentionally display HOLY SPIRIT for modern semantic clarity."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.22",
+      verseRange: "Matthew 1:22-23",
+      semanticItems: ["scripture narrator", "divine speech", "THE LORD"],
+      ambiguityType: "human_narration_vs_divine_authority_source",
+      sourceWording: "Now all this was done, that it might be fulfilled which was spoken of THE LORD by the prophet",
+      derivedInterpretation: "Resolved contrast: scripture narrator remains Class III - Human while THE LORD remains the Divine authority source behind fulfillment.",
+      resolutionStatus: "resolved",
+      confidence: "probable",
+      evidence: ["Now all this was done", "spoken of THE LORD by the prophet"],
+      relatedLayers: commonLayers,
+      sourceGrounding: "Ontology roles classify narrator and prophet as Human roles while origin authority paths preserve THE LORD as source authority."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20-21",
+      semanticItems: ["he", "him", "his", "Joseph", "Mary", "JESUS"],
+      ambiguityType: "pronoun_referent_requires_semantic_context",
+      sourceWording: "appeared unto him; call his name JESUS; he shall save his people from their sins",
+      derivedInterpretation: "Context required: pronouns near multiple actors must be resolved by semantic role and source context, not proximity alone.",
+      resolutionStatus: "context_required",
+      confidence: "possible",
+      evidence: ["appeared unto him", "call his name JESUS", "he shall save his people from their sins"],
+      relatedLayers: ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_RELATIONSHIP_GRAPH", "ICE_REVELATION_PATTERNS"],
+      sourceGrounding: "Prior display compliance work showed him/thee/thy/her can refer to Joseph or Mary while HE/HIS in mission context refers to JESUS."
     })
   ];
 }
@@ -4844,6 +4952,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       passageFunctions,
       originAuthorityPaths
     );
+    const semanticAmbiguities = createSemanticAmbiguities(
+      captures,
+      semanticDistinctions,
+      ontologyRoles,
+      revelationPatterns,
+      originAuthorityPaths
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -4858,6 +4973,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceRoles,
       semanticDistinctions,
       ontologyRoles,
+      semanticAmbiguities,
       originAuthorityPaths
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
@@ -4874,6 +4990,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceRoles,
       semanticDistinctions,
       ontologyRoles,
+      semanticAmbiguities,
       originAuthorityPaths
     }, activeAdapter);
     const status = {
@@ -4903,6 +5020,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceRoleCount: referenceRoles.length,
       semanticDistinctionCount: semanticDistinctions.length,
       ontologyRoleCount: ontologyRoles.length,
+      semanticAmbiguityCount: semanticAmbiguities.length,
       originAuthorityPathCount: originAuthorityPaths.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
@@ -4933,6 +5051,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [REFERENCE_ROLES_KEY]: referenceRoles,
       [SEMANTIC_DISTINCTIONS_KEY]: semanticDistinctions,
       [ONTOLOGY_ROLES_KEY]: ontologyRoles,
+      [SEMANTIC_AMBIGUITIES_KEY]: semanticAmbiguities,
       [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,

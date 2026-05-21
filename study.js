@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     referenceRoles: "ICE_REFERENCE_ROLES",
     semanticDistinctions: "ICE_SEMANTIC_DISTINCTIONS",
     ontologyRoles: "ICE_ONTOLOGY_ROLES",
+    semanticAmbiguities: "ICE_SEMANTIC_AMBIGUITIES",
     originAuthorityPaths: "ICE_ORIGIN_AUTHORITY_PATHS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
@@ -3302,6 +3303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       reference: "referenceRolesSection",
       distinction: "semanticDistinctionsSection",
       ontology: "ontologyRolesSection",
+      ambiguity: "semanticAmbiguitiesSection",
       originAuthority: "originAuthorityPathsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -4168,6 +4170,96 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createOntologyRoleCard(item));
     });
   }
+  function semanticAmbiguitySearchText(item = {}) {
+    return [
+      asArray(item.semanticItems).join(" "),
+      item.ambiguityType,
+      item.sourceWording,
+      item.derivedInterpretation,
+      item.resolutionStatus,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.evidence).join(" "),
+      asArray(item.relatedLayers).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function createSemanticAmbiguityCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const items = asArray(item.semanticItems).map((value) => normalizeText(value)).filter(Boolean);
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const layers = asArray(item.relatedLayers).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.semanticItems, item.sourceWording, item.derivedInterpretation, item.evidence, item.sourceGrounding]);
+    const title = items.length ? items.join(" vs ") : "Semantic Ambiguity / Contrast";
+    const grounding = trimText(item.sourceGrounding || "", 190);
+
+    card.className = "study-card semantic-card semantic-ambiguity-card";
+    assignSemanticCardTarget(card, "ambiguity", item, title);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(title, divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [passageFunctionTitle(item.ambiguityType || "semantic_contrast"), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Semantic Items", "", { list: items, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Ambiguity / Contrast Type", passageFunctionTitle(item.ambiguityType || "semantic_contrast"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived meaning", item.derivedInterpretation || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Resolution Status", passageFunctionTitle(item.resolutionStatus || "resolved"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Grounding / Evidence", "", { list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), hiddenCount: 0, divineContext }),
+      createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderSemanticAmbiguities(term) {
+    const container = document.getElementById("semanticAmbiguityCards");
+    const count = document.getElementById("semanticAmbiguityCount");
+    const ambiguities = asArray(studyData.semanticAmbiguities);
+    const filtered = ambiguities.filter((item) => matchesSearchQuery(semanticAmbiguitySearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} contrast(s)`;
+
+    if (ambiguities.length === 0) {
+      appendEmpty(container, "No semantic ambiguities or contrasts derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic ambiguities or contrasts match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Semantic Ambiguities / Contrasts",
+      [
+        `Derived records: ${ambiguities.length}`,
+        `Layer: ICE_SEMANTIC_AMBIGUITIES`,
+        "Purpose: identify resolved contrasts and context-required interpretation points without fabricating contradictions.",
+        "Review posture: inspect semantic items, contrast type, source phrase, derived meaning, resolution status, confidence, evidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createSemanticAmbiguityCard(item));
+    });
+  }
   function originAuthorityPathSearchText(item = {}) {
     return [
       item.pathType,
@@ -4926,6 +5018,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderReferenceRoles(term);
       renderSemanticDistinctions(term);
       renderOntologyRoles(term);
+      renderSemanticAmbiguities(term);
       renderOriginAuthorityPaths(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
@@ -4997,6 +5090,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       referenceRoles: countItems(studyData.referenceRoles),
       semanticDistinctions: countItems(studyData.semanticDistinctions),
       ontologyRoles: countItems(studyData.ontologyRoles),
+      semanticAmbiguities: countItems(studyData.semanticAmbiguities),
       originAuthorityPaths: countItems(studyData.originAuthorityPaths),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
@@ -5030,13 +5124,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const referenceRoleCount = countItems(studyData.referenceRoles);
     const semanticDistinctionCount = countItems(studyData.semanticDistinctions);
     const ontologyRoleCount = countItems(studyData.ontologyRoles);
+    const semanticAmbiguityCount = countItems(studyData.semanticAmbiguities);
     const originAuthorityPathCount = countItems(studyData.originAuthorityPaths);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + originAuthorityPathCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -5062,6 +5157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("diagnosticReferenceRoles").textContent = referenceRoleCount;
     document.getElementById("diagnosticSemanticDistinctions").textContent = semanticDistinctionCount;
     document.getElementById("diagnosticOntologyRoles").textContent = ontologyRoleCount;
+    document.getElementById("diagnosticSemanticAmbiguities").textContent = semanticAmbiguityCount;
     document.getElementById("diagnosticOriginAuthorityPaths").textContent = originAuthorityPathCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
