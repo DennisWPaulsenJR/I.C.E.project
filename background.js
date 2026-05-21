@@ -4587,7 +4587,7 @@ function entityClassForMention({ mentionText = "", mentionType = "", entityType 
   const type = normalizeWhitespace(entityType).toLowerCase();
   const role = normalizeWhitespace(roleHint).toLowerCase();
 
-  if (["adversary", "anti_god", "deceiver"].includes(type) || ["satan", "lucifer", "adversary", "perdition"].includes(text)) return "IIIIII";
+  if (["adversary", "anti_god", "deceiver", "wicked", "evil"].includes(type) || ["satan", "lucifer", "adversary", "perdition"].includes(text)) return "i";
   if (["divine_authority", "divine_redeemer", "divine"].includes(type) ||
       ["god", "the lord", "yhwh", "jesus christ", "jesus", "holy ghost", "holy spirit", "emmanuel", "god with us"].includes(text)) return "I";
   if (["divine_messenger", "angelic_messenger"].includes(type) || /angel of (?:the )?lord/i.test(mentionText)) return "II";

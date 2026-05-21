@@ -1058,7 +1058,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // III = Human
   // IIII = Living organism / creature
   // IIIII = Non-living item/object
-  // IIIIII = Anti-GOD / adversary
+  // i = adversary / wicked / evil / anti-GOD; display as italic lowercase i and never visually collapse with Class I
   // AI_Actor = artificial/tool actor category
   const FUTURE_ENTITY_CLASSES = Object.freeze({
     I: Object.freeze({
@@ -1096,12 +1096,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       examples: Object.freeze(["altar", "temple", "stone", "rod"]),
       renderClass: "IIIII"
     }),
-    IIIIII: Object.freeze({
-      label: "Anti-GOD / adversary",
+    i: Object.freeze({
+      label: "adversary / wicked / evil / anti-GOD",
       rank: 6,
-      entityTypes: Object.freeze(["adversary", "anti_god", "deceiver"]),
+      entityTypes: Object.freeze(["adversary", "anti_god", "deceiver", "wicked", "evil"]),
       examples: Object.freeze(["satan", "lucifer", "adversary", "perdition"]),
-      renderClass: "IIIIII"
+      renderClass: "i"
     }),
     AI_Actor: Object.freeze({
       label: "artificial/tool actor category",
@@ -1118,7 +1118,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   function entityClassLabel(entityClass) {
     const record = entityClassRecord(entityClass);
     if (!record) return "Unclassified";
-    return record.renderClass === "AI_Actor" ? `AI_Actor - ${record.label}` : `Class ${record.renderClass} - ${record.label}`;
+    if (record.renderClass === "AI_Actor") return `AI_Actor - ${record.label}`;
+    if (record.renderClass === "i") return `Class 𝑖 - ${record.label}`;
+    return `Class ${record.renderClass} - ${record.label}`;
   }
 
   function classifyEntityDisplay(item = {}) {
@@ -1138,9 +1140,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Display-only Phase 6.5 classifier. It intentionally depends on resolved
     // entity metadata and role/context signals, not raw substrings inside words.
-    if (["adversary", "anti_god", "deceiver"].includes(entityType) ||
+    if (["adversary", "anti_god", "deceiver", "wicked", "evil"].includes(entityType) ||
         hasExactName(["satan", "lucifer", "adversary", "perdition"])) {
-      return "IIIIII";
+      return "i";
     }
 
     if (["ai_actor", "artificial_actor", "tool_actor"].includes(entityType) || hasExactName(["ai_actor"])) {
@@ -3290,7 +3292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     path.className = "ice-authority-path-line";
     path.append(
-      iceClassNode("THE LORD", "Class I - GOD / Divine Authority", "ice-class-i"),
+      iceClassNode("THE LORD", "Class I - GOD / Divine Authority", "ice-class-i-divine"),
       iceTransferArrow("Sends / Authorizes"),
       iceClassNode("AngEL Of THE LORD", "Class II - AngEL / Messenger of GOD", "ice-class-ii"),
       iceTransferArrow("Instructs / Reveals"),

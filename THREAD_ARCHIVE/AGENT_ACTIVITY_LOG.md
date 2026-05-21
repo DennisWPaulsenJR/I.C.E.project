@@ -21,6 +21,31 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 20:24 - pcdx - Correct Class 𝑖 hierarchy display
+Summary:
+- Corrected adversarial hierarchy display to italic lowercase `Class 𝑖` so it cannot visually collapse with Divine `Class I`.
+- Updated class-transfer CSS hooks to use `ice-class-i-divine` and added `ice-class-i-adversary` for future visual hierarchy styling.
+- Updated project state hierarchy notes.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `study.css`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 20:17 - pcdx - Add class transfer display
 Summary:
 - Added derived Authority Path / Class Transfer display for THE LORD -> AngEL Of THE LORD -> Joseph and Class I -> Class II -> Class III.

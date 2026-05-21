@@ -278,9 +278,12 @@ Future capabilities:
 - `I` = GOD / Divine Authority
 - `II` = AngEL / Messenger of GOD
 - `III` = Human
-- `IIII` = Other living organisms
-- `IIIII` = Non-living items / objects
-- `IIIIII` = Anti-GOD / adversary
+- `IIII` = Living organism / creature / natural life
+- `IIIII` = Non-living item/object
+- `𝑖` = adversary / wicked / evil / anti-GOD
+- `AI_Actor` = artificial/tool actor category
+
+Class I is Divine Origin Authority. Class 𝑖 is adversarial / anti-origin opposition. Class 𝑖 uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 

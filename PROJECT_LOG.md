@@ -2,6 +2,36 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Class 𝑖 Hierarchy Correction
+
+Instruction summary:
+- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class 𝑖`.
+- Ensure Class 𝑖 never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
+
+Codex action summary:
+- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class 𝑖`.
+- Renamed the Divine Class I CSS hook in the class-transfer display to `ice-class-i-divine` and added `ice-class-i-adversary` for future distinct styling.
+- Updated project state hierarchy notes and current class-transfer CSS hook references.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `study.css`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Class Transfer Display
 
 Instruction summary:
@@ -12,7 +42,7 @@ Instruction summary:
 Codex action summary:
 - Added reusable Study Panel Authority Path / Class Transfer display blocks in `study.js`.
 - Mounted the class transfer display on Divine Message Instruction, Revelation Pattern, and Origin / Authority Path cards when THE LORD, AngEL Of THE LORD, and Joseph are present in semantic context.
-- Added CSS hooks/classes for class transfer display: `ice-class-i`, `ice-class-ii`, `ice-class-iii`, `ice-transfer-action`, `ice-authority-path`, and `ice-derived-meaning`.
+- Added CSS hooks/classes for class transfer display: `ice-class-i-divine`, `ice-class-i-adversary`, `ice-class-ii`, `ice-class-iii`, `ice-transfer-action`, `ice-authority-path`, and `ice-derived-meaning`.
 
 Files changed:
 - `study.js`
@@ -543,7 +573,7 @@ Instruction summary:
 - Preserve distinctions between narrator, prophet, divine speech, THE LORD, and AngEL Of THE LORD.
 
 Codex action summary:
-- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class IIIIII - Anti-GOD / adversary`, and `AI_Actor - artificial/tool actor category` wording.
+- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class 𝑖 - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
 - Added display fallback classification for `Scripture narrator`, `narrator`, `prophet`, and `the prophet` as `Class III - Human` when they appear as related display entities without a full registry record.
 - Added hierarchy lines to derived semantic displays, including Passage Functions, Revelation Patterns, Reference Roles, and Narrative Timeline entity previews.
 - Removed duplicated `Class:` prefixing in entity, canonical identity, focus, and role displays so hierarchy labels are visually consistent.
@@ -2036,7 +2066,7 @@ Instruction summary:
 
 Codex action summary:
 - Added class labels for Entity Registry and Canonical Identities.
-- Used hierarchy I through IIIIII for display classification.
+- Used hierarchy I through 𝑖 for display classification, with italic lowercase Class 𝑖 distinct from Divine Class I.
 - Kept classification display-only.
 
 Files changed:

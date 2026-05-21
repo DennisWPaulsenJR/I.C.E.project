@@ -412,8 +412,14 @@ body {
   line-height: 1.35;
 }
 
-.ice-class-i strong {
+.ice-class-i-divine strong {
   font-size: 1rem;
+}
+
+.ice-class-i-adversary strong {
+  color: #6f1d1b;
+  font-size: .9rem;
+  font-style: italic;
 }
 
 .ice-class-ii strong {
