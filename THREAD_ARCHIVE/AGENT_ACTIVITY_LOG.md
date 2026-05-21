@@ -21,6 +21,26 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 19:12 - pcdx - Refine semantic ambiguity display
+Summary:
+- Refined Study Panel `Semantic Ambiguities / Contrasts` cards with readable contrast labels, source phrase, derived meaning, resolved status, why-it-matters summary, confidence, source grounding, and expandable evidence.
+- Kept the change display-only and preserved all `ICE_SEMANTIC_AMBIGUITIES` records.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `semanticAmbiguities: 5`
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 18:57 - pcdx - Add semantic ambiguity layer
 Summary:
 - Added Phase 8.2o `ICE_SEMANTIC_AMBIGUITIES` derived layer for resolved semantic contrasts and context-required interpretation points.

@@ -2,6 +2,32 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Semantic Ambiguity Display Refinement
+
+Instruction summary:
+- Refine Study Panel `Semantic Ambiguities / Contrasts` into readable semantic cards.
+- Keep the change display-only while preserving source phrase vs Derived meaning, divine display compliance, hierarchy formatting, and JESUS / JESUS CHRIST / CHRIST distinctions.
+
+Codex action summary:
+- Updated `study.js` ambiguity cards to show `Semantic Contrast`, readable contrast type, source phrase, derived meaning, resolved status, why-it-matters summary, confidence, source grounding, expandable evidence, related layers, and scope.
+- Added display label helpers for the five Matthew 1 pilot contrast types without changing stored ambiguity records.
+- Kept grounding evidence expandable to reduce visual load while preserving review detail.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticAmbiguities: 5`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Semantic Ambiguity / Contrast Layer
 
 Instruction summary:

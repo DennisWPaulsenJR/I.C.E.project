@@ -4186,6 +4186,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].join(" ");
   }
 
+  function semanticAmbiguityContrastTypeLabel(type) {
+    const normalized = normalizeText(type || "semantic_contrast").toLowerCase();
+    if (normalized === "narrative_name_vs_canonical_identity") return "narrative NAME vs canonical/source identity";
+    if (normalized === "title_office_not_revealed_name") return "title/office, not revealed NAME";
+    if (normalized === "source_wording_vs_derived_display_preference") return "source wording vs derived semantic preference";
+    if (normalized === "human_narration_vs_divine_authority_source") return "Human narration vs Divine authority source";
+    if (normalized === "pronoun_referent_requires_semantic_context") return "pronoun referent requires semantic context";
+    return passageFunctionTitle(type || "semantic_contrast");
+  }
+
+  function semanticAmbiguityResolutionLabel(status) {
+    const normalized = normalizeText(status || "resolved").toLowerCase();
+    if (normalized === "context_required") return "context required";
+    if (normalized === "unresolved") return "unresolved";
+    return "resolved";
+  }
+
+  function semanticAmbiguityWhyItMatters(item = {}) {
+    const type = normalizeText(item.ambiguityType || "").toLowerCase();
+    if (type === "narrative_name_vs_canonical_identity") return "Prevents the app from implying Joseph named JESUS CHRIST.";
+    if (type === "title_office_not_revealed_name") return "Prevents CHRIST from being treated as the revealed NAME in Matthew 1:21.";
+    if (type === "source_wording_vs_derived_display_preference") return "Preserves quoted source wording while allowing HOLY SPIRIT as the derived semantic display.";
+    if (type === "human_narration_vs_divine_authority_source") return "Keeps scripture narrator and prophet as Class III - Human while preserving THE LORD as Divine authority source.";
+    if (type === "pronoun_referent_requires_semantic_context") return "Prevents pronouns from being exalted or assigned by proximity when Joseph, Mary, and JESUS are all nearby.";
+    return "Keeps semantically different items from collapsing into one generalized meaning bucket.";
+  }
+
+  function semanticAmbiguityDerivedLines(item = {}) {
+    const type = normalizeText(item.ambiguityType || "").toLowerCase();
+    if (type === "narrative_name_vs_canonical_identity") return [
+      "JESUS = revealed NAME",
+      "JESUS CHRIST = canonical/source identity"
+    ];
+    if (type === "title_office_not_revealed_name") return [
+      "CHRIST = title/source identity and messianic office",
+      "JESUS = revealed NAME Joseph is instructed to give"
+    ];
+    if (type === "source_wording_vs_derived_display_preference") return [
+      "Holy Ghost = preserved source phrase wording",
+      "HOLY SPIRIT = preferred derived semantic display"
+    ];
+    if (type === "human_narration_vs_divine_authority_source") return [
+      "scripture narrator = Class III - Human narration",
+      "THE LORD = Divine authority source"
+    ];
+    if (type === "pronoun_referent_requires_semantic_context") return [
+      "he / him / his require semantic referent resolution",
+      "do not assign pronouns by proximity alone"
+    ];
+    return [item.derivedInterpretation || "Not recorded."];
+  }
+
   function createSemanticAmbiguityCard(item) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -4198,33 +4250,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     const divineContext = hasDivineDisplayContext([item.semanticItems, item.sourceWording, item.derivedInterpretation, item.evidence, item.sourceGrounding]);
     const title = items.length ? items.join(" vs ") : "Semantic Ambiguity / Contrast";
     const grounding = trimText(item.sourceGrounding || "", 190);
+    const derivedLines = semanticAmbiguityDerivedLines(item);
 
     card.className = "study-card semantic-card semantic-ambiguity-card";
     assignSemanticCardTarget(card, "ambiguity", item, title);
     header.className = "semantic-card-header";
-    heading.textContent = renderDerivedSemanticDisplayText(title, divineContext);
+    heading.textContent = "Semantic Contrast";
     range.className = "semantic-card-range";
-    range.textContent = [passageFunctionTitle(item.ambiguityType || "semantic_contrast"), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    range.textContent = [renderDerivedSemanticDisplayText(title, divineContext), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
     body.className = "semantic-card-body";
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Semantic Items", "", { list: items, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Ambiguity / Contrast Type", passageFunctionTitle(item.ambiguityType || "semantic_contrast"), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Source phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
-      createPassageFunctionSection("Derived meaning", item.derivedInterpretation || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Resolution Status", passageFunctionTitle(item.resolutionStatus || "resolved"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Contrast", title, { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Contrast Type", semanticAmbiguityContrastTypeLabel(item.ambiguityType), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", "", { list: derivedLines, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Resolved?", semanticAmbiguityResolutionLabel(item.resolutionStatus), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Why It Matters", semanticAmbiguityWhyItMatters(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Grounding / Evidence", "", { list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), hiddenCount: 0, divineContext }),
+      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Grounding / Evidence", "", { collapsed: true, summaryLabel: "Show grounding evidence", list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), divineContext }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
-      createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     card.append(header, body);
     return card;
   }
-
   function renderSemanticAmbiguities(term) {
     const container = document.getElementById("semanticAmbiguityCards");
     const count = document.getElementById("semanticAmbiguityCount");
