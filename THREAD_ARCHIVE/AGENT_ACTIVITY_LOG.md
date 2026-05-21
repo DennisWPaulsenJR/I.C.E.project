@@ -21,6 +21,28 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-20 21:22 - pcdx - Add semantic visual ontology styling
+Summary:
+- Added restrained visual ontology styling for source phrases, derived meanings, Divine Class I, Class II messenger, Class III Human, adversarial Class 𝑖, and authority transfer paths.
+- Kept styling accessible and low-contrast enough to support review without overwhelming semantic cards.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- Manual smoke: reviewed CSS diff for readable, restrained source/derived and class-transfer styling
+
+Commit:
+- This commit
+
+Status:
+- Implemented
 ## 2026-05-20 20:24 - pcdx - Correct Class 𝑖 hierarchy display
 Summary:
 - Corrected adversarial hierarchy display to italic lowercase `Class 𝑖` so it cannot visually collapse with Divine `Class I`.

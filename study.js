@@ -3220,6 +3220,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const section = document.createElement("section");
     section.className = options.collapsed ? "semantic-section semantic-section-collapsible" : "semantic-section";
+    const normalizedTitle = normalizeText(title).toLowerCase();
+    if (/source phrase|source wording/.test(normalizedTitle)) section.classList.add("ice-source-phrase");
+    if (/derived meaning|semantic purpose|meaning/.test(normalizedTitle)) section.classList.add("ice-derived-meaning");
 
     if (options.collapsed) {
       const details = document.createElement("details");

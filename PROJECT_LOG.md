@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-20 - Semantic Visual Ontology Styling
+
+Instruction summary:
+- Add Phase 8.2r restrained semantic visual hierarchy styling.
+- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class 𝑖, source wording, and derived meaning.
+- Preserve semantic records, source phrases, source phrase vs Derived meaning separation, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class hierarchy.
+
+Codex action summary:
+- Added source phrase and derived meaning section classes from the Study Panel section helper.
+- Refined `ice-authority-path` styling so THE LORD -> AngEL Of THE LORD -> Joseph reads as origin -> transfer -> recipient without flashy treatment.
+- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class 𝑖 so Class 𝑖 remains visually distinct from Class I.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Manual smoke: CSS diff reviewed for restrained colors, stable spacing, and readable class transfer/source-derived styling.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-20 - Class 𝑖 Hierarchy Correction
 
 Instruction summary:

@@ -382,15 +382,37 @@ body {
   min-height: 0;
 }
 
+.ice-source-phrase {
+  border-left: 2px solid #d7e0ea;
+  padding-left: 9px;
+}
+
+.ice-source-phrase p,
+.ice-source-phrase .semantic-list,
+.ice-source-phrase .semantic-plain-list {
+  color: #4c5969;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.ice-derived-meaning:not(.ice-authority-path) {
+  background: #f8fbf8;
+  border-left: 2px solid #a8bfaa;
+  border-radius: 0 6px 6px 0;
+  padding: 7px 9px;
+}
+
 .ice-derived-meaning.ice-authority-path {
-  border-left: 3px solid #9db5d1;
-  gap: 8px;
-  padding-left: 10px;
+  background: #f7fafc;
+  border: 1px solid #d9e4ee;
+  border-left: 4px solid #7f9fbd;
+  border-radius: 6px;
+  gap: 10px;
+  padding: 10px 12px;
 }
 
 .ice-authority-path-line {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .ice-class-node {
@@ -402,6 +424,7 @@ body {
   color: #17202a;
   font-size: .95rem;
   font-weight: 800;
+  line-height: 1.25;
 }
 
 .ice-class-node span,
@@ -413,29 +436,38 @@ body {
 }
 
 .ice-class-i-divine strong {
-  font-size: 1rem;
+  color: #111827;
+  font-size: 1.03rem;
+  letter-spacing: .01em;
 }
 
 .ice-class-i-adversary strong {
   color: #6f1d1b;
   font-size: .9rem;
   font-style: italic;
+  font-weight: 700;
 }
 
 .ice-class-ii strong {
-  font-size: .94rem;
+  color: #243b53;
+  font-size: .95rem;
 }
 
 .ice-class-iii strong {
+  color: #384454;
   font-size: .9rem;
+  font-weight: 700;
 }
 
 .ice-transfer-action {
   color: #526070;
   font-size: .82rem;
   line-height: 1.35;
+  padding-left: 2px;
 }
 
 .ice-transfer-actions {
-  gap: 3px;
+  border-top: 1px solid #e5edf4;
+  gap: 4px;
+  padding-top: 6px;
 }
