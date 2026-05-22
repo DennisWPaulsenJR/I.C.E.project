@@ -3708,12 +3708,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (mode !== "reference") {
       asArray(studyData.referenceRoles)
         .filter((role) => asArray(role.linkedPassageFunctions).some((value) => relatedFunctionKeys.has(normalizeText(value)) || normalizeText(value) === itemFunction) || semanticVerseOverlap(role, item) || semanticEntityOverlap(role, item))
-        .forEach((role) => links.push(semanticNavItem(
-          `Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${trimText(role.discoveredReference || role.sourceDiscoveryId, 80)}`,
-          semanticSectionForNav("reference"),
-          role.discoveredReference || role.referenceRole || "",
-          semanticCardKey("reference", role, role.referenceRole)
-        )));
+        .forEach((role) => {
+          const resolved = referenceRoleResolvedJesusTitle(role);
+          const referenceLabel = resolved
+            ? `${resolved.resolvedLabel} (source: ${resolved.sourceReference})`
+            : trimText(role.discoveredReference || role.sourceDiscoveryId, 80);
+          links.push(semanticNavItem(
+            `Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${referenceLabel}`,
+            semanticSectionForNav("reference"),
+            resolved?.resolvedBeing || role.discoveredReference || role.referenceRole || "",
+            semanticCardKey("reference", role, role.referenceRole)
+          ));
+        });
     }
 
     if (mode !== "originAuthority") {
@@ -4084,6 +4090,7 @@ createRevelationPartsSection(item.subEvents)
     return [
       item.discoveredReference,
       item.referenceRole,
+      referenceRoleResolutionDetails(item).join(" "),
       item.verseRange,
       item.scopePath,
       item.sourceDiscoveryId,
@@ -4100,9 +4107,42 @@ createRevelationPartsSection(item.subEvents)
     return passageFunctionOrderedEntities(item.linkedEntities).map((entry) => entry.display);
   }
 
+  function referenceRoleResolvedJesusTitle(item = {}) {
+    const source = normalizeText(item.discoveredReference || "");
+    const match = source.match(/^JESUS CHRIST\s*,\s*(.+)$/i);
+    if (!match) return null;
+
+    const rawRole = match[1].trim();
+    const normalizedRole = rawRole.replace(/\s+/g, " ");
+    const roleDisplay = normalizedRole
+      .replace(/^mission of$/i, "Mission")
+      .replace(/^atonement through$/i, "Atonement")
+      .replace(/^birth of$/i, "Birth")
+      .replace(/^prophecies about$/i, "Prophecies")
+      .replace(/^davidic descent of$/i, "Davidic Descent");
+
+    return {
+      sourceReference: source,
+      resolvedBeing: "JESUS",
+      canonicalIdentity: "JESUS CHRIST",
+      referenceRole: roleDisplay || normalizedRole,
+      resolvedLabel: `JESUS - ${roleDisplay || normalizedRole}`
+    };
+  }
+
+  function referenceRoleResolutionDetails(item = {}) {
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    if (!resolution) return [];
+    return [
+      `Source: ${resolution.sourceReference}`,
+      `Resolved: ${resolution.resolvedLabel}`,
+      `Canonical: ${resolution.canonicalIdentity}`
+    ];
+  }
   function referenceRoleSemanticPurpose(item = {}) {
     const role = item.referenceRole || "";
-    const reference = item.discoveredReference || "This reference";
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    const reference = resolution ? resolution.resolvedLabel : item.discoveredReference || "This reference";
     const purposes = {
       davidic_lineage_support: `${reference} supports the Davidic lineage frame for the passage.`,
       abrahamic_covenant_support: `${reference} supports the Abrahamic covenant and lineage frame for the passage.`,
@@ -4121,6 +4161,15 @@ createRevelationPartsSection(item.subEvents)
     ].filter(Boolean);
   }
 
+  function referenceRoleResolvedDetails(item = {}) {
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    if (!resolution) return [];
+    return [
+      `Resolved Being: ${resolution.resolvedBeing}`,
+      `Canonical/source identity: ${resolution.canonicalIdentity}`,
+      `Reference role: ${resolution.referenceRole}`
+    ];
+  }
   function createReferenceRoleCard(item) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -4135,6 +4184,7 @@ createRevelationPartsSection(item.subEvents)
     const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
     const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
     const grounding = trimText(item.sourceGrounding || "", 190);
+    const resolvedDetails = referenceRoleResolvedDetails(item);
 
     card.className = "study-card semantic-card reference-role-card";
     assignSemanticCardTarget(card, "reference", item, item.referenceRole);
@@ -4148,6 +4198,7 @@ createRevelationPartsSection(item.subEvents)
     [
       createPassageFunctionSection("Role", passageFunctionTitle(item.referenceRole || "reference_role")),
       createPassageFunctionSection("Reference", "", { list: referenceRoleReferenceDetails(item), plainList: true, divineContext }),
+      resolvedDetails.length ? createPassageFunctionSection("Resolved Reference", "", { list: resolvedDetails, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
