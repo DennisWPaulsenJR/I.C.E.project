@@ -2195,3 +2195,36 @@ Commit hash examples:
 
 Status:
 - Committed through prior milestones
+
+## 2026-05-22 - pcdx - Refine semantic entity labeling
+
+Instruction summary:
+- Replace behavior-first Direct Actors terminology with ontology-aware Semantic Entities language in the Study Panel.
+- Ensure THE LORD / GOD can appear as semantic entity presence when authority is mediated through AngEL Of THE LORD.
+- Keep actor timelines as a separate technical/debug view.
+
+Codex action summary:
+- Renamed the generated Direct Actors role group to Semantic Entities while keeping Direct Actors backward compatible in display maps.
+- Added authority path entity presence for THE LORD, GOD, and AngEL Of THE LORD where source/context supports it.
+- Added compact ontology path display for entity role cards, such as Class I -> Class II -> Class III.
+- Renamed the lower technical Detected Actors section to Actor Timelines.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `study.css`
+- `study.html`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed
+- `node --check background.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with stable semantic counts
+
+Commit:
+- This commit
+
+Status:
+- Implemented

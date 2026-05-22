@@ -2002,3 +2002,30 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-22 - pcdx - Refine semantic entity labeling
+Summary:
+- Replaced behavior-first Direct Actors terminology with Semantic Entities for the ontology/entity role display.
+- Kept Direct Actors backward compatible as a legacy role group while rendering it as Semantic Entities.
+- Added THE LORD, GOD, and AngEL Of THE LORD entity presence where authority/source context supports the semantic role.
+- Added compact ontology path display for entity role cards and renamed lower technical Detected Actors to Actor Timelines.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `study.css`
+- `study.html`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check background.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with stable semantic counts
+
+Commit:
+- This commit
+
+Status:
+- Implemented

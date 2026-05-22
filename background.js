@@ -3431,15 +3431,16 @@ function addEntityRoleItem(items, seen, sourceContext, roleGroup, entityName, co
 }
 
 function addRoleFromRoleValue(items, seen, sourceContext, roleGroup, role, fallbackConfidence = "probable", evidence = "") {
-  if (!role?.actorName) return;
+  const actorName = typeof role === "string" ? role : role?.actorName;
+  if (!actorName) return;
   addEntityRoleItem(
     items,
     seen,
     sourceContext,
     roleGroup,
-    role.actorName,
-    role.confidence || fallbackConfidence,
-    evidence || role.reason || ""
+    actorName,
+    role?.confidence || fallbackConfidence,
+    evidence || role?.reason || ""
   );
 }
 
@@ -3803,7 +3804,7 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
       items,
       seen,
       actor.sourceContexts?.[0] || fallbackContext,
-      "Direct Actors",
+      "Semantic Entities",
       actor.actorName,
       "explicit",
       directReason?.actorReason || "direct actor timeline",
@@ -3813,6 +3814,11 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
 
   for (const scene of sceneModels || []) {
     const context = scene.sourceContext || fallbackContext;
+    addRoleFromRoleValue(items, seen, context, "Semantic Entities", scene.sourceAuthority, "inferred-source", "origin authority entity presence");
+    addRoleFromRoleValue(items, seen, context, "Semantic Entities", scene.orchestrator, "inferred-source", "orchestrating authority entity presence");
+    for (const role of scene.authorityChain || []) {
+      addRoleFromRoleValue(items, seen, context, "Semantic Entities", role, role.confidence || "probable", "authority path entity presence");
+    }
     addRoleFromRoleValue(items, seen, context, "Source Authorities", scene.sourceAuthority, "inferred-source");
     addRoleFromRoleValue(items, seen, context, "Source Authorities", scene.orchestrator, "inferred-source");
     addRoleFromRoleValue(items, seen, context, "Recipients / Targets", scene.recipient, "explicit");
@@ -3851,6 +3857,25 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
       );
     }
 
+    if (/\b(?:the\s+)?angel of (?:THE LORD|the Lord)\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Semantic Entities", "THE LORD", "probable", "authority source present through AngEL Of THE LORD", {
+        actorReason: "origin authority present through messenger path",
+        eventType: "authority_path",
+        anchorText: "angel of THE LORD"
+      });
+      addEntityRoleItem(items, seen, context, "Semantic Entities", "AngEL Of THE LORD", "explicit", "messenger / authority-transfer role", {
+        actorReason: "messenger / authority-transfer role",
+        eventType: "authority_path",
+        anchorText: "angel of THE LORD"
+      });
+    }
+    if (/\bGod\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Semantic Entities", "GOD", "explicit", "source identity presence", {
+        actorReason: "source identity presence",
+        eventType: "source_identity",
+        anchorText: "God"
+      });
+    }
     if (/\bJesus Christ\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "JESUS CHRIST", "explicit", "captured divine title");
     } else if (/\bJesus\b|\bChrist\b/i.test(captureText)) {
@@ -3941,7 +3966,8 @@ function canonicalEntityName(name) {
 function entityRoleTypeFromGroup(roleGroup) {
   const normalized = normalizeWhitespace(roleGroup || "").toLowerCase();
   const map = new Map([
-    ["direct actors", "directActor"],
+    ["semantic entities", "semanticEntity"],
+    ["direct actors", "semanticEntity"],
     ["source authorities", "sourceAuthority"],
     ["recipients / targets", "recipient"],
     ["instruction recipients", "instructionRecipient"],

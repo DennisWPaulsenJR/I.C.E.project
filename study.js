@@ -731,7 +731,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const ENTITY_GROUP_ORDER = [
-    "Direct Actors",
+    "Semantic Entities",
     "Source Authorities",
     "Source Metadata Entities",
     "Recipients / Targets",
@@ -746,6 +746,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function normalizeEntityRoleGroup(groupName) {
     if (groupName === "Instruction Subjects") return "Instruction Concerning";
+    if (groupName === "Direct Actors") return "Semantic Entities";
     return groupName || "Other Entities";
   }
 
@@ -801,7 +802,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     for (const actor of asArray(studyData.actorTimelines)) {
-      addEntityRole(groups, "Direct Actors", actor.actorName, "explicit");
+      addEntityRole(groups, "Semantic Entities", actor.actorName, "explicit");
     }
 
     for (const scene of asArray(studyData.sceneModels)) {
@@ -897,7 +898,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   function entityRoleTypeForDisplay(groupName) {
     const normalized = normalizeText(groupName || "").toLowerCase();
     const map = new Map([
-      ["direct actors", "directActor"],
+      ["semantic entities", "semanticEntity"],
+      ["direct actors", "semanticEntity"],
       ["source authorities", "sourceAuthority"],
       ["source metadata entities", "sourceMetadata"],
       ["recipients / targets", "recipient"],
@@ -959,6 +961,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function entityRoleGroupDisplayName(groupName = "") {
+    const normalized = normalizeText(groupName).toLowerCase();
+    const labels = new Map([
+      ["direct actors", "Semantic Entities"],
+      ["semantic entities", "Semantic Entities"],
+      ["source authorities", "Authority Entities"],
+      ["instruction recipients", "Instruction Recipient Entities"],
+      ["covenant / family participants", "Covenant / Family Entities"],
+      ["participants", "Narrative / Scene Entities"]
+    ]);
+
+    return labels.get(normalized) || groupName || "Semantic Entities";
+  }
+
+  function entityRoleGroupMeta(groupName = "") {
+    const normalized = normalizeText(groupName).toLowerCase();
+    const labels = new Map([
+      ["semantic entities", "ontology-aware entity presence; actor timelines remain separate"],
+      ["direct actors", "ontology-aware entity presence; actor timelines remain separate"],
+      ["source authorities", "authority entity presence and source/origin role"],
+      ["instruction recipients", "recipient entity role within instruction/revelation path"],
+      ["covenant / family participants", "covenant and family entity roles"],
+      ["participants", "narrative scene entity presence"],
+      ["lineage persons", "lineage graph / family tree foundation"]
+    ]);
+
+    return labels.get(normalized) || "semantic role grouping; actor timelines remain separate";
+  }
+
+  function entityRoleClassRank(entityClass) {
+    const ranks = new Map([
+      ["I", 1],
+      ["II", 2],
+      ["III", 3],
+      ["IIII", 4],
+      ["IIIII", 5],
+      ["i", 6],
+      ["AI_Actor", 7]
+    ]);
+
+    return ranks.get(entityClass) || 99;
+  }
+
+  function entityRoleClassShortLabel(entityClass) {
+    if (entityClass === "AI_Actor") return "AI_Actor";
+    if (entityClass === "i") return "Class i";
+    return entityClass ? `Class ${entityClass}` : "";
+  }
+
+  function entityRoleHierarchySummary(items = [], groupName = "") {
+    const classes = Array.from(new Set(items
+      .map((item) => entityRoleClassForDisplay(item, groupName))
+      .filter(Boolean)))
+      .sort((left, right) => entityRoleClassRank(left) - entityRoleClassRank(right))
+      .map(entityRoleClassShortLabel)
+      .filter(Boolean);
+
+    if (classes.length < 2) return "";
+    return `Ontology path: ${classes.join(" -> ")}`;
+  }
   function createEntityRoleCard(group) {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
@@ -966,10 +1028,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sortedEntities = sortEntityRoleItemsForDisplay(group.entities, group.groupName);
     const visible = sortedEntities.slice(0, group.groupName === "Lineage Persons" ? 8 : 5);
     const hidden = group.entities.length - visible.length;
+    const displayGroupName = entityRoleGroupDisplayName(group.groupName);
+    const hierarchySummary = entityRoleHierarchySummary(sortedEntities, group.groupName);
 
     card.className = "study-card";
-    heading.textContent = renderDivineDisplayText(group.groupName || "Entity roles");
+    heading.textContent = renderDivineDisplayText(displayGroupName || "Semantic Entities");
     list.className = "entity-role-list";
+
+    if (hierarchySummary) {
+      const hierarchy = document.createElement("div");
+      hierarchy.className = "entity-role-hierarchy";
+      hierarchy.textContent = hierarchySummary;
+      list.appendChild(hierarchy);
+    }
 
     for (const item of visible) {
       const roleItem = document.createElement("div");
@@ -1015,9 +1086,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const metaText = document.createElement("span");
     metaText.className = "meta";
-    metaText.textContent = group.groupName === "Lineage Persons"
-      ? "lineage graph / family tree foundation"
-      : "role grouping; direct actor timelines remain separate";
+    metaText.textContent = entityRoleGroupMeta(group.groupName);
 
     card.append(heading, list, metaText);
     return card;
@@ -1028,6 +1097,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const groups = buildEntityRoleGroups();
     const filtered = groups.filter((group) => includesTerm([
       group.groupName,
+      entityRoleGroupDisplayName(group.groupName),
       group.entities.map((item) => item.name).join(" ")
     ].join(" "), term));
     const total = groups.reduce((sum, group) => sum + group.entities.length, 0);
@@ -1051,7 +1121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createCard(
         "Grouped preview",
         `${total} total role/entity records. Showing grouped preview.`,
-        "direct actor timelines remain separate"
+        "semantic entity groups remain separate from technical actor timelines"
       ));
     }
 
