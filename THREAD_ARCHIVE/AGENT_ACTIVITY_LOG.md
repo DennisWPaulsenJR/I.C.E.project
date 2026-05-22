@@ -21,6 +21,28 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-22 16:55 - pcdx - Add reference role provenance trace
+Summary:
+- Added compact expandable provenance details for Reference Role source titles such as `Redeemer`.
+- Provenance now shows Source Discovery -> Reference Graph -> ICE_REFERENCE_ROLES plus sourceDiscoveryId, referenceGraph edge id, href, source label text, scopePath, verseRef, adapter, and confidence when available.
+- Related Semantic Layers labels for Reference Roles and Reference Graph edges now carry compact provenance context.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-22 16:20 - pcdx - Refine semantic resolution trace display
 Summary:
 - Added compact expandable Semantic Resolution Trace blocks to Passage Functions, Revelation Patterns, Reference Roles, Semantic Ontology Roles, and Semantic Ambiguities / Contrasts.

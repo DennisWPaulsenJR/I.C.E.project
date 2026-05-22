@@ -2,6 +2,34 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-22 - Reference Role Provenance Trace
+
+Instruction summary:
+- Add Reference Role provenance trace for source titles such as `Redeemer`.
+- Show where source/reference titles came from across Source Discovery, Reference Graph, and `ICE_REFERENCE_ROLES`.
+- Preserve exact source labels, resolved display, source records, and compact expandable behavior.
+
+Codex action summary:
+- Added display-only Reference Role provenance helpers that look up the existing source discovery record and reference graph edge by `sourceDiscoveryId`.
+- Added an expandable `Reference Role Provenance` block showing sourceDiscoveryId, referenceGraph edge id, href, source label text, scopePath, verseRef, adapter, and confidence.
+- Enriched Related Semantic Layers labels for Reference Role and Reference Graph links with compact provenance details.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
+
 ## 2026-05-22 - Semantic Resolution Trace Display Refinement
 
 Instruction summary:

@@ -3883,17 +3883,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         .filter((role) => asArray(role.linkedPassageFunctions).some((value) => relatedFunctionKeys.has(normalizeText(value)) || normalizeText(value) === itemFunction) || semanticVerseOverlap(role, item) || semanticEntityOverlap(role, item))
         .forEach((role) => {
           const resolved = referenceRoleResolvedJesusTitle(role);
-          const referenceLabel = resolved
-            ? `${resolved.resolvedLabel} (source: ${resolved.sourceReference})`
-            : trimText(role.discoveredReference || role.sourceDiscoveryId, 80);
           links.push(semanticNavItem(
-            `Reference Role: ${passageFunctionTitle(role.referenceRole)} | ${referenceLabel}`,
+            `Reference Role: ${trimText(referenceRoleProvenanceSummary(role), 180)}`,
             semanticSectionForNav("reference"),
             resolved?.resolvedBeing || role.discoveredReference || role.referenceRole || "",
             semanticCardKey("reference", role, role.referenceRole)
           ));
-        });
-    }
+        });    }
 
     if (mode !== "originAuthority") {
       asArray(studyData.originAuthorityPaths)
@@ -3954,7 +3950,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       asArray(studyData.referenceGraph)
         .filter((edge) => edge.sourceDiscoveryId && edge.sourceDiscoveryId === item.sourceDiscoveryId)
         .forEach((edge) => links.push(semanticNavItem(
-          `Reference Graph: ${edge.relationshipType || "reference edge"} | ${trimText(edge.toText || edge.toHref || edge.id, 80)}`,
+          `Reference Graph: ${edge.relationshipType || "reference edge"} | ${trimText(edge.toText || edge.toHref || edge.id, 80)} | sourceDiscoveryId: ${edge.sourceDiscoveryId || "not recorded"} | edge: ${edge.id || "not recorded"}`,
           semanticSectionForNav("referenceGraph"),
           edge.toText || edge.toHref || edge.relationshipType || "",
           ""
@@ -4331,6 +4327,7 @@ createRevelationPartsSection(item.subEvents)
   function referenceRoleReferenceDetails(item = {}) {
     return [
       item.discoveredReference || "reference",
+      referenceRoleSourceTitle(item) ? `Source title: ${referenceRoleSourceTitle(item)}` : "",
       item.verseRange ? `Verse range: ${item.verseRange}` : "",
       item.referenceHref ? `Href: ${item.referenceHref}` : ""
     ].filter(Boolean);
@@ -4344,6 +4341,67 @@ createRevelationPartsSection(item.subEvents)
       `Canonical/source identity: ${resolution.canonicalIdentity}`,
       `Reference role: ${resolution.referenceRole}`
     ];
+  }
+
+  function referenceRoleSourceTitle(item = {}) {
+    const reference = normalizeText(item.discoveredReference || "");
+    const commaParts = reference.split(",").map((part) => normalizeText(part)).filter(Boolean);
+    if (commaParts.length > 1) return commaParts.slice(1).join(", ");
+    return "";
+  }
+
+  function referenceRoleSourceDiscoveryRecord(item = {}) {
+    const sourceDiscoveryId = normalizeText(item.sourceDiscoveryId || "");
+    if (!sourceDiscoveryId) return null;
+    return asArray(studyData.sourceDiscoveryIndex).find((source) => normalizeText(source.id || "") === sourceDiscoveryId) || null;
+  }
+
+  function referenceRoleReferenceGraphEdge(item = {}) {
+    const sourceDiscoveryId = normalizeText(item.sourceDiscoveryId || "");
+    if (!sourceDiscoveryId) return null;
+    return asArray(studyData.referenceGraph).find((edge) => normalizeText(edge.sourceDiscoveryId || "") === sourceDiscoveryId) || null;
+  }
+
+  function referenceRoleAdapterLabel(item = {}, source = null, edge = null) {
+    const active = studyData.activeAdapter || {};
+    return active.adapterName || item.adapterName || source?.adapterName || edge?.adapterName || active.adapterId || item.adapterId || source?.adapterId || edge?.adapterId || "unknown";
+  }
+
+  function referenceRoleProvenanceLines(item = {}) {
+    const source = referenceRoleSourceDiscoveryRecord(item);
+    const edge = referenceRoleReferenceGraphEdge(item);
+    const sourceLabel = item.discoveredReference || source?.linkText || edge?.toText || "Not recorded.";
+    const href = item.referenceHref || source?.href || edge?.toHref || "";
+    const scopePath = item.scopePath || source?.scopePath || edge?.fromScopePath || "";
+    const verseRef = source?.verseRef || item.verseRange || "";
+    return [
+      "Provenance: Source Discovery -> Reference Graph -> ICE_REFERENCE_ROLES",
+      item.sourceDiscoveryId ? `sourceDiscoveryId: ${item.sourceDiscoveryId}` : "sourceDiscoveryId: Not recorded.",
+      edge?.id ? `referenceGraph edge id: ${edge.id}` : "referenceGraph edge id: Not recorded.",
+      href ? `href: ${href}` : "href: Not recorded.",
+      `source label text: ${sourceLabel}`,
+      scopePath ? `scopePath: ${scopePath}` : "scopePath: Not recorded.",
+      verseRef ? `verseRef: ${verseRef}` : "verseRef: Not recorded.",
+      `adapter: ${referenceRoleAdapterLabel(item, source, edge)}`,
+      `confidence: ${displayConfidence(item.confidence || source?.confidence || edge?.confidence || "probable")}`
+    ];
+  }
+
+  function referenceRoleProvenanceSummary(item = {}) {
+    const sourceTitle = referenceRoleSourceTitle(item);
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    const source = referenceRoleSourceDiscoveryRecord(item);
+    const edge = referenceRoleReferenceGraphEdge(item);
+    const label = item.discoveredReference || source?.linkText || edge?.toText || item.sourceDiscoveryId || "source reference";
+    const pieces = [
+      sourceTitle ? `Reference role: ${sourceTitle}` : `Reference role: ${passageFunctionTitle(item.referenceRole || "reference_role")}`,
+      resolution?.resolvedLabel ? `Resolved: ${resolution.resolvedLabel}` : "",
+      `Source reference: ${label}`,
+      "Provenance: Source Discovery -> Reference Graph -> ICE_REFERENCE_ROLES"
+    ].filter(Boolean);
+    if (item.sourceDiscoveryId) pieces.push(`sourceDiscoveryId: ${item.sourceDiscoveryId}`);
+    if (edge?.id) pieces.push(`referenceGraph edge: ${edge.id}`);
+    return pieces.join(" | ");
   }
   function createReferenceRoleCard(item) {
     const card = document.createElement("article");
@@ -4377,6 +4435,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "reference"),
+      createPassageFunctionSection("Reference Role Provenance", "", { collapsed: true, summaryLabel: "Show reference provenance", list: referenceRoleProvenanceLines(item), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
