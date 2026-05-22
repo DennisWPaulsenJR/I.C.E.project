@@ -31,6 +31,7 @@ const SEMANTIC_DISTINCTIONS_KEY = "ICE_SEMANTIC_DISTINCTIONS";
 const ONTOLOGY_ROLES_KEY = "ICE_ONTOLOGY_ROLES";
 const SEMANTIC_AMBIGUITIES_KEY = "ICE_SEMANTIC_AMBIGUITIES";
 const ORIGIN_AUTHORITY_PATHS_KEY = "ICE_ORIGIN_AUTHORITY_PATHS";
+const ENTITY_RELATION_ROLES_KEY = "ICE_ENTITY_RELATION_ROLES";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -519,6 +520,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.ontologyRoles, "ontology_role", activeAdapter);
   enrichScopeCollection(data.semanticAmbiguities, "semantic_ambiguity", activeAdapter);
   enrichScopeCollection(data.originAuthorityPaths, "origin_authority_path", activeAdapter);
+  enrichScopeCollection(data.entityRelationRoles, "entity_relation_role", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -537,7 +539,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.semanticDistinctions || []).map((item) => ({ ...item, scopeLayer: "semantic_distinction" })),
     ...(data.ontologyRoles || []).map((item) => ({ ...item, scopeLayer: "ontology_role" })),
     ...(data.semanticAmbiguities || []).map((item) => ({ ...item, scopeLayer: "semantic_ambiguity" })),
-    ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" }))
+    ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" })),
+    ...(data.entityRelationRoles || []).map((item) => ({ ...item, scopeLayer: "entity_relation_role" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -1124,6 +1127,220 @@ function ontologyRoleRecord(record = {}) {
   };
 }
 
+function entityRelationRoleRecord(record = {}) {
+  const key = [
+    "entity-relation-role",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.sourceEntity || "",
+    record.targetEntity || "",
+    record.semanticRole || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Matthew 1",
+    sourceEntity: record.sourceEntity || "",
+    targetEntity: record.targetEntity || "",
+    semanticRole: record.semanticRole || "semantic_relation_role",
+    ontologyClassPath: record.ontologyClassPath || "",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    confidence: record.confidence || "probable",
+    evidence: record.evidence || [],
+    relatedEntities: record.relatedEntities || [],
+    relatedSemanticEvents: record.relatedSemanticEvents || [],
+    relatedRevelationPatterns: record.relatedRevelationPatterns || [],
+    relatedPassageFunctions: record.relatedPassageFunctions || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded semantic entity, ontology, relationship, and authority records"
+  };
+}
+
+function createEntityRelationRoles(captures = [], semanticEvents = [], revelationPatterns = [], passageFunctions = [], ontologyRoles = [], originAuthorityPaths = [], relationshipGraph = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  if (!isMatthewOne) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const divinePattern = (revelationPatterns || []).find((item) =>
+    item.authoritySource === "THE LORD" &&
+    item.speaker === "AngEL Of THE LORD" &&
+    item.recipient === "Joseph"
+  );
+  const originPath = (originAuthorityPaths || []).find((item) =>
+    item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph"
+  );
+  const eventIdsByType = (types) => (semanticEvents || [])
+    .filter((item) => types.includes(item.eventType || ""))
+    .map((item) => item.semanticEventId || item.id)
+    .filter(Boolean);
+  const functionKeys = (keys) => (passageFunctions || [])
+    .filter((item) => keys.includes(item.passageFunction || ""))
+    .map((item) => item.passageFunction || item.id)
+    .filter(Boolean);
+  const ontologyIds = (items) => (ontologyRoles || [])
+    .filter((item) => items.includes(item.semanticItem || ""))
+    .map((item) => item.id || item.semanticItem)
+    .filter(Boolean);
+  const relationEdgeEvidence = (from, to, type = "") => (relationshipGraph || [])
+    .filter((edge) =>
+      (!from || normalizeWhitespace(edge.fromEntity || "").toLowerCase() === normalizeWhitespace(from).toLowerCase()) &&
+      (!to || normalizeWhitespace(edge.toEntity || "").toLowerCase() === normalizeWhitespace(to).toLowerCase()) &&
+      (!type || edge.relationshipType === type)
+    )
+    .map((edge) => edge.evidence || edge.relationshipType || "")
+    .filter(Boolean);
+  const add = (record) => entityRelationRoleRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    relatedRevelationPatterns: divinePattern?.id ? [divinePattern.id] : [],
+    ...record
+  });
+
+  return [
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20-21",
+      sourceEntity: "THE LORD",
+      targetEntity: "AngEL Of THE LORD",
+      semanticRole: "source_authority_to_messenger",
+      ontologyClassPath: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD",
+      sourcePhrase: "the angel of THE LORD appeared unto him",
+      derivedMeaning: "THE LORD is the origin authority; AngEL Of THE LORD is the messenger / revelation carrier.",
+      evidence: ["the angel of THE LORD appeared unto him", ...relationEdgeEvidence("THE LORD", "Angel of THE LORD", "source_authority")],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD"],
+      relatedSemanticEvents: eventIdsByType(["divine_messenger_appearance", "divine_message_speech", "divine_message_cluster"]),
+      relatedPassageFunctions: functionKeys(["divine_message_instruction"]),
+      relatedOntologyRoles: ontologyIds(["THE LORD", "AngEL Of THE LORD"]),
+      confidence: divinePattern || originPath ? "explicit" : "probable",
+      sourceGrounding: "Revelation pattern and origin authority path distinguish THE LORD as source authority from AngEL Of THE LORD as messenger."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20-21",
+      sourceEntity: "AngEL Of THE LORD",
+      targetEntity: "Joseph",
+      semanticRole: "revelation_messenger_to_recipient",
+      ontologyClassPath: "Class II - AngEL / Messenger of GOD -> Class III - Human",
+      sourcePhrase: "appeared unto him in a dream, saying",
+      derivedMeaning: "AngEL Of THE LORD carries instruction and revelation to Joseph as the revelation recipient.",
+      evidence: ["appeared unto him in a dream, saying", "fear not to take unto thee Mary thy wife", ...relationEdgeEvidence("Angel of THE LORD", "Joseph")],
+      relatedEntities: ["AngEL Of THE LORD", "Joseph", "Mary"],
+      relatedSemanticEvents: eventIdsByType(["divine_messenger_appearance", "divine_message_speech", "instruction_concerning_person", "conception_revelation", "name_revelation", "mission_reason_declaration"]),
+      relatedPassageFunctions: functionKeys(["divine_message_instruction"]),
+      relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph"]),
+      confidence: "explicit",
+      sourceGrounding: "Semantic events and revelation pattern ground Joseph as recipient while preserving AngEL Of THE LORD as messenger, not origin authority."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.24",
+      verseRange: "Matthew 1:24-25",
+      sourceEntity: "Joseph",
+      targetEntity: "JESUS",
+      semanticRole: "obedient_response_to_revealed_name",
+      ontologyClassPath: "Class III - Human -> Class I - GOD / Divine Authority",
+      sourcePhrase: "did as the angel of THE LORD had bidden him; called his name JESUS",
+      derivedMeaning: "Joseph responds obediently and performs the narrative naming action: JESUS is the revealed NAME.",
+      evidence: ["did as the angel of THE LORD had bidden him", "called his name JESUS"],
+      relatedEntities: ["Joseph", "JESUS", "JESUS CHRIST", "AngEL Of THE LORD"],
+      relatedSemanticEvents: eventIdsByType(["covenant_family_union", "naming_event", "name_revelation"]),
+      relatedPassageFunctions: functionKeys(["obedient_response_and_naming", "divine_message_instruction"]),
+      relatedOntologyRoles: ontologyIds(["Joseph", "JESUS", "JESUS CHRIST"]),
+      confidence: "explicit",
+      sourceGrounding: "Naming event and ontology roles preserve JESUS as narrative NAME while JESUS CHRIST remains canonical/source identity linkage."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:18-25",
+      sourceEntity: "Joseph",
+      targetEntity: "Mary",
+      semanticRole: "covenant_steward_to_covenant_participant",
+      ontologyClassPath: "Class III - Human -> Class III - Human",
+      sourcePhrase: "fear not to take unto thee Mary thy wife; took unto him his wife",
+      derivedMeaning: "Joseph is instructed as covenant steward; Mary remains Human covenant participant and wife.",
+      evidence: ["fear not to take unto thee Mary thy wife", "took unto him his wife"],
+      relatedEntities: ["Joseph", "Mary"],
+      relatedSemanticEvents: eventIdsByType(["instruction_concerning_person", "covenant_family_union"]),
+      relatedPassageFunctions: functionKeys(["divine_message_instruction", "obedient_response_and_naming"]),
+      relatedOntologyRoles: ontologyIds(["Joseph", "Mary"]),
+      confidence: "explicit",
+      sourceGrounding: "Marriage instruction and obedient response events ground Joseph and Mary as Human covenant/family participants."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.20",
+      verseRange: "Matthew 1:20",
+      sourceEntity: "HOLY SPIRIT",
+      targetEntity: "Mary",
+      semanticRole: "divine_conception_origin_to_conception_recipient",
+      ontologyClassPath: "Class I - GOD / Divine Authority -> Class III - Human",
+      sourcePhrase: "that which is conceived in her is of the Holy Ghost",
+      derivedMeaning: "HOLY SPIRIT is the divine conception origin; Mary is the Human conception recipient.",
+      evidence: ["that which is conceived in her is of the Holy Ghost"],
+      relatedEntities: ["HOLY SPIRIT", "Holy Ghost", "Mary", "JESUS"],
+      relatedSemanticEvents: eventIdsByType(["conception_revelation"]),
+      relatedPassageFunctions: functionKeys(["divine_message_instruction"]),
+      relatedOntologyRoles: ontologyIds(["HOLY SPIRIT", "Mary", "JESUS"]),
+      confidence: "explicit",
+      sourceGrounding: "Conception revelation preserves Holy Ghost as source phrase while derived semantic display identifies HOLY SPIRIT."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.21",
+      verseRange: "Matthew 1:21",
+      sourceEntity: "JESUS",
+      targetEntity: "His people",
+      semanticRole: "mission_subject_to_saved_people",
+      ontologyClassPath: "Class I - GOD / Divine Authority -> Class III - Human people",
+      sourcePhrase: "he shall save his people from their sins",
+      derivedMeaning: "JESUS is mission subject: HE shall SAVE HIS People from their sins.",
+      evidence: ["he shall save his people from their sins"],
+      relatedEntities: ["JESUS", "JESUS CHRIST"],
+      relatedSemanticEvents: eventIdsByType(["mission_reason_declaration"]),
+      relatedPassageFunctions: functionKeys(["divine_message_instruction"]),
+      relatedOntologyRoles: ontologyIds(["JESUS", "JESUS CHRIST"]),
+      confidence: "explicit",
+      sourceGrounding: "Mission declaration grounds JESUS as mission subject and preserves the JESUS / JESUS CHRIST distinction."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.22",
+      verseRange: "Matthew 1:22-23",
+      sourceEntity: "scripture narrator",
+      targetEntity: "THE LORD",
+      semanticRole: "narrative_witness_to_divine_source",
+      ontologyClassPath: "Class III - Human -> Class I - GOD / Divine Authority",
+      sourcePhrase: "Now all this was done, that it might be fulfilled which was spoken of THE LORD by the prophet",
+      derivedMeaning: "scripture narrator is Human narrative witness; THE LORD remains Divine source authority.",
+      evidence: ["Now all this was done", "spoken of THE LORD by the prophet"],
+      relatedEntities: ["scripture narrator", "THE LORD", "quoted prophet"],
+      relatedSemanticEvents: eventIdsByType(["passive_fulfillment_narration"]),
+      relatedPassageFunctions: functionKeys(["prophecy_fulfillment_identification"]),
+      relatedOntologyRoles: ontologyIds(["scripture narrator", "THE LORD", "quoted prophet"]),
+      confidence: "probable",
+      sourceGrounding: "Fulfillment narration distinguishes Human narrator/witness from Divine authority source."
+    }),
+    add({
+      scopePath: "scripture.nt.matthew.1.verse.22",
+      verseRange: "Matthew 1:22-23",
+      sourceEntity: "quoted prophet",
+      targetEntity: "THE LORD",
+      semanticRole: "prophecy_witness_to_divine_source",
+      ontologyClassPath: "Class III - Human -> Class I - GOD / Divine Authority",
+      sourcePhrase: "spoken of THE LORD by the prophet",
+      derivedMeaning: "quoted prophet is Human prophecy witness; THE LORD is the source of what was spoken.",
+      evidence: ["spoken of THE LORD by the prophet"],
+      relatedEntities: ["quoted prophet", "prophet", "THE LORD", "scripture narrator"],
+      relatedSemanticEvents: eventIdsByType(["passive_fulfillment_narration"]),
+      relatedPassageFunctions: functionKeys(["prophecy_fulfillment_identification"]),
+      relatedOntologyRoles: ontologyIds(["quoted prophet", "THE LORD", "scripture narrator"]),
+      confidence: "probable",
+      sourceGrounding: "Source phrase separates THE LORD as origin/source from prophet as Human prophecy witness."
+    })
+  ];
+}
 function createOntologyRoles(captures = [], semanticDistinctions = [], semanticEvents = [], revelationPatterns = [], passageFunctions = [], originAuthorityPaths = []) {
   const capture = (captures || [])[0] || {};
   const context = buildSourceContext(capture);
@@ -4985,6 +5202,15 @@ async function runFullAnalysisPipeline(reason = "manual") {
       revelationPatterns,
       originAuthorityPaths
     );
+    const entityRelationRoles = createEntityRelationRoles(
+      captures,
+      semanticEvents,
+      revelationPatterns,
+      passageFunctions,
+      ontologyRoles,
+      originAuthorityPaths,
+      relationshipGraph
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -5000,7 +5226,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticDistinctions,
       ontologyRoles,
       semanticAmbiguities,
-      originAuthorityPaths
+      originAuthorityPaths,
+      entityRelationRoles
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -5017,7 +5244,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticDistinctions,
       ontologyRoles,
       semanticAmbiguities,
-      originAuthorityPaths
+      originAuthorityPaths,
+      entityRelationRoles
     }, activeAdapter);
     const status = {
       reason,
@@ -5048,6 +5276,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       ontologyRoleCount: ontologyRoles.length,
       semanticAmbiguityCount: semanticAmbiguities.length,
       originAuthorityPathCount: originAuthorityPaths.length,
+      entityRelationRoleCount: entityRelationRoles.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -5079,6 +5308,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ONTOLOGY_ROLES_KEY]: ontologyRoles,
       [SEMANTIC_AMBIGUITIES_KEY]: semanticAmbiguities,
       [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
+      [ENTITY_RELATION_ROLES_KEY]: entityRelationRoles,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

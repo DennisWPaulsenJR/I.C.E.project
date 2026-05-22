@@ -2029,3 +2029,31 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-22 - pcdx - Add semantic relationship roles
+Summary:
+- Added `ICE_ENTITY_RELATION_ROLES` as a conservative Matthew 1 derived layer.
+- Added 8 relationship-role records distinguishing source authority, messenger, recipient, obedient response, covenant participant, conception recipient, mission subject, narrative witness, and prophecy witness.
+- Added Study Panel cards for Semantic Relationship Roles and connected the layer to scope integrity, diagnostics, cross-layer navigation, and QA.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `entityRelationRoles: 8`
+
+Commit:
+- This commit
+
+Status:
+- Implemented

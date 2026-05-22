@@ -2228,3 +2228,37 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-22 - pcdx - Add semantic relationship roles
+
+Instruction summary:
+- Add Phase 8.2t Semantic Entity Relationship Roles as a conservative derived layer.
+- Expand Semantic Entities beyond presence into explicit relationship-role meaning while preserving ontology, hierarchy, source phrase vs Derived meaning, and JESUS / JESUS CHRIST distinctions.
+
+Codex action summary:
+- Added `ICE_ENTITY_RELATION_ROLES` with 8 Matthew 1 pilot records.
+- Modeled roles for THE LORD -> AngEL Of THE LORD, AngEL Of THE LORD -> Joseph, Joseph -> JESUS, Joseph -> Mary, HOLY SPIRIT -> Mary, JESUS -> His people, scripture narrator -> THE LORD, and quoted prophet -> THE LORD.
+- Added Study Panel Semantic Relationship Roles cards with relationship, role, ontology class path, source phrase, derived meaning, evidence, confidence, related semantic layers, related entities, hierarchy, source grounding, and scope.
+- Wired the layer into scope integrity, diagnostics, cross-layer semantic navigation, and Matthew 1 QA output/assertions.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed with `entityRelationRoles: 8`
+
+Commit:
+- This commit
+
+Status:
+- Implemented

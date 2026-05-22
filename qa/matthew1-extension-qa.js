@@ -37,7 +37,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_DISTINCTIONS",
   "ICE_ONTOLOGY_ROLES",
   "ICE_SEMANTIC_AMBIGUITIES",
-  "ICE_ORIGIN_AUTHORITY_PATHS"
+  "ICE_ORIGIN_AUTHORITY_PATHS",
+  "ICE_ENTITY_RELATION_ROLES"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -93,7 +94,8 @@ function emptyCounts() {
     semanticDistinctions: 0,
     ontologyRoles: 0,
     semanticAmbiguities: 0,
-    originAuthorityPaths: 0
+    originAuthorityPaths: 0,
+    entityRelationRoles: 0
   };
 }
 
@@ -115,7 +117,8 @@ function buildCounts(storageData) {
     semanticDistinctions: count(storageData.ICE_SEMANTIC_DISTINCTIONS),
     ontologyRoles: count(storageData.ICE_ONTOLOGY_ROLES),
     semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
-    originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS)
+    originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
+    entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES)
   };
 }
 
@@ -139,6 +142,7 @@ function buildSamples(storageData) {
     ontologyRoles: sample(storageData.ICE_ONTOLOGY_ROLES, 20),
     semanticAmbiguities: sample(storageData.ICE_SEMANTIC_AMBIGUITIES, 20),
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
+    entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -291,7 +295,18 @@ function hasSemanticAmbiguity(data, ambiguityType, resolutionStatus) {
     item.sourceGrounding
   );
 }
-function hasRevelationPattern(data, predicate = () => true) {
+function hasEntityRelationRole(data, sourceEntity, targetEntity, semanticRole) {
+  return (data.ICE_ENTITY_RELATION_ROLES || []).some((item) =>
+    item.sourceEntity === sourceEntity &&
+    item.targetEntity === targetEntity &&
+    item.semanticRole === semanticRole &&
+    item.ontologyClassPath &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}function hasRevelationPattern(data, predicate = () => true) {
   return (data.ICE_REVELATION_PATTERNS || []).some((item) => predicate(item));
 }
 
@@ -349,6 +364,21 @@ function evaluateFailures(data) {
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected semantic ontology role records count > 0.");
   if (count(data.ICE_SEMANTIC_AMBIGUITIES) <= 0) failures.push("Expected semantic ambiguity / contrast records count > 0.");
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected origin / authority path records count > 0.");
+  if (count(data.ICE_ENTITY_RELATION_ROLES) <= 0) failures.push("Expected semantic relationship role records count > 0.");
+  for (const [sourceEntity, targetEntity, semanticRole] of [
+    ["THE LORD", "AngEL Of THE LORD", "source_authority_to_messenger"],
+    ["AngEL Of THE LORD", "Joseph", "revelation_messenger_to_recipient"],
+    ["Joseph", "JESUS", "obedient_response_to_revealed_name"],
+    ["Joseph", "Mary", "covenant_steward_to_covenant_participant"],
+    ["HOLY SPIRIT", "Mary", "divine_conception_origin_to_conception_recipient"],
+    ["JESUS", "His people", "mission_subject_to_saved_people"],
+    ["scripture narrator", "THE LORD", "narrative_witness_to_divine_source"],
+    ["quoted prophet", "THE LORD", "prophecy_witness_to_divine_source"]
+  ]) {
+    if (!hasEntityRelationRole(data, sourceEntity, targetEntity, semanticRole)) {
+      failures.push(`Expected semantic relationship role ${sourceEntity} -> ${targetEntity} / ${semanticRole}.`);
+    }
+  }
   for (const [semanticItem, distinctionType] of [
     ["JESUS", "revealed_given_name"],
     ["CHRIST", "title_messianic_office"],
