@@ -3323,6 +3323,179 @@ document.addEventListener("DOMContentLoaded", async () => {
     return section;
   }
 
+  function semanticTraceCleanLabel(value) {
+    const normalized = normalizeText(value || "");
+    const layerLabels = new Map([
+      ["ice_reference_roles", "Reference Role"],
+      ["ice_canonical_identities", "Canonical Identity"],
+      ["ice_ontology_roles", "Semantic Ontology Role"],
+      ["ice_semantic_ambiguities", "Semantic Ambiguity / Contrast"],
+      ["ice_semantic_distinctions", "Semantic Distinction"],
+      ["ice_passage_functions", "Passage Function"],
+      ["ice_revelation_patterns", "Revelation Pattern"]
+    ]);
+    return layerLabels.get(normalized.toLowerCase()) || renderDerivedSemanticDisplayText(passageFunctionTitle(normalized), true);
+  }
+
+  function semanticTraceHasIdentity(item = {}, extra = []) {
+    const text = normalizeText([
+      item.semanticItem,
+      item.discoveredReference,
+      item.sourceWording,
+      item.sourcePhrase,
+      item.derivedWording,
+      item.derivedMeaning,
+      item.derivedInterpretation,
+      item.plainMeaning,
+      item.fulfillmentMeaning,
+      item.canonicalRole,
+      item.narrativeRole,
+      item.sourceGrounding,
+      asArray(item.semanticItems).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.linkedEntities).join(" "),
+      asArray(extra).join(" ")
+    ].join(" ")).toLowerCase();
+    return {
+      jesus: /\bjesus\b/.test(text),
+      jesusChrist: /\bjesus christ\b/.test(text),
+      christ: /\bchrist\b/.test(text),
+      holySpirit: /\bholy spirit\b|\bholy ghost\b/.test(text)
+    };
+  }
+
+  function semanticTraceReferenceRole(item = {}) {
+    const reference = normalizeText(item.discoveredReference || "");
+    const commaParts = reference.split(",").map((part) => normalizeText(part)).filter(Boolean);
+    if (commaParts.length > 1) return commaParts.slice(1).join(", ");
+    if (item.referenceRole) return semanticTraceCleanLabel(item.referenceRole);
+    return "";
+  }
+
+  function semanticTraceSourceInput(item = {}, kind = "") {
+    if (kind === "ambiguity") return item.sourceWording || asArray(item.semanticItems).join(" vs ");
+    if (kind === "ontology") return item.sourcePhrase || item.semanticItem || asArray(item.ontologyRoles).join(", ");
+    if (kind === "reference") return item.discoveredReference || item.sourceDiscoveryId || item.referenceRole;
+    if (kind === "revelation") return item.verseRange || item.revelationType || asArray(item.evidence)[0];
+    if (kind === "passage") return item.verseRange || item.passageFunction || asArray(item.evidence)[0];
+    if (kind === "distinction") return item.sourceWording || item.semanticItem || item.distinctionType;
+    return item.sourceWording || item.sourcePhrase || item.discoveredReference || item.verseRange || item.scopePath || "";
+  }
+
+  function semanticTraceResolvedOutput(item = {}, kind = "") {
+    const identity = semanticTraceHasIdentity(item);
+    const lines = [];
+    const role = semanticTraceReferenceRole(item);
+    if (identity.jesus || identity.jesusChrist) lines.push("Resolved Being: JESUS");
+    if (identity.jesusChrist) lines.push("Canonical/source identity: JESUS CHRIST");
+    if (identity.christ && !identity.jesusChrist) lines.push("Title/source identity: CHRIST");
+    if (identity.holySpirit) lines.push("Derived divine display: HOLY SPIRIT");
+    if (role) lines.push(`Reference role: ${renderDerivedSemanticDisplayText(role, true)}`);
+    if (kind === "ontology" && item.semanticItem) lines.push(`Semantic item: ${renderDerivedSemanticDisplayText(item.semanticItem, true)}`);
+    if (kind === "ambiguity" && item.derivedInterpretation) lines.push(trimText(renderDerivedSemanticDisplayText(item.derivedInterpretation, true), 150));
+    return lines.length ? lines : ["Resolved output follows the displayed semantic card fields."];
+  }
+
+  function semanticTraceLayersUsed(item = {}, primaryLayer = "") {
+    const layerLabels = new Map([
+      ["reference", "Reference Role"],
+      ["canonical", "Canonical Identity"],
+      ["ontology", "Semantic Ontology Role"],
+      ["ambiguity", "Semantic Ambiguity / Contrast"],
+      ["passage", "Passage Function"],
+      ["revelation", "Revelation Pattern"],
+      ["distinction", "Semantic Distinction"]
+    ]);
+    const identity = semanticTraceHasIdentity(item);
+    const layers = new Set();
+    if (primaryLayer) layers.add(layerLabels.get(primaryLayer) || primaryLayer);
+    for (const layer of asArray(item.relatedLayers)) layers.add(semanticTraceCleanLabel(layer));
+    if (item.referenceRole || item.discoveredReference) layers.add("Reference Role");
+    if (identity.jesusChrist) layers.add("Canonical Identity");
+    if (item.ontologyRoles || item.authorityOriginClass) layers.add("Semantic Ontology Role");
+    if (item.ambiguityType || item.distinctionType || item.resolutionStatus) layers.add("Semantic Ambiguity / Contrast");
+    if (item.passageFunction || asArray(item.linkedPassageFunctions).length) layers.add("Passage Function");
+    if (item.revelationType) layers.add("Revelation Pattern");
+    return Array.from(layers).filter(Boolean);
+  }
+
+  function semanticTraceEvidenceUsed(item = {}) {
+    const evidence = [];
+    const reference = normalizeText(item.discoveredReference || item.sourceDiscoveryId || "");
+    const roles = asArray(item.ontologyRoles).map((value) => semanticTraceCleanLabel(value)).filter(Boolean);
+    const distinction = item.distinctionType || item.ambiguityType;
+    if (reference) evidence.push(`source reference label: ${renderDerivedSemanticDisplayText(reference, true)}`);
+    if (roles.length) evidence.push(`ontology role match: ${roles.slice(0, 2).join(" / ")}`);
+    if (distinction) evidence.push(`semantic distinction record: ${semanticTraceCleanLabel(distinction)}`);
+    else if (item.canonicalRole) evidence.push(`semantic distinction record: ${trimText(renderDerivedSemanticDisplayText(item.canonicalRole, true), 140)}`);
+    else if (item.sourceGrounding) evidence.push("semantic distinction record: source grounding summary");
+    for (const value of asArray(item.evidence).slice(0, 2)) {
+      const text = normalizeText(value);
+      if (text) evidence.push(`evidence phrase: ${renderIceBeingDisplayText(text, { divineContext: true, preferHolySpirit: true })}`);
+    }
+    return evidence.length ? evidence : ["display fields and source grounding already shown on this card"];
+  }
+
+  function semanticTraceAmbiguityCheck(item = {}) {
+    const identity = semanticTraceHasIdentity(item);
+    const status = semanticAmbiguityResolutionLabel(item.resolutionStatus || "resolved");
+    const lines = [`${status.charAt(0).toUpperCase()}${status.slice(1)}:`];
+    if (identity.jesus || identity.jesusChrist) lines.push("JESUS is the referenced Being.");
+    if (identity.jesusChrist) lines.push("JESUS CHRIST is the canonical/source identity.");
+    if (identity.christ) lines.push("CHRIST is title/source identity.");
+    if (identity.holySpirit) lines.push("HOLY SPIRIT is the preferred derived display while source wording remains preserved.");
+    if (lines.length === 1) lines.push("No unresolved semantic contrast is introduced by this display.");
+    return lines;
+  }
+
+  function appendSemanticTraceBlock(container, title, values, options = {}) {
+    const block = document.createElement("div");
+    const heading = document.createElement("div");
+    heading.className = "semantic-trace-label";
+    heading.textContent = title;
+    block.className = "semantic-trace-block";
+    block.appendChild(heading);
+
+    if (options.quote) {
+      const quote = document.createElement("p");
+      quote.className = "semantic-trace-quote";
+      quote.textContent = `"${renderIceBeingDisplayText(normalizeText(values), { divineContext: true, sourceQuote: true })}"`;
+      block.appendChild(quote);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "semantic-plain-list semantic-trace-list";
+      for (const value of asArray(values).filter(Boolean)) {
+        const item = document.createElement("li");
+        item.textContent = renderIceBeingDisplayText(value, { divineContext: true, preferHolySpirit: true });
+        list.appendChild(item);
+      }
+      block.appendChild(list);
+    }
+    container.appendChild(block);
+  }
+
+  function createSemanticResolutionTraceSection(item = {}, kind = "") {
+    const sourceInput = semanticTraceSourceInput(item, kind);
+    const section = document.createElement("section");
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const body = document.createElement("div");
+
+    section.className = "semantic-section semantic-section-collapsible semantic-resolution-trace";
+    summary.textContent = "Semantic Resolution Trace";
+    body.className = "semantic-trace-body";
+
+    appendSemanticTraceBlock(body, "Source Input", sourceInput || "Current semantic card", { quote: true });
+    appendSemanticTraceBlock(body, "Resolved Output", semanticTraceResolvedOutput(item, kind));
+    appendSemanticTraceBlock(body, "Layers Used", semanticTraceLayersUsed(item, kind));
+    appendSemanticTraceBlock(body, "Evidence Used", semanticTraceEvidenceUsed(item));
+    appendSemanticTraceBlock(body, "Ambiguity Check", semanticTraceAmbiguityCheck(item));
+    appendSemanticTraceBlock(body, "Confidence", [displayConfidence(item.confidence || "probable")]);
+
+    details.append(summary, body);
+    section.appendChild(details);
+    return section;
+  }
   function semanticTransferActs(item = {}) {
     const acts = new Set();
     const context = normalizeText([
@@ -3823,6 +3996,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             createClassTransferDisplaySection(item),
 createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createSemanticResolutionTraceSection(item, "passage"),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
@@ -3990,6 +4164,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createSemanticResolutionTraceSection(item, "revelation"),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext, preferHolySpirit: true }),
@@ -4201,6 +4376,7 @@ createRevelationPartsSection(item.subEvents)
       resolvedDetails.length ? createPassageFunctionSection("Resolved Reference", "", { list: resolvedDetails, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createSemanticResolutionTraceSection(item, "reference"),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
@@ -4387,6 +4563,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createSemanticResolutionTraceSection(item, "ontology"),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.narrativeRole, item.canonicalRole, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
@@ -4654,6 +4831,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Resolved?", semanticAmbiguityResolutionLabel(item.resolutionStatus), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Why It Matters", semanticAmbiguityWhyItMatters(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createSemanticResolutionTraceSection(item, "ambiguity"),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Grounding / Evidence", "", { collapsed: true, summaryLabel: "Show grounding evidence", list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), divineContext }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),

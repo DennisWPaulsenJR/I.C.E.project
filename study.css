@@ -361,6 +361,51 @@ body {
   display: grid;
   gap: 7px;
 }
+.semantic-resolution-trace details {
+  background: #f7fafc;
+  border: 1px solid #d9e4ee;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.semantic-resolution-trace details[open] {
+  gap: 10px;
+}
+
+.semantic-trace-body {
+  display: grid;
+  gap: 10px;
+}
+
+.semantic-trace-block {
+  display: grid;
+  gap: 3px;
+}
+
+.semantic-trace-label {
+  color: #445064;
+  font-size: .74rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.semantic-trace-quote,
+.semantic-trace-list {
+  margin: 0;
+}
+
+.semantic-trace-quote {
+  border-left: 2px solid #d7e0ea;
+  color: #4c5969;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.4;
+  padding-left: 8px;
+}
+
+.semantic-trace-list {
+  gap: 3px;
+}
 .passage-function-card {
   min-height: 0;
 }

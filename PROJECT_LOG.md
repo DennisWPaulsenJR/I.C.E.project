@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-22 - Semantic Resolution Trace Display Refinement
+
+Instruction summary:
+- Begin Phase 8.2w Semantic Resolution Trace Display Refinement.
+- Make Semantic Resolution Trace sections compact, expandable, and readable for users across Passage Functions, Revelation Patterns, Reference Roles, Semantic Ontology Roles, and Semantic Ambiguities / Contrasts.
+- Preserve source phrase vs Derived meaning separation, hierarchy formatting, divine display compliance, JESUS / JESUS CHRIST / CHRIST distinction, HOLY SPIRIT preference, Class hierarchy, and existing extraction behavior.
+
+Codex action summary:
+- Added a shared display-only Semantic Resolution Trace renderer with Source Input, Resolved Output, Layers Used, Evidence Used, Ambiguity Check, and Confidence blocks.
+- Attached the trace to the five requested semantic card sections without changing extracted semantic records or crawl/fetch behavior.
+- Added compact trace styling that keeps details collapsed by default and preserves source quote and derived display treatment.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
+
 ## 2026-05-21 - Semantic Confidence Visualization
 
 Instruction summary:
