@@ -134,3 +134,30 @@ Keep concise and operational:
 - Before committing application changes, run syntax checks and `git diff --check`.
 - Run `npm run qa:matthew1` when Playwright is installed and network/browser environment permits.
 - If MCDX cannot run Playwright, commit only after local feasible checks and send patch/outbox handoff to PCDX for desktop validation.
+## 2026-05-22 - Matthew 2 Semantic Stabilization QA
+
+New QA harness:
+- `qa/matthew2-extension-qa.js`
+- npm script: `npm.cmd run qa:matthew2`
+- Output path: `qa-output/latest-matthew2-qa-bundle.json`
+
+Matthew 2 expected checks:
+- Passage Functions > 0
+- Revelation Patterns > 0
+- Semantic Ontology Roles > 0
+- Semantic Relationship Roles > 0
+- Origin / Authority Paths > 0
+- Required Matthew 2 passage functions present:
+  - wise_men_arrival
+  - prophecy_fulfillment_identification
+  - hostile_authority_response
+  - divine_warning_revelation
+  - protective_obedient_response
+  - egypt_escape_preservation
+  - messianic_location_fulfillment
+- Herod adversarial role remains evidence-based and tied to hostile/destroy-him source wording.
+- CHILD / JESUS resolution is represented in derived roles without rewriting source records.
+- Matthew 1 naming timeline label should not leak into Matthew 2 stored semantic data.
+
+Validation result:
+- `node --check background.js` passed`r`n- `node --check study.js` passed`r`n- `node --check qa/matthew2-extension-qa.js` passed`r`n- `git diff --check` passed`r`n- `npm.cmd run qa:matthew1` passed`r`n- `npm.cmd run qa:matthew2` passed

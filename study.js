@@ -2645,9 +2645,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join(" ")
       .toLowerCase();
 
-    if (/fulfill|fulfilled|prophet|narrator/.test(eventText)) return "Fulfillment Declared";
-    if (/took|wife|brought forth|name|named|call his name|birth|born/.test(eventText)) return "Joseph Obeys and JESUS Is Named";
-    if (/angel|fear not|instruct|command|take unto thee|dream|appeared/.test(eventText)) return "Joseph Receives Divine Instruction";
+    if (/wise men|king of the jews|worship/.test(eventText)) return "Wise Men Seek and Worship JESUS";
+    if (/herod|destroy him|troubled|privily/.test(eventText)) return "Herod Responds as Hostile Authority";
+    if (/flee into egypt|out of egypt|departed into egypt/.test(eventText)) return "Joseph Protects CHILD / JESUS in Egypt";
+    if (/warned of god|dream|angel|instruct|command|appeared|take the young child/.test(eventText)) return "Joseph Receives Protective Divine Instruction";
+    if (/nazareth|nazarene|bethlehem|fulfill|fulfilled|prophet|narrator/.test(eventText)) return "Fulfillment Declared";
+    if (/called his name jesus|call his name jesus|brought forth|birth|born/.test(eventText)) return "Joseph Obeys and JESUS Is Named";
     return trimText(entry.title, 64) || "Narrative Moment";
   }
 
@@ -3664,7 +3667,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function semanticVerseSearchTerm(item = {}) {
     const tokens = Array.from(semanticVerseTokens(item)).sort((left, right) => Number(left) - Number(right));
-    if (tokens.length) return `Matthew 1:${tokens[0]}`;
+    const context = item.sourceContext || activeScopeContext();
+    const book = scopeBookTitle(context.book || "Matthew");
+    const chapter = String(context.chapter || activeScopeContext().chapter || "");
+    if (tokens.length && book && chapter) return `${book} ${chapter}:${tokens[0]}`;
     const range = normalizeText(item.verseRange || item.verseRef || "");
     return range || normalizeScopeList(item.scopes, item)[0] || item.scopePath || "";
   }

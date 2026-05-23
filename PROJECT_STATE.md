@@ -399,3 +399,26 @@ Important implementation direction:
 - This should not become hard-coded cards for every passage.
 - Keep it source-grounded, scope-aware, confidence-bearing, and derived from existing semantic layers.
 - Inputs should include source phrases, semantic events, relationship graph, canonical identities, scope paths, prophecy links, reference graph, confidence, and evidence.
+
+## Current Matthew 2 Stabilization State - 2026-05-22
+
+Phase: Matthew 2 semantic stabilization.
+
+Status:
+- Matthew 2 is now treated as a semantic stress test, not as a Matthew 1-shaped display fallback.
+- `ICE_PASSAGE_FUNCTIONS`, `ICE_REVELATION_PATTERNS`, `ICE_ONTOLOGY_ROLES`, `ICE_ORIGIN_AUTHORITY_PATHS`, and `ICE_ENTITY_RELATION_ROLES` have Matthew 2 source-grounded recovery paths.
+- Narrative Timeline labels now prefer Matthew 2 evidence such as wise men, Herod, protective Egypt movement, dream warnings, and location fulfillment before Matthew 1 naming labels.
+
+Matthew 2 semantic coverage added:
+- wise_men_arrival
+- prophecy_fulfillment_identification
+- hostile_authority_response
+- divine_warning_revelation
+- protective_obedient_response
+- egypt_escape_preservation
+- messianic_location_fulfillment
+
+Known next architecture gaps:
+- Generalize derived-record construction into reusable semantic rule tables.
+- Improve cross-verse CHILD/JESUS and pronoun resolution.
+- Promote location ontology roles into shared helpers.

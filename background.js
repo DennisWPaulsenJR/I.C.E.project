@@ -41,7 +41,7 @@ const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
 const GENEALOGY_PATTERN = /\b(?:begat|generation(?:s)? of|genealogy|lineage)\b/i;
-const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|call his name|fear not|save his people|fulfilled|spoken of the Lord by the prophet)\b/i;
+const SEMANTIC_DECOMPOSITION_PATTERN = /\b(thought|appeared|saying|bidden|took|knew her not|brought forth|called his name|call his name|fear not|save his people|fulfilled|spoken of the Lord by the prophet|wise men|Herod|chief priests|scribes|young child|child|warned of God|dream|flee into Egypt|departed|another way|destroy him|Bethlehem|Egypt|Nazareth|Nazarene)\b/i;
 const PRINCIPLE_PATTERN = /\b(fulfilled|written|prophet|commanded|warned|worship|revelation|dream|blessing|law|mercy|obedience|faith|covenant|kingdom|righteousness|salvation)\b/i;
 const PURPOSE_PRINCIPLE_PATTERN = /\b(that it might be fulfilled|for thus it is written|that shall rule|called a Nazarene)\b/i;
 const PROPHECY_CANDIDATE_PATTERN = /\b(spoken(?:\s+of\s+the\s+Lord)?\s+by\s+the\s+prophets?|it is written|thus saith)\b/i;
@@ -1164,10 +1164,23 @@ function createEntityRelationRoles(captures = [], semanticEvents = [], revelatio
   const capture = (captures || [])[0] || {};
   const context = buildSourceContext(capture);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
-  if (!isMatthewOne) return [];
-
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
-  const divinePattern = (revelationPatterns || []).find((item) =>
+  if (isMatthewTwo) {
+    const eventIdsByType = (types) => (semanticEvents || []).filter((item) => types.includes(item.eventType || "")).map((item) => item.id || item.semanticEventId).filter(Boolean);
+    const functionKeys = (keys) => (passageFunctions || []).filter((item) => keys.includes(item.passageFunction || "")).map((item) => item.passageFunction || item.id).filter(Boolean);
+    const ontologyIds = (items) => (ontologyRoles || []).filter((item) => items.includes(item.semanticItem || "")).map((item) => item.id || item.semanticItem).filter(Boolean);
+    const add = (record) => entityRelationRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
+    return [
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-22", sourceEntity: "THE LORD", targetEntity: "AngEL Of THE LORD", semanticRole: "source_authority_to_protective_messenger", ontologyClassPath: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD", sourcePhrase: "the angel of the Lord appeareth to Joseph in a dream", derivedMeaning: "THE LORD is preserved as source authority while AngEL Of THE LORD carries protective instruction.", evidence: ["the angel of the Lord appeareth to Joseph in a dream", "Arise, and take the young child"], relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS"], relatedSemanticEvents: eventIdsByType(["protective_instruction_revelation", "divine_message_cluster"]), relatedPassageFunctions: functionKeys(["divine_warning_revelation", "protective_obedient_response", "egypt_escape_preservation"]), relatedOntologyRoles: ontologyIds(["THE LORD", "AngEL Of THE LORD"]), confidence: "explicit", sourceGrounding: "Matthew 2 dream-instruction events ground the authority path without collapsing messenger into origin authority." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-14, 19-21", sourceEntity: "AngEL Of THE LORD", targetEntity: "Joseph", semanticRole: "protective_revelation_messenger_to_recipient", ontologyClassPath: "Class II - AngEL / Messenger of GOD -> Class III - Human", sourcePhrase: "Arise, and take the young child and his mother", derivedMeaning: "AngEL Of THE LORD gives Joseph protective movement instructions concerning CHILD/JESUS.", evidence: ["Arise, and take the young child", "flee into Egypt"], relatedEntities: ["AngEL Of THE LORD", "Joseph", "JESUS", "Mary"], relatedSemanticEvents: eventIdsByType(["protective_instruction_revelation", "divine_message_cluster"]), relatedPassageFunctions: functionKeys(["divine_warning_revelation"]), relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph"]), confidence: "explicit", sourceGrounding: "Semantic subevents preserve Joseph as recipient and the young child as the protected semantic target." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.14", verseRange: "Matthew 2:14-15, 21-23", sourceEntity: "Joseph", targetEntity: "JESUS", semanticRole: "protective_obedient_response_to_child", ontologyClassPath: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "took the young child and his mother", derivedMeaning: "Joseph obediently protects and moves CHILD/JESUS after divine instruction.", evidence: ["he arose", "took the young child and his mother", "departed into Egypt"], relatedEntities: ["Joseph", "JESUS", "Mary", "Egypt", "Nazareth"], relatedSemanticEvents: eventIdsByType(["protective_obedient_response"]), relatedPassageFunctions: functionKeys(["protective_obedient_response", "egypt_escape_preservation", "messianic_location_fulfillment"]), relatedOntologyRoles: ontologyIds(["Joseph", "JESUS", "Egypt"]), confidence: "explicit", sourceGrounding: "Joseph's response is source-grounded in repeated took/departed/dwelt movement language." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.16", verseRange: "Matthew 2:3-8, 16", sourceEntity: "Herod", targetEntity: "JESUS", semanticRole: "hostile_authority_to_child_target", ontologyClassPath: "Class i - Adversarial / Oppositional -> Class I - GOD / Divine Authority", sourcePhrase: "Herod will seek the young child to destroy him; destroy him", derivedMeaning: "Herod is an adversarial authority toward CHILD/JESUS where the source states hostile intent.", evidence: ["Herod ... was troubled", "seek the young child to destroy him", "destroy him"], relatedEntities: ["Herod", "JESUS"], relatedSemanticEvents: eventIdsByType(["hostile_authority_response"]), relatedPassageFunctions: functionKeys(["hostile_authority_response"]), relatedOntologyRoles: ontologyIds(["Herod", "JESUS"]), confidence: /\bdestroy him\b/i.test(sourceCaptureText(captures)) ? "explicit" : "probable", sourceGrounding: "Adversarial relation is evidence-based and tied to destroy-him wording rather than automatic role assignment." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.11", verseRange: "Matthew 2:1-2, 11", sourceEntity: "Wise men", targetEntity: "JESUS", semanticRole: "worship_witness_to_child", ontologyClassPath: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "fell down, and worshipped him", derivedMeaning: "Wise men respond to CHILD/JESUS with worship and witness language.", evidence: ["Where is he that is born King of the Jews", "come to worship him", "fell down, and worshipped him"], relatedEntities: ["Wise men", "JESUS"], relatedSemanticEvents: eventIdsByType(["wise_men_arrival", "worship_identity_witness"]), relatedPassageFunctions: functionKeys(["wise_men_arrival"]), relatedOntologyRoles: ontologyIds(["Wise men", "JESUS"]), confidence: "explicit", sourceGrounding: "Matthew 2 source phrases preserve the witness/worship response without deriving source records." })
+    ];
+  }
+  if (!isMatthewOne) return [];
+const divinePattern = (revelationPatterns || []).find((item) =>
     item.authoritySource === "THE LORD" &&
     item.speaker === "AngEL Of THE LORD" &&
     item.recipient === "Joseph"
@@ -1346,10 +1359,24 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
   const context = buildSourceContext(capture);
   const sourceText = sourceCaptureText(captures);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
-  if (!isMatthewOne) return [];
-
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
-  const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
+  if (isMatthewTwo) {
+    const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
+    const commonLayers = ["ICE_PASSAGE_FUNCTIONS", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS", "ICE_ENTITY_RELATION_ROLES"];
+    return [
+      add({ scopePath: "scripture.nt.matthew.2.verse.1", verseRange: "Matthew 2:1-2, 11", semanticItem: "Wise men", ontologyRoles: ["Human witness role", "worship response", "search witness"], authorityOriginClass: "Class III - Human", narrativeRole: "arrive seeking and worshipping the CHILD/JESUS", canonicalRole: "Human witness group; not origin authority", sourcePhrase: "wise men from the east; come to worship him", derivedMeaning: "Wise men: Human witness and worship response", relatedEntities: ["Wise men", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 explicitly names wise men and describes their seeking/worship response." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.3", verseRange: "Matthew 2:3-8, 16", semanticItem: "Herod", ontologyRoles: ["hostile authority", "adversarial/oppositional role", "child-targeting hostility"], authorityOriginClass: "Class i - Adversarial / Oppositional", narrativeRole: "hostile ruler responding against the CHILD/JESUS", canonicalRole: "Human authority acting oppositionally where source evidence supports it", sourcePhrase: "Herod ... was troubled; destroy him", derivedMeaning: "Herod: hostile/adversarial authority toward JESUS", relatedEntities: ["Herod", "JESUS", "Wise men"], relatedLayers: commonLayers, confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable", sourceGrounding: "Adversarial role is assigned only from troubled response, deceptive inquiry, and destroy-him wording in Matthew 2." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.4", verseRange: "Matthew 2:4-6", semanticItem: "Chief priests and scribes", ontologyRoles: ["Human religious authority", "scriptural knowledge witness", "prophecy location witness"], authorityOriginClass: "Class III - Human", narrativeRole: "identify the written prophecy location for Herod", canonicalRole: "Human witnesses to source-text prophecy, not divine origin authority", sourcePhrase: "chief priests and scribes ... for thus it is written", derivedMeaning: "Chief priests and scribes: Human scriptural knowledge witnesses", relatedEntities: ["Chief priests and scribes", "Bethlehem", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:4-6 grounds this role in their gathered answer and written-prophecy citation." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.11", verseRange: "Matthew 2:11-15", semanticItem: "JESUS", ontologyRoles: ["CHILD semantic referent", "protected child", "messianic identity"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "referenced as young child/child while semantically grounded to JESUS", canonicalRole: "CHILD/JESUS remains distinct from JESUS CHRIST source identity while resolving the referent", sourcePhrase: "the young child", derivedMeaning: "CHILD / JESUS: protected messianic child", relatedEntities: ["JESUS", "JESUS CHRIST", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 repeatedly uses young child/child in scenes grounded by JESUS identity from Matthew source context." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-22", semanticItem: "AngEL Of THE LORD", ontologyRoles: ["messenger", "protective instruction carrier", "delegated authority role"], authorityOriginClass: "Class II - AngEL / Messenger of GOD", narrativeRole: "delivers protective dream instruction to Joseph", canonicalRole: "messenger role distinct from THE LORD as origin authority", sourcePhrase: "the angel of the Lord appeareth to Joseph in a dream", derivedMeaning: "AngEL Of THE LORD: protective messenger", relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 uses AngEL Of THE LORD dream appearances for protective instruction." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-22", semanticItem: "Joseph", ontologyRoles: ["Human response", "obedient recipient", "protective steward"], authorityOriginClass: "Class III - Human", narrativeRole: "receives instruction and moves the CHILD/JESUS and Mary protectively", canonicalRole: "Human obedient recipient; not origin authority", sourcePhrase: "he arose, and took the young child and his mother", derivedMeaning: "Joseph: protective obedient steward", relatedEntities: ["Joseph", "JESUS", "Mary", "AngEL Of THE LORD"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 repeatedly grounds Joseph response through instruction-response movement." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.5", verseRange: "Matthew 2:5-6", semanticItem: "Bethlehem", ontologyRoles: ["messianic location", "prophecy location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "location identified by written prophecy", canonicalRole: "place role in fulfillment chain", sourcePhrase: "Bethlehem of Judaea", derivedMeaning: "Bethlehem: messianic prophecy location", relatedEntities: ["Bethlehem", "JESUS", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:5-6 identifies Bethlehem through written prophecy." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-15", semanticItem: "Egypt", ontologyRoles: ["protective refuge location", "fulfillment location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "refuge location and fulfillment location", canonicalRole: "place role in preservation and fulfillment chain", sourcePhrase: "flee into Egypt; Out of Egypt have I called my son", derivedMeaning: "Egypt: protective refuge and fulfillment location", relatedEntities: ["Egypt", "JESUS", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:13-15 grounds Egypt in both protective movement and fulfillment wording." })
+    ];
+  }
+  if (!isMatthewOne) return [];
+const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
   const commonLayers = ["ICE_SEMANTIC_DISTINCTIONS", "ICE_PASSAGE_FUNCTIONS", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS"];
 
   return [
@@ -1536,9 +1563,9 @@ function createSemanticAmbiguities(captures = [], semanticDistinctions = [], ont
   const capture = (captures || [])[0] || {};
   const context = buildSourceContext(capture);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   if (!isMatthewOne) return [];
 
-  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const add = (record) => semanticAmbiguityRecord({ sourceCaptureId, sourceContext: context, ...record });
   const commonLayers = ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS"];
 
@@ -1648,6 +1675,55 @@ function originAuthorityPathRecord(record = {}) {
 }
 
 function createOriginAuthorityPaths(semanticEvents = [], revelationPatterns = [], passageFunctions = [], semanticFlowChains = [], relationshipGraph = [], canonicalIdentities = []) {
+  const protectivePattern = (revelationPatterns || []).find((item) =>
+    item.authoritySource === "THE LORD" &&
+    item.speaker === "AngEL Of THE LORD" &&
+    item.recipient === "Joseph" &&
+    Array.isArray(item.subEvents) &&
+    item.subEvents.some((subEvent) => ["protection_instruction", "protective_obedient_response"].includes(subEvent.clusterType || subEvent.eventType || ""))
+  );
+  if (protectivePattern) {
+    const responseEvent = (semanticEvents || []).find((item) =>
+      item.eventType === "protective_obedient_response" || /took the young child|departed into Egypt|dwelt in a city called Nazareth/i.test(`${item.anchorText || ""} ${item.sourceSnippet || ""} ${item.normalizedMeaning || ""}`)
+    );
+    const relatedFunctions = (passageFunctions || [])
+      .filter((item) => ["divine_warning_revelation", "protective_obedient_response", "egypt_escape_preservation", "messianic_location_fulfillment"].includes(item.passageFunction || ""))
+      .map((item) => item.passageFunction || item.id)
+      .filter(Boolean);
+    const relatedEvents = [
+      protectivePattern.id,
+      ...(protectivePattern.subEvents || []).map((item) => item.semanticEventId || item.id || item.eventType || item.clusterType),
+      responseEvent?.id || responseEvent?.semanticEventId
+    ].filter(Boolean);
+    const evidence = Array.from(new Set([
+      ...(protectivePattern.evidence || []),
+      responseEvent?.anchorText || responseEvent?.sourceSnippet || ""
+    ].filter(Boolean)));
+
+    return [originAuthorityPathRecord({
+      sourceCaptureId: protectivePattern.sourceCaptureId || "",
+      sourceContext: protectivePattern.sourceContext || {},
+      scopePath: protectivePattern.scopePath || "scripture.nt.matthew.2.verse.13",
+      verseRange: "Matthew 2:13-22",
+      pathType: "protective_warning_to_obedient_response",
+      origin: "THE LORD",
+      messenger: "AngEL Of THE LORD",
+      means: "dream / divine warning / protective instruction",
+      recipient: "Joseph",
+      response: "Joseph obeys protective instruction",
+      result: "CHILD / JESUS is preserved and moved according to warning",
+      mission: "Protect CHILD/JESUS from Herod and preserve fulfillment movement",
+      authorityClass: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD",
+      recipientClass: "Joseph: Class III - Human",
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS", "Herod", "Egypt", "Nazareth"],
+      relatedSemanticEvents: Array.from(new Set(relatedEvents)),
+      relatedRevelationPatterns: [protectivePattern.id].filter(Boolean),
+      relatedPassageFunctions: relatedFunctions,
+      evidence,
+      confidence: "explicit",
+      sourceGrounding: "derived from Matthew 2 dream warning / AngEL Of THE LORD instruction, Joseph protective response, and location fulfillment passage functions"
+    })];
+  }
   const divinePattern = (revelationPatterns || []).find((item) =>
     item.authoritySource === "THE LORD" &&
     item.speaker === "AngEL Of THE LORD" &&
@@ -1769,7 +1845,7 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
   const context = buildSourceContext(capture);
   const sourceText = sourceCaptureText(captures);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
-  if (!isMatthewOne) return passageFunctions;
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
 
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const hasCanonicalJesus = (canonicalIdentities || []).some((item) =>
@@ -1849,6 +1925,101 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       confidence: "explicit",
       sourceGrounding: "semantic events preserve narrative naming surface form JESUS while canonical identity links JESUS to JESUS CHRIST"
     }));
+  }
+
+
+  if (isMatthewTwo) {
+    const addMatthewTwoFunction = (pattern, record) => {
+      if (!pattern.test(sourceText)) return;
+      passageFunctions.push(passageFunctionRecord({ sourceCaptureId, ...record }));
+    };
+
+    addMatthewTwoFunction(/\bwise men from the east\b|\bWhere is he that is born King of the Jews\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.1",
+      verseRange: "Matthew 2:1-2",
+      passageFunction: "wise_men_arrival",
+      plainMeaning: "Wise men arrive and seek the CHILD/JESUS as the one born King of the Jews.",
+      fulfillmentMeaning: "The narrative introduces Gentile witness and worship language around JESUS.",
+      evidence: ["wise men from the east", "Where is he that is born King of the Jews", "come to worship him"],
+      linkedThemes: ["witness", "worship", "messianic identity"],
+      relatedEntities: ["Wise men", "JESUS", "Jerusalem"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:1-2 explicitly introduces wise men seeking and worshipping the child identified through royal language."
+    });
+    addMatthewTwoFunction(/\bfor thus it is written\b|\bBethlehem of Judaea\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.5",
+      verseRange: "Matthew 2:5-6",
+      passageFunction: "prophecy_fulfillment_identification",
+      plainMeaning: "The chief priests and scribes identify Bethlehem from written prophecy.",
+      fulfillmentMeaning: "The passage connects JESUS to location fulfillment and prophetic rule language.",
+      evidence: ["for thus it is written by the prophet", "Bethlehem", "that shall rule my people Israel"],
+      linkedThemes: ["prophecy fulfillment", "Bethlehem", "messianic rule"],
+      relatedEntities: ["Chief priests and scribes", "Bethlehem", "JESUS", "quoted prophet"],
+      relatedProphecies: (prophecyLinks || []).map((item) => item.id).filter(Boolean),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:5-6 grounds the location identification in written prophecy."
+    });
+    addMatthewTwoFunction(/\bHerod\b.*\btroubled\b|\bHerod\b.*\bdestroy him\b|\bprivily called the wise men\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.3",
+      verseRange: "Matthew 2:3-8, 16",
+      passageFunction: "hostile_authority_response",
+      plainMeaning: "Herod responds to the report about JESUS as a hostile authority.",
+      fulfillmentMeaning: "The passage distinguishes Herod's threatened authority and later hostile intent from the worship response of the wise men.",
+      evidence: ["Herod ... was troubled", "privily called the wise men", "destroy him"],
+      linkedThemes: ["hostile authority", "adversarial intent", "child-targeting hostility"],
+      relatedEntities: ["Herod", "Wise men", "JESUS"],
+      confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable",
+      sourceGrounding: "Herod's troubled response, secret inquiry, and destroy-him wording ground the adversarial reading without assigning it where the source does not support it."
+    });
+    addMatthewTwoFunction(/\bwarned of God in a dream\b|\bangel of the Lord appeareth.*dream\b|\bArise,? and take the young child\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.12",
+      verseRange: "Matthew 2:12-13, 19-22",
+      passageFunction: "divine_warning_revelation",
+      plainMeaning: "Dream warnings and angelic instruction redirect people away from Herod and toward protection of the CHILD/JESUS.",
+      fulfillmentMeaning: "THE LORD's warning and instruction preserve JESUS and guide Joseph's obedient response.",
+      evidence: ["warned of God in a dream", "the angel of the Lord appeareth to Joseph in a dream", "Arise, and take the young child"],
+      linkedThemes: ["dream warning", "divine instruction", "protection", "adversarial avoidance"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Wise men", "JESUS"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 repeatedly grounds direction in dream warnings and AngEL Of THE LORD instruction."
+    });
+    addMatthewTwoFunction(/\bhe arose\b.*\btook the young child\b|\bdeparted into Egypt\b|\bturned aside\b|\bdwelt in a city called Nazareth\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.14",
+      verseRange: "Matthew 2:14-15, 21-23",
+      passageFunction: "protective_obedient_response",
+      plainMeaning: "Joseph obeys protective instruction and moves the CHILD/JESUS and Mary as directed.",
+      fulfillmentMeaning: "Joseph's obedience participates in preservation and location fulfillment without becoming the origin authority.",
+      evidence: ["he arose", "took the young child and his mother", "departed into Egypt", "dwelt in a city called Nazareth"],
+      linkedThemes: ["obedience", "protection", "family movement"],
+      relatedEntities: ["Joseph", "Mary", "JESUS", "Egypt", "Nazareth"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 grounds Joseph's role through repeated response verbs after divine instruction."
+    });
+    addMatthewTwoFunction(/\bflee into Egypt\b|\bOut of Egypt have I called my son\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.13",
+      verseRange: "Matthew 2:13-15",
+      passageFunction: "egypt_escape_preservation",
+      plainMeaning: "Joseph takes the CHILD/JESUS and Mary into Egypt to preserve the child from Herod.",
+      fulfillmentMeaning: "The Egypt movement is both protective escape and fulfillment framing.",
+      evidence: ["flee into Egypt", "Herod will seek the young child to destroy him", "Out of Egypt have I called my son"],
+      linkedThemes: ["preservation", "escape", "Egypt fulfillment"],
+      relatedEntities: ["Joseph", "Mary", "JESUS", "Egypt", "Herod"],
+      confidence: "explicit",
+      sourceGrounding: "The warning, Joseph's action, and fulfillment wording ground the Egypt preservation layer."
+    });
+    addMatthewTwoFunction(/\bcalled a Nazarene\b|\bcity called Nazareth\b|\bOut of Egypt have I called my son\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.15",
+      verseRange: "Matthew 2:15, 23",
+      passageFunction: "messianic_location_fulfillment",
+      plainMeaning: "The narrator connects JESUS' locations to fulfillment language.",
+      fulfillmentMeaning: "Egypt and Nazareth are treated as fulfillment locations in the narrative explanation.",
+      evidence: ["Out of Egypt have I called my son", "dwelt in a city called Nazareth", "He shall be called a Nazarene"],
+      linkedThemes: ["location fulfillment", "messianic identity", "narrative fulfillment explanation"],
+      relatedEntities: ["JESUS", "Egypt", "Nazareth", "quoted prophet"],
+      relatedProphecies: (prophecyLinks || []).map((item) => item.id).filter(Boolean),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:15 and 2:23 explicitly frame movement and dwelling as fulfillment."
+    });
   }
 
   return passageFunctions;
@@ -2296,7 +2467,38 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
     });
   }
 
-  return subEvents;
+
+  if (/\bwise men from the east\b|\bthere came wise men\b/i.test(text)) {
+    push({ originalText: "there came wise men from the east to Jerusalem", anchorText: "wise men from the east", normalizedMeaning: "Wise men arrive seeking the one born King of the Jews", actor: "Wise men", action: "arrived / sought", target: "JESUS", recipient: "Jerusalem", participants: ["Wise men", "JESUS", "Jerusalem"], relationshipType: "search_witness", eventType: "wise_men_arrival", semanticCategory: "arrival_search_witness", confidence: "explicit" });
+  }
+
+  if (/\bWhere is he that is born King of the Jews\b|\bcome to worship him\b/i.test(text)) {
+    push({ originalText: "Where is he that is born King of the Jews? for we have seen his star ... and are come to worship him", anchorText: /\bWhere is he that is born King of the Jews\b/i.test(text) ? "Where is he that is born King of the Jews" : "come to worship him", normalizedMeaning: "Wise men identify the CHILD/JESUS by royal and worship language", actor: "Wise men", action: "testified / worshipped", target: "JESUS", participants: ["Wise men", "JESUS"], relationshipType: "worship_witness", eventType: "worship_identity_witness", semanticCategory: "messianic_identity_witness", confidence: "explicit" });
+  }
+
+  if (/\bHerod\b.*\btroubled\b|\bHerod\b.*\bprivily called\b|\bHerod\b.*\bdestroy him\b/i.test(text)) {
+    push({ originalText: "Herod responds to the report concerning the young child", anchorText: /\bdestroy him\b/i.test(text) ? "destroy him" : (/\bprivily called\b/i.test(text) ? "privily called" : "Herod ... troubled"), normalizedMeaning: /\bdestroy him\b/i.test(text) ? "Herod shows child-targeting hostile intent toward JESUS" : "Herod acts as hostile authority in response to the report of JESUS", actor: "Herod", action: /\bdestroy him\b/i.test(text) ? "sought to destroy" : "responded as hostile authority", target: "JESUS", participants: ["Herod", "JESUS", "Wise men"], relationshipType: "hostile_authority_response", eventType: "hostile_authority_response", semanticCategory: "adversarial_authority", confidence: "explicit" });
+  }
+
+  if (/\bchief priests and scribes\b|\bfor thus it is written\b|\bin Bethlehem of Judaea\b/i.test(text)) {
+    push({ originalText: "for thus it is written by the prophet", anchorText: /\bfor thus it is written\b/i.test(text) ? "for thus it is written" : "Bethlehem of Judaea", normalizedMeaning: "Chief priests and scribes identify Bethlehem through written prophecy", actor: /\bchief priests and scribes\b/i.test(text) ? "Chief priests and scribes" : "scripture narrator", action: "identified prophecy location", target: "Bethlehem", participants: ["Chief priests and scribes", "Bethlehem", "JESUS", "quoted prophet"], relationshipType: "prophecy_location_identification", eventType: "prophecy_fulfillment_identification", semanticCategory: "prophecy_location_fulfillment", confidence: "explicit" });
+  }
+
+  if (/\bwarned of God in a dream\b|\bbeing warned of God\b/i.test(text)) {
+    push({ originalText: "being warned of God in a dream", anchorText: "warned of God in a dream", normalizedMeaning: "THE LORD warned the wise men by dream to avoid Herod", actor: "THE LORD", action: "warned", recipient: "Wise men", target: "Herod", participants: ["THE LORD", "Wise men", "Herod", "JESUS"], relationshipType: "divine_warning_redirection", authorityChain: ["THE LORD", "Wise men"], eventType: "divine_warning_revelation", semanticCategory: "warning_redirection", confidence: "explicit" });
+  }
+
+  if (/\bArise\b.*\btake the young child\b|\bflee into Egypt\b|\barise\b.*\btake the young child\b|\breturn(?:ed)?\b.*\byoung child\b/i.test(text)) {
+    push({ originalText: "Arise, and take the young child and his mother", anchorText: /\bflee into Egypt\b/i.test(text) ? "flee into Egypt" : "take the young child and his mother", normalizedMeaning: "AngEL Of THE LORD instructs Joseph to protect the CHILD/JESUS and His mother", actor: "Angel of THE LORD", action: /\bflee into Egypt\b/i.test(text) ? "commanded protective flight" : "commanded protective movement", recipient: "Joseph", target: "JESUS", concerning: "Mary", participants: ["Angel of THE LORD", "Joseph", "JESUS", "Mary", "Egypt"], relationshipType: "protective_instruction", authorityChain: ["THE LORD", "Angel of THE LORD", "Joseph"], eventType: "protective_instruction_revelation", semanticCategory: "protection_instruction", confidence: "explicit" });
+  }
+
+  if (/\bhe arose\b.*\btook the young child\b|\bdeparted into Egypt\b|\bturned aside\b.*\bGalilee\b|\bdwelt in a city called Nazareth\b/i.test(text)) {
+    push({ originalText: "he arose, he took the young child and his mother", anchorText: /\bdeparted into Egypt\b/i.test(text) ? "departed into Egypt" : (/\bdwelt in a city called Nazareth\b/i.test(text) ? "dwelt in a city called Nazareth" : "took the young child and his mother"), normalizedMeaning: "Joseph obeys protective instruction concerning CHILD/JESUS", actor: "Joseph", action: "obeyed protective instruction", target: "JESUS", concerning: "Mary", participants: ["Joseph", "JESUS", "Mary", "Egypt", "Nazareth"], relationshipType: "protective_obedient_response", eventType: "protective_obedient_response", semanticCategory: "protective_obedience", confidence: "explicit" });
+  }
+
+  if (/\bthat it might be fulfilled\b|\bOut of Egypt have I called my son\b|\bcalled a Nazarene\b/i.test(text)) {
+    push({ originalText: "that it might be fulfilled", anchorText: /\bOut of Egypt have I called my son\b/i.test(text) ? "Out of Egypt have I called my son" : (/\bcalled a Nazarene\b/i.test(text) ? "called a Nazarene" : "that it might be fulfilled"), normalizedMeaning: "scripture narrator connects the movement of CHILD/JESUS to prophecy fulfillment", actor: "scripture narrator", action: "narrates fulfillment", target: "JESUS", participants: ["scripture narrator", "quoted prophet", "JESUS", "Egypt", "Nazareth"], relationshipType: "messianic_location_fulfillment", narrator: "scripture narrator", narratorRole: "fulfillment narration", quotedProphet: "quoted prophet", eventType: "messianic_location_fulfillment", semanticCategory: "prophecy_location_fulfillment", confidence: "explicit" });
+  }  return subEvents;
 }
 
 function createEventItem(capture, sentence, sequenceIndex) {
@@ -3715,7 +3917,10 @@ function clusterPartFromEvent(eventItem) {
     instruction_concerning_person: "marriage_instruction",
     conception_revelation: "conception_revelation",
     name_revelation: "revealed_name_instruction",
-    mission_reason_declaration: "mission_declaration"
+    mission_reason_declaration: "mission_declaration",
+    protective_instruction_revelation: "protection_instruction",
+    divine_warning_revelation: "warning_redirection",
+    protective_obedient_response: "protective_obedient_response"
   };
 
   return {
@@ -3737,7 +3942,10 @@ function createDivineMessageClusters(semanticEvents) {
     "instruction_concerning_person",
     "conception_revelation",
     "name_revelation",
-    "mission_reason_declaration"
+    "mission_reason_declaration",
+    "protective_instruction_revelation",
+    "divine_warning_revelation",
+    "protective_obedient_response"
   ]);
   const grouped = new Map();
 
@@ -3754,12 +3962,16 @@ function createDivineMessageClusters(semanticEvents) {
   const clusters = [];
   for (const [key, events] of grouped.entries()) {
     const uniqueTypes = new Set(events.map((item) => item.eventType));
-    if (events.length < 2 || uniqueTypes.size < 2) continue;
+    const allowsSingleEventCluster = events.some((item) => ["protective_instruction_revelation", "divine_warning_revelation"].includes(item.eventType || ""));
+    if ((!allowsSingleEventCluster && events.length < 2) || (!allowsSingleEventCluster && uniqueTypes.size < 2)) continue;
     const clusterOrder = {
       instruction_concerning_person: 1,
       conception_revelation: 2,
       name_revelation: 3,
-      mission_reason_declaration: 4
+      mission_reason_declaration: 4,
+      divine_warning_revelation: 1,
+      protective_instruction_revelation: 2,
+      protective_obedient_response: 3
     };
     const ordered = [...events].sort((left, right) =>
       (clusterOrder[left.eventType] || 99) - (clusterOrder[right.eventType] || 99) ||

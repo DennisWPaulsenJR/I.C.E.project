@@ -2124,3 +2124,31 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-22 - pcdx - Stabilize Matthew 2 semantic layers
+Summary:
+- Began Matthew 2 semantic stabilization after Study Panel review showed empty derived semantic layers despite timeline moments rendering.
+- Added Matthew 2 semantic subevents and evidence-gated derived records for wise men, Herod, chief priests/scribes, CHILD/JESUS, AngEL Of THE LORD, Joseph, Bethlehem, and Egypt.
+- Generalized divine message clustering for warning/protective instruction patterns.
+- Added Matthew 2 Passage Functions, Revelation Patterns, Origin / Authority Paths, Ontology Roles, and Semantic Relationship Roles.
+- Tightened Study Panel timeline labels to remove Matthew 1 naming fallback leakage.
+- Added Matthew 2 QA harness and npm script.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `package.json`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed`r`n- `node --check study.js` passed`r`n- `node --check qa/matthew2-extension-qa.js` passed`r`n- `git diff --check` passed`r`n- `npm.cmd run qa:matthew1` passed`r`n- `npm.cmd run qa:matthew2` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented

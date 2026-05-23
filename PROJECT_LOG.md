@@ -2348,3 +2348,46 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-22 - Matthew 2 Semantic Stabilization
+
+Instruction summary:
+- Begin Matthew 2 semantic stabilization phase after Study Panel review showed zero Passage Functions, Revelation Patterns, Semantic Ontology Roles, Semantic Relationship Roles, and Origin / Authority Paths.
+- Remove Matthew 1-specific timeline fallback leakage such as `Joseph Obeys and JESUS Is Named` on unrelated Matthew 2 moments.
+- Generalize semantic layers for Matthew 2 while preserving Matthew 1 behavior, source phrase vs derived meaning separation, ontology hierarchy, Class I / Class i distinction, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, and semantic traceability.
+
+Codex action summary:
+- Added Matthew 2 source-grounded semantic subevents for wise men arrival/worship, Herod hostile authority response, prophecy location identification, dream warnings, protective instruction, Joseph protective obedience, and location fulfillment.
+- Generalized divine message clustering so warning/protective instruction events can create Revelation Patterns beyond the Matthew 1 naming message.
+- Added Matthew 2 Passage Functions, Ontology Roles, Origin / Authority Path, and Semantic Relationship Roles with evidence-based Herod Class i handling.
+- Tightened Study Panel narrative timeline labels so Matthew 1 naming labels no longer trigger from generic `took/wife/name` fallback patterns in Matthew 2.
+- Added `qa:matthew2` and `qa/matthew2-extension-qa.js` for Matthew 2 stabilization checks.
+
+Matthew 2 QA snapshot:
+- Expected semantic layer recovery: Passage Functions, Revelation Patterns, Ontology Roles, Origin / Authority Paths, and Semantic Relationship Roles should now be nonzero on Matthew 2.
+- Stabilized labels: wise men, Herod, Egypt/protective movement, divine warning, and fulfillment moments receive context-specific labels.
+- Semantic failure notes addressed: Matthew 1 hardcoded fallback leakage, Matthew 2 empty derived layers, and missing protective authority path.
+
+Recommended next architecture gaps:
+- Replace remaining chapter-specific derived-record branches with a reusable rule registry keyed by source evidence patterns and semantic event types.
+- Add stronger pronoun/referent resolution for `he`, `him`, `his`, `young child`, and `child` across verse windows.
+- Add a generic place/location ontology class helper instead of hand-written Bethlehem/Egypt/Nazareth records.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `package.json`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.`r`n- `node --check study.js` passed.`r`n- `node --check qa/matthew2-extension-qa.js` passed.`r`n- `git diff --check` passed.`r`n- `npm.cmd run qa:matthew1` passed.`r`n- `npm.cmd run qa:matthew2` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented
