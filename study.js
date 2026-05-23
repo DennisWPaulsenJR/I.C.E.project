@@ -624,36 +624,80 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].filter(Boolean).join("\n");
   }
 
+  function sourceDescriptionCandidates(context = {}) {
+    const capture = studyData.latestCapture || {};
+    const active = studyData.activeAdapter || {};
+    const captureMetadata = capture.metadata || capture.meta || {};
+    const captureSourceContext = capture.sourceContext || {};
+    const candidates = [
+      capture.sourceDescription,
+      capture.description,
+      capture.pageDescription,
+      capture.chapterDescription,
+      captureMetadata.description,
+      captureMetadata.pageDescription,
+      captureMetadata.chapterDescription,
+      captureSourceContext.description,
+      captureSourceContext.sourceDescription,
+      context.description,
+      context.sourceDescription,
+      context.pageDescription,
+      context.chapterDescription,
+      active.sourceDescription,
+      active.description,
+      active.pageDescription,
+      active.chapterDescription
+    ];
+    for (const hint of asArray(studyData.domSemanticHints)) {
+      const hintType = normalizeText(hint.hintType || "").toLowerCase();
+      if (/^(source_description|page_description|chapter_description|summary|source_summary|chapter_summary|meta_description)$/.test(hintType)) {
+        candidates.push(hint.text || hint.normalizedText || hint.originalText);
+      }
+    }
+    return candidates.map((value) => normalizeText(value || "")).filter(Boolean);
+  }
+
+  function currentPageSourceDescription(context = {}) {
+    const title = normalizeText(studyData.latestCapture?.title || context.sourceTitle || "").toLowerCase();
+    const url = normalizeText(studyData.latestCapture?.url || context.sourceUrl || "").toLowerCase();
+    const rejected = new Set([title, url, "scripture", "unknown"]);
+    return sourceDescriptionCandidates(context).find((value) => {
+      const normalized = value.toLowerCase();
+      return normalized.length > 24 && !rejected.has(normalized);
+    }) || "";
+  }
   function renderSourceContext(term) {
     const container = document.getElementById("sourceContextCards");
     const count = document.getElementById("sourceContextCount");
     const context = findSourceContext();
+    const sourceDescription = currentPageSourceDescription(context || {});
 
     clearElement(container);
-    count.textContent = context ? "1 context" : "0 context";
+    count.textContent = `${(context ? 1 : 0) + (sourceDescription ? 1 : 0)} context item(s)`;
 
-    if (!context) {
+    if (!context && !sourceDescription) {
       appendEmpty(container, "No source context yet.");
       return;
     }
 
     const searchable = [
-      context.collection,
-      context.sourceCollection,
-      context.sourceType,
-      context.book,
-      context.chapter,
-      context.section,
-      context.author,
-      context.traditionalAuthor,
-      context.authorConfidence,
-      context.authorBasis,
-      context.speaker,
-      context.compiler,
-      context.translator,
-      context.sourceTitle,
-      context.sourceUrl,
-      context.confidence
+      context?.collection,
+      context?.sourceCollection,
+      context?.sourceType,
+      context?.book,
+      context?.chapter,
+      context?.section,
+      context?.author,
+      context?.traditionalAuthor,
+      context?.authorConfidence,
+      context?.authorBasis,
+      context?.speaker,
+      context?.compiler,
+      context?.translator,
+      context?.sourceTitle,
+      context?.sourceUrl,
+      context?.confidence,
+      sourceDescription
     ].join(" ");
 
     if (!includesTerm(searchable, term)) {
@@ -661,11 +705,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    container.appendChild(createCard(
-      context.sourceTitle || context.book || "Source context",
-      formatSourceContext(context),
-      context.sourceUrl || ""
-    ));
+    if (sourceDescription) {
+      container.appendChild(createCard(
+        "Page Summary / Source Description",
+        sourceDescription,
+        context?.sourceTitle || studyData.latestCapture?.title || "current page metadata"
+      ));
+    }
+
+    if (context) {
+      container.appendChild(createCard(
+        context.sourceTitle || context.book || "Source context",
+        formatSourceContext(context),
+        context.sourceUrl || ""
+      ));
+    }
   }
   function addEntityRole(groups, groupName, name, confidence = "probable", metadata = {}) {
     const cleanName = normalizeText(name || "");
@@ -3272,13 +3326,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       list.className = options.plainList ? "semantic-plain-list" : "semantic-list";
       for (const item of options.list) {
         const listItem = document.createElement("li");
-        listItem.textContent = renderIceBeingDisplayText(item, options);
+        listItem.textContent = options.preserveExact ? normalizeText(item) : renderIceBeingDisplayText(item, options);
         list.appendChild(listItem);
       }
       fragment.appendChild(list);
     } else {
       const paragraph = document.createElement("p");
-      paragraph.textContent = renderIceBeingDisplayText(content, options);
+      paragraph.textContent = options.preserveExact ? normalizeText(content) : renderIceBeingDisplayText(content, options);
       fragment.appendChild(paragraph);
     }
 
@@ -4262,7 +4316,9 @@ createRevelationPartsSection(item.subEvents)
       item.discoveredReference,
       item.referenceRole,
       referenceRoleResolutionDetails(item).join(" "),
-      item.verseRange,
+      referenceRoleDisplayTitle(item),
+      referenceRolePlainExplanation(item),
+      referenceRoleWhyItMatters(item),      item.verseRange,
       item.scopePath,
       item.sourceDiscoveryId,
       asArray(item.linkedThemes).join(" "),
@@ -4310,20 +4366,57 @@ createRevelationPartsSection(item.subEvents)
       `Canonical: ${resolution.canonicalIdentity}`
     ];
   }
-  function referenceRoleSemanticPurpose(item = {}) {
+
+  function referenceRoleDisplayTitle(item = {}) {
+    return referenceRoleResolvedJesusTitle(item)?.referenceRole || referenceRoleSourceTitle(item) || passageFunctionTitle(item.referenceRole || "reference_role");
+  }
+  function referenceRolePlainExplanation(item = {}) {
     const role = item.referenceRole || "";
-    const resolution = referenceRoleResolvedJesusTitle(item);
-    const reference = resolution ? resolution.resolvedLabel : item.discoveredReference || "This reference";
+    const sourceTitle = referenceRoleSourceTitle(item).toLowerCase();
+    if (sourceTitle === "savior") return "This reference connects JESUS to His saving mission.";
+    if (sourceTitle === "redeemer") return "This reference connects JESUS to His redeeming mission.";
     const purposes = {
-      davidic_lineage_support: `${reference} supports the Davidic lineage frame for the passage.`,
-      abrahamic_covenant_support: `${reference} supports the Abrahamic covenant and lineage frame for the passage.`,
-      prophecy_fulfillment_support: `${reference} supports the prophecy fulfillment frame attached to this scope.`,
-      messianic_identity_support: `${reference} supports the messianic identity linkage for this scope.`,
-      name_meaning_support: `${reference} supports the revealed-name and mission-meaning frame for this scope.`
+      davidic_lineage_support: "This reference helps show JESUS is connected to David's lineage.",
+      abrahamic_covenant_support: "This reference helps show JESUS is connected to Abraham's covenant line.",
+      name_meaning_support: "This reference helps explain the meaning/significance of the NAME JESUS.",
+      prophecy_fulfillment_support: "This reference helps connect the passage to fulfillment of prophecy.",
+      messianic_identity_support: "This reference helps connect JESUS to messianic titles, mission, and identity."
     };
-    return purposes[role] || `${reference} explains why this discovered source reference is attached to the current scope.`;
+    return purposes[role] || "This reference helps explain why the source note is connected to this passage.";
   }
 
+  function referenceRoleWhyItMatters(item = {}) {
+    const role = item.referenceRole || "";
+    const sourceTitle = referenceRoleSourceTitle(item).toLowerCase();
+    if (sourceTitle === "savior" || sourceTitle === "redeemer") return "This helps explain that the CHILD named JESUS is connected to His role as Savior/Redeemer.";
+    const purposes = {
+      davidic_lineage_support: "This helps readers see the lineage connection to David without losing the focus on JESUS.",
+      abrahamic_covenant_support: "This helps readers see the covenant-line connection to Abraham without collapsing it into a generic ancestry note.",
+      name_meaning_support: "This helps explain why the revealed NAME JESUS is tied to His mission to save His people.",
+      prophecy_fulfillment_support: "This helps readers connect the passage's events to prophecy fulfillment.",
+      messianic_identity_support: "This helps explain how source titles and mission language point to JESUS while preserving JESUS CHRIST as canonical/source identity."
+    };
+    return purposes[role] || "This helps show why the source reference belongs with this semantic role.";
+  }
+
+  function referenceRoleResolvedBeing(item = {}) {
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    if (resolution?.resolvedBeing) return resolution.resolvedBeing;
+    const entities = asArray(item.linkedEntities).map((value) => normalizedEntityName(value));
+    if (entities.includes("jesus") || entities.includes("jesus christ") || /\bjesus christ\b/i.test(item.discoveredReference || "")) return "JESUS";
+    return "Not recorded.";
+  }
+
+  function referenceRoleCanonicalIdentity(item = {}) {
+    const resolution = referenceRoleResolvedJesusTitle(item);
+    if (resolution?.canonicalIdentity) return resolution.canonicalIdentity;
+    const entities = asArray(item.linkedEntities).map((value) => normalizedEntityName(value));
+    if (entities.includes("jesus christ") || /\bjesus christ\b/i.test(item.discoveredReference || "")) return "JESUS CHRIST";
+    return "Not recorded.";
+  }
+  function referenceRoleSemanticPurpose(item = {}) {
+    return referenceRolePlainExplanation(item);
+  }
   function referenceRoleReferenceDetails(item = {}) {
     return [
       item.discoveredReference || "reference",
@@ -4424,19 +4517,20 @@ createRevelationPartsSection(item.subEvents)
     header.className = "semantic-card-header";
     heading.textContent = "Reference Role";
     range.className = "semantic-card-range";
-    range.textContent = passageFunctionTitle(item.referenceRole || "reference_role");
+    range.textContent = referenceRoleDisplayTitle(item);
     body.className = "semantic-card-body";
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Role", passageFunctionTitle(item.referenceRole || "reference_role")),
-      createPassageFunctionSection("Reference", "", { list: referenceRoleReferenceDetails(item), plainList: true, divineContext }),
-      resolvedDetails.length ? createPassageFunctionSection("Resolved Reference", "", { list: resolvedDetails, plainList: true, divineContext, preferHolySpirit: true }) : null,
-      createPassageFunctionSection("Semantic Purpose", referenceRoleSemanticPurpose(item), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Reference Role", referenceRoleDisplayTitle(item), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("What This Reference Helps Explain", referenceRolePlainExplanation(item), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Reference", item.discoveredReference || "Not recorded.", { preserveExact: true }),
+      createPassageFunctionSection("Resolved Being", referenceRoleResolvedBeing(item), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Canonical/source identity", referenceRoleCanonicalIdentity(item), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Why It Matters", referenceRoleWhyItMatters(item), { divineContext, preferHolySpirit: true }),      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "reference"),
-      createPassageFunctionSection("Reference Role Provenance", "", { collapsed: true, summaryLabel: "Show reference provenance", list: referenceRoleProvenanceLines(item), plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      createPassageFunctionSection("Technical Provenance", "", { collapsed: true, summaryLabel: "Show technical provenance", list: referenceRoleProvenanceLines(item), plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Evidence", "", { collapsed: true, summaryLabel: "Show evidence", list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),

@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-22 - Reference Roles User-Intuitive Display
+
+Instruction summary:
+- Begin Reference Roles user-intuitive display refinement.
+- Add normal-user explanations for technical roles such as Messianic Identity Support, Name Meaning Support, Davidic Lineage Support, Abrahamic Covenant Support, and Prophecy Fulfillment Support.
+- Add optional Page Summary / Source Description near the top of the Study Panel when current-page metadata/DOM/source capture provides one.
+- Preserve exact source labels, technical provenance, source phrase vs derived meaning separation, JESUS / JESUS CHRIST / CHRIST distinction, HOLY SPIRIT preference, hierarchy formatting, and display-only behavior.
+
+Codex action summary:
+- Reworked Reference Role card display order to lead with Reference Role, What This Reference Helps Explain, Source Reference, Resolved Being, Canonical/source identity, Why It Matters, and Confidence.
+- Kept Technical Provenance collapsed by default and preserved exact source labels through a display-only exact-text option.
+- Added optional Page Summary / Source Description rendering from existing current-page metadata, adapter fields, source context fields, or DOM semantic hints only when such description text exists.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
+
 ## 2026-05-22 - Reference Role Provenance Trace
 
 Instruction summary:

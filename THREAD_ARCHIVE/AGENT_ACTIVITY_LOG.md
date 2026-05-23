@@ -21,6 +21,28 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-22 17:20 - pcdx - Make reference roles user intuitive
+Summary:
+- Updated Reference Role cards to show user-facing role titles, plain explanations, exact source references, resolved being, canonical/source identity, why-it-matters text, and confidence before technical details.
+- Kept Technical Provenance collapsed by default and preserved the existing Source Discovery -> Reference Graph -> ICE_REFERENCE_ROLES trace.
+- Added optional Page Summary / Source Description display from existing current-page metadata/DOM/source capture when available, without inventing fallback summaries.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
+
 ## 2026-05-22 16:55 - pcdx - Add reference role provenance trace
 Summary:
 - Added compact expandable provenance details for Reference Role source titles such as `Redeemer`.
