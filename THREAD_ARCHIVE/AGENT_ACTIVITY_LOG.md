@@ -2185,3 +2185,40 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-23 - pcdx - Fix live Matthew 2 derived layer mismatch
+Summary:
+- Investigated live Study Panel mismatch where QA showed populated Matthew 2 derived semantic layers but live display showed zeros.
+- Confirmed QA and live use the same background pipeline/storage keys; likely failure mode was stale extension/service-worker/content-script/storage state or popup completion before a reliable background pipeline run.
+- Hardened popup full analysis so the background pipeline always runs after active-tab recapture.
+- Added live diagnostics to analysis status, Study Panel diagnostics, and QA bundles.
+
+Files touched:
+- `background.js`
+- `popup.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed
+- `node --check popup.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `node --check qa/matthew2-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- `npm.cmd run qa:matthew2` passed
+
+Manual live check needed after commit:
+- Reload extension, reload Matthew 2, rerun analysis, open Study Panel, and compare diagnostic derived counts with QA.
+
+Commit:
+- This commit
+
+Status:
+- Implemented

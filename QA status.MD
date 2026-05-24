@@ -185,3 +185,45 @@ Matthew 2 continuity assertions:
 - JESUS / CHILD / continued_child_identity_and_mission_preservation.
 - scripture narrator / quoted prophet / continued_prophecy_fulfillment_chain.
 - Herod / adversarial_escalation_against_mission_preservation.
+
+## 2026-05-23 - Live Matthew 2 Mismatch Diagnostics
+
+Issue investigated:
+- `qa:matthew2` reported populated Matthew 2 semantic layers while live Study Panel showed stale/empty derived counts.
+
+Diagnostic additions:
+- `ICE_ANALYSIS_STATUS.activeUrl`
+- `ICE_ANALYSIS_STATUS.sourceCaptureId`
+- `ICE_ANALYSIS_STATUS.sourceCaptureTitle`
+- `ICE_ANALYSIS_STATUS.sourceCaptureBook`
+- `ICE_ANALYSIS_STATUS.sourceCaptureChapter`
+- `ICE_ANALYSIS_STATUS.derivedBuildersScope`
+- `ICE_ANALYSIS_STATUS.matthew2DerivedBuildersRan`
+- `ICE_ANALYSIS_STATUS.analysisBuildMarker`
+- `ICE_ANALYSIS_STATUS.derivedLayerCounts`
+
+Study Panel diagnostics now show:
+- active URL
+- source capture title/book/chapter/id
+- analysis reason
+- analysis build marker
+- builder scope
+- Matthew 2 builders ran flag
+- derived layer counts
+
+Expected live Matthew 2 after extension reload and rerun:
+- analysis build: `phase-8.2x-live-derived-diagnostics`
+- builder scope: `Matthew 2`
+- Matthew 2 builders ran: `true`
+- derived counts matching QA:
+  - Passage Functions: 8
+  - Revelation Patterns: 2
+  - Reference Roles: 3
+  - Ontology Roles: 8
+  - Origin / Authority Paths: 1
+  - Semantic Relationship Roles: 5
+  - Semantic Continuity: 4
+
+Validation:
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.

@@ -5630,6 +5630,19 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRelationRoles,
       semanticContinuity
     }, activeAdapter);
+    const latestCapture = captures.find((capture) => capture?.text) || {};
+    const latestCaptureContext = buildSourceContext(latestCapture);
+    const derivedLayerCounts = {
+      passageFunctions: passageFunctions.length,
+      revelationPatterns: revelationPatterns.length,
+      referenceRoles: referenceRoles.length,
+      semanticDistinctions: semanticDistinctions.length,
+      ontologyRoles: ontologyRoles.length,
+      semanticAmbiguities: semanticAmbiguities.length,
+      originAuthorityPaths: originAuthorityPaths.length,
+      entityRelationRoles: entityRelationRoles.length,
+      semanticContinuity: semanticContinuity.length
+    };
     const status = {
       reason,
       captureCount: captures.length,
@@ -5650,6 +5663,16 @@ async function runFullAnalysisPipeline(reason = "manual") {
       mentionCount: mentionIndex.length,
       domHintCount: domSemanticHints.length,
       activeAdapterName: activeAdapter?.adapterName || "",
+      activeUrl: latestCapture.url || "",
+      sourceCaptureId: latestCapture.id || "",
+      sourceCaptureTitle: latestCapture.title || "",
+      sourceCaptureChapter: latestCaptureContext.chapter || "",
+      sourceCaptureBook: latestCaptureContext.book || "",
+      latestCaptureWordCount: latestCapture.wordCount || 0,
+      derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
+      matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
+      analysisBuildMarker: "phase-8.2x-live-derived-diagnostics",
+      derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
       passageFunctionCount: passageFunctions.length,

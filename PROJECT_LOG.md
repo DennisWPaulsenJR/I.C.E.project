@@ -2432,3 +2432,54 @@ Commit:
 
 Status:
 - Implemented by pcdx.
+
+## 2026-05-23 - Live Matthew 2 Derived Layer Mismatch Diagnostics
+
+Instruction summary:
+- Investigate why `qa:matthew2` reported populated Matthew 2 derived layers while the live Study Panel showed zeros for Passage Functions, Revelation Patterns, Ontology Roles, Relationship Roles, Origin / Authority Paths, and Semantic Continuity.
+- Add live/study-panel diagnostics if helpful without adding new semantic features or weakening Matthew 1.
+
+Findings:
+- QA and live analysis use the same background `runFullAnalysisPipeline` and the same storage keys.
+- The likely live mismatch mode was stale extension/service-worker/content-script/storage state: the popup forced active-tab content recapture and trusted the content script to trigger the background pipeline. If a live content script had a stale extension context, the popup could report completion while the Study Panel still showed old derived-layer storage.
+- Study Panel already refreshes on local storage changes, focus, pageshow, and manual refresh, so stale displayed counts primarily indicate stale storage or stale extension code rather than a separate QA-only semantic path.
+
+Codex action summary:
+- Hardened popup full-analysis flow so the popup always invokes the background analysis pipeline after active-tab recapture, instead of relying only on content-script dispatch.
+- Added live analysis diagnostics to `ICE_ANALYSIS_STATUS`: active URL, sourceCaptureId, capture title/book/chapter, word count, analysis reason, build marker, builder scope, Matthew 2 builder flag, and derived-layer counts.
+- Added Study Panel diagnostic fields for active URL, source capture, analysis reason, analysis build marker, builder scope, Matthew 2 builders-ran flag, and derived layer counts.
+- Added the same live diagnostics to QA output bundles for comparison with live Study Panel state.
+
+Manual live reload checklist:
+- Reload extension.
+- Reload Matthew 2 page.
+- Run full analysis from the popup.
+- Open or refresh Study Panel.
+- Confirm diagnostics show `analysisBuildMarker: phase-8.2x-live-derived-diagnostics`, Builder scope `Matthew 2`, Matthew 2 builders ran `true`, and derived counts matching QA expectations.
+
+Files changed:
+- `background.js`
+- `popup.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check popup.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

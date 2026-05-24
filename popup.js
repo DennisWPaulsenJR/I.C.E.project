@@ -305,9 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (tab?.id) {
       const pageUpdated = await rerunOnActiveTab(tab.id);
-      if (!pageUpdated) {
-        await runPipeline("popup-full-analysis-restricted-page");
-      }
+      await runPipeline(pageUpdated ? "popup-full-analysis" : "popup-full-analysis-restricted-page");
     } else {
       await runPipeline("popup-full-analysis");
     }

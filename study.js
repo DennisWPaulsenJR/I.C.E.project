@@ -6067,6 +6067,27 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticEntityRelationRoles").textContent = entityRelationRoleCount;
     document.getElementById("diagnosticSemanticContinuity").textContent = semanticContinuityCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
+    document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
+    document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
+    document.getElementById("diagnosticActiveUrl").textContent = trimText(studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "None", 140);
+    document.getElementById("diagnosticSourceCapture").textContent = [
+      studyData.analysisStatus?.sourceCaptureTitle || studyData.latestCapture?.title || "Untitled",
+      studyData.analysisStatus?.sourceCaptureBook || "",
+      studyData.analysisStatus?.sourceCaptureChapter ? `chapter ${studyData.analysisStatus.sourceCaptureChapter}` : "",
+      studyData.analysisStatus?.sourceCaptureId || studyData.latestCapture?.id || "no capture id"
+    ].filter(Boolean).join(" | ");
+    document.getElementById("diagnosticBuilderScope").textContent = studyData.analysisStatus?.derivedBuildersScope || "None";
+    document.getElementById("diagnosticMatthew2Builders").textContent = String(Boolean(studyData.analysisStatus?.matthew2DerivedBuildersRan));
+    document.getElementById("diagnosticDerivedLayerCounts").textContent = studyData.analysisStatus?.derivedLayerCounts
+      ? Object.entries(studyData.analysisStatus.derivedLayerCounts).map(([key, value]) => `${key}: ${value}`).join(" | ")
+      : [
+        `passageFunctions: ${passageFunctionCount}`,
+        `revelationPatterns: ${revelationPatternCount}`,
+        `ontologyRoles: ${ontologyRoleCount}`,
+        `originAuthorityPaths: ${originAuthorityPathCount}`,
+        `entityRelationRoles: ${entityRelationRoleCount}`,
+        `semanticContinuity: ${semanticContinuityCount}`
+      ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =
       prophecyLinkCount;
