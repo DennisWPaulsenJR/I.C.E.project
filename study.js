@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     semanticAmbiguities: "ICE_SEMANTIC_AMBIGUITIES",
     originAuthorityPaths: "ICE_ORIGIN_AUTHORITY_PATHS",
     entityRelationRoles: "ICE_ENTITY_RELATION_ROLES",
+    semanticContinuity: "ICE_SEMANTIC_CONTINUITY",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -3734,6 +3735,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ambiguity: "semanticAmbiguitiesSection",
       originAuthority: "originAuthorityPathsSection",
       relationRole: "entityRelationRolesSection",
+      continuity: "semanticContinuitySection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -3995,6 +3997,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         )));
     }
 
+    if (mode !== "continuity") {
+      asArray(studyData.semanticContinuity)
+        .filter((continuity) => semanticVerseOverlap(continuity, item) || semanticEntityOverlap(continuity, item))
+        .forEach((continuity) => links.push(semanticNavItem(
+          `Continuity: ${continuity.continuedEntity || "semantic continuity"} | ${continuity.chapterTransition || "chapter transition"}`,
+          semanticSectionForNav("continuity"),
+          continuity.continuedEntity || continuity.continuityType || "",
+          semanticCardKey("continuity", continuity, `${continuity.continuedEntity || ""}-${continuity.continuityType || ""}`)
+        )));
+    }
     if (mode !== "timeline") {
       timelineEntries
         .filter((entry) => semanticNarrativeMatchesRecord(entry, item))
@@ -4889,6 +4901,115 @@ createRevelationPartsSection(item.subEvents)
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createEntityRelationRoleCard(item));
+    });
+  }
+  function semanticContinuitySearchText(item = {}) {
+    return [
+      item.continuedEntity,
+      item.continuityType,
+      item.chapterTransition,
+      item.continuedAuthorityPath,
+      item.continuedRevelationPattern,
+      item.continuedOntologyRole,
+      item.continuedMissionPurpose,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.continuity).join(" "),
+      asArray(item.authorityContinuity).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.evidence).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function semanticContinuityTypeLabel(type) {
+    const normalized = normalizeText(type || "semantic_continuity").toLowerCase();
+    const labels = new Map([
+      ["continued_authority_revelation_relationship", "continued authority / revelation relationship"],
+      ["continued_child_identity_and_mission_preservation", "continued CHILD / mission preservation"],
+      ["continued_prophecy_fulfillment_chain", "continued prophecy fulfillment chain"],
+      ["adversarial_escalation_against_mission_preservation", "adversarial escalation / mission preservation"]
+    ]);
+    return labels.get(normalized) || passageFunctionTitle(type || "semantic_continuity");
+  }
+
+  function createSemanticContinuityCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.continuedEntity, item.continuedAuthorityPath, item.continuedMissionPurpose, item.relatedEntities, item.evidence]);
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+
+    card.className = "study-card semantic-card semantic-continuity-card";
+    assignSemanticCardTarget(card, "continuity", item, `${item.continuedEntity || ""}-${item.continuityType || ""}`);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(item.continuedEntity || "Semantic Continuity", divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [item.chapterTransition, semanticContinuityTypeLabel(item.continuityType), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Continued Entity", item.continuedEntity || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Chapter Transition", item.chapterTransition || "Not recorded."),
+      createPassageFunctionSection("Continuity", "", { list: asArray(item.continuity).map((value) => renderDerivedSemanticDisplayText(value, divineContext)), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Authority Continuity", item.continuedAuthorityPath || asArray(item.authorityContinuity).join(" -> ") || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Revelation Pattern", item.continuedRevelationPattern || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Ontology Role", item.continuedOntologyRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Mission / Purpose", item.continuedMissionPurpose || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "continuity"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.continuedEntity, item.continuedAuthorityPath, item.continuedMissionPurpose]), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Source Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderSemanticContinuity(term) {
+    const container = document.getElementById("semanticContinuityCards");
+    const count = document.getElementById("semanticContinuityCount");
+    const records = asArray(studyData.semanticContinuity);
+    const filtered = records.filter((item) => matchesSearchQuery(semanticContinuitySearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} continuity record(s)`;
+
+    if (records.length === 0) {
+      appendEmpty(container, "No cross-chapter semantic continuity derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No cross-chapter semantic continuity records match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Cross-Chapter Semantic Continuity",
+      [
+        `Derived records: ${records.length}`,
+        `Layer: ICE_SEMANTIC_CONTINUITY`,
+        "Purpose: identify conservative continuity between chapter semantic layers using current source-grounded entities, authority paths, revelation patterns, ontology roles, and passage functions.",
+        "Review posture: inspect continued entity, authority path, revelation pattern, ontology role, mission/purpose, transition, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createSemanticContinuityCard(item));
     });
   }
   function semanticAmbiguitySearchText(item = {}) {
@@ -5799,6 +5920,7 @@ createRevelationPartsSection(item.subEvents)
       renderSemanticAmbiguities(term);
       renderOriginAuthorityPaths(term);
       renderEntityRelationRoles(term);
+      renderSemanticContinuity(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
       renderVerseScopeFocus(term);
@@ -5872,6 +5994,7 @@ createRevelationPartsSection(item.subEvents)
       semanticAmbiguities: countItems(studyData.semanticAmbiguities),
       originAuthorityPaths: countItems(studyData.originAuthorityPaths),
       entityRelationRoles: countItems(studyData.entityRelationRoles),
+      semanticContinuity: countItems(studyData.semanticContinuity),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -5907,12 +6030,13 @@ createRevelationPartsSection(item.subEvents)
     const semanticAmbiguityCount = countItems(studyData.semanticAmbiguities);
     const originAuthorityPathCount = countItems(studyData.originAuthorityPaths);
     const entityRelationRoleCount = countItems(studyData.entityRelationRoles);
+    const semanticContinuityCount = countItems(studyData.semanticContinuity);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -5941,6 +6065,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticSemanticAmbiguities").textContent = semanticAmbiguityCount;
     document.getElementById("diagnosticOriginAuthorityPaths").textContent = originAuthorityPathCount;
     document.getElementById("diagnosticEntityRelationRoles").textContent = entityRelationRoleCount;
+    document.getElementById("diagnosticSemanticContinuity").textContent = semanticContinuityCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

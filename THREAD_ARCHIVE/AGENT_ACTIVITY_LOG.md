@@ -2152,3 +2152,36 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-23 - pcdx - Add cross-chapter semantic continuity
+Summary:
+- Added `ICE_SEMANTIC_CONTINUITY` as a conservative derived semantic layer for Matthew 1 -> Matthew 2 continuity.
+- Derived Matthew 2 continuity records for Joseph, JESUS / CHILD, scripture narrator / quoted prophet, and Herod based on current semantic events, passage functions, ontology roles, authority paths, revelation patterns, relationship roles, and canonical identities.
+- Added Cross-Chapter Semantic Continuity Study Panel section and diagnostics.
+- Updated QA harness bundle counts/samples and Matthew 2 assertions.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `node --check qa/matthew2-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- `npm.cmd run qa:matthew2` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented

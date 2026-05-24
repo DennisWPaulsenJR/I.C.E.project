@@ -2391,3 +2391,44 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-23 - Matthew 1 to Matthew 2 Cross-Chapter Semantic Continuity
+
+Instruction summary:
+- Begin Phase 8.2x: Matthew 1 <-> Matthew 2 Cross-Chapter Semantic Continuity.
+- Add a derived semantic continuity layer that recognizes conservative continuity of entities, authority paths, revelation patterns, ontology roles, mission context, prophecy fulfillment, protection/preservation, and adversarial escalation.
+- Preserve source phrase vs derived meaning separation, hierarchy formatting, divine display compliance, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class i distinction.
+
+Codex action summary:
+- Added `ICE_SEMANTIC_CONTINUITY` as a derived current-page semantic layer.
+- Derived Matthew 2 continuity records for Joseph, JESUS / CHILD, scripture narrator / quoted prophet fulfillment continuity, and Herod adversarial escalation where current Matthew 2 semantic layers provide grounding.
+- Wired continuity through scope integrity, analysis status, Chrome storage, QA bundles, and Study Panel diagnostics.
+- Added a compact Study Panel section: Cross-Chapter Semantic Continuity.
+- Added continuity cards showing continued entity, chapter transition, continuity, authority continuity, revelation pattern, ontology role, mission/purpose, confidence, evidence, related layers, hierarchy, grounding, and scope.
+- Added Matthew 2 QA assertions for continuity records.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with semanticContinuity: 0.
+- `npm.cmd run qa:matthew2` passed with semanticContinuity: 4.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

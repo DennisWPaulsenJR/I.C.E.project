@@ -161,3 +161,27 @@ Matthew 2 expected checks:
 
 Validation result:
 - `node --check background.js` passed`r`n- `node --check study.js` passed`r`n- `node --check qa/matthew2-extension-qa.js` passed`r`n- `git diff --check` passed`r`n- `npm.cmd run qa:matthew1` passed`r`n- `npm.cmd run qa:matthew2` passed
+
+## 2026-05-23 - Phase 8.2x Continuity QA
+
+New layer:
+- `ICE_SEMANTIC_CONTINUITY`
+
+QA bundle updates:
+- `qa/matthew1-extension-qa.js` now reports `semanticContinuity` counts and samples.
+- `qa/matthew2-extension-qa.js` now reports and asserts Matthew 2 continuity records.
+
+Latest validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticContinuity: 0`.
+- `npm.cmd run qa:matthew2` passed with `semanticContinuity: 4`.
+
+Matthew 2 continuity assertions:
+- Joseph / continued_authority_revelation_relationship.
+- JESUS / CHILD / continued_child_identity_and_mission_preservation.
+- scripture narrator / quoted prophet / continued_prophecy_fulfillment_chain.
+- Herod / adversarial_escalation_against_mission_preservation.

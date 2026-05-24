@@ -32,6 +32,7 @@ const ONTOLOGY_ROLES_KEY = "ICE_ONTOLOGY_ROLES";
 const SEMANTIC_AMBIGUITIES_KEY = "ICE_SEMANTIC_AMBIGUITIES";
 const ORIGIN_AUTHORITY_PATHS_KEY = "ICE_ORIGIN_AUTHORITY_PATHS";
 const ENTITY_RELATION_ROLES_KEY = "ICE_ENTITY_RELATION_ROLES";
+const SEMANTIC_CONTINUITY_KEY = "ICE_SEMANTIC_CONTINUITY";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -521,6 +522,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.semanticAmbiguities, "semantic_ambiguity", activeAdapter);
   enrichScopeCollection(data.originAuthorityPaths, "origin_authority_path", activeAdapter);
   enrichScopeCollection(data.entityRelationRoles, "entity_relation_role", activeAdapter);
+  enrichScopeCollection(data.semanticContinuity, "semantic_continuity", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -540,7 +542,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.ontologyRoles || []).map((item) => ({ ...item, scopeLayer: "ontology_role" })),
     ...(data.semanticAmbiguities || []).map((item) => ({ ...item, scopeLayer: "semantic_ambiguity" })),
     ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" })),
-    ...(data.entityRelationRoles || []).map((item) => ({ ...item, scopeLayer: "entity_relation_role" }))
+    ...(data.entityRelationRoles || []).map((item) => ({ ...item, scopeLayer: "entity_relation_role" })),
+    ...(data.semanticContinuity || []).map((item) => ({ ...item, scopeLayer: "semantic_continuity" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -1531,6 +1534,162 @@ const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: con
       sourceGrounding: "Matthew 1:22 distinguishes THE LORD as source from the prophet as Human witness"
     })
   ];
+}
+function semanticContinuityRecord(record = {}) {
+  const key = [
+    "semantic-continuity",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.continuityType || "",
+    record.continuedEntity || "",
+    record.chapterTransition || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    chapterTransition: record.chapterTransition || "",
+    continuityType: record.continuityType || "semantic_continuity",
+    continuedEntity: record.continuedEntity || "",
+    continuedAuthorityPath: record.continuedAuthorityPath || "",
+    continuedRevelationPattern: record.continuedRevelationPattern || "",
+    continuedOntologyRole: record.continuedOntologyRole || "",
+    continuedMissionPurpose: record.continuedMissionPurpose || "",
+    continuity: record.continuity || [],
+    authorityContinuity: record.authorityContinuity || [],
+    evidence: record.evidence || [],
+    relatedEntities: record.relatedEntities || [],
+    relatedSemanticEvents: record.relatedSemanticEvents || [],
+    relatedRevelationPatterns: record.relatedRevelationPatterns || [],
+    relatedPassageFunctions: record.relatedPassageFunctions || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    relatedAuthorityPaths: record.relatedAuthorityPaths || [],
+    relatedEntityRelationRoles: record.relatedEntityRelationRoles || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current semantic layers and source-grounded continuity anchors"
+  };
+}
+
+function createSemanticContinuity(captures = [], semanticEvents = [], revelationPatterns = [], passageFunctions = [], ontologyRoles = [], originAuthorityPaths = [], entityRelationRoles = [], canonicalIdentities = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
+  if (!isMatthewTwo) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const eventIds = (types) => (semanticEvents || []).filter((item) => types.includes(item.eventType || "")).map((item) => item.id || item.semanticEventId).filter(Boolean);
+  const patternIds = (predicate) => (revelationPatterns || []).filter(predicate).map((item) => item.id).filter(Boolean);
+  const functionKeys = (keys) => (passageFunctions || []).filter((item) => keys.includes(item.passageFunction || "")).map((item) => item.passageFunction || item.id).filter(Boolean);
+  const ontologyIds = (items) => (ontologyRoles || []).filter((item) => items.includes(item.semanticItem || "")).map((item) => item.id || item.semanticItem).filter(Boolean);
+  const authorityPathIds = (predicate) => (originAuthorityPaths || []).filter(predicate).map((item) => item.id).filter(Boolean);
+  const relationRoleIds = (roles) => (entityRelationRoles || []).filter((item) => roles.includes(item.semanticRole || "")).map((item) => item.id || item.semanticRole).filter(Boolean);
+  const hasEntity = (name) => (ontologyRoles || []).some((item) => item.semanticItem === name) || (canonicalIdentities || []).some((item) => item.canonicalName === name) || new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(sourceText);
+  const add = (record) => semanticContinuityRecord({ sourceCaptureId, sourceContext: context, chapterTransition: "Matthew 1 -> Matthew 2", ...record });
+  const records = [];
+  const protectiveAuthorityPath = (originAuthorityPaths || []).find((item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph");
+  const protectivePatternIds = patternIds((item) => item.speaker === "AngEL Of THE LORD" && item.recipient === "Joseph");
+
+  if (hasEntity("Joseph") && protectiveAuthorityPath) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.13",
+      verseRange: "Matthew 1:20-25 -> Matthew 2:13-22",
+      continuityType: "continued_authority_revelation_relationship",
+      continuedEntity: "Joseph",
+      continuedAuthorityPath: "THE LORD -> AngEL Of THE LORD -> Joseph",
+      continuedRevelationPattern: "dream / divine message continues from NAME revelation to protective warning",
+      continuedOntologyRole: "revelation recipient; obedient responder; protective steward",
+      continuedMissionPurpose: "JESUS / CHILD is preserved for the mission introduced in Matthew 1.",
+      continuity: ["revelation recipient", "obedient responder", "protective steward"],
+      authorityContinuity: ["THE LORD", "AngEL Of THE LORD", "Joseph"],
+      evidence: ["the angel of the Lord appeareth to Joseph in a dream", "Arise, and take the young child", "he arose, and took the young child and his mother"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS", "Mary"],
+      relatedSemanticEvents: eventIds(["protective_instruction_revelation", "protective_obedient_response"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedPassageFunctions: functionKeys(["divine_warning_revelation", "protective_obedient_response", "egypt_escape_preservation"]),
+      relatedOntologyRoles: ontologyIds(["Joseph", "AngEL Of THE LORD", "JESUS"]),
+      relatedAuthorityPaths: [protectiveAuthorityPath.id].filter(Boolean),
+      relatedEntityRelationRoles: relationRoleIds(["source_authority_to_protective_messenger", "protective_revelation_messenger_to_recipient", "protective_obedient_response_to_child"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 repeats the THE LORD -> AngEL Of THE LORD -> Joseph authority path already established by Matthew 1's naming revelation pattern, now as protective instruction and obedience."
+    }));
+  }
+
+  if (hasEntity("JESUS") && /young child|child|Out of Egypt have I called my son/i.test(sourceText)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.11",
+      verseRange: "Matthew 1:21-25 -> Matthew 2:11-15",
+      continuityType: "continued_child_identity_and_mission_preservation",
+      continuedEntity: "JESUS / CHILD",
+      continuedAuthorityPath: "THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation",
+      continuedRevelationPattern: "revealed NAME and mission context continue into CHILD protection",
+      continuedOntologyRole: "JESUS remains distinct from JESUS CHRIST while CHILD resolves toward JESUS when grounded",
+      continuedMissionPurpose: "The CHILD/JESUS is protected from Herod and moved through fulfillment geography.",
+      continuity: ["JESUS identity", "CHILD referent", "mission preservation", "fulfillment movement"],
+      authorityContinuity: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS"],
+      evidence: ["the young child", "Herod will seek the young child to destroy him", "Out of Egypt have I called my son"],
+      relatedEntities: ["JESUS", "JESUS CHRIST", "CHILD", "Joseph", "Herod", "Egypt"],
+      relatedSemanticEvents: eventIds(["protective_instruction_revelation", "protective_obedient_response", "messianic_location_fulfillment"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedPassageFunctions: functionKeys(["egypt_escape_preservation", "messianic_location_fulfillment", "hostile_authority_response"]),
+      relatedOntologyRoles: ontologyIds(["JESUS", "Egypt", "Herod"]),
+      relatedAuthorityPaths: authorityPathIds((item) => /CHILD \/ JESUS|JESUS/i.test(`${item.result || ""} ${item.mission || ""}`)),
+      relatedEntityRelationRoles: relationRoleIds(["protective_obedient_response_to_child", "hostile_authority_to_child_target"]),
+      confidence: "explicit",
+      sourceGrounding: "Current Matthew 2 layers ground young child/child as CHILD/JESUS and connect protection to the mission identity introduced by Matthew 1."
+    }));
+  }
+
+  if ((passageFunctions || []).some((item) => item.passageFunction === "messianic_location_fulfillment")) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.15",
+      verseRange: "Matthew 1:22-23 -> Matthew 2:15, 23",
+      continuityType: "continued_prophecy_fulfillment_chain",
+      continuedEntity: "scripture narrator / quoted prophet",
+      continuedAuthorityPath: "THE LORD as fulfillment source remains distinguished from narrator and prophet witness roles",
+      continuedRevelationPattern: "fulfillment narration continues across chapter transition",
+      continuedOntologyRole: "prophecy witness / fulfillment reporting role",
+      continuedMissionPurpose: "Matthew 2 expands fulfillment from birth/name context into Egypt and Nazareth location fulfillment.",
+      continuity: ["prophecy fulfillment", "narrator witness", "location fulfillment", "messianic identity"],
+      authorityContinuity: ["THE LORD", "scripture narrator", "quoted prophet"],
+      evidence: ["that it might be fulfilled", "Out of Egypt have I called my son", "He shall be called a Nazarene"],
+      relatedEntities: ["THE LORD", "scripture narrator", "quoted prophet", "JESUS", "Egypt", "Nazareth"],
+      relatedSemanticEvents: eventIds(["messianic_location_fulfillment", "prophecy_fulfillment_identification"]),
+      relatedPassageFunctions: functionKeys(["prophecy_fulfillment_identification", "messianic_location_fulfillment"]),
+      relatedOntologyRoles: ontologyIds(["Bethlehem", "Egypt", "JESUS"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 contains explicit fulfillment formulas that continue the fulfillment narration pattern established in Matthew 1."
+    }));
+  }
+
+  if ((entityRelationRoles || []).some((item) => item.semanticRole === "hostile_authority_to_child_target")) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.16",
+      verseRange: "Matthew 2:3-8, 13, 16",
+      continuityType: "adversarial_escalation_against_mission_preservation",
+      continuedEntity: "Herod",
+      continuedAuthorityPath: "hostile authority opposes CHILD/JESUS while divine warning preserves Him",
+      continuedRevelationPattern: "warning and avoidance respond to hostile intent",
+      continuedOntologyRole: "Class i - Adversarial / Oppositional where source evidence supports it",
+      continuedMissionPurpose: "Herod's hostility escalates the need for protective preservation of JESUS.",
+      continuity: ["hostile intent", "adversarial escalation", "child-targeting hostility", "protective warning response"],
+      authorityContinuity: ["Herod", "THE LORD", "AngEL Of THE LORD", "Joseph"],
+      evidence: ["Herod ... was troubled", "Herod will seek the young child to destroy him", "destroy him"],
+      relatedEntities: ["Herod", "JESUS", "Joseph", "AngEL Of THE LORD"],
+      relatedSemanticEvents: eventIds(["hostile_authority_response", "protective_instruction_revelation"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedPassageFunctions: functionKeys(["hostile_authority_response", "divine_warning_revelation", "egypt_escape_preservation"]),
+      relatedOntologyRoles: ontologyIds(["Herod", "JESUS", "Joseph"]),
+      relatedEntityRelationRoles: relationRoleIds(["hostile_authority_to_child_target", "protective_revelation_messenger_to_recipient"]),
+      confidence: /destroy him/i.test(sourceText) ? "explicit" : "probable",
+      sourceGrounding: "Continuity is limited to Matthew 2 evidence for Herod: troubled response, destroy-him wording, and protective warning response."
+    }));
+  }
+
+  return records;
 }
 function semanticAmbiguityRecord(record = {}) {
   const key = [
@@ -5423,6 +5582,16 @@ async function runFullAnalysisPipeline(reason = "manual") {
       originAuthorityPaths,
       relationshipGraph
     );
+    const semanticContinuity = createSemanticContinuity(
+      captures,
+      semanticEvents,
+      revelationPatterns,
+      passageFunctions,
+      ontologyRoles,
+      originAuthorityPaths,
+      entityRelationRoles,
+      canonicalIdentities
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -5439,7 +5608,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       ontologyRoles,
       semanticAmbiguities,
       originAuthorityPaths,
-      entityRelationRoles
+      entityRelationRoles,
+      semanticContinuity
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -5457,7 +5627,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       ontologyRoles,
       semanticAmbiguities,
       originAuthorityPaths,
-      entityRelationRoles
+      entityRelationRoles,
+      semanticContinuity
     }, activeAdapter);
     const status = {
       reason,
@@ -5489,6 +5660,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticAmbiguityCount: semanticAmbiguities.length,
       originAuthorityPathCount: originAuthorityPaths.length,
       entityRelationRoleCount: entityRelationRoles.length,
+      semanticContinuityCount: semanticContinuity.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -5521,6 +5693,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SEMANTIC_AMBIGUITIES_KEY]: semanticAmbiguities,
       [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
       [ENTITY_RELATION_ROLES_KEY]: entityRelationRoles,
+      [SEMANTIC_CONTINUITY_KEY]: semanticContinuity,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

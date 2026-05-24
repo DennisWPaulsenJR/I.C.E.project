@@ -422,3 +422,27 @@ Known next architecture gaps:
 - Generalize derived-record construction into reusable semantic rule tables.
 - Improve cross-verse CHILD/JESUS and pronoun resolution.
 - Promote location ontology roles into shared helpers.
+
+## Current Semantic Continuity State - 2026-05-23
+
+Phase: 8.2x Matthew 1 <-> Matthew 2 Cross-Chapter Semantic Continuity.
+
+Status:
+- `ICE_SEMANTIC_CONTINUITY` is now a derived semantic layer.
+- The pilot is conservative and currently derives Matthew 2 continuity only when current Matthew 2 semantic layers ground the record.
+- Matthew 1 remains stable and does not fabricate future continuity records when Matthew 2 evidence is not in the active capture.
+
+Pilot continuity records:
+- Joseph: continued authority / revelation relationship.
+- JESUS / CHILD: continued child identity and mission preservation.
+- scripture narrator / quoted prophet: continued prophecy fulfillment chain.
+- Herod: adversarial escalation against mission preservation.
+
+Study Panel:
+- New section: Cross-Chapter Semantic Continuity.
+- Cards display continued entity, chapter transition, continuity, authority continuity, revelation pattern, ontology role, mission/purpose, confidence, evidence, related semantic layers, hierarchy, grounding, and scope.
+
+Next architecture gaps:
+- Persist or compare prior chapter semantic snapshots instead of relying only on current-page continuity anchors.
+- Promote continuity rules into reusable rule registry entries.
+- Add shared cross-page entity identity IDs beyond current-page canonical names.

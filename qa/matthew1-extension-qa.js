@@ -38,7 +38,8 @@ const STORAGE_KEYS = [
   "ICE_ONTOLOGY_ROLES",
   "ICE_SEMANTIC_AMBIGUITIES",
   "ICE_ORIGIN_AUTHORITY_PATHS",
-  "ICE_ENTITY_RELATION_ROLES"
+  "ICE_ENTITY_RELATION_ROLES",
+  "ICE_SEMANTIC_CONTINUITY"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -118,7 +119,8 @@ function buildCounts(storageData) {
     ontologyRoles: count(storageData.ICE_ONTOLOGY_ROLES),
     semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
-    entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES)
+    entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
+    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY)
   };
 }
 
@@ -143,6 +145,7 @@ function buildSamples(storageData) {
     semanticAmbiguities: sample(storageData.ICE_SEMANTIC_AMBIGUITIES, 20),
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
+    semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }

@@ -38,7 +38,8 @@ const STORAGE_KEYS = [
   "ICE_ONTOLOGY_ROLES",
   "ICE_SEMANTIC_AMBIGUITIES",
   "ICE_ORIGIN_AUTHORITY_PATHS",
-  "ICE_ENTITY_RELATION_ROLES"
+  "ICE_ENTITY_RELATION_ROLES",
+  "ICE_SEMANTIC_CONTINUITY"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -118,7 +119,8 @@ function buildCounts(storageData) {
     ontologyRoles: count(storageData.ICE_ONTOLOGY_ROLES),
     semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
-    entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES)
+    entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
+    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY)
   };
 }
 
@@ -143,6 +145,7 @@ function buildSamples(storageData) {
     semanticAmbiguities: sample(storageData.ICE_SEMANTIC_AMBIGUITIES, 20),
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
+    semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -337,6 +340,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected Matthew 2 semantic ontology role records count > 0.");
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected Matthew 2 origin / authority path records count > 0.");
   if (count(data.ICE_ENTITY_RELATION_ROLES) <= 0) failures.push("Expected Matthew 2 semantic relationship role records count > 0.");
+  if (count(data.ICE_SEMANTIC_CONTINUITY) <= 0) failures.push("Expected Matthew 2 cross-chapter semantic continuity records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -357,6 +361,11 @@ function evaluateFailures(data) {
   if (!hasOriginAuthorityPath(data, (item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph" && /protective instruction/i.test(item.response || "") && /CHILD \/ JESUS/i.test(item.result || "") && item.confidence === "explicit")) failures.push("Expected grounded Matthew 2 protective origin / authority path THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation.");
   if (!hasRevelationPattern(data, (item) => item.speaker === "AngEL Of THE LORD" && item.authoritySource === "THE LORD" && item.recipient === "Joseph" && Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "protection_instruction"))) failures.push("Expected Matthew 2 AngEL Of THE LORD protective instruction revelation pattern.");
 
+
+  for (const [continuedEntity, continuityType] of [["Joseph", "continued_authority_revelation_relationship"], ["JESUS / CHILD", "continued_child_identity_and_mission_preservation"], ["scripture narrator / quoted prophet", "continued_prophecy_fulfillment_chain"], ["Herod", "adversarial_escalation_against_mission_preservation"]]) {
+    const found = (data.ICE_SEMANTIC_CONTINUITY || []).some((item) => item.continuedEntity === continuedEntity && item.continuityType === continuityType && item.chapterTransition === "Matthew 1 -> Matthew 2" && item.confidence && Array.isArray(item.evidence) && item.evidence.length > 0 && item.sourceGrounding);
+    if (!found) failures.push(`Expected Matthew 2 semantic continuity ${continuedEntity} / ${continuityType}.`);
+  }
   const leakedLabel = [...(data.ICE_ORDERED_EVENTS || []), ...(data.ICE_SEMANTIC_EVENTS || [])].some((item) => /Joseph Obeys and JESUS Is Named/i.test(JSON.stringify(item)));
   if (leakedLabel) failures.push("Matthew 1 naming label leaked into Matthew 2 stored semantic data.");
 
