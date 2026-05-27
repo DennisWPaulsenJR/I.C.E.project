@@ -183,11 +183,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!hasDerivedDivineChildContext(value, divineContext)) return value;
     return value.replace(/\bchild\b/gi, "CHILD");
   }
+  function renderHolyActionDisplayText(text, divineContext = false) {
+    let value = normalizeText(text);
+    if (!divineContext) return value;
+
+    return value
+      .replace(/\bconceived of HOLY SPIRIT\b/gi, "Conceived Of THE HOLY SPIRIT")
+      .replace(/\bconceived in Mary is of the HOLY SPIRIT\b/gi, "Conceived Of THE HOLY SPIRIT in Mary")
+      .replace(/\bdivine conception origin\b/gi, "HOLY Conception Origin")
+      .replace(/\bconception revelation\b/gi, "HOLY CONCEPTION revelation")
+      .replace(/\bconception recipient\b/gi, "HOLY CONCEPTION recipient")
+      .replace(/\bdivine instruction\b/gi, "Divine/HOLY instruction")
+      .replace(/\bdivine message\b/gi, "Divine/HOLY message")
+      .replace(/\bdivine authority source\b/gi, "HOLY authority source")
+      .replace(/\bdivine authority\b/gi, "HOLY authority")
+      .replace(/\bdivine origin\b/gi, "HOLY Origin")
+      .replace(/\bprotects the CHILD\b/gi, "HOLY preservation/protection of the CHILD");
+  }
+
   function renderDerivedSemanticDisplayText(text, divineContext = false) {
     const value = renderIceDivineDisplayText(text, divineContext)
       .replace(/\bHoly Ghost\b/g, "HOLY SPIRIT")
       .replace(/\bHoly Spirit\b/gi, "HOLY SPIRIT");
-    return renderDerivedDivineChildDisplayText(value, divineContext);
+    return renderHolyActionDisplayText(renderDerivedDivineChildDisplayText(value, divineContext), divineContext);
   }
 
   function hasHumanBeingDisplayContext(values) {
@@ -3198,8 +3216,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!normalized) return "Derived meaning not recorded.";
     if (/call(?:ed)?\s+(?:his|His|HIS)\s+name\s+jesus/i.test(text) || /name_revelation|revealed_name|naming/.test(context)) return "called HIS NAME JESUS";
     if (/save\s+(?:his|His|HIS)\s+people\s+from\s+their\s+sins/i.test(text) || /mission_reason|mission_declaration/.test(context)) return "HE shall SAVE HIS People from their sins";
-    if (/conceived.*holy ghost|conceived.*holy spirit/i.test(text) || /conception_revelation/.test(context)) return "conceived of HOLY SPIRIT";
-    if (/take unto thee mary thy wife/i.test(text) || /marriage_instruction|instruction_concerning_person/.test(context)) return "Joseph is instructed to take Mary as wife";
+    if (/conceived.*holy ghost|conceived.*holy spirit/i.test(text) || /conception_revelation/.test(context)) return "HOLY CONCEPTION: Conceived Of THE HOLY SPIRIT";
+    if (/take unto thee mary thy wife/i.test(text) || /marriage_instruction|instruction_concerning_person/.test(context)) return "Divine/HOLY instruction: Joseph is instructed to take Mary as wife";
     if (/book of the generation of jesus christ/i.test(text)) return "Canonical/source identity phrase: JESUS CHRIST";
     if (/son of david/i.test(text)) return "Davidic lineage support";
     if (/son of abraham/i.test(text)) return "Abrahamic covenant lineage support";
@@ -3570,8 +3588,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (/instruction|instruct|marriage_instruction|take mary/.test(context)) acts.add("Instruction");
     if (/revelation|reveal|conception_revelation|holy spirit|holy ghost/.test(context)) acts.add("Revelation");
+    if (/conception_revelation|holy spirit|holy ghost|conceived/.test(context)) acts.add("HOLY CONCEPTION");
     if (/name|naming|revealed_name|jesus/.test(context)) acts.add("NAME revelation");
     if (/mission|save his people|save his people|mission_declaration/.test(context)) acts.add("Mission declaration");
+    if (/protect|save his people|mission|child|jesus/.test(context)) acts.add("HOLY preservation/protection of the CHILD");
     return Array.from(acts);
   }
 
@@ -3629,7 +3649,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       actsList.appendChild(itemNode);
     }
 
-    section.append(heading, path, classTransfer, actsTitle, actsList);
+    const processTitle = document.createElement("div");
+    const processList = document.createElement("ol");
+    processTitle.className = "ice-transfer-action-title";
+    processTitle.textContent = "HOLY Action Process";
+    processList.className = "semantic-plain-list ice-transfer-process";
+    [
+      "Authoritative ACTOR / Origin: THE LORD (Class I / HOLY Origin)",
+      "Actor / Messenger: AngEL Of THE LORD (Class II messenger / transfer)",
+      "Transfer / Action: Divine/HOLY instruction, revelation, NAME revelation, HOLY CONCEPTION witness",
+      "Recipient / Target: Joseph receives Instruction and protects the CHILD",
+      "Result / Fulfillment: Joseph obeys; JESUS is named; mission declaration is preserved"
+    ].forEach((line) => {
+      const itemNode = document.createElement("li");
+      itemNode.className = "ice-transfer-action";
+      itemNode.textContent = renderDerivedSemanticDisplayText(line, true);
+      processList.appendChild(itemNode);
+    });
+
+    section.append(heading, path, classTransfer, actsTitle, actsList, processTitle, processList);
     return section;
   }
 
@@ -4125,10 +4163,10 @@ createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistin
     const text = normalizeText(part.anchorText || part.action || "").toLowerCase();
 
     if (type === "marriage_instruction" || /take unto thee mary thy wife/.test(text)) {
-      return "Joseph is instructed to take Mary as wife";
+      return "Divine/HOLY instruction: Joseph is instructed to take Mary as wife";
     }
     if (type === "conception_revelation" || /conceived.*holy ghost|conceived.*holy spirit/.test(text)) {
-      return "conceived of HOLY SPIRIT";
+      return "HOLY CONCEPTION: Conceived Of THE HOLY SPIRIT";
     }
     if (type === "revealed_name_instruction" || /call.*name.*jesus/.test(text)) {
       return "call HIS NAME JESUS";

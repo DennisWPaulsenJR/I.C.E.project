@@ -2222,3 +2222,8 @@ Commit:
 
 Status:
 - Implemented
+
+## 2026-05-26 - pcdx - Add HOLY action process display consistency
+- Refined Phase 8.3 derived semantic displays so Class I / HOLY-origin processes show HOLY ontology emphasis.
+- Added process-path display for THE LORD -> AngEL Of THE LORD -> Joseph -> Instruction -> CHILD protection / fulfillment.
+- Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class 𝑖 distinction.

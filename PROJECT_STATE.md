@@ -446,3 +446,32 @@ Next architecture gaps:
 - Persist or compare prior chapter semantic snapshots instead of relying only on current-page continuity anchors.
 - Promote continuity rules into reusable rule registry entries.
 - Add shared cross-page entity identity IDs beyond current-page canonical names.
+## Phase 8.3 Semantic Principles: HOLY Action / HOLY Reference Consistency
+
+Status: display refinement implemented for Matthew 1 derived semantic layers.
+
+Principle:
+- Source phrase preserves source wording.
+- Derived meaning applies I.C.E. semantic display.
+- When a derived semantic action/process originates from or directly concerns Class I / HOLY authority, derived displays should use HOLY ontology emphasis.
+
+Process model:
+1. Authoritative ACTOR / Origin
+2. Actor / Messenger or Human participant
+3. Transfer / Action
+4. Recipient / Target
+5. Result / Fulfillment
+
+Matthew 1 pilot:
+- THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
+- HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class 𝑖 remains adversarial/opposition and visually distinct.
+
+Preserve:
+- App confidence wording
+- source truth distinction
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class 𝑖 distinction
+- no unsupported doctrine
