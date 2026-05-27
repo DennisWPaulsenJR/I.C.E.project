@@ -5,7 +5,8 @@
     "description":  "Development tools for the I.C.E. Manifest V3 scripture study extension.",
     "scripts":  {
                     "qa:matthew1":  "node qa/matthew1-extension-qa.js",
-                    "qa:matthew2":  "node qa/matthew2-extension-qa.js"
+                    "qa:matthew2":  "node qa/matthew2-extension-qa.js",
+                    "qa:matthew-pages":  "npm run qa:matthew1 && npm run qa:matthew2"
                 },
     "devDependencies":  {
                             "playwright":  "^1.52.0"
