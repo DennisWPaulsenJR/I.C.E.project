@@ -390,6 +390,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     return value;
   }
 
+  function displayAppConfidence(value, label = "App confidence") {
+    return `${label}: ${displayConfidence(value)}`;
+  }
+
   function dedupeActorActions(actor) {
     const seen = new Set();
     const orderedActions = [];
@@ -631,7 +635,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.section ? `Section: ${context.section}` : "",
       context.author ? `Author: ${context.author}` : "",
       context.traditionalAuthor ? `Believed Author: ${context.traditionalAuthor}` : "",
-      context.authorConfidence ? `Confidence: ${displayConfidence(context.authorConfidence)}` : "",
+      context.authorConfidence ? displayAppConfidence(context.authorConfidence) : "",
       context.authorBasis ? `Author Basis: ${context.authorBasis}` : "",
       context.speaker ? `Speaker: ${context.speaker}` : "",
       context.compiler ? `Compiler: ${context.compiler}` : "",
@@ -639,7 +643,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.explicitDate ? `Date: ${context.explicitDate}` : "",
       context.inferredDate ? `Inferred date: ${context.inferredDate}` : "",
       context.timeRange ? `Range: ${context.timeRange}` : "",
-      context.confidence ? `Source Confidence: ${displayConfidence(context.confidence)}` : ""
+      context.confidence ? displayAppConfidence(context.confidence, "Source App confidence") : ""
     ].filter(Boolean).join("\n");
   }
 
@@ -1119,7 +1123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const item of visible) {
       const roleItem = document.createElement("div");
       const name = document.createElement("div");
-      const confidence = displayConfidence(item.confidence || "probable");
+      const confidence = displayAppConfidence(item.confidence || "probable");
 
       roleItem.className = "entity-role-item";
       name.className = "entity-role-name";
@@ -1681,7 +1685,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return createCard(
         `${edge.fromEntity || "Entity"} -> ${relationshipDisplayTarget(edge)}`,
         [
-          `${edge.relationshipType || "relationship"} (${displayConfidence(edge.confidence || "probable")})`,
+          `${edge.relationshipType || "relationship"} (${displayAppConfidence(edge.confidence || "probable")})`,
           sourceDerivedDisplayBlock(edge.evidencePhrase || "", derived, { context: edge })
         ].filter(Boolean).join("\n"),
         edge.derivedFrom || "derived relationship"
@@ -1707,7 +1711,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           isJesusChristDisplayName(identity.canonicalName || identity.displayName) ? "CHRIST appears as title/source identity, not Joseph's naming action." : "",
           surfaces ? `Surface forms: ${surfaces}` : ""
         ].filter(Boolean).join("\n"),
-        `${identity.entityType || "entity"} | ${displayConfidence(identity.confidence || "probable")}`
+        `${identity.entityType || "entity"} | ${displayAppConfidence(identity.confidence || "probable")}`
       );
     }, "No canonical identities match.", "identity");
   }
@@ -1768,7 +1772,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       active.adapterName,
       [
         `Capabilities: ${capabilities.join(", ") || "none detected"}`,
-        `Confidence: ${displayConfidence(active.confidence || "possible")}`,
+        displayAppConfidence(active.confidence || "possible"),
         active.fallbackMode ? "Fallback mode: yes" : "Fallback mode: no",
         active.derivedFrom ? `Detected from: ${active.derivedFrom}` : "",
         active.version ? `Version: ${active.version}` : ""
@@ -3032,7 +3036,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function compactNarrativeFlowPreview(entry) {
     return displayedNarrativeFlowItems(entry).map((item) => {
       if (item.displayKind === "link") {
-        return sourceDerivedDisplayBlock(item.evidenceSnippet || "", `${item.relationType || "flow_link"} (${displayConfidence(item.confidence || "probable")})`, { context: item });
+        return sourceDerivedDisplayBlock(item.evidenceSnippet || "", `${item.relationType || "flow_link"} (${displayAppConfidence(item.confidence || "probable")})`, { context: item });
       }
       const target = semanticEventDisplayTarget(item);
       const derived = `${item.actor || "Unknown"} -> ${item.action || item.eventType || "event"}${target ? ` -> ${target}` : ""}`;
@@ -3379,7 +3383,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalizedTitle = normalizeText(title).toLowerCase();
     if (/source phrase|source wording/.test(normalizedTitle)) section.classList.add("ice-source-phrase");
     if (/derived meaning|semantic purpose|meaning/.test(normalizedTitle)) section.classList.add("ice-derived-meaning");
-    if (normalizedTitle === "confidence") section.classList.add("ice-confidence", confidenceClassName(content));
+    if (/^(app confidence|i\.c\.e\. app confidence|confidence)$/.test(normalizedTitle)) section.classList.add("ice-confidence", confidenceClassName(content));
 
     if (options.collapsed) {
       const details = document.createElement("details");
@@ -3566,7 +3570,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     appendSemanticTraceBlock(body, "Layers Used", semanticTraceLayersUsed(item, kind));
     appendSemanticTraceBlock(body, "Evidence Used", semanticTraceEvidenceUsed(item));
     appendSemanticTraceBlock(body, "Ambiguity Check", semanticTraceAmbiguityCheck(item));
-    appendSemanticTraceBlock(body, "Confidence", [displayConfidence(item.confidence || "probable")]);
+    appendSemanticTraceBlock(body, "App confidence", [displayConfidence(item.confidence || "probable")]);
 
     details.append(summary, body);
     section.appendChild(details);
@@ -4101,7 +4105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
             createClassTransferDisplaySection(item),
 createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "passage"),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
@@ -4269,7 +4273,7 @@ createRevelationPartsSection(item.subEvents)
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     [
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "revelation"),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
@@ -4532,7 +4536,7 @@ createRevelationPartsSection(item.subEvents)
       scopePath ? `scopePath: ${scopePath}` : "scopePath: Not recorded.",
       verseRef ? `verseRef: ${verseRef}` : "verseRef: Not recorded.",
       `adapter: ${referenceRoleAdapterLabel(item, source, edge)}`,
-      `confidence: ${displayConfidence(item.confidence || source?.confidence || edge?.confidence || "probable")}`
+      displayAppConfidence(item.confidence || source?.confidence || edge?.confidence || "probable")
     ];
   }
 
@@ -4583,11 +4587,11 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Source Reference", item.discoveredReference || "Not recorded.", { preserveExact: true }),
       createPassageFunctionSection("Resolved Being", referenceRoleResolvedBeing(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Canonical/source identity", referenceRoleCanonicalIdentity(item), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Why It Matters", referenceRoleWhyItMatters(item), { divineContext, preferHolySpirit: true }),      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Why It Matters", referenceRoleWhyItMatters(item), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "reference"),
       createPassageFunctionSection("Technical Provenance", "", { collapsed: true, summaryLabel: "Show technical provenance", list: referenceRoleProvenanceLines(item), plainList: true, preserveExact: true }),
-      createPassageFunctionSection("Evidence", "", { collapsed: true, summaryLabel: "Show evidence", list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
-      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Evidence", "", { collapsed: true, summaryLabel: "Show evidence", list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "reference"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Linked Themes", "", { collapsed: true, list: themes }),
       createPassageFunctionSection("Linked Passage Functions", "", { collapsed: true, list: functions, plainList: true }),
@@ -4680,7 +4684,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.distinctionType, item.narrativeRole, item.canonicalRole, item.derivedWording]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
@@ -4771,7 +4775,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "ontology"),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.narrativeRole, item.canonicalRole, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
@@ -4892,7 +4896,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Ontology Class Path", item.ontologyClassPath || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "relationRole"), divineContext, preferHolySpirit: true }),
@@ -5001,7 +5005,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Revelation Pattern", item.continuedRevelationPattern || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Ontology Role", item.continuedOntologyRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Mission / Purpose", item.continuedMissionPurpose || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "continuity"), divineContext, preferHolySpirit: true }),
@@ -5148,7 +5152,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Derived Meaning", "", { list: derivedLines, plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Resolved?", semanticAmbiguityResolutionLabel(item.resolutionStatus), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Why It Matters", semanticAmbiguityWhyItMatters(item), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "ambiguity"),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Grounding / Evidence", "", { collapsed: true, summaryLabel: "Show grounding evidence", list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), divineContext }),
@@ -5261,7 +5265,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Response", item.response || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Result", item.result || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Mission / Fulfillment", item.mission || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "originAuthority"), divineContext, preferHolySpirit: true }),
@@ -5393,7 +5397,7 @@ createRevelationPartsSection(item.subEvents)
           `Href: ${trimText(item.href || "", 120)}`,
           item.sourceElement ? `Element: ${item.sourceElement}` : ""
         ].filter(Boolean).join("\n"),
-        displayConfidence(item.confidence || "possible")
+        displayAppConfidence(item.confidence || "possible")
       ));
     });
   }
@@ -5479,7 +5483,7 @@ createRevelationPartsSection(item.subEvents)
       `${referenceRelationshipLabel(item.relationshipType)}: ${target}`,
       `fromScopePath: ${item.fromScopePath || "unscoped"}`,
       `relationshipType: ${item.relationshipType || "has_external_reference"}`,
-      `confidence: ${displayConfidence(item.confidence || "possible")}`
+      displayAppConfidence(item.confidence || "possible")
     ].join("\n");
   }
 
@@ -5554,7 +5558,7 @@ createRevelationPartsSection(item.subEvents)
 
     const preview = filtered.slice(0, 5).map((item) => {
       const ref = item.verseRef || item.verseNumber || "no verse ref";
-      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
+      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / App confidence: ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
     }).join("\n");
     container.appendChild(createCard(
       "DOM Hint Preview",
@@ -5672,21 +5676,21 @@ createRevelationPartsSection(item.subEvents)
 
   function formatRoleValue(label, role) {
     if (!roleName(role)) return "";
-    return `${label}: ${role.actorName} (${displayConfidence(role.confidence || "probable")})`;
+    return `${label}: ${role.actorName} (${displayAppConfidence(role.confidence || "probable")})`;
   }
 
   function formatRoleList(label, roles) {
     const values = asArray(roles)
       .filter((role) => roleName(role))
       .slice(0, 3)
-      .map((role) => `${role.actorName} (${displayConfidence(role.confidence || "probable")})`);
+      .map((role) => `${role.actorName} (${displayAppConfidence(role.confidence || "probable")})`);
 
     return values.length ? `${label}: ${values.join(", ")}` : "";
   }
 
   function formatPrincipleFocus(principleFocus) {
     if (!principleFocus?.principleText) return "";
-    return `Principle: ${trimText(principleFocus.principleText, 90)} (${displayConfidence(principleFocus.confidence || "probable")})`;
+    return `Principle: ${trimText(principleFocus.principleText, 90)} (${displayAppConfidence(principleFocus.confidence || "probable")})`;
   }
 
   function formatAuthorityChain(authorityChain) {
@@ -5742,7 +5746,7 @@ createRevelationPartsSection(item.subEvents)
     const witnesses = Array.isArray(scene.witnesses) ? scene.witnesses : [];
     if (witnesses.length === 0) return "Witnesses: none detected";
     return `Witnesses: ${witnesses.map((item) =>
-      `${item.witness || "Unknown"} (${displayConfidence(item.confidence || "possible")})`
+      `${item.witness || "Unknown"} (${displayAppConfidence(item.confidence || "possible")})`
     ).join(", ")}`;
   }
 
@@ -5777,7 +5781,7 @@ createRevelationPartsSection(item.subEvents)
       return createCard(
         scene.sceneTitle || "Scene",
         body,
-        `${scene.sceneType || "scene"} | ${displayConfidence(scene.confidence || "possible")}`
+        `${scene.sceneType || "scene"} | ${displayAppConfidence(scene.confidence || "possible")}`
       );
     }, "No scenes match.", "scene");
   }
@@ -5801,7 +5805,7 @@ createRevelationPartsSection(item.subEvents)
     renderLimited(container, filtered, count, (item) => createCard(
       `${item.actorA || "Unknown"} <-> ${item.actorB || "Unknown"}`,
       trimText(item.sourceSnippet, 180),
-      `${item.interactionType || "interaction"} | ${displayConfidence(item.confidence || "probable")}`
+      `${item.interactionType || "interaction"} | ${displayAppConfidence(item.confidence || "probable")}`
     ), "No character interactions match.", "interaction");
   }
 
@@ -5848,14 +5852,14 @@ createRevelationPartsSection(item.subEvents)
     header.className = "semantic-card-header";
     heading.textContent = renderIceDivineDisplayText(chain.chainTitle || "Semantic Flow Path", divineContext);
     range.className = "semantic-card-range";
-    range.textContent = [chain.chainType, displayConfidence(chain.confidence)].filter(Boolean).join(" | ") || "semantic flow path";
+    range.textContent = [chain.chainType, displayAppConfidence(chain.confidence || "probable")].filter(Boolean).join(" | ") || "semantic flow path";
     body.className = "semantic-card-body";
     header.append(heading, range);
 
     [
       createPassageFunctionSection("Summary", trimText(chain.summary, 170), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Authority Flow Path", "", { list: authority, plainList: true, divineContext }),
-      createPassageFunctionSection("Confidence", displayConfidence(chain.confidence || "probable")),
+      createPassageFunctionSection("App confidence", displayConfidence(chain.confidence || "probable")),
       createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
       nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(chain, "flow"), divineContext })
@@ -5890,7 +5894,7 @@ createRevelationPartsSection(item.subEvents)
         distinction ? `NAME / Title Distinction: ${distinction}` : "",
         item.sourceSnippet && item.sourceSnippet !== anchor ? sourceDerivedDisplayBlock(item.sourceSnippet, derivedMeaning, { context: item }) : ""
       ].filter(Boolean).join("\n");
-      const meta = [item.eventType, item.semanticCategory, displayConfidence(item.confidence)]
+      const meta = [item.eventType, item.semanticCategory, displayAppConfidence(item.confidence || "probable")]
         .filter(Boolean)
         .join(" | ");
 
@@ -5939,7 +5943,7 @@ createRevelationPartsSection(item.subEvents)
     );
 
     renderLimited(container, filtered, count, (item) => createCard(
-      displayConfidence(item.confidence || "prophecy-fulfillment"),
+      displayAppConfidence(item.confidence || "prophecy-fulfillment"),
       `${trimText(item.prophecyText, 110)} -> ${trimText(item.fulfillmentText, 110)}`,
       item.linkType || "prophecy-fulfillment"
     ), "No prophecy / fulfillment links match.");
