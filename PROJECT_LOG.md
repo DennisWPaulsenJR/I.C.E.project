@@ -2521,3 +2521,33 @@ Status:
 - Added derived-display HOLY action emphasis for Class I / HOLY-origin semantic processes while preserving quoted source phrases.
 - Added HOLY action process rendering to authority/class-transfer displays: origin, messenger/actor, transfer/action, recipient/target, and result/fulfillment.
 - Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class 𝑖 distinction.
+
+## 2026-05-27 - Refine Semantic Contrast Wording
+
+Instruction summary:
+- Refine Semantic Ambiguities / Contrasts display wording so relationship, distinction, source/derived pairing, canonical linkage, and true opposition are not all shown as generic `vs` language.
+
+Codex action summary:
+- Added relationship-aware Study Panel wording helpers for related with, distinguished from, contrasted with, opposed by, source wording for, and derived meaning for categories.
+- Updated semantic ambiguity card headings, title text, relationship type labels, count label, trace fallback wording, and overview copy.
+- Preserved underlying semantic ambiguity records and traceability while keeping stronger contrast wording for grounded adversarial Matthew 2 relationships.
+
+Files changed:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

@@ -255,3 +255,22 @@ Latest Matthew 2 Phase 8.3a counts:
 - Origin / authority paths: 1
 - Semantic relationship roles: 5
 - Semantic continuity: 4
+
+## 2026-05-27 - Semantic Contrast Wording QA
+
+Display refinement:
+- Semantic Ambiguities / Contrasts cards now avoid generic `vs` wording for non-oppositional source/derived and canonical identity relationships.
+- Relationship type labels now distinguish related-with, distinguished-from, source/derived, and true contrasted-with display cases.
+- Matthew 2 adversarial/protective records keep grounded stronger contrast wording.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Latest QA counts:
+- Matthew 1 semantic ambiguities / relationships: 5
+- Matthew 2 semantic ambiguities / relationships: 2
+- Matthew 2 semantic continuity: 4

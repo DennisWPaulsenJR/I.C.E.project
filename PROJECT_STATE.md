@@ -496,3 +496,22 @@ Preserve:
 - CHILD display
 - Class I / Class 𝑖 distinction
 - no unsupported doctrine
+
+## Phase 8.3b Semantic Contrast Wording Refinement
+
+Status: Study Panel display refinement implemented.
+
+Display behavior:
+- Semantic Ambiguities / Contrasts cards now use relationship-aware wording instead of generic `vs` titles.
+- Non-oppositional records display as related, distinguished, source/derived, or canonical linkage language.
+- Truly adversarial Matthew 2 records retain stronger contrast wording where grounded by source evidence.
+
+Preserved:
+- underlying ambiguity / contrast records
+- semantic traceability
+- source phrase vs derived meaning separation
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class i distinction
+- ontology hierarchy

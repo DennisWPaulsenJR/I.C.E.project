@@ -3453,7 +3453,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function semanticTraceSourceInput(item = {}, kind = "") {
-    if (kind === "ambiguity") return item.sourceWording || asArray(item.semanticItems).join(" vs ");
+    if (kind === "ambiguity") return item.sourceWording || semanticAmbiguityDisplayTitle(item);
     if (kind === "ontology") return item.sourcePhrase || item.semanticItem || asArray(item.ontologyRoles).join(", ");
     if (kind === "reference") return item.discoveredReference || item.sourceDiscoveryId || item.referenceRole;
     if (kind === "revelation") return item.verseRange || item.revelationType || asArray(item.evidence)[0];
@@ -3524,7 +3524,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (identity.jesusChrist) lines.push("JESUS CHRIST is the canonical/source identity.");
     if (identity.christ) lines.push("CHRIST is title/source identity.");
     if (identity.holySpirit) lines.push("HOLY SPIRIT is the preferred derived display while source wording remains preserved.");
-    if (lines.length === 1) lines.push("No unresolved semantic contrast is introduced by this display.");
+    if (lines.length === 1) lines.push("No unresolved semantic relationship problem is introduced by this display.");
     return lines;
   }
 
@@ -5070,16 +5070,44 @@ createRevelationPartsSection(item.subEvents)
     ].join(" ");
   }
 
-  function semanticAmbiguityContrastTypeLabel(type) {
-    const normalized = normalizeText(type || "semantic_contrast").toLowerCase();
-    if (normalized === "narrative_name_vs_canonical_identity") return "narrative NAME vs canonical/source identity";
-    if (normalized === "title_office_not_revealed_name") return "title/office, not revealed NAME";
-    if (normalized === "source_wording_vs_derived_display_preference") return "source wording vs derived semantic preference";
-    if (normalized === "human_narration_vs_divine_authority_source") return "Human narration vs Divine authority source";
-    if (normalized === "pronoun_referent_requires_semantic_context") return "pronoun referent requires semantic context";
-    return passageFunctionTitle(type || "semantic_contrast");
+  function semanticAmbiguityRelationshipKind(type) {
+    const normalized = normalizeText(type || "semantic_relationship").toLowerCase();
+    if (normalized === "opposed_by") return "opposed by";
+    if (normalized === "source_wording_for") return "source wording for";
+    if (normalized === "derived_meaning_for") return "derived meaning for";
+    if (normalized === "deceptive_worship_language_vs_hostile_intent") return "contrasted with";
+    if (normalized === "protective_obedience_vs_hostile_deception") return "contrasted with";
+    if (normalized === "title_office_not_revealed_name") return "distinguished from";
+    if (normalized === "human_narration_vs_divine_authority_source") return "distinguished from";
+    if (normalized === "source_wording_vs_derived_display_preference") return "source wording for";
+    return "as related with";
   }
 
+  function semanticAmbiguityRelationshipTypeLabel(type) {
+    const normalized = normalizeText(type || "semantic_relationship").toLowerCase();
+    if (normalized === "opposed_by") return "opposed by";
+    if (normalized === "source_wording_for") return "source wording for";
+    if (normalized === "derived_meaning_for") return "derived meaning for";
+    if (normalized === "narrative_name_vs_canonical_identity") return "narrative NAME related with canonical/source identity";
+    if (normalized === "title_office_not_revealed_name") return "title/office distinguished from revealed NAME";
+    if (normalized === "source_wording_vs_derived_display_preference") return "source phrase related with derived display";
+    if (normalized === "human_narration_vs_divine_authority_source") return "Human narration distinguished from Divine authority source";
+    if (normalized === "pronoun_referent_requires_semantic_context") return "pronoun referent requires semantic context";
+    if (normalized === "deceptive_worship_language_vs_hostile_intent") return "deceptive worship language contrasted with hostile intent";
+    if (normalized === "protective_obedience_vs_hostile_deception") return "protective obedience contrasted with hostile deception";
+    return passageFunctionTitle(type || "semantic_relationship");
+  }
+
+  function semanticAmbiguityDisplayTitle(item = {}) {
+    const items = asArray(item.semanticItems).map((value) => normalizeText(value)).filter(Boolean);
+    const type = normalizeText(item.ambiguityType || "").toLowerCase();
+    if (items.length === 0) return "Semantic Relationship / Distinction";
+    if (type === "narrative_name_vs_canonical_identity" && items.length >= 2) return `${items[0]} narrative NAME related with ${items[1]} canonical identity`;
+    if (type === "title_office_not_revealed_name" && items.length >= 2) return `${items[0]} title distinguished from revealed NAME ${items[1]}`;
+    if (type === "source_wording_vs_derived_display_preference" && items.length >= 2) return `${items[0]} source phrase related with ${items[1]} derived display`;
+    if (items.length === 1) return items[0];
+    return `${items[0]} ${semanticAmbiguityRelationshipKind(type)} ${items.slice(1).join(", ")}`;
+  }
   function semanticAmbiguityResolutionLabel(status) {
     const normalized = normalizeText(status || "resolved").toLowerCase();
     if (normalized === "context_required") return "context required";
@@ -5094,7 +5122,7 @@ createRevelationPartsSection(item.subEvents)
     if (type === "source_wording_vs_derived_display_preference") return "Preserves quoted source wording while allowing HOLY SPIRIT as the derived semantic display.";
     if (type === "human_narration_vs_divine_authority_source") return "Keeps scripture narrator and prophet as Class III - Human while preserving THE LORD as Divine authority source.";
     if (type === "pronoun_referent_requires_semantic_context") return "Prevents pronouns from being exalted or assigned by proximity when Joseph, Mary, and JESUS are all nearby.";
-    return "Keeps semantically different items from collapsing into one generalized meaning bucket.";
+    return "Keeps semantically different items from collapsing into one generalized relationship bucket.";
   }
 
   function semanticAmbiguityDerivedLines(item = {}) {
@@ -5119,6 +5147,14 @@ createRevelationPartsSection(item.subEvents)
       "he / him / his require semantic referent resolution",
       "do not assign pronouns by proximity alone"
     ];
+    if (type === "deceptive_worship_language_vs_hostile_intent") return [
+      "Herod worship language = deceptive speech in context",
+      "destroy-him wording = hostile intent toward CHILD/JESUS"
+    ];
+    if (type === "protective_obedience_vs_hostile_deception") return [
+      "protective obedience = Joseph follows Divine warning",
+      "Divine preservation = CHILD/JESUS protected through movement"
+    ];
     return [item.derivedInterpretation || "Not recorded."];
   }
 
@@ -5128,26 +5164,25 @@ createRevelationPartsSection(item.subEvents)
     const heading = document.createElement("h3");
     const range = document.createElement("div");
     const body = document.createElement("div");
-    const items = asArray(item.semanticItems).map((value) => normalizeText(value)).filter(Boolean);
     const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
     const layers = asArray(item.relatedLayers).map((value) => normalizeText(value)).filter(Boolean);
     const divineContext = hasDivineDisplayContext([item.semanticItems, item.sourceWording, item.derivedInterpretation, item.evidence, item.sourceGrounding]);
-    const title = items.length ? items.join(" vs ") : "Semantic Ambiguity / Contrast";
+    const title = semanticAmbiguityDisplayTitle(item);
     const grounding = trimText(item.sourceGrounding || "", 190);
     const derivedLines = semanticAmbiguityDerivedLines(item);
 
     card.className = "study-card semantic-card semantic-ambiguity-card";
     assignSemanticCardTarget(card, "ambiguity", item, title);
     header.className = "semantic-card-header";
-    heading.textContent = "Semantic Contrast";
+    heading.textContent = "Semantic Relationship";
     range.className = "semantic-card-range";
     range.textContent = [renderDerivedSemanticDisplayText(title, divineContext), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
     body.className = "semantic-card-body";
     header.append(heading, range);
 
     [
-      createPassageFunctionSection("Contrast", title, { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Contrast Type", semanticAmbiguityContrastTypeLabel(item.ambiguityType), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationship", title, { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationship Type", semanticAmbiguityRelationshipTypeLabel(item.ambiguityType), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source Phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived Meaning", "", { list: derivedLines, plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Resolved?", semanticAmbiguityResolutionLabel(item.resolutionStatus), { divineContext, preferHolySpirit: true }),
@@ -5171,7 +5206,7 @@ createRevelationPartsSection(item.subEvents)
 
     if (!container || !count) return;
     clearElement(container);
-    count.textContent = `${filtered.length} contrast(s)`;
+    count.textContent = `${filtered.length} relationship(s)`;
 
     if (ambiguities.length === 0) {
       appendEmpty(container, "No semantic ambiguities or contrasts derived yet.");
@@ -5188,8 +5223,8 @@ createRevelationPartsSection(item.subEvents)
       [
         `Derived records: ${ambiguities.length}`,
         `Layer: ICE_SEMANTIC_AMBIGUITIES`,
-        "Purpose: identify resolved contrasts and context-required interpretation points without fabricating contradictions.",
-        "Review posture: inspect semantic items, contrast type, source phrase, derived meaning, resolution status, confidence, evidence, and grounding."
+        "Purpose: identify relationship-aware distinctions, source/derived pairings, canonical links, and true oppositions without fabricating contradictions.",
+        "Review posture: inspect semantic items, relationship type, source phrase, derived meaning, resolution status, confidence, evidence, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));

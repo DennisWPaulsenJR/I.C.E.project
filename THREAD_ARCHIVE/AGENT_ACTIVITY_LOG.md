@@ -2254,3 +2254,29 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-27 - pcdx - Refine semantic contrast wording
+Summary:
+- Refined Study Panel Semantic Ambiguities / Contrasts wording from generic `vs` display to relationship-aware wording.
+- Added readable display categories for related with, distinguished from, contrasted with, opposed by, source wording for, and derived meaning for.
+- Preserved source phrase / derived meaning separation, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, and underlying semantic records.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
