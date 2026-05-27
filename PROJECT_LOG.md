@@ -2,6 +2,40 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Phase 8.3a Matthew 2 Adversarial / Protective Semantics
+
+Instruction summary:
+- Refine Matthew 2 around adversarial intent, protective obedience, preservation of the CHILD, deceptive authority, hostile misuse of power, Divine preservation paths, movement/location continuity, revelation escalation, semantic contrasts, and principle-layer themes.
+
+Codex action summary:
+- Tightened Herod Class i handling with evidence-grounded deceptive speech, misuse of authority, child-targeting hostility, and destroy-him intent.
+- Added Matthew 2 passage functions for repeated guidance preservation cycles, movement/location prophecy continuity, and hostile deception vs protective obedience contrast.
+- Expanded Matthew 2 ontology roles for Jerusalem and Nazareth and refined Egypt as a Divine preservation path location.
+- Added Matthew 2 semantic ambiguity/contrast records for deceptive worship language vs hostile intent and protective obedience vs hostile deception.
+- Added a process path to the protective origin/authority record: THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation.
+- Updated principle classification for Divine preservation, adversarial opposition, and fulfillment through movement.
+
+Files changed:
+- `background.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-22 - Reference Roles User-Intuitive Display
 
 Instruction summary:

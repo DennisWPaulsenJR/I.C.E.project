@@ -346,11 +346,11 @@ function evaluateFailures(data) {
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
   if (!hasCanonicalIdentity(data, "JESUS CHRIST")) failures.push("Expected canonical identity JESUS CHRIST.");
 
-  for (const passageFunction of ["wise_men_arrival", "prophecy_fulfillment_identification", "hostile_authority_response", "divine_warning_revelation", "protective_obedient_response", "egypt_escape_preservation", "messianic_location_fulfillment"]) {
+  for (const passageFunction of ["wise_men_arrival", "prophecy_fulfillment_identification", "hostile_authority_response", "divine_warning_revelation", "protective_obedient_response", "repeated_guidance_preservation_cycle", "movement_location_prophecy_continuity", "hostile_deception_vs_protective_obedience_contrast", "egypt_escape_preservation", "messianic_location_fulfillment"]) {
     if (!hasPassageFunction(data, passageFunction, isGroundedPassageFunction)) failures.push(`Expected grounded Matthew 2 passage function ${passageFunction}.`);
   }
 
-  for (const [semanticItem, role] of [["Herod", "hostile authority"], ["Wise men", "worship response"], ["Chief priests and scribes", "scriptural knowledge witness"], ["JESUS", "CHILD semantic referent"], ["Bethlehem", "messianic location"], ["Egypt", "protective refuge location"], ["AngEL Of THE LORD", "protective instruction carrier"], ["Joseph", "protective steward"]]) {
+  for (const [semanticItem, role] of [["Herod", "hostile authority"], ["Wise men", "worship response"], ["Chief priests and scribes", "scriptural knowledge witness"], ["JESUS", "CHILD semantic referent"], ["Bethlehem", "messianic location"], ["Egypt", "protective refuge location"], ["Jerusalem", "authority conflict setting"], ["Nazareth", "protective redirection location"], ["AngEL Of THE LORD", "protective instruction carrier"], ["Joseph", "protective steward"]]) {
     if (!hasOntologyRole(data, semanticItem, role)) failures.push(`Expected Matthew 2 ontology role ${semanticItem} / ${role}.`);
   }
 
@@ -358,9 +358,12 @@ function evaluateFailures(data) {
     if (!hasEntityRelationRole(data, sourceEntity, targetEntity, semanticRole)) failures.push(`Expected Matthew 2 semantic relationship role ${sourceEntity} -> ${targetEntity} / ${semanticRole}.`);
   }
 
-  if (!hasOriginAuthorityPath(data, (item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph" && /protective instruction/i.test(item.response || "") && /CHILD \/ JESUS/i.test(item.result || "") && item.confidence === "explicit")) failures.push("Expected grounded Matthew 2 protective origin / authority path THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation.");
+  if (!hasOriginAuthorityPath(data, (item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph" && /protective instruction/i.test(item.response || "") && /CHILD \/ JESUS/i.test(item.result || "") && Array.isArray(item.processPath) && item.processPath.some((step) => /Divine preservation|CHILD \/ JESUS is preserved/i.test(step)) && item.confidence === "explicit")) failures.push("Expected grounded Matthew 2 protective origin / authority path THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation with process path.");
   if (!hasRevelationPattern(data, (item) => item.speaker === "AngEL Of THE LORD" && item.authoritySource === "THE LORD" && item.recipient === "Joseph" && Array.isArray(item.subEvents) && item.subEvents.some((subEvent) => subEvent.clusterType === "protection_instruction"))) failures.push("Expected Matthew 2 AngEL Of THE LORD protective instruction revelation pattern.");
 
+
+  if (!hasSemanticAmbiguity(data, "deceptive_worship_language_vs_hostile_intent", "resolved")) failures.push("Expected Matthew 2 semantic contrast for Herod deceptive worship language vs hostile intent.");
+  if (!hasSemanticAmbiguity(data, "protective_obedience_vs_hostile_deception", "resolved")) failures.push("Expected Matthew 2 semantic contrast for protective obedience vs hostile deception.");
 
   for (const [continuedEntity, continuityType] of [["Joseph", "continued_authority_revelation_relationship"], ["JESUS / CHILD", "continued_child_identity_and_mission_preservation"], ["scripture narrator / quoted prophet", "continued_prophecy_fulfillment_chain"], ["Herod", "adversarial_escalation_against_mission_preservation"]]) {
     const found = (data.ICE_SEMANTIC_CONTINUITY || []).some((item) => item.continuedEntity === continuedEntity && item.continuityType === continuityType && item.chapterTransition === "Matthew 1 -> Matthew 2" && item.confidence && Array.isArray(item.evidence) && item.evidence.length > 0 && item.sourceGrounding);

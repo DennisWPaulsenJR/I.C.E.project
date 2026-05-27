@@ -227,3 +227,31 @@ Expected live Matthew 2 after extension reload and rerun:
 Validation:
 - `npm.cmd run qa:matthew1` passed.
 - `npm.cmd run qa:matthew2` passed.
+## 2026-05-27 - Phase 8.3a Matthew 2 Adversarial / Protective QA
+
+New Matthew 2 assertions:
+- repeated_guidance_preservation_cycle passage function
+- movement_location_prophecy_continuity passage function
+- hostile_deception_vs_protective_obedience_contrast passage function
+- Jerusalem authority conflict setting ontology role
+- Nazareth protective redirection ontology role
+- protective origin / authority path process path
+- deceptive worship language vs hostile intent semantic contrast
+- protective obedience vs hostile deception semantic contrast
+
+Validation:
+- `node --check background.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Latest Matthew 2 Phase 8.3a counts:
+- Passage functions: 11
+- Revelation patterns: 2
+- Ontology roles: 10
+- Semantic ambiguities / contrasts: 2
+- Origin / authority paths: 1
+- Semantic relationship roles: 5
+- Semantic continuity: 4

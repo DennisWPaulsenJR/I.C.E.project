@@ -2227,3 +2227,30 @@ Status:
 - Refined Phase 8.3 derived semantic displays so Class I / HOLY-origin processes show HOLY ontology emphasis.
 - Added process-path display for THE LORD -> AngEL Of THE LORD -> Joseph -> Instruction -> CHILD protection / fulfillment.
 - Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class 𝑖 distinction.
+## 2026-05-27 - pcdx - Refine Matthew 2 adversarial semantics
+Summary:
+- Implemented Phase 8.3a Matthew 2 adversarial/protective semantic refinement.
+- Grounded Herod Class i semantics in troubled response, secret inquiry, deceptive worship wording, misuse of authority, and destroy-him intent.
+- Added protective obedience / Divine preservation path details, repeated guidance cycles, location movement continuity, and Matthew 2 semantic contrast records.
+
+Files touched:
+- `background.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

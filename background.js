@@ -1369,13 +1369,15 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
     const commonLayers = ["ICE_PASSAGE_FUNCTIONS", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS", "ICE_ENTITY_RELATION_ROLES"];
     return [
       add({ scopePath: "scripture.nt.matthew.2.verse.1", verseRange: "Matthew 2:1-2, 11", semanticItem: "Wise men", ontologyRoles: ["Human witness role", "worship response", "search witness"], authorityOriginClass: "Class III - Human", narrativeRole: "arrive seeking and worshipping the CHILD/JESUS", canonicalRole: "Human witness group; not origin authority", sourcePhrase: "wise men from the east; come to worship him", derivedMeaning: "Wise men: Human witness and worship response", relatedEntities: ["Wise men", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 explicitly names wise men and describes their seeking/worship response." }),
-      add({ scopePath: "scripture.nt.matthew.2.verse.3", verseRange: "Matthew 2:3-8, 16", semanticItem: "Herod", ontologyRoles: ["hostile authority", "adversarial/oppositional role", "child-targeting hostility"], authorityOriginClass: "Class i - Adversarial / Oppositional", narrativeRole: "hostile ruler responding against the CHILD/JESUS", canonicalRole: "Human authority acting oppositionally where source evidence supports it", sourcePhrase: "Herod ... was troubled; destroy him", derivedMeaning: "Herod: hostile/adversarial authority toward JESUS", relatedEntities: ["Herod", "JESUS", "Wise men"], relatedLayers: commonLayers, confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable", sourceGrounding: "Adversarial role is assigned only from troubled response, deceptive inquiry, and destroy-him wording in Matthew 2." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.3", verseRange: "Matthew 2:3-8, 16", semanticItem: "Herod", ontologyRoles: ["hostile authority", "adversarial/oppositional role", "deceptive speech", "misuse of authority", "child-targeting hostility"], authorityOriginClass: "Class i - Adversarial / Oppositional", narrativeRole: "hostile ruler responding against the CHILD/JESUS through troubled response, secret inquiry, deceptive worship language, and destroy-him intent", canonicalRole: "Human authority acting oppositionally where source evidence supports it; not an automatic Class i assignment for every negative actor", sourcePhrase: "Herod ... was troubled; enquired of them diligently; that I may come and worship him also; destroy him", derivedMeaning: "Herod: evidence-grounded hostile/adversarial authority toward CHILD/JESUS", relatedEntities: ["Herod", "JESUS", "Wise men"], relatedLayers: commonLayers, confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable", sourceGrounding: "Adversarial role is assigned only from troubled response, deceptive inquiry/worship wording, and destroy-him wording in Matthew 2." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.4", verseRange: "Matthew 2:4-6", semanticItem: "Chief priests and scribes", ontologyRoles: ["Human religious authority", "scriptural knowledge witness", "prophecy location witness"], authorityOriginClass: "Class III - Human", narrativeRole: "identify the written prophecy location for Herod", canonicalRole: "Human witnesses to source-text prophecy, not divine origin authority", sourcePhrase: "chief priests and scribes ... for thus it is written", derivedMeaning: "Chief priests and scribes: Human scriptural knowledge witnesses", relatedEntities: ["Chief priests and scribes", "Bethlehem", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:4-6 grounds this role in their gathered answer and written-prophecy citation." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.11", verseRange: "Matthew 2:11-15", semanticItem: "JESUS", ontologyRoles: ["CHILD semantic referent", "protected child", "messianic identity"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "referenced as young child/child while semantically grounded to JESUS", canonicalRole: "CHILD/JESUS remains distinct from JESUS CHRIST source identity while resolving the referent", sourcePhrase: "the young child", derivedMeaning: "CHILD / JESUS: protected messianic child", relatedEntities: ["JESUS", "JESUS CHRIST", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 repeatedly uses young child/child in scenes grounded by JESUS identity from Matthew source context." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-22", semanticItem: "AngEL Of THE LORD", ontologyRoles: ["messenger", "protective instruction carrier", "delegated authority role"], authorityOriginClass: "Class II - AngEL / Messenger of GOD", narrativeRole: "delivers protective dream instruction to Joseph", canonicalRole: "messenger role distinct from THE LORD as origin authority", sourcePhrase: "the angel of the Lord appeareth to Joseph in a dream", derivedMeaning: "AngEL Of THE LORD: protective messenger", relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 uses AngEL Of THE LORD dream appearances for protective instruction." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-22", semanticItem: "Joseph", ontologyRoles: ["Human response", "obedient recipient", "protective steward"], authorityOriginClass: "Class III - Human", narrativeRole: "receives instruction and moves the CHILD/JESUS and Mary protectively", canonicalRole: "Human obedient recipient; not origin authority", sourcePhrase: "he arose, and took the young child and his mother", derivedMeaning: "Joseph: protective obedient steward", relatedEntities: ["Joseph", "JESUS", "Mary", "AngEL Of THE LORD"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2 repeatedly grounds Joseph response through instruction-response movement." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.5", verseRange: "Matthew 2:5-6", semanticItem: "Bethlehem", ontologyRoles: ["messianic location", "prophecy location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "location identified by written prophecy", canonicalRole: "place role in fulfillment chain", sourcePhrase: "Bethlehem of Judaea", derivedMeaning: "Bethlehem: messianic prophecy location", relatedEntities: ["Bethlehem", "JESUS", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:5-6 identifies Bethlehem through written prophecy." }),
-      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-15", semanticItem: "Egypt", ontologyRoles: ["protective refuge location", "fulfillment location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "refuge location and fulfillment location", canonicalRole: "place role in preservation and fulfillment chain", sourcePhrase: "flee into Egypt; Out of Egypt have I called my son", derivedMeaning: "Egypt: protective refuge and fulfillment location", relatedEntities: ["Egypt", "JESUS", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:13-15 grounds Egypt in both protective movement and fulfillment wording." })
+      add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-15", semanticItem: "Egypt", ontologyRoles: ["protective refuge location", "fulfillment location", "Divine preservation path location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "refuge location and fulfillment location", canonicalRole: "place role in preservation and fulfillment chain", sourcePhrase: "flee into Egypt; Out of Egypt have I called my son", derivedMeaning: "Egypt: protective refuge and fulfillment location", relatedEntities: ["Egypt", "JESUS", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:13-15 grounds Egypt in both protective movement and fulfillment wording." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.1", verseRange: "Matthew 2:1-3", semanticItem: "Jerusalem", ontologyRoles: ["arrival location", "authority conflict setting"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "place where wise men inquiry and Herod troubled response enter the narrative", canonicalRole: "location role in adversarial/protective contrast setup", sourcePhrase: "wise men from the east to Jerusalem; Herod ... was troubled, and all Jerusalem with him", derivedMeaning: "Jerusalem: inquiry location and troubled authority setting", relatedEntities: ["Jerusalem", "Wise men", "Herod", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:1-3 grounds Jerusalem as the arrival and conflict-setting location." }),
+      add({ scopePath: "scripture.nt.matthew.2.verse.23", verseRange: "Matthew 2:22-23", semanticItem: "Nazareth", ontologyRoles: ["settlement location", "prophecy fulfillment location", "protective redirection location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "destination after warning and avoidance of Archelaus", canonicalRole: "place role in redirected preservation and fulfillment chain", sourcePhrase: "turned aside into the parts of Galilee; dwelt in a city called Nazareth; He shall be called a Nazarene", derivedMeaning: "Nazareth: protective redirection and fulfillment location", relatedEntities: ["Nazareth", "Joseph", "JESUS", "Mary", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:22-23 grounds Nazareth in warning-redirection and fulfillment wording." })
     ];
   }
   if (!isMatthewOne) return [];
@@ -1722,10 +1724,44 @@ function createSemanticAmbiguities(captures = [], semanticDistinctions = [], ont
   const capture = (captures || [])[0] || {};
   const context = buildSourceContext(capture);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
+  const sourceText = sourceCaptureText(captures);
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const add = (record) => semanticAmbiguityRecord({ sourceCaptureId, sourceContext: context, ...record });
+
+  if (isMatthewTwo) {
+    return [
+      add({
+        scopePath: "scripture.nt.matthew.2.verse.8",
+        verseRange: "Matthew 2:7-8, 13, 16",
+        semanticItems: ["Herod", "Wise men", "JESUS / CHILD"],
+        ambiguityType: "deceptive_worship_language_vs_hostile_intent",
+        sourceWording: "that I may come and worship him also; Herod will seek the young child to destroy him; destroy him",
+        derivedInterpretation: "Resolved contrast: Herod uses worship language while the broader Matthew 2 evidence grounds hostile/deceptive intent toward CHILD/JESUS.",
+        resolutionStatus: "resolved",
+        confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable",
+        evidence: ["that I may come and worship him also", "Herod will seek the young child to destroy him", "destroy him"],
+        relatedLayers: ["ICE_PASSAGE_FUNCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_ENTITY_RELATION_ROLES", "ICE_SEMANTIC_CONTINUITY"],
+        sourceGrounding: "Class i handling is grounded in Matthew 2 deceptive speech plus explicit destroy-him wording, not in a generic negative-actor rule."
+      }),
+      add({
+        scopePath: "scripture.nt.matthew.2.verse.13",
+        verseRange: "Matthew 2:12-23",
+        semanticItems: ["protective obedience", "hostile deception", "Divine preservation"],
+        ambiguityType: "protective_obedience_vs_hostile_deception",
+        sourceWording: "warned of God in a dream; Arise, and take the young child; he arose, and took the young child; privily called; destroy him",
+        derivedInterpretation: "Resolved contrast: dream warnings and Joseph obedience form a Divine preservation path that answers Herod hostile misuse of authority.",
+        resolutionStatus: "resolved",
+        confidence: "explicit",
+        evidence: ["warned of God in a dream", "Arise, and take the young child", "he arose, and took the young child", "destroy him"],
+        relatedLayers: ["ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS", "ICE_ENTITY_RELATION_ROLES", "ICE_SEMANTIC_CONTINUITY"],
+        sourceGrounding: "Matthew 2 repeats warning, avoidance, and obedient movement language in contrast to Herod hostile intent."
+      })
+    ];
+  }
+
   if (!isMatthewOne) return [];
 
-  const add = (record) => semanticAmbiguityRecord({ sourceCaptureId, sourceContext: context, ...record });
   const commonLayers = ["ICE_SEMANTIC_DISTINCTIONS", "ICE_ONTOLOGY_ROLES", "ICE_REVELATION_PATTERNS", "ICE_ORIGIN_AUTHORITY_PATHS"];
 
   return [
@@ -1873,6 +1909,13 @@ function createOriginAuthorityPaths(semanticEvents = [], revelationPatterns = []
       response: "Joseph obeys protective instruction",
       result: "CHILD / JESUS is preserved and moved according to warning",
       mission: "Protect CHILD/JESUS from Herod and preserve fulfillment movement",
+      processPath: [
+        "Authoritative ACTOR / Origin: THE LORD (Class I / Divine preservation)",
+        "Messenger / Transfer: AngEL Of THE LORD carries protective warning",
+        "Human Recipient / Response: Joseph obeys and moves the CHILD and Mary",
+        "Adversarial Contrast: Herod misuse of authority and destroy-him intent is avoided",
+        "Result / Fulfillment: CHILD / JESUS is preserved through Egypt and Nazareth movement"
+      ],
       authorityClass: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD",
       recipientClass: "Joseph: Class III - Human",
       relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS", "Herod", "Egypt", "Nazareth"],
@@ -2161,6 +2204,43 @@ function createPassageFunctions(captures, semanticEvents, relationshipGraph, pro
       relatedEntities: ["Joseph", "Mary", "JESUS", "Egypt", "Nazareth"],
       confidence: "explicit",
       sourceGrounding: "Matthew 2 grounds Joseph's role through repeated response verbs after divine instruction."
+    });
+
+    addMatthewTwoFunction(/\bwarned of God in a dream\b|\bshould not return to Herod\b|\bbeing warned of God\b|\bnotwithstanding, being warned of God in a dream\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.12",
+      verseRange: "Matthew 2:12-22",
+      passageFunction: "repeated_guidance_preservation_cycle",
+      plainMeaning: "Matthew 2 repeats dream warnings, redirection, avoidance, and movement commands as preservation guidance cycles.",
+      fulfillmentMeaning: "Divine guidance escalates as Herod hostility escalates, preserving CHILD/JESUS through redirected travel.",
+      evidence: ["warned of God in a dream", "departed into their own country another way", "Arise, and take the young child", "being warned of God in a dream"],
+      linkedThemes: ["revelation escalation", "dream warning", "redirected travel", "avoidance instruction", "Divine preservation"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Wise men", "Joseph", "JESUS", "Herod"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 contains repeated warning and movement instructions rather than one isolated revelation event."
+    });
+    addMatthewTwoFunction(/\bBethlehem\b|\bJerusalem\b|\bEgypt\b|\bNazareth\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.1",
+      verseRange: "Matthew 2:1-23",
+      passageFunction: "movement_location_prophecy_continuity",
+      plainMeaning: "Matthew 2 moves through Jerusalem, Bethlehem, Egypt, and Nazareth while preserving CHILD/JESUS and tracking fulfillment.",
+      fulfillmentMeaning: "The locations form a continuity path for inquiry, prophecy identification, protective refuge, and settlement fulfillment.",
+      evidence: ["to Jerusalem", "Bethlehem of Judaea", "flee into Egypt", "dwelt in a city called Nazareth"],
+      linkedThemes: ["semantic movement", "location continuity", "prophecy fulfillment", "Divine preservation paths"],
+      relatedEntities: ["Jerusalem", "Bethlehem", "Egypt", "Nazareth", "JESUS", "Joseph", "Mary"],
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 explicitly names each movement/location anchor inside the active chapter."
+    });
+    addMatthewTwoFunction(/\bprivily called the wise men\b|\bthat I may come and worship him also\b|\bdestroy him\b/i, {
+      scopePath: "scripture.nt.matthew.2.verse.8",
+      verseRange: "Matthew 2:7-8, 13, 16",
+      passageFunction: "hostile_deception_vs_protective_obedience_contrast",
+      plainMeaning: "Herod secret inquiry and worship language contrast with divine warning and Joseph protective obedience.",
+      fulfillmentMeaning: "The narrative distinguishes deceptive authority from preservation-guided obedience without treating every negative actor as Class i.",
+      evidence: ["privily called the wise men", "that I may come and worship him also", "destroy him", "he arose, and took the young child"],
+      linkedThemes: ["deceptive authority", "hostile misuse of power", "protective obedience", "adversarial/protective contrast"],
+      relatedEntities: ["Herod", "Wise men", "Joseph", "JESUS", "AngEL Of THE LORD"],
+      confidence: /\bdestroy him\b/i.test(sourceText) ? "explicit" : "probable",
+      sourceGrounding: "The contrast is grounded in Herod secret/deceptive wording plus explicit destroy-him intent and Joseph source-grounded protective response."
     });
     addMatthewTwoFunction(/\bflee into Egypt\b|\bOut of Egypt have I called my son\b/i, {
       scopePath: "scripture.nt.matthew.2.verse.13",
@@ -2644,7 +2724,7 @@ function createSemanticSubEvents(capture, sentence, sequenceIndex) {
   }
 
   if (/\bHerod\b.*\btroubled\b|\bHerod\b.*\bprivily called\b|\bHerod\b.*\bdestroy him\b/i.test(text)) {
-    push({ originalText: "Herod responds to the report concerning the young child", anchorText: /\bdestroy him\b/i.test(text) ? "destroy him" : (/\bprivily called\b/i.test(text) ? "privily called" : "Herod ... troubled"), normalizedMeaning: /\bdestroy him\b/i.test(text) ? "Herod shows child-targeting hostile intent toward JESUS" : "Herod acts as hostile authority in response to the report of JESUS", actor: "Herod", action: /\bdestroy him\b/i.test(text) ? "sought to destroy" : "responded as hostile authority", target: "JESUS", participants: ["Herod", "JESUS", "Wise men"], relationshipType: "hostile_authority_response", eventType: "hostile_authority_response", semanticCategory: "adversarial_authority", confidence: "explicit" });
+    push({ originalText: "Herod responds to the report concerning the young child", anchorText: /\bdestroy him\b/i.test(text) ? "destroy him" : (/\bthat I may come and worship him also\b/i.test(text) ? "that I may come and worship him also" : (/\bprivily called\b/i.test(text) ? "privily called" : "Herod ... troubled")), normalizedMeaning: /\bdestroy him\b/i.test(text) ? "Herod shows child-targeting hostile intent toward JESUS" : (/\bthat I may come and worship him also\b/i.test(text) ? "Herod uses deceptive worship language while acting as hostile authority" : "Herod acts as hostile authority in response to the report of JESUS"), actor: "Herod", action: /\bdestroy him\b/i.test(text) ? "sought to destroy" : (/\bthat I may come and worship him also\b/i.test(text) ? "used deceptive speech" : "responded as hostile authority"), target: "JESUS", participants: ["Herod", "JESUS", "Wise men"], relationshipType: "hostile_authority_response", eventType: "hostile_authority_response", semanticCategory: "adversarial_authority", confidence: /\bdestroy him\b/i.test(text) ? "explicit" : "probable" });
   }
 
   if (/\bchief priests and scribes\b|\bfor thus it is written\b|\bin Bethlehem of Judaea\b/i.test(text)) {
@@ -3306,6 +3386,9 @@ function createInteractionGraph(orderedEvents, actorTimelines) {
 }
 
 function principleTypeForSentence(sentence) {
+  if (/\bflee into Egypt|take the young child|departed into Egypt|destroy him\b/i.test(sentence)) return "divine_preservation";
+  if (/\bprivily called|that I may come and worship him also|Herod\b.*\btroubled\b/i.test(sentence)) return "adversarial_opposition";
+  if (/\bNazareth|Bethlehem|Jerusalem|Egypt|another way|turned aside\b/i.test(sentence)) return "fulfillment_through_movement";
   if (/\bfulfilled|that it might be fulfilled\b/i.test(sentence)) return "fulfillment";
   if (/\bprophet|written|called a Nazarene|that shall rule\b/i.test(sentence)) return "prophecy";
   if (/\bcommanded|law|obedience\b/i.test(sentence)) return "commandment";
@@ -5679,7 +5762,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       latestCaptureWordCount: latestCapture.wordCount || 0,
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
-      analysisBuildMarker: "phase-8.2x-live-derived-diagnostics",
+      analysisBuildMarker: "phase-8.3a-matthew2-adversarial-protective-semantics",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,

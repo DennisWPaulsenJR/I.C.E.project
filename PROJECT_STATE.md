@@ -237,6 +237,27 @@ Repo memory convention:
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` records ongoing multi-agent activity updates.
 - `THREAD_ARCHIVE/AGENT_OUTBOX.md` records quick current handoff messages and should not replace durable activity logging.
 - Do not paste full chat transcripts unless explicitly requested.
+
+## Phase 8.3a Matthew 2 Adversarial / Protective Semantic Refinement
+
+Status: implemented in the derived Matthew 2 semantic builders.
+
+Refinements:
+- Herod Class i handling is grounded in Matthew 2 evidence: troubled response, secret inquiry, deceptive worship wording, misuse of authority, and destroy-him intent.
+- Protective preservation path now records THE LORD -> AngEL Of THE LORD -> Joseph -> CHILD / JESUS preservation with process-path steps.
+- Matthew 2 movement continuity now tracks Jerusalem, Bethlehem, Egypt, and Nazareth as scoped location roles.
+- Revelation handling now includes repeated guidance / preservation cycles for dream warning, redirection, avoidance, and protective movement.
+- Semantic Ambiguities / Contrasts now includes Matthew 2 protective obedience vs hostile deception records.
+- Principle typing now recognizes Divine preservation, adversarial opposition, and fulfillment through movement.
+
+Preserve:
+- source phrase vs derived meaning
+- App confidence wording
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class i distinction
+- source-grounded, non-theatrical display language
 ## Standing Rules
 
 - Run syntax checks after implementation.
