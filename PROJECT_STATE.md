@@ -36,6 +36,14 @@ Recently completed foundations:
 Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
+
+Latest pcdx update:
+- Phase 8.3d Volume / Session Context Interface implemented.
+- Study Panel now starts with a Volume Context section showing active source/page, active adapter, current/stale/not analyzed status, current chapter/page, previously analyzed pages, continuity detected, suggested next page, last analyzed time, and the Matthew 1 + Matthew 2 QA baseline.
+- New session metadata key: `ICE_ANALYSIS_HISTORY`.
+- Volume Context actions are user-driven only: analyze current page, clear current page analysis, clear all I.C.E. session data, show analyzed pages, and show continuity map.
+- No semantic record rewrites, auto-crawling, or auto-analysis behavior was added.
+
 ## Active Systems
 
 - Sacred reference formatter

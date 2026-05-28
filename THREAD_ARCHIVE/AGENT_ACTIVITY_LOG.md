@@ -2482,3 +2482,33 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-27 23:55 - pcdx - Add volume session context
+Summary:
+- Added top-of-panel Volume Context display for active source/page, adapter, current/stale/not analyzed state, current chapter/page, previous analyzed pages, continuity, suggested next page, last analyzed time, and Matthew 1 + Matthew 2 QA baseline.
+- Added `ICE_ANALYSIS_HISTORY` metadata so prior analyzed pages can be shown without rewriting or blending semantic records.
+- Added user-driven Study Panel actions for analysis rerun, current analysis clear, all session data clear, analyzed-page navigation, and continuity-map navigation.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual structural smoke verified Volume Context render/action/storage wiring.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

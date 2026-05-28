@@ -2,9 +2,20 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-16 by `pcdx`.
+Last updated: 2026-05-27 by `pcdx`.
 
 Current operational state:
+Latest validation update:
+- Phase 8.3d Volume / Session Context Interface passed syntax, whitespace, and Matthew baseline QA.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Matthew 1 counts: Source Discovery 136, Reference Graph 136, Passage Functions 4, Revelation Patterns 1, Semantic Continuity 0, Movement / Location Semantics 0, Semantic Sequence / Causality 1.
+- Matthew 2 counts: Source Discovery 113, Reference Graph 113, Passage Functions 11, Revelation Patterns 2, Semantic Continuity 4, Movement / Location Semantics 5, Semantic Sequence / Causality 2.
+- UX status: Study Panel includes Volume Context session display and user-driven session actions.
 - Matthew 1 Playwright QA is the primary end-to-end extension readiness check.
 - QA harness path: `qa/matthew1-extension-qa.js`.
 - QA output path: `qa-output/latest-qa-bundle.json`.

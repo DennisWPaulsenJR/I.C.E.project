@@ -66,6 +66,72 @@ body {
   margin: 0 auto;
 }
 
+
+.volume-context-section {
+  border-bottom: 1px solid #d8dde6;
+  padding-bottom: 8px;
+}
+
+.volume-context-grid {
+  grid-template-columns: 1fr;
+}
+
+.volume-context-card {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+}
+
+.volume-context-list {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.volume-context-list dt {
+  color: #5f6b7a;
+  font-size: .83rem;
+  font-weight: 700;
+}
+
+.volume-context-list dd {
+  color: #25364d;
+  line-height: 1.35;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.volume-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.volume-context-actions button {
+  background: #ffffff;
+  border: 1px solid #9db5d1;
+  border-radius: 6px;
+  color: #1f334d;
+  cursor: pointer;
+  font: inherit;
+  padding: 7px 9px;
+}
+
+.volume-context-actions button:hover,
+.volume-context-actions button:focus-visible {
+  background: #eef4fb;
+  outline: none;
+}
+
+.study-section-highlight {
+  animation: section-highlight 1.6s ease-out;
+}
+
+@keyframes section-highlight {
+  0% { background: #eef4fb; }
+  100% { background: transparent; }
+}
 .semantic-focus-status {
   align-items: center;
   background: #ffffff;

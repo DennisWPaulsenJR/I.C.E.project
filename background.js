@@ -40,6 +40,7 @@ const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
+const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
@@ -6171,6 +6172,10 @@ async function runFullAnalysisPipeline(reason = "manual") {
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
+    const storedAnalysisHistory = await chrome.storage.local.get(ANALYSIS_HISTORY_KEY);
+    const previousAnalysisHistory = Array.isArray(storedAnalysisHistory[ANALYSIS_HISTORY_KEY])
+      ? storedAnalysisHistory[ANALYSIS_HISTORY_KEY]
+      : [];
     const derivedLayerCounts = {
       passageFunctions: passageFunctions.length,
       revelationPatterns: revelationPatterns.length,
@@ -6231,7 +6236,27 @@ async function runFullAnalysisPipeline(reason = "manual") {
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
     };
-
+    const analysisHistoryEntry = {
+      sourceCaptureId: status.sourceCaptureId,
+      sourceTitle: status.sourceCaptureTitle,
+      sourceCaptureBook: status.sourceCaptureBook,
+      sourceCaptureChapter: status.sourceCaptureChapter,
+      activeUrl: status.activeUrl,
+      activeAdapterName: status.activeAdapterName,
+      analyzedAt: status.analyzedAt,
+      reason: status.reason
+    };
+    const analysisHistory = [analysisHistoryEntry, ...previousAnalysisHistory]
+      .filter((item) => item?.sourceTitle || item?.sourceCaptureBook || item?.activeUrl)
+      .filter((item, index, items) => {
+        const key = [item.sourceCaptureBook, item.sourceCaptureChapter, item.sourceTitle, item.activeUrl]
+          .map((value) => normalizeWhitespace(value || "").toLowerCase())
+          .join("|");
+        return key && items.findIndex((candidate) => [candidate.sourceCaptureBook, candidate.sourceCaptureChapter, candidate.sourceTitle, candidate.activeUrl]
+          .map((value) => normalizeWhitespace(value || "").toLowerCase())
+          .join("|") === key) === index;
+      })
+      .slice(0, 12);
     await chrome.storage.local.set({
       [TIMELINE_STORAGE_KEY]: timelineItems,
       [EVENT_STORAGE_KEY]: eventItems,
@@ -6265,7 +6290,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
-      [ANALYSIS_STATUS_KEY]: status
+      [ANALYSIS_STATUS_KEY]: status,
+      [ANALYSIS_HISTORY_KEY]: analysisHistory
     });
 
     return status;

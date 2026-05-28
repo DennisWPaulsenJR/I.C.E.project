@@ -2,6 +2,42 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Phase 8.3d Volume / Session Context Interface
+
+Instruction summary:
+- Add a top-of-panel Volume Context display so users can see the active source/page, adapter, current/stale/not analyzed status, prior analyzed pages, continuity, suggested next page, last analysis time, and Matthew 1 + Matthew 2 QA baseline.
+- Preserve user-driven navigation and analysis; do not auto-crawl or auto-analyze pages.
+
+Codex action summary:
+- Added `ICE_ANALYSIS_HISTORY` session metadata in the background analysis pipeline so the Study Panel can show previously analyzed pages without mixing older captures into current semantic records.
+- Added a top `Volume Context` Study Panel section with active page, active adapter, current analysis status, current chapter/page, previous analyzed pages, continuity summary, suggested next page, last analyzed time, and available QA baseline.
+- Added restrained actions for Analyze current page, Clear current page analysis, Clear all I.C.E. session data, Show analyzed pages, and Show continuity map.
+- Kept semantic records unchanged; this is session metadata and UI clarity only.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual structural smoke: verified Volume Context markup, render call, action handlers, session-history storage key, and continuity/analyzed-page display wiring in source.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Semantic Grounding Wording Refinement
 
 Instruction summary:

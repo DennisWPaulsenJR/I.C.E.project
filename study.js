@@ -34,7 +34,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
-    analysisStatus: "ICE_ANALYSIS_STATUS"
+    analysisStatus: "ICE_ANALYSIS_STATUS",
+    analysisHistory: "ICE_ANALYSIS_HISTORY"
   };
   const DISPLAY_LIMIT = 5;
 
@@ -800,6 +801,274 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+
+  function currentSourceContextForVolume() {
+    const status = studyData.analysisStatus || {};
+    const context = findSourceContext() || {};
+    const capture = studyData.latestCapture || {};
+    const inferred = inferDisplaySourceContext(capture) || {};
+    const book = normalizeText(inferred.book || context.book || status.sourceCaptureBook || "");
+    const chapter = normalizeText(inferred.chapter || context.chapter || status.sourceCaptureChapter || "");
+    const title = normalizeText(capture.title || context.sourceTitle || status.sourceCaptureTitle || "Current source");
+    const url = normalizeText(capture.url || context.sourceUrl || status.activeUrl || "");
+    return { book, chapter, title, url };
+  }
+
+  function volumePageLabel(page = {}) {
+    const book = normalizeText(page.sourceCaptureBook || page.book || "");
+    const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
+    if (book && chapter) return `${book} ${chapter}`;
+    return normalizeText(page.sourceTitle || page.title || page.activeUrl || page.url || "Unknown page");
+  }
+
+  function analyzedPageHistory() {
+    const history = asArray(studyData.analysisHistory);
+    const status = studyData.analysisStatus || {};
+    const currentEntry = status.analyzedAt ? [{
+      sourceCaptureBook: status.sourceCaptureBook,
+      sourceCaptureChapter: status.sourceCaptureChapter,
+      sourceTitle: status.sourceCaptureTitle,
+      activeUrl: status.activeUrl,
+      activeAdapterName: status.activeAdapterName,
+      analyzedAt: status.analyzedAt,
+      reason: status.reason
+    }] : [];
+    const seen = new Set();
+    return [...currentEntry, ...history]
+      .filter((item) => item?.sourceTitle || item?.sourceCaptureBook || item?.activeUrl)
+      .filter((item) => {
+        const key = [item.sourceCaptureBook, item.sourceCaptureChapter, item.sourceTitle, item.activeUrl]
+          .map((value) => normalizeText(value || "").toLowerCase())
+          .join("|");
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function analysisStatusLabel() {
+    const status = studyData.analysisStatus || {};
+    const capture = studyData.latestCapture || {};
+    if (!status.analyzedAt) return "not analyzed";
+    if (capture.id && status.sourceCaptureId && capture.id !== status.sourceCaptureId) return "stale";
+    if (capture.url && status.activeUrl && capture.url !== status.activeUrl) return "stale";
+    return "current";
+  }
+
+  function continuitySummaryLines(currentContext, analyzedPages) {
+    const continuityLines = asArray(studyData.semanticContinuity)
+      .map((item) => normalizeText(item.chapterTransition || ""))
+      .filter(Boolean);
+    if (continuityLines.length > 0) return [...new Set(continuityLines)].slice(0, 3);
+
+    const labels = analyzedPages.map(volumePageLabel);
+    const hasMatthewOne = labels.some((label) => /^Matthew 1$/i.test(label));
+    const hasMatthewTwo = labels.some((label) => /^Matthew 2$/i.test(label)) || (currentContext.book === "Matthew" && currentContext.chapter === "2");
+    if (hasMatthewOne && hasMatthewTwo) return ["Matthew 1 -> Matthew 2"];
+    return ["No cross-page continuity detected yet"];
+  }
+
+  function suggestedNextPageLabel(context) {
+    const chapterNumber = Number(context.chapter || 0);
+    if (context.book && Number.isFinite(chapterNumber) && chapterNumber > 0) {
+      return `${context.book} ${chapterNumber + 1}`;
+    }
+    return "Analyze the next source page when ready";
+  }
+
+  function createVolumeContextCard() {
+    const card = document.createElement("article");
+    card.className = "study-card volume-context-card";
+    const heading = document.createElement("h3");
+    heading.textContent = "Volume Context";
+
+    const context = currentSourceContextForVolume();
+    const analyzedPages = analyzedPageHistory();
+    const activeLabel = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.title;
+    const currentLabel = volumePageLabel({ book: context.book, chapter: context.chapter, sourceTitle: context.title, activeUrl: context.url });
+    const previousLabels = analyzedPages
+      .map(volumePageLabel)
+      .filter((label) => label && label !== currentLabel)
+      .slice(0, 6);
+    const continuityLines = continuitySummaryLines(context, analyzedPages);
+    const rows = [
+      ["Active source/page", activeLabel],
+      ["Active adapter", studyData.activeAdapter?.adapterName || studyData.analysisStatus?.activeAdapterName || "not detected"],
+      ["Current analysis status", analysisStatusLabel()],
+      ["Current chapter/page", currentLabel],
+      ["Previously analyzed pages", previousLabels.length ? previousLabels.join(", ") : "none recorded"],
+      ["Continuity detected", continuityLines.join("\n")],
+      ["Suggested next page", suggestedNextPageLabel(context)],
+      ["Last analyzed time", studyData.analysisStatus?.analyzedAt || "Never"],
+      ["Available QA baseline", "Matthew 1 + Matthew 2"]
+    ];
+
+    const list = document.createElement("dl");
+    list.className = "volume-context-list";
+    rows.forEach(([label, value]) => {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.textContent = renderIceBeingDisplayText(value || "Not recorded", { divineContext: hasDivineDisplayContext([value]), preferHolySpirit: true });
+      list.append(term, detail);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "volume-context-actions";
+    [
+      ["Analyze current page", "analyzeCurrentPage"],
+      ["Clear current page analysis", "clearCurrentPageAnalysis"],
+      ["Clear all I.C.E. session data", "clearAllSessionData"],
+      ["Show analyzed pages", "showAnalyzedPages"],
+      ["Show continuity map", "showContinuityMap"]
+    ].forEach(([label, action]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.volumeAction = action;
+      button.textContent = label;
+      actions.appendChild(button);
+    });
+
+    card.append(heading, list, actions);
+    return card;
+  }
+
+  function renderVolumeContext(term) {
+    const container = document.getElementById("volumeContextCards");
+    const count = document.getElementById("volumeContextCount");
+    if (!container || !count) return;
+    clearElement(container);
+    const contextText = [
+      studyData.analysisStatus?.sourceCaptureTitle,
+      studyData.analysisStatus?.sourceCaptureBook,
+      studyData.analysisStatus?.sourceCaptureChapter,
+      studyData.activeAdapter?.adapterName,
+      studyData.analysisStatus?.activeAdapterName,
+      analysisStatusLabel(),
+      analyzedPageHistory().map(volumePageLabel).join(" "),
+      asArray(studyData.semanticContinuity).map((item) => item.chapterTransition).join(" ")
+    ].join(" ");
+    count.textContent = "session";
+    if (term && !includesTerm(contextText, term)) {
+      appendEmpty(container, "No volume context match.");
+      return;
+    }
+    container.appendChild(createVolumeContextCard());
+  }
+
+  async function rerunFormatterOnActiveContentTab() {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs.find((item) => item?.id && !/^chrome-extension:/i.test(item.url || ""));
+    if (!tab?.id) return false;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: "ICE_RERUN_FORMATTER" });
+      return true;
+    } catch (_error) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["engine.js", "content.js"] });
+        return true;
+      } catch (_scriptError) {
+        return false;
+      }
+    }
+  }
+
+  async function runAnalysisFromStudyPanel() {
+    showDiagnosticMessage("Running current page analysis...");
+    const pageUpdated = await rerunFormatterOnActiveContentTab();
+    const response = await chrome.runtime.sendMessage({
+      type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
+      reason: pageUpdated ? "study-panel-volume-context" : "study-panel-volume-context-latest-capture"
+    });
+    if (!response?.ok) throw new Error(response?.error || "Analysis pipeline failed.");
+    await refreshStudyData();
+    showDiagnosticMessage(pageUpdated ? "Current page analysis complete." : "Latest captured page analysis complete.");
+  }
+
+  async function clearCurrentPageAnalysis() {
+    const currentKey = [
+      studyData.analysisStatus?.sourceCaptureBook,
+      studyData.analysisStatus?.sourceCaptureChapter,
+      studyData.analysisStatus?.sourceCaptureTitle,
+      studyData.analysisStatus?.activeUrl
+    ].map((value) => normalizeText(value || "").toLowerCase()).join("|");
+    const remainingHistory = asArray(studyData.analysisHistory).filter((item) => {
+      const itemKey = [item.sourceCaptureBook, item.sourceCaptureChapter, item.sourceTitle, item.activeUrl]
+        .map((value) => normalizeText(value || "").toLowerCase())
+        .join("|");
+      return !currentKey || itemKey !== currentKey;
+    });
+
+    await chrome.storage.local.remove([
+      STORAGE_KEYS.timelineItems,
+      STORAGE_KEYS.eventItems,
+      STORAGE_KEYS.orderedEvents,
+      STORAGE_KEYS.actorTimelines,
+      STORAGE_KEYS.interactionGraph,
+      STORAGE_KEYS.sceneModels,
+      STORAGE_KEYS.semanticEvents,
+      STORAGE_KEYS.semanticFlowChains,
+      STORAGE_KEYS.entityRegistry,
+      STORAGE_KEYS.relationshipGraph,
+      STORAGE_KEYS.canonicalIdentities,
+      STORAGE_KEYS.mentionIndex,
+      STORAGE_KEYS.domSemanticHints,
+      STORAGE_KEYS.sourceAdapters,
+      STORAGE_KEYS.activeAdapter,
+      STORAGE_KEYS.scopeIntegrity,
+      STORAGE_KEYS.sourceDiscoveryIndex,
+      STORAGE_KEYS.referenceGraph,
+      STORAGE_KEYS.passageFunctions,
+      STORAGE_KEYS.revelationPatterns,
+      STORAGE_KEYS.referenceRoles,
+      STORAGE_KEYS.semanticDistinctions,
+      STORAGE_KEYS.ontologyRoles,
+      STORAGE_KEYS.semanticAmbiguities,
+      STORAGE_KEYS.originAuthorityPaths,
+      STORAGE_KEYS.entityRelationRoles,
+      STORAGE_KEYS.semanticContinuity,
+      STORAGE_KEYS.movementSemantics,
+      STORAGE_KEYS.semanticCausality,
+      STORAGE_KEYS.entityRoleItems,
+      STORAGE_KEYS.principleItems,
+      STORAGE_KEYS.prophecyLinks,
+      STORAGE_KEYS.analysisStatus
+    ]);
+    await chrome.storage.local.set({ [STORAGE_KEYS.analysisHistory]: remainingHistory });
+    await refreshStudyData();
+    showDiagnosticMessage("Current page analysis cleared. Capture history remains available.");
+  }
+  async function clearAllSessionData() {
+    if (!window.confirm("Clear all local I.C.E. session data for this browser profile?")) return;
+    await chrome.storage.local.remove(Object.values(STORAGE_KEYS));
+    await refreshStudyData();
+    showDiagnosticMessage("All local I.C.E. session data cleared.");
+  }
+
+  function scrollToStudySection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    section.classList.add("study-section-highlight");
+    window.setTimeout(() => section.classList.remove("study-section-highlight"), 1600);
+  }
+
+  function handleVolumeContextAction(event) {
+    const button = event.target.closest("button[data-volume-action]");
+    if (!button) return;
+    const action = button.dataset.volumeAction;
+    if (action === "analyzeCurrentPage") {
+      runAnalysisFromStudyPanel().catch((error) => showDiagnosticMessage(`Analysis failed: ${error.message}`));
+    } else if (action === "clearCurrentPageAnalysis") {
+      clearCurrentPageAnalysis().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+    } else if (action === "clearAllSessionData") {
+      clearAllSessionData().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+    } else if (action === "showAnalyzedPages") {
+      scrollToStudySection("currentPageSection");
+    } else if (action === "showContinuityMap") {
+      scrollToStudySection("semanticContinuitySection");
+    }
+  }
   function renderCurrentPage(term) {
     const container = document.getElementById("currentPageSummary");
     const count = document.getElementById("currentPageCount");
@@ -1563,7 +1832,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const record = entityClassRecord(entityClass);
     if (!record) return "Unclassified";
     if (record.renderClass === "AI_Actor") return `AI_Actor - ${record.label}`;
-    if (record.renderClass === "i") return `Class 𝑖 - ${record.label}`;
+    if (record.renderClass === "i") return `Class ð‘– - ${record.label}`;
     return `Class ${record.renderClass} - ${record.label}`;
   }
 
@@ -4011,7 +4280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function iceTransferArrow(label) {
     const node = document.createElement("div");
     node.className = "ice-transfer-action";
-    node.textContent = `↓ ${label}`;
+    node.textContent = `â†“ ${label}`;
     return node;
   }
   function semanticKey(type, value) {
@@ -6647,6 +6916,7 @@ createRevelationPartsSection(item.subEvents)
       const term = normalizeText(document.getElementById("searchInput").value)
         .toLowerCase();
 
+      renderVolumeContext(term);
       renderPassageFunctions(term);
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
@@ -6910,6 +7180,7 @@ createRevelationPartsSection(item.subEvents)
     });
   });
   document.getElementById("clearSemanticFocus")?.addEventListener("click", clearSemanticFocus);
+  document.getElementById("volumeContextSection")?.addEventListener("click", handleVolumeContextAction);
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
   window.addEventListener("focus", refreshStudyData);
   window.addEventListener("pageshow", refreshStudyData);
