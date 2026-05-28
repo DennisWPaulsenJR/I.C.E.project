@@ -325,6 +325,217 @@ document.addEventListener("DOMContentLoaded", async () => {
     return lines;
   }
 
+  function semanticKnownEntityNamesInText(values = []) {
+    const text = normalizeText(asArray(values).flat(Infinity).join(" ")).toLowerCase();
+    const known = [
+      ["THE LORD", /\b(the lord|god)\b/],
+      ["AngEL Of THE LORD", /\bangel of the lord\b/],
+      ["JESUS CHRIST", /\bjesus christ\b/],
+      ["JESUS", /\bjesus\b|\byoung child\b|\bchild\b/],
+      ["Joseph", /\bjoseph\b/],
+      ["Mary", /\bmary\b/],
+      ["Abraham", /\babraham\b/],
+      ["David", /\bdavid\b/],
+      ["Herod", /\bherod\b/],
+      ["Wise men", /\bwise men\b/],
+      ["Bethlehem", /\bbethlehem\b/],
+      ["Jerusalem", /\bjerusalem\b/],
+      ["Egypt", /\begypt\b/],
+      ["Nazareth", /\bnazareth\b/]
+    ];
+    return known.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
+  }
+  function semanticEntityCandidateValues(item = {}) {
+    return [
+      item.relatedEntities,
+      item.linkedEntities,
+      item.entities,
+      item.semanticItems,
+      item.sourceEntity,
+      item.targetEntity,
+      item.origin,
+      item.messenger,
+      item.recipient,
+      item.speaker,
+      item.authoritySource,
+      item.continuedEntity,
+      item.originLocation,
+      item.destinationLocation,
+      asArray(item.subEvents).map((part) => [part.actor, part.speaker, part.recipient, part.target, part.concerning]),
+      semanticKnownEntityNamesInText([item.principleText, item.contextSnippet, item.sourceTitle, item.plainMeaning, item.fulfillmentMeaning, item.derivedMeaning, item.sourceGrounding])
+    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean);
+  }
+
+  function addSemanticEntityCandidate(candidates, name, source = {}) {
+    const display = passageFunctionEntityDisplayName(name);
+    const key = normalizedEntityName(display || name);
+    if (!key || /^(not recorded|unknown|current scope)$/i.test(key)) return null;
+    const existing = candidates.get(key) || {
+      name: display || name,
+      roles: new Set(),
+      localRoles: new Set(),
+      authority: new Set(),
+      supportRank: 80
+    };
+    for (const role of asArray(source.roles).map((value) => normalizeText(value)).filter(Boolean)) existing.roles.add(role);
+    for (const localRole of asArray(source.localRoles).map((value) => normalizeText(value)).filter(Boolean)) existing.localRoles.add(localRole);
+    for (const authority of asArray(source.authority).map((value) => normalizeText(value)).filter(Boolean)) existing.authority.add(authority);
+    existing.supportRank = Math.min(existing.supportRank, source.supportRank || 80);
+    candidates.set(key, existing);
+    return existing;
+  }
+
+  function semanticEntityRoleHints(name, contextValues = []) {
+    const normalized = normalizedEntityName(name);
+    const text = normalizeText(contextValues.flat(Infinity).join(" ")).toLowerCase();
+    if (normalized === "the lord" || normalized === "god") return ["source authority / Divine authority"];
+    if (normalized === "angel of the lord") return ["messenger / revelation carrier"];
+    if (normalized === "joseph") return [/protect|flee|egypt|warning|dream|obedient|steward/.test(text) ? "revelation recipient / obedient responder / protective steward" : "revelation recipient / obedient responder / covenant steward"];
+    if (normalized === "mary") return ["mother / covenant participant / conception context"];
+    if (normalized === "jesus") return ["Narrative NAME / CHILD mission focus"];
+    if (normalized === "jesus christ") return ["Canonical/source identity"];
+    if (normalized === "christ") return ["title / office"];
+    if (normalized === "david" || normalized === "abraham") return ["lineage / covenant support"];
+    if (normalized === "herod") return ["hostile authority / adversarial threat where source-grounded"];
+    if (normalized === "wise men") return ["worship witness / travel witness"];
+    if (["bethlehem", "jerusalem", "egypt", "nazareth", "galilee", "judaea", "land of israel"].includes(normalized)) return ["location / movement anchor"];
+    return [];
+  }
+
+  function semanticEntityLocalRole(name, item = {}, mode = "generic") {
+    const normalized = normalizedEntityName(name);
+    const roles = [];
+    if (normalized && asArray(item.relatedEntities).map(normalizedEntityName).includes(normalized)) roles.push("primary evidence entity");
+    if (normalized && [item.sourceEntity, item.origin, item.authoritySource].map(normalizedEntityName).includes(normalized)) roles.push("source / authority side");
+    if (normalized && [item.targetEntity, item.recipient, item.target].map(normalizedEntityName).includes(normalized)) roles.push("recipient / target side");
+    if (normalized && [item.speaker, item.messenger].map(normalizedEntityName).includes(normalized)) roles.push("speaker / messenger side");
+    if (normalized && [item.originLocation].map(normalizedEntityName).includes(normalized)) roles.push("origin location");
+    if (normalized && [item.destinationLocation].map(normalizedEntityName).includes(normalized)) roles.push("destination location");
+    if (mode === "timeline") roles.push("narrative moment participant");
+    return roles;
+  }
+
+  function semanticEntityClassValue(name) {
+    const record = hierarchyEntityRecord(name);
+    const fromRecord = classifyEntityDisplay(record || { displayName: name });
+    if (fromRecord) return fromRecord;
+    const normalized = normalizedEntityName(name);
+    if (["the lord", "god", "jesus", "jesus christ"].includes(normalized)) return "I";
+    if (normalized === "angel of the lord") return "II";
+    if (["joseph", "mary", "abraham", "david", "scripture narrator", "prophet", "quoted prophet", "wise men", "chief priests and scribes"].includes(normalized)) return "III";
+    if (["bethlehem", "jerusalem", "egypt", "nazareth", "galilee", "judaea", "land of israel", "east"].includes(normalized)) return "IIIII";
+    return "";
+  }
+
+  function semanticEntityClassRank(name) {
+    const entityClass = semanticEntityClassValue(name);
+    const ranks = { I: 10, II: 20, III: 30, IIII: 40, IIIII: 50, i: 60, AI_Actor: 70 };
+    return ranks[entityClass] || 90;
+  }
+
+  function semanticEntityClassHeading(name) {
+    const entityClass = semanticEntityClassValue(name);
+    return entityClass ? entityClassLabel(entityClass) : "Class Unclassified";
+  }
+
+  function semanticEntityLayerRecords(item = {}, mode = "generic") {
+    const layers = [
+      ...asArray(studyData.ontologyRoles),
+      ...asArray(studyData.entityRelationRoles),
+      ...asArray(studyData.originAuthorityPaths),
+      ...asArray(studyData.revelationPatterns),
+      ...asArray(studyData.movementSemantics),
+      ...asArray(studyData.semanticContinuity),
+      ...asArray(studyData.passageFunctions)
+    ];
+    return layers.filter((record) => {
+      if (record === item) return false;
+      if (record.passageFunction) return semanticVerseOverlap(record, item);
+      return semanticVerseOverlap(record, item) || semanticEntityOverlap(record, item);
+    }).slice(0, 24);
+  }
+
+  function semanticPrimaryEntityCandidates(item = {}, mode = "generic") {
+    const candidates = new Map();
+    const contextValues = [
+      item.passageFunction,
+      item.revelationType,
+      item.semanticRole,
+      item.pathType,
+      item.movementType,
+      item.continuityType,
+      item.verseRange,
+      item.scopePath,
+      item.plainMeaning,
+      item.fulfillmentMeaning,
+      item.derivedMeaning,
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
+    ];
+
+    for (const name of semanticEntityCandidateValues(item)) {
+      addSemanticEntityCandidate(candidates, name, {
+        roles: semanticEntityRoleHints(name, contextValues),
+        localRoles: semanticEntityLocalRole(name, item, mode),
+        supportRank: 10
+      });
+    }
+
+    for (const record of semanticEntityLayerRecords(item, mode)) {
+      const overlapNames = semanticEntityCandidateValues(record);
+      for (const name of overlapNames) {
+        addSemanticEntityCandidate(candidates, name, {
+          roles: semanticEntityRoleHints(name, [contextValues, semanticEntityCandidateValues(record), record.ontologyRoles, record.semanticRole, record.narrativeRole, record.canonicalRole, record.derivedMeaning]),
+          localRoles: [record.semanticRole || record.passageFunction || record.revelationType || record.pathType || record.movementType || record.continuityType || "related semantic layer"],
+          supportRank: semanticVerseOverlap(record, item) ? 25 : 45
+        });
+      }
+    }
+
+    const text = normalizeText([contextValues, semanticEntityCandidateValues(item)].flat(Infinity).join(" ")).toLowerCase();
+    if (/the lord|angel of the lord|dream|warned|authority|revelation|fulfilled|spoken of the lord/.test(text)) {
+      addSemanticEntityCandidate(candidates, "THE LORD", { roles: semanticEntityRoleHints("THE LORD", contextValues), localRoles: ["authority/source relevance"], supportRank: 18 });
+    }
+    if (/angel of the lord|dream|warned|messenger|revelation/.test(text)) {
+      addSemanticEntityCandidate(candidates, "AngEL Of THE LORD", { roles: semanticEntityRoleHints("AngEL Of THE LORD", contextValues), localRoles: ["messenger/revelation relevance"], supportRank: 19 });
+    }
+    if (hasNarrativeJesusNameContext([contextValues, semanticEntityCandidateValues(item)])) {
+      addSemanticEntityCandidate(candidates, "JESUS", { roles: semanticEntityRoleHints("JESUS", contextValues), localRoles: ["narrative NAME focus"], supportRank: 12 });
+      if (/jesus christ|generation|book of the generation|canonical/.test(text)) addSemanticEntityCandidate(candidates, "JESUS CHRIST", { roles: semanticEntityRoleHints("JESUS CHRIST", contextValues), localRoles: ["canonical/source identity focus"], supportRank: 13 });
+    }
+    if (/matthew 1:(1[89]|2[0-5])|conceived|mother|wife|birth|young child|child/.test(text)) {
+      addSemanticEntityCandidate(candidates, "Joseph", { roles: semanticEntityRoleHints("Joseph", contextValues), localRoles: ["chapter/passage narrative participant"], supportRank: 28 });
+      addSemanticEntityCandidate(candidates, "Mary", { roles: semanticEntityRoleHints("Mary", contextValues), localRoles: ["chapter/passage narrative participant"], supportRank: 29 });
+    }
+
+    return Array.from(candidates.values()).sort((left, right) =>
+      semanticEntityClassRank(left.name) - semanticEntityClassRank(right.name) ||
+      left.supportRank - right.supportRank ||
+      passageFunctionEntityRank(left.name) - passageFunctionEntityRank(right.name) ||
+      left.name.localeCompare(right.name)
+    );
+  }
+
+  function classifiedPrimaryEntityLines(item = {}, mode = "generic", limit = 14) {
+    const entities = semanticPrimaryEntityCandidates(item, mode);
+    const lines = [];
+    let currentClass = "";
+    for (const entity of entities) {
+      const heading = semanticEntityClassHeading(entity.name);
+      if (heading !== currentClass) {
+        lines.push(heading);
+        currentClass = heading;
+      }
+      const role = Array.from(entity.roles).filter(Boolean).slice(0, 2).join("; ") || "semantic entity";
+      const local = Array.from(entity.localRoles).filter(Boolean).slice(0, 2).join("; ") || "contextual evidence entity";
+      const suffix = normalizedEntityName(entity.name) === "jesus" ? " - Narrative NAME" : normalizedEntityName(entity.name) === "jesus christ" ? " - Canonical/source identity" : "";
+      lines.push(`${entity.name}${suffix} | Role: ${role} | Local: ${local}`);
+      if (lines.length >= limit) break;
+    }
+    return lines.length ? lines : primaryEntityDistinctionLines(item.relatedEntities || item.entities || [], []);
+  }
   function relationshipDisplayTarget(edge = {}) {
     const from = normalizedEntityName(edge.fromEntity || "");
     const target = edge.toEntity || edge.target || "";
@@ -3085,7 +3296,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Meaning", entry.meaning || "No meaning summary recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Events", "", { list: eventLabels.slice(0, 3), hiddenCount: Math.max(0, eventLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
       eventLabels.length > 3 ? createPassageFunctionSection("Full Events", "", { collapsed: true, summaryLabel: "Show full events", list: eventLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
-      createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(entry.entities, [entry.displayTitle, entry.category, entry.meaning, eventLabels]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines({ ...entry, relatedEntities: entry.entities, plainMeaning: entry.meaning, verseRange: asArray(entry.scopes).join(", ") }, "timeline", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems({ ...entry, relatedEntities: entry.entities }, "timeline"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", narrativeReadableScopes(normalizeScopeList(entry.scopes, entry)), { collapsed: true }),
       createPassageFunctionSection("Category", entry.category || "Not categorized.", { collapsed: true }),
@@ -3155,7 +3366,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       asArray(item.relatedEntities).join(" "),
       asArray(item.relatedProphecies).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -3215,7 +3429,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.semanticCategory,
       item.pathType,
       item.distinctionType,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ")).toLowerCase();
 
     if (!normalized) return "Derived meaning not recorded.";
@@ -3432,6 +3649,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.canonicalRole,
       item.narrativeRole,
       item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle,
       asArray(item.semanticItems).join(" "),
       asArray(item.relatedEntities).join(" "),
       asArray(item.linkedEntities).join(" "),
@@ -3585,6 +3805,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.pathType,
       item.plainMeaning,
       item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle,
       item.mission,
       item.sourceEntity,
       item.targetEntity,
@@ -3607,6 +3830,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.pathType,
       item.plainMeaning,
       item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle,
       item.authoritySource,
       item.speaker,
       item.origin,
@@ -4117,7 +4343,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     [
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
             createClassTransferDisplaySection(item),
-createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistinctionLines(item.relatedEntities, [item.passageFunction, item.verseRange, item.plainMeaning, item.fulfillmentMeaning]).slice(0, 4), plainList: true, divineContext, preferHolySpirit: true }),
+createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "passage", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "passage"),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
@@ -4157,7 +4383,10 @@ createPassageFunctionSection("Primary Entities", "", { list: primaryEntityDistin
       asArray(item.relatedPassageFunctions).join(" "),
       asArray(item.evidence).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -4290,6 +4519,7 @@ createRevelationPartsSection(item.subEvents)
       createSemanticResolutionTraceSection(item, "revelation"),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "revelation", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "revelation"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.revelationType, item.verseRange, asArray(item.subEvents).map((part) => [part.clusterType, part.eventType, part.action, part.target, part.anchorText])]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
@@ -4399,7 +4629,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.linkedPassageFunctions).join(" "),
       asArray(item.evidence).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -4667,7 +4900,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.relatedEntities).join(" "),
       asArray(item.relatedLayers).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -4757,7 +4993,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.relatedEntities).join(" "),
       asArray(item.relatedLayers).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -4852,7 +5091,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.relatedOntologyRoles).join(" "),
       asArray(item.evidence).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -4912,6 +5154,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "relationRole", 8), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "relationRole"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticRole, item.sourcePhrase, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
@@ -4975,7 +5218,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.evidence).join(" "),
       asArray(item.relatedEntities).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -5026,6 +5272,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "movement", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "movement"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.movementPurpose, item.authorityPath, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
@@ -5088,7 +5335,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.relatedEntities).join(" "),
       asArray(item.evidence).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -5135,6 +5385,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "continuity", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "continuity"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.continuedEntity, item.continuedAuthorityPath, item.continuedMissionPurpose]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
@@ -5193,7 +5444,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.evidence).join(" "),
       asArray(item.relatedLayers).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -5382,7 +5636,10 @@ createRevelationPartsSection(item.subEvents)
       asArray(item.relatedPassageFunctions).join(" "),
       asArray(item.evidence).join(" "),
       item.confidence,
-      item.sourceGrounding
+      item.sourceGrounding,
+      item.principleText,
+      item.contextSnippet,
+      item.sourceTitle
     ].join(" ");
   }
 
@@ -5430,6 +5687,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "originAuthority", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "originAuthority"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: [item.authorityClass, item.recipientClass].filter(Boolean), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.pathType, item.verseRange, item.response, item.result, item.mission]), plainList: true, divineContext, preferHolySpirit: true }),
@@ -6065,6 +6323,26 @@ createRevelationPartsSection(item.subEvents)
       return card;
     }, "No semantic events match.", "semantic event");
   }
+  function createPrincipleCard(item) {
+    const card = document.createElement("article");
+    const heading = document.createElement("h3");
+    const body = document.createElement("div");
+    const divineContext = hasDivineDisplayContext([item.principleText, item.contextSnippet, item.sourceTitle]);
+    const principleText = trimText(item.contextSnippet || item.principleText, 180);
+
+    card.className = "study-card semantic-card principle-card";
+    heading.textContent = renderIceBeingDisplayText(item.principleType || "unknown", { divineContext, preferHolySpirit: true });
+    body.className = "semantic-card-body";
+
+    [
+      createPassageFunctionSection("Principle", principleText || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "principle", 10), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source", item.sourceTitle || "Not recorded.", { collapsed: true, divineContext, preferHolySpirit: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(heading, body);
+    return card;
+  }
   function renderPrinciples(term) {
     const container = document.getElementById("principleCards");
     const count = document.getElementById("principleCount");
@@ -6081,11 +6359,7 @@ createRevelationPartsSection(item.subEvents)
       ], term)
     );
 
-    renderLimited(container, filtered, count, (item) => createCard(
-      item.principleType || "unknown",
-      trimText(item.contextSnippet || item.principleText, 180),
-      item.sourceTitle || ""
-    ), "No principle or teaching items match.");
+    renderLimited(container, filtered, count, (item) => createPrincipleCard(item), "No principle or teaching items match.");
   }
 
   function renderProphecyLinks(term) {

@@ -543,3 +543,32 @@ Preserved:
 - Class I / Class i distinction
 - ontology hierarchy
 - conservative, source-grounded Matthew 2 pilot only
+
+## Primary Entities / Characters Classification Display
+
+Status: implemented and validated.
+
+Display refinement:
+- Primary entity display now uses a shared classified helper instead of a narrow flat evidence list.
+- Entities are grouped by ontology hierarchy and include semantic role plus local evidence role.
+- The helper draws from card entities, ontology roles, semantic relationship roles, origin / authority paths, revelation patterns, movement semantics, semantic continuity, and narrative timeline context where scoped.
+
+Applied to:
+- Passage Functions
+- Revelation Patterns
+- Semantic Relationship Roles
+- Origin / Authority Paths
+- Semantic Principles
+- Movement / Location Semantics
+- Semantic Continuity
+- Narrative Timeline
+
+Preserved:
+- JESUS / JESUS CHRIST distinction
+- THE LORD / GOD entity display
+- AngEL Of THE LORD messenger entity display
+- Joseph / Mary as Human narrative participants where scoped
+- lineage support for Abraham / David without forcing them into unrelated narrow cards
+- source phrase vs derived meaning
+- App confidence wording
+- Class I / Class i distinction

@@ -2314,3 +2314,29 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-27 - pcdx - Refine primary entity classification
+Summary:
+- Replaced narrow flat Primary Entities display with shared classified Primary Entities / Characters rendering.
+- Grouped entities by ontology hierarchy and added semantic role plus local evidence role text.
+- Applied the display refinement across passage, revelation, relationship, authority path, principle, movement, continuity, and narrative timeline surfaces.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

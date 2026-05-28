@@ -2589,3 +2589,34 @@ Commit:
 
 Status:
 - Implemented by pcdx.
+
+## 2026-05-27 - Refine Primary Entity Classification
+
+Instruction summary:
+- Refine Primary Entities into classified semantic character/entity display ordered by ontology hierarchy and enriched with semantic role, local evidence role, and authority/source relevance.
+
+Codex action summary:
+- Added a shared Study Panel helper for Primary Entities / Characters classification.
+- The helper combines direct card entities with scoped ontology roles, semantic relationship roles, origin / authority paths, revelation patterns, movement semantics, semantic continuity, and passage/narrative context.
+- Updated Passage Functions, Revelation Patterns, Semantic Relationship Roles, Origin / Authority Paths, Movement / Location Semantics, Semantic Continuity, Semantic Principles, and Narrative Timeline displays.
+- Kept lineage entities as support while preserving JESUS / JESUS CHRIST identity distinction and THE LORD / AngEL Of THE LORD authority/messenger display.
+
+Files changed:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

@@ -300,3 +300,21 @@ Latest counts:
 - Matthew 1 movement semantics: 0
 - Matthew 2 movement semantics: 5
 - Matthew 2 semantic continuity: 4
+
+## 2026-05-27 - Primary Entity Classification Display QA
+
+Display refinement:
+- Primary Entities now render as Primary Entities / Characters with ontology grouping, role labels, local evidence roles, and authority/source relevance.
+- Applied across Passage Functions, Revelation Patterns, Semantic Relationship Roles, Origin / Authority Paths, Semantic Principles, Movement / Location Semantics, Semantic Continuity, and Narrative Timeline.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Latest QA counts:
+- Matthew 1 semantic ambiguities / relationships: 5
+- Matthew 2 movement semantics: 5
+- Matthew 2 semantic continuity: 4
