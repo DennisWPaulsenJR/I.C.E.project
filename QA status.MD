@@ -353,3 +353,26 @@ Validation:
 Manual smoke:
 - Targeted search found no remaining user-facing the old targeted confidence-oriented display labels.
 - Remaining `confidence` matches are internal field names, stored semantic values, CSS hooks, or historical log text.
+
+## 2026-05-27 - Phase 8.3c Semantic Causality QA
+
+New QA coverage:
+- `ICE_SEMANTIC_CAUSALITY` is cleared, collected, counted, and sampled in Matthew QA bundles.
+- Matthew 1 asserts the revelation -> Joseph obedience -> JESUS naming semantic sequence.
+- Matthew 2 asserts grounded threat/warning/obedience/preservation and guided return/Nazareth fulfillment sequences.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Latest counts:
+- Matthew 1 semantic causality: 1
+- Matthew 2 semantic causality: 2
+- Matthew 2 movement semantics: 5
+- Matthew 2 semantic continuity: 4

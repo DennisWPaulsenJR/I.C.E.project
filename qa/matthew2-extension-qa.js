@@ -40,7 +40,8 @@ const STORAGE_KEYS = [
   "ICE_ORIGIN_AUTHORITY_PATHS",
   "ICE_ENTITY_RELATION_ROLES",
   "ICE_SEMANTIC_CONTINUITY",
-  "ICE_MOVEMENT_SEMANTICS"
+  "ICE_MOVEMENT_SEMANTICS",
+  "ICE_SEMANTIC_CAUSALITY"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -99,7 +100,8 @@ function emptyCounts() {
     originAuthorityPaths: 0,
     entityRelationRoles: 0,
     semanticContinuity: 0,
-    movementSemantics: 0
+    movementSemantics: 0,
+    semanticCausality: 0
   };
 }
 
@@ -124,7 +126,8 @@ function buildCounts(storageData) {
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
     entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
     semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
-    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS)
+    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS),
+    semanticCausality: count(storageData.ICE_SEMANTIC_CAUSALITY)
   };
 }
 
@@ -151,6 +154,7 @@ function buildSamples(storageData) {
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
     semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
     movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
+    semanticCausality: sample(storageData.ICE_SEMANTIC_CAUSALITY, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -334,7 +338,24 @@ function hasMovementSemantic(data, movementType, destinationLocation) {
     item.sourceGrounding
   );
 }
-function isGroundedPassageFunction(item) {
+function hasSemanticCausality(data, sequenceType, predicate = () => true) {
+  return (data.ICE_SEMANTIC_CAUSALITY || []).some((item) =>
+    item.sequenceType === sequenceType &&
+    item.initiatingCause &&
+    item.authoritySource &&
+    item.humanResponse &&
+    item.consequenceResult &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    Array.isArray(item.sequenceSteps) &&
+    item.sequenceSteps.length > 0 &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.confidence &&
+    item.sourceGrounding &&
+    predicate(item)
+  );
+}function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
     item?.verseRange &&
@@ -360,6 +381,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_ENTITY_RELATION_ROLES) <= 0) failures.push("Expected Matthew 2 semantic relationship role records count > 0.");
   if (count(data.ICE_SEMANTIC_CONTINUITY) <= 0) failures.push("Expected Matthew 2 cross-chapter semantic continuity records count > 0.");
   if (count(data.ICE_MOVEMENT_SEMANTICS) <= 0) failures.push("Expected Matthew 2 movement / location semantic records count > 0.");
+  if (count(data.ICE_SEMANTIC_CAUSALITY) <= 0) failures.push("Expected Matthew 2 semantic sequence / causality records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -387,6 +409,9 @@ function evaluateFailures(data) {
   for (const [movementType, destinationLocation] of [["prophecy_location_identification", "Bethlehem"], ["witness_travel_toward_child", "Jerusalem"], ["protective_escape_preservation", "Egypt"], ["return_after_hostile_threat_removed", "land of Israel"], ["protective_redirection_settlement_fulfillment", "Nazareth"]]) {
     if (!hasMovementSemantic(data, movementType, destinationLocation)) failures.push(`Expected Matthew 2 movement / location semantic ${movementType} -> ${destinationLocation}.`);
   }
+
+  if (!hasSemanticCausality(data, "hostile_threat_warning_preservation_sequence", (item) => /Herod seeks the CHILD/i.test(item.initiatingCause) && /THE LORD/i.test(item.authoritySource) && /Joseph obeys/i.test(item.humanResponse) && /preserved/i.test(item.consequenceResult))) failures.push("Expected Matthew 2 semantic causality sequence for Herod threat, Divine warning, Joseph obedience, and CHILD preservation.");
+  if (!hasSemanticCausality(data, "threat_removed_guided_return_fulfillment_sequence", (item) => /threat/i.test(item.initiatingCause) && /warning/i.test(item.messengerTransfer) && /Nazareth/i.test(item.preservationFulfillmentOutcome))) failures.push("Expected Matthew 2 semantic causality sequence for threat removal, guided return, and Nazareth fulfillment linkage.");
 
   for (const [continuedEntity, continuityType] of [["Joseph", "continued_authority_revelation_relationship"], ["JESUS / CHILD", "continued_child_identity_and_mission_preservation"], ["scripture narrator / quoted prophet", "continued_prophecy_fulfillment_chain"], ["Herod", "adversarial_escalation_against_mission_preservation"]]) {
     const found = (data.ICE_SEMANTIC_CONTINUITY || []).some((item) => item.continuedEntity === continuedEntity && item.continuityType === continuityType && item.chapterTransition === "Matthew 1 -> Matthew 2" && item.confidence && Array.isArray(item.evidence) && item.evidence.length > 0 && item.sourceGrounding);

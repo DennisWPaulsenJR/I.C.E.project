@@ -40,7 +40,8 @@ const STORAGE_KEYS = [
   "ICE_ORIGIN_AUTHORITY_PATHS",
   "ICE_ENTITY_RELATION_ROLES",
   "ICE_SEMANTIC_CONTINUITY",
-  "ICE_MOVEMENT_SEMANTICS"
+  "ICE_MOVEMENT_SEMANTICS",
+  "ICE_SEMANTIC_CAUSALITY"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -99,7 +100,8 @@ function emptyCounts() {
     originAuthorityPaths: 0,
     entityRelationRoles: 0,
     semanticContinuity: 0,
-    movementSemantics: 0
+    movementSemantics: 0,
+    semanticCausality: 0
   };
 }
 
@@ -124,7 +126,8 @@ function buildCounts(storageData) {
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
     entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
     semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
-    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS)
+    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS),
+    semanticCausality: count(storageData.ICE_SEMANTIC_CAUSALITY)
   };
 }
 
@@ -151,6 +154,7 @@ function buildSamples(storageData) {
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
     semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
     movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
+    semanticCausality: sample(storageData.ICE_SEMANTIC_CAUSALITY, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -321,7 +325,24 @@ function hasEntityRelationRole(data, sourceEntity, targetEntity, semanticRole) {
 function hasOriginAuthorityPath(data, predicate = () => true) {
   return (data.ICE_ORIGIN_AUTHORITY_PATHS || []).some((item) => predicate(item));
 }
-function isGroundedPassageFunction(item) {
+function hasSemanticCausality(data, sequenceType, predicate = () => true) {
+  return (data.ICE_SEMANTIC_CAUSALITY || []).some((item) =>
+    item.sequenceType === sequenceType &&
+    item.initiatingCause &&
+    item.authoritySource &&
+    item.humanResponse &&
+    item.consequenceResult &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    Array.isArray(item.sequenceSteps) &&
+    item.sequenceSteps.length > 0 &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.confidence &&
+    item.sourceGrounding &&
+    predicate(item)
+  );
+}function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
     item?.verseRange &&
@@ -373,6 +394,9 @@ function evaluateFailures(data) {
   if (count(data.ICE_SEMANTIC_AMBIGUITIES) <= 0) failures.push("Expected semantic ambiguity / contrast records count > 0.");
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected origin / authority path records count > 0.");
   if (count(data.ICE_ENTITY_RELATION_ROLES) <= 0) failures.push("Expected semantic relationship role records count > 0.");
+  if (count(data.ICE_SEMANTIC_CAUSALITY) <= 0) failures.push("Expected semantic sequence / causality records count > 0.");
+  if (!hasSemanticCausality(data, "revelation_obedience_naming_sequence", (item) => /THE LORD/i.test(item.authoritySource) && /AngEL Of THE LORD/i.test(item.messengerTransfer) && /Joseph obeys/i.test(item.humanResponse) && /JESUS is named/i.test(item.consequenceResult))) failures.push("Expected Matthew 1 semantic causality sequence for revelation, Joseph obedience, and JESUS naming.");
+
   for (const [sourceEntity, targetEntity, semanticRole] of [
     ["THE LORD", "AngEL Of THE LORD", "source_authority_to_messenger"],
     ["AngEL Of THE LORD", "Joseph", "revelation_messenger_to_recipient"],

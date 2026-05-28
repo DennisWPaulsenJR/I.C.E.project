@@ -2,6 +2,45 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Phase 8.3c Semantic Sequence / Causality Layer
+
+Instruction summary:
+- Add a derived semantic causality/sequencing layer that models cause, instruction/warning, response, consequence, preservation, and fulfillment using Matthew 1 and Matthew 2 as pilots.
+- Preserve source phrase vs derived meaning, App accuracy wording, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, Class I / Class i distinction, ontology hierarchy, and source-grounded restraint.
+
+Codex action summary:
+- Added `ICE_SEMANTIC_CAUSALITY` storage, scope integrity coverage, analysis diagnostics, and QA bundle counts/samples.
+- Added one Matthew 1 pilot sequence for Divine revelation, Joseph obedience, JESUS naming, and mission/fulfillment meaning.
+- Added two Matthew 2 pilot sequences for Herod threat -> Divine warning -> Joseph obedience -> CHILD preservation -> Egypt fulfillment, and threat-removal / warning -> guided return -> Nazareth fulfillment linkage.
+- Added Study Panel Semantic Sequence / Causality cards with initiating cause, authority source, messenger / transfer, Human response, consequence/result, preservation/fulfillment outcome, source phrase, derived meaning, App accuracy, semantic grounding, primary entities, and related layer navigation.
+- Added Matthew 1 and Matthew 2 QA assertions for grounded semantic causality records.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `semanticCausality: 1`.
+- `npm.cmd run qa:matthew2` passed with `semanticCausality: 2`.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Rename App Confidence to App Accuracy
 
 Instruction summary:

@@ -2388,7 +2388,41 @@ Checks:
 - `npm.cmd run qa:matthew1` passed.
 - `npm.cmd run qa:matthew2` passed.
 - `npm.cmd run qa:matthew-pages` passed.
-- Manual smoke search found no remaining targeted user-facing App accuracy wording.
+- Manual smoke search found no remaining targeted user-facing prior confidence-oriented wording.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
+
+## 2026-05-27 21:27 - pcdx - Add semantic causality layer
+Summary:
+- Implemented Phase 8.3c Semantic Sequence / Causality as `ICE_SEMANTIC_CAUSALITY`.
+- Added Matthew 1 sequence for Divine revelation -> Joseph obedience -> JESUS naming -> mission/fulfillment meaning.
+- Added Matthew 2 sequences for Herod threat -> Divine warning -> Joseph obedience -> CHILD preservation -> Egypt fulfillment, and threat-removal / warning -> guided return -> Nazareth fulfillment linkage.
+- Added Study Panel cards, diagnostics, scope integrity, QA bundle counts/samples, and QA assertions for the new derived layer.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with semanticCausality: 1.
+- `npm.cmd run qa:matthew2` passed with semanticCausality: 2.
+- `npm.cmd run qa:matthew-pages` passed.
 
 Commit:
 - This commit

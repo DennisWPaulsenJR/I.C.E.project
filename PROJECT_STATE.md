@@ -628,3 +628,35 @@ Preserved:
 - semantic styling
 - ontology hierarchy
 - Class I / Class i distinction
+
+## Phase 8.3c Semantic Sequence / Causality Layer
+
+Status: implemented and validated.
+
+New derived layer:
+- `ICE_SEMANTIC_CAUSALITY`
+
+Purpose:
+- Model why source-grounded events happen in sequence: cause -> instruction/warning -> response -> consequence/result -> preservation/fulfillment.
+- Keep causality inspectable without adding unsupported claims.
+
+Matthew 1 pilot record:
+- Divine revelation -> Joseph receives instruction -> Joseph obeys -> JESUS is named -> mission meaning / fulfillment frame is preserved.
+
+Matthew 2 pilot records:
+- Herod seeks the CHILD -> Divine warning through AngEL Of THE LORD -> Joseph obeys and flees into Egypt -> CHILD / JESUS is preserved -> Egypt fulfillment continuity continues.
+- Threat removed / renewed avoidance context -> dream guidance -> Joseph returns and redirects toward Nazareth -> CHILD / JESUS remains preserved -> Nazareth fulfillment linkage continues.
+
+Study Panel:
+- Added compact Semantic Sequence / Causality section.
+- Cards show initiating cause, authority source, messenger / transfer, Human response, consequence / result, preservation / fulfillment outcome, sequence steps, source phrase, derived meaning, App accuracy, evidence, primary entities, related semantic layers, hierarchy, semantic grounding, and scope.
+
+Preserved:
+- source phrase vs derived meaning
+- App accuracy wording
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class i distinction
+- ontology hierarchy
+- conservative, source-grounded causality only
