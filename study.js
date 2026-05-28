@@ -2011,6 +2011,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
+  function adapterModeLabel(adapter = studyData.activeAdapter || {}) {
+    if (adapter?.adapterName === "lds_scripture_adapter") return "Scripture Semantic Mode";
+    if (adapter?.adapterName === "generic_html_adapter") return "Generic Web Semantic Mode";
+    if (adapter?.adapterName === "plain_text_adapter") return "Plain Text Semantic Mode";
+    return "Unknown Semantic Mode";
+  }
+
+  function adapterModeDescription(adapter = studyData.activeAdapter || {}) {
+    if (adapter?.adapterName === "lds_scripture_adapter") return "ontology-heavy, authority-aware, revelation-aware scripture analysis";
+    if (adapter?.adapterName === "generic_html_adapter") return "exploratory generic HTML semantic indexing; broader and lower-certainty by design";
+    if (adapter?.adapterName === "plain_text_adapter") return "minimal text capture with light semantic indexing";
+    return "adapter mode not detected";
+  }
+
+  function isGenericAdapterMode() {
+    return studyData.activeAdapter?.adapterName === "generic_html_adapter";
+  }
   function sourceAdapterSearchText(adapter) {
     return [
       adapter?.adapterName,
@@ -2049,10 +2066,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     count.textContent = "1 active";
     const capabilities = asArray(active.detectedCapabilities || active.semanticCapabilities);
     container.appendChild(createCard(
-      active.adapterName,
+      adapterModeLabel(active),
       [
+        `Adapter: ${active.adapterName}`,
+        `Mode: ${adapterModeDescription(active)}`,
         `Capabilities: ${capabilities.join(", ") || "none detected"}`,
-        displayAppConfidence(active.confidence || "possible"),
+        active.adapterName === "generic_html_adapter" ? `Generic indexing ${displayAppConfidence(active.confidence || "possible")}` : displayAppConfidence(active.confidence || "possible"),
         active.fallbackMode ? "Fallback mode: yes" : "Fallback mode: no",
         active.derivedFrom ? `Detected from: ${active.derivedFrom}` : "",
         active.version ? `Version: ${active.version}` : ""
@@ -5939,6 +5958,12 @@ createRevelationPartsSection(item.subEvents)
       item.linkText,
       item.href,
       item.sourceElement,
+      item.structuralRole,
+      item.surroundingText,
+      item.genericDiscoveryTier,
+      item.lowValueReason,
+      item.semanticUsefulnessScore,
+      item.adapterMode,
       item.verseRef,
       item.scopePath,
       item.confidence
@@ -5958,10 +5983,13 @@ createRevelationPartsSection(item.subEvents)
   function sourceDiscoveryPreviewRank(item = {}) {
     const refType = item.refType || "external_link";
     const scopePath = normalizeText(item.scopePath || item.fromScopePath || "").toLowerCase();
+    if (item.hiddenByDefault) return 120;
+    if (Number(item.semanticUsefulnessScore || 0) >= 70) return 5;
     if (refType === "study_note") return 10;
     if (/\.(?:verse|chapter)\./.test(scopePath) || item.verseRef) return 20;
     if (refType === "cross_reference") return 30;
-    if (["chapter_nav", "source_collection", "table_of_contents", "related_content", "media"].includes(refType)) return 40;
+    if (["chapter_nav", "source_collection", "table_of_contents", "related_content"].includes(refType)) return 40;
+    if (refType === "media") return 80;
     return 90;
   }
 
@@ -5978,11 +6006,15 @@ createRevelationPartsSection(item.subEvents)
     const count = document.getElementById("sourceDiscoveryCount");
     const refs = asArray(studyData.sourceDiscoveryIndex);
     const filtered = refs.filter((item) => matchesSearchQuery(sourceDiscoverySearchText(item), term));
+    const genericMode = isGenericAdapterMode();
+    const visibleFiltered = genericMode ? filtered.filter((item) => !item.hiddenByDefault) : filtered;
+    const hiddenFiltered = genericMode ? filtered.filter((item) => item.hiddenByDefault) : [];
     const scopedCount = refs.filter((item) => item.scopePath).length;
-    const typeCounts = sourceDiscoveryTypeCounts(refs);
+    const typeCounts = sourceDiscoveryTypeCounts(genericMode ? refs.filter((item) => !item.hiddenByDefault) : refs);
+    const hiddenTotal = genericMode ? refs.filter((item) => item.hiddenByDefault).length : 0;
 
     clearElement(container);
-    count.textContent = `${filtered.length} refs`;
+    count.textContent = genericMode ? `${visibleFiltered.length} shown / ${hiddenFiltered.length} collapsed` : `${filtered.length} refs`;
 
     if (refs.length === 0) {
       appendEmpty(container, "No current-page source references discovered.");
@@ -5995,27 +6027,47 @@ createRevelationPartsSection(item.subEvents)
     }
 
     container.appendChild(createCard(
-      "Source Discovery",
+      genericMode ? "Generic Web Source Discovery" : "Source Discovery",
       [
+        `Mode: ${adapterModeLabel(studyData.activeAdapter)}`,
+        genericMode ? "Filtering: low-value generic media/search chrome is collapsed by default." : "Filtering: scripture/source references preserve adapter-specific behavior.",
         `Total discovered refs: ${refs.length}`,
+        genericMode ? `Shown semantic refs: ${refs.length - hiddenTotal}` : "",
+        genericMode ? `Collapsed low-value generic refs: ${hiddenTotal}` : "",
         `Scoped refs: ${scopedCount}`,
         `Adapter: ${studyData.activeAdapter?.adapterName || "unknown"}`,
         typeCounts.map(([type, value]) => `${type}: ${value}`).join("\n")
       ].filter(Boolean).join("\n"),
-      "current-page only"
+      genericMode ? "generic HTML semantic indexing" : "current-page only"
     ));
 
-    sortSourceDiscoveryForPreview(filtered).slice(0, DISPLAY_LIMIT).forEach((item) => {
+    if (genericMode && hiddenFiltered.length > 0) {
+      container.appendChild(createCard(
+        "Collapsed Generic Media / Search Chrome",
+        hiddenFiltered.slice(0, 6).map((item) => [
+          trimText(item.linkText || item.href || "generic ref", 90),
+          item.refType || "external_link",
+          item.lowValueReason || "low semantic usefulness",
+          `score: ${item.semanticUsefulnessScore ?? "n/a"}`
+        ].join(" | ")).join("\n"),
+        `${hiddenFiltered.length} low-confidence generic item(s) collapsed`
+      ));
+    }
+
+    sortSourceDiscoveryForPreview(visibleFiltered).slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createCard(
         item.linkText || item.href || "Source ref",
         [
           `Type: ${item.refType || "external_link"}`,
+          genericMode ? `Generic semantic tier: ${item.genericDiscoveryTier || "generic_semantic_candidate"}` : "",
+          genericMode ? `Semantic usefulness: ${item.semanticUsefulnessScore ?? "not scored"}` : "",
+          item.structuralRole ? `Structure: ${item.structuralRole}` : "",
           item.scopePath ? `Scope: ${item.scopePath}` : "Scope: unscoped",
           item.verseRef ? `Verse: ${item.verseRef}` : "",
           `Href: ${trimText(item.href || "", 120)}`,
           item.sourceElement ? `Element: ${item.sourceElement}` : ""
         ].filter(Boolean).join("\n"),
-        displayAppConfidence(item.confidence || "possible")
+        genericMode ? `Generic indexing ${displayAppConfidence(item.confidence || "possible")}` : displayAppConfidence(item.confidence || "possible")
       ));
     });
   }

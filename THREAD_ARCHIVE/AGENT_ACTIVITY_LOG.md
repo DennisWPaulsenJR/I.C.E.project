@@ -2429,3 +2429,32 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-27 22:15 - pcdx - Refine generic adapter filtering
+Summary:
+- Refined `generic_html_adapter` Source Discovery so generic web pages display as Generic Web Semantic Mode instead of scripture-style semantic mode.
+- Added structural context and semantic usefulness scoring for generic source refs.
+- Collapsed low-value generic media/search chrome by default and kept those collapsed refs out of generic reference graph edges.
+- Preserved LDS scripture adapter source discovery/reference graph behavior and App accuracy wording.
+
+Files touched:
+- `content.js`
+- `background.js`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check content.js` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual synthetic generic/search smoke confirmed Images/Videos/YouTube collapse and ontology/semantic documentation remains visible.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

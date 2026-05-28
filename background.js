@@ -635,6 +635,70 @@ function createDomSemanticHints(captures) {
   // cross-reference ingestion without making markup mandatory for analysis.
   return hints;
 }
+function genericSemanticText(value = "") {
+  return normalizeWhitespace(String(value || "")).toLowerCase();
+}
+
+function genericSourceDiscoveryQuality(item = {}, activeAdapter = {}) {
+  const isGeneric = activeAdapter?.adapterName === "generic_html_adapter";
+  const text = genericSemanticText(item.linkText || "");
+  const surrounding = genericSemanticText(item.surroundingText || "");
+  const href = genericSemanticText(item.href || "");
+  const sourceElement = genericSemanticText(item.sourceElement || "");
+  const structuralRole = genericSemanticText(item.structuralRole || "");
+  const combined = `${text} ${surrounding} ${href} ${sourceElement} ${structuralRole}`;
+  let score = 40;
+  const reasons = [];
+
+  if (!isGeneric) {
+    return {
+      score: 100,
+      tier: "scripture_adapter_reference",
+      hiddenByDefault: false,
+      reason: "scripture adapter preserves source discovery behavior"
+    };
+  }
+
+  if (item.refType === "study_note" || item.refType === "cross_reference") score += 35;
+  if (item.refType === "external_link" || item.refType === "related_content") score += 10;
+  if (item.refType === "media") {
+    score -= 35;
+    reasons.push("generic media reference");
+  }
+  if (/heading_or_title|main_content/.test(structuralRole)) score += 30;
+  if (/generic_result_card/.test(structuralRole)) score -= 12;
+  if (/navigation_chrome/.test(structuralRole)) {
+    score -= 35;
+    reasons.push("navigation/search chrome");
+  }
+  if (/\b(ontology|semantic|architecture|relationship|class|entity|knowledge|paper|article|documentation|reference|source|schema|model|analysis)\b/.test(combined)) score += 28;
+  if (/\b(images?|videos?|shopping|news|maps|books|flights|finance|all results|search tools|more results|people also search|related searches)\b/.test(text) && text.length <= 28) {
+    score -= 45;
+    reasons.push("generic search UI label");
+  }
+  if (/\b(youtube|youtu\.be|google\.com\/search|google\.com\/imgres|tbm=isch|tbm=vid|\/videos?\/|\/watch\?)/.test(href)) {
+    score -= 30;
+    reasons.push("generic media/search result rail");
+  }
+  if (text.length < 4) {
+    score -= 25;
+    reasons.push("very short link text");
+  }
+  if (text.length > 48 && /\b(ontology|semantic|architecture|relationship|class|entity|model|analysis)\b/.test(text)) score += 12;
+
+  const tier = score >= 70 ? "high_semantic_value" : score >= 45 ? "generic_semantic_candidate" : "low_value_generic_media_or_chrome";
+  return {
+    score,
+    tier,
+    hiddenByDefault: tier === "low_value_generic_media_or_chrome",
+    reason: reasons.join("; ") || (tier === "high_semantic_value" ? "generic semantically useful reference" : "generic exploratory reference")
+  };
+}
+
+function shouldKeepGenericSourceDiscovery(item = {}, quality = {}) {
+  if (quality.score >= 28) return true;
+  return /\b(ontology|semantic|architecture|relationship|class|entity|model|analysis)\b/i.test(`${item.linkText || ""} ${item.surroundingText || ""}`);
+}
 function normalizeSourceDiscoveryItem(capture, link, activeAdapter, index) {
   const sourceContext = buildSourceContext(capture || {});
   const href = normalizeWhitespace(link?.href || "");
@@ -651,6 +715,8 @@ function normalizeSourceDiscoveryItem(capture, link, activeAdapter, index) {
     href,
     refType: link.refType || "external_link",
     sourceElement: link.sourceElement || "",
+    structuralRole: link.structuralRole || "",
+    surroundingText: trimText(link.surroundingText || "", 260),
     verseRef: link.verseRef || "",
     verseNumber: link.verseNumber || "",
     scopePath: link.scopePath || "",
@@ -663,6 +729,13 @@ function normalizeSourceDiscoveryItem(capture, link, activeAdapter, index) {
     confidence: link.confidence || "possible"
   };
 
+  const quality = genericSourceDiscoveryQuality(item, activeAdapter);
+  item.semanticUsefulnessScore = quality.score;
+  item.genericDiscoveryTier = quality.tier;
+  item.hiddenByDefault = quality.hiddenByDefault;
+  item.lowValueReason = quality.reason;
+  item.adapterMode = activeAdapter?.adapterName === "generic_html_adapter" ? "generic_web_semantic_mode" : activeAdapter?.adapterName === "lds_scripture_adapter" ? "scripture_semantic_mode" : "plain_text_mode";
+
   return enrichScopeItem(item, "source_discovery", index, activeAdapter);
 }
 
@@ -674,6 +747,7 @@ function createSourceDiscoveryIndex(captures, activeAdapter) {
     for (const link of capture?.sourceDiscoveryLinks || []) {
       const item = normalizeSourceDiscoveryItem(capture, link, activeAdapter, index.length);
       if (!item) continue;
+      if (activeAdapter?.adapterName === "generic_html_adapter" && !shouldKeepGenericSourceDiscovery(item, { score: item.semanticUsefulnessScore })) continue;
       const key = [
         item.sourceCaptureId,
         item.refType,
@@ -688,6 +762,7 @@ function createSourceDiscoveryIndex(captures, activeAdapter) {
   }
 
   return index.sort((a, b) =>
+    Number(b.semanticUsefulnessScore || 0) - Number(a.semanticUsefulnessScore || 0) ||
     a.refType.localeCompare(b.refType) ||
     (a.scopePath || "").localeCompare(b.scopePath || "") ||
     a.linkText.localeCompare(b.linkText)
@@ -715,6 +790,7 @@ function createReferenceGraph(sourceDiscoveryIndex, activeAdapter) {
 
   for (const [index, item] of (sourceDiscoveryIndex || []).entries()) {
     if (!item?.href) continue;
+    if (activeAdapter?.adapterName === "generic_html_adapter" && item.hiddenByDefault) continue;
     const relationshipType = referenceRelationshipType(item.refType);
     const fromScopePath = item.scopePath || "";
     const key = [

@@ -2,6 +2,43 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Generic Adapter Semantic Filtering Refinement
+
+Instruction summary:
+- Refine generic HTML adapter behavior so fallback generic web analysis is clearly distinguished from scripture mode and Source Discovery is less noisy on search/media-heavy pages.
+- Preserve scripture adapter behavior, generic fallback capability, source phrase vs derived meaning, App accuracy wording, ontology architecture, and semantic traceability.
+
+Codex action summary:
+- Added generic source discovery structural context from content extraction: navigation chrome, main content, heading/title, generic result card, and surrounding text.
+- Added generic semantic usefulness scoring in the background pipeline for `generic_html_adapter` source discovery records.
+- Collapsed low-value generic media/search chrome items by default, including generic Images/Videos labels, YouTube/media rails, short navigation labels, and search UI chrome.
+- Kept high-value generic refs visible when they contain semantic/ontology/architecture/entity/documentation signals or appear in main/heading content.
+- Prevented collapsed generic refs from becoming generic reference graph edges, while preserving scripture adapter source discovery/reference graph behavior.
+- Updated Study Panel adapter UX to show Scripture Semantic Mode, Generic Web Semantic Mode, or Plain Text Semantic Mode with mode-specific wording.
+- Updated Source Discovery display to show generic filtering counts, semantic usefulness score/tier, structural role, and a collapsed low-confidence generic media/search card.
+
+Files changed:
+- `content.js`
+- `background.js`
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check content.js` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual synthetic generic/search smoke: Images, Videos, and YouTube examples scored as low-value collapsed; ontology/semantic documentation examples scored high and remained visible.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Phase 8.3c Semantic Sequence / Causality Layer
 
 Instruction summary:

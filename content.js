@@ -683,6 +683,20 @@
     return "external_link";
   }
 
+
+  function sourceDiscoveryStructuralRole(link) {
+    if (!link) return "unknown";
+    if (link.closest("nav, header, footer, aside, [role='navigation'], [aria-label*='nav' i], [class*='nav' i], [class*='menu' i]")) return "navigation_chrome";
+    if (link.closest("article, main, [role='main']")) return "main_content";
+    if (link.closest("h1, h2, h3, h4, [class*='title' i], [class*='heading' i]")) return "heading_or_title";
+    if (link.closest("[class*='card' i], [class*='result' i], [data-testid*='result' i]")) return "generic_result_card";
+    return "generic_link";
+  }
+
+  function sourceDiscoverySurroundingText(link) {
+    const container = link?.closest("article, main, section, li, div, p") || link;
+    return normalizeCapturedText(container?.textContent || "").slice(0, 260);
+  }
   function sourceDiscoveryConfidence(link, refType) {
     if (link.matches("a.study-note-ref") || refType === "study_note") return "source-markup";
     if (["chapter_nav", "table_of_contents", "source_collection"].includes(refType)) return "probable";
@@ -717,6 +731,8 @@
         href,
         refType,
         sourceElement,
+        structuralRole: sourceDiscoveryStructuralRole(link),
+        surroundingText: sourceDiscoverySurroundingText(link),
         verseRef,
         verseNumber,
         scopePath: sourceDomPathForScope(verseScope),
