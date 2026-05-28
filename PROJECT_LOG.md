@@ -2,6 +2,36 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Semantic Grounding Wording Refinement
+
+Instruction summary:
+- Refine user-facing semantic quality wording so App accuracy reflects semantic grounding quality instead of computational certainty or source/doctrinal doubt.
+- Preserve internal stored values, semantic styling, App accuracy labeling, source phrase vs derived meaning, ontology hierarchy, and Class I / Class i distinction.
+
+Codex action summary:
+- Updated Study Panel display translation so stored `explicit` renders as `clear`, `probable` as `highly grounded`, `possible` as `grounded`, weak/limited as `lightly grounded`, attributed values as `source-attributed`, and unresolved values as `unresolved / still evaluating`.
+- Preserved internal stored confidence values and QA semantics.
+- Updated confidence styling detection to follow the new grounding-language display values while retaining the existing CSS hooks.
+- Updated DOM semantic hint preview to use the same App accuracy display translation instead of printing raw stored values.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke: targeted search found no direct user-facing raw stored App accuracy labels in Study Panel source.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Generic Adapter Semantic Filtering Refinement
 
 Instruction summary:

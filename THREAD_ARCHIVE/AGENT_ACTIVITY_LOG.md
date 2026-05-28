@@ -2458,3 +2458,27 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-27 23:24 - pcdx - Refine semantic grounding wording
+Summary:
+- Refined App accuracy display wording from raw confidence values to semantic grounding language.
+- Display translations now render explicit -> clear, probable -> highly grounded, possible -> grounded, weak/limited -> lightly grounded, attributed -> source-attributed, and unresolved -> unresolved / still evaluating.
+- Preserved stored values, QA semantics, App accuracy labeling, source/derived separation, and semantic styling hooks.
+
+Files touched:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke search found no direct user-facing raw App accuracy labels for probable/possible/explicit/source-markup in Study Panel source.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

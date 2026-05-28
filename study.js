@@ -657,19 +657,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function confidenceClassName(value) {
     const normalized = normalizeText(displayConfidence(value || "")).toLowerCase();
-    if (/^explicit$|direct|source-grounded|source grounded/.test(normalized)) return "ice-confidence-explicit";
-    if (/^probable$|semantic agreement|multiple semantic/.test(normalized)) return "ice-confidence-probable";
-    if (/^possible$|weak|limited/.test(normalized)) return "ice-confidence-possible";
-    if (/^attributed$|believed|traditional|narrator|source attribution/.test(normalized)) return "ice-confidence-attributed";
-    if (/^unresolved$|context required|ambiguous|uncertain/.test(normalized)) return "ice-confidence-unresolved";
+    if (/^clear$|direct|source-grounded|source grounded|source-markup/.test(normalized)) return "ice-confidence-explicit";
+    if (/^highly grounded$|semantic agreement|multiple semantic/.test(normalized)) return "ice-confidence-probable";
+    if (/^grounded$/.test(normalized)) return "ice-confidence-possible";
+    if (/^lightly grounded$|weak|limited/.test(normalized)) return "ice-confidence-possible";
+    if (/^source-attributed$|traditional|narrator|source attribution/.test(normalized)) return "ice-confidence-attributed";
+    if (/^unresolved|still evaluating|context required|ambiguous|uncertain/.test(normalized)) return "ice-confidence-unresolved";
     return "ice-confidence-probable";
   }
+
   function displayConfidence(value) {
-    if (value === "inferred-source") return "attributed";
-    if (value === "traditional-attribution") return "believed";
+    const normalized = normalizeText(value || "").toLowerCase();
+    if (!normalized) return "grounded";
+    if (["explicit", "source-markup", "direct", "source-grounded", "source grounded"].includes(normalized)) return "clear";
+    if (["probable", "semantic agreement", "multiple semantic", "prophecy-fulfillment"].includes(normalized)) return "highly grounded";
+    if (["possible"].includes(normalized)) return "grounded";
+    if (["weak", "limited"].includes(normalized)) return "lightly grounded";
+    if (["attributed", "inferred-source", "traditional-attribution", "believed", "narrator", "source attribution"].includes(normalized)) return "source-attributed";
+    if (["unresolved", "context_required", "context required", "ambiguous", "uncertain"].includes(normalized)) return "unresolved / still evaluating";
     return value;
   }
-
   function displayAppConfidence(value, label = "App accuracy") {
     return `${label}: ${displayConfidence(value)}`;
   }
@@ -6228,7 +6235,7 @@ createRevelationPartsSection(item.subEvents)
 
     const preview = filtered.slice(0, 5).map((item) => {
       const ref = item.verseRef || item.verseNumber || "no verse ref";
-      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / App accuracy: ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
+      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / App accuracy: ${displayConfidence(item.confidence || "source-markup")}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
     }).join("\n");
     container.appendChild(createCard(
       "DOM Hint Preview",
