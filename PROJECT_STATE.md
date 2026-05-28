@@ -572,3 +572,28 @@ Preserved:
 - source phrase vs derived meaning
 - App confidence wording
 - Class I / Class i distinction
+
+## Primary Entities Ontology-Role Separation Fix
+
+Status: implemented and validated.
+
+Display fix:
+- Primary Entities / Characters now uses exact entity matching for classified display to prevent THE LORD from resolving through AngEL Of THE LORD metadata.
+- Class I role display is class-safe: THE LORD / GOD renders as source authority, HOLY origin, Divine authority, and revelation origin, never messenger / revelation carrier.
+- AngEL Of THE LORD remains Class II and carries messenger / revelation carrier / authority transfer participant roles.
+- Mission, process, action, and semantic-summary phrases are filtered before entity rendering.
+
+Filtered from entity labels:
+- SAVE HIS People from their sins
+- Conceived Of THE HOLY SPIRIT
+- obedient_response_to_revealed_name
+- divine_message_to_obedient_response
+- other process/path/mission/derived-meaning strings
+
+Preserved:
+- source phrase vs derived meaning separation
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class i distinction
+- ontology hierarchy

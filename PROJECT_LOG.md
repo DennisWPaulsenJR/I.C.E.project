@@ -2620,3 +2620,36 @@ Commit:
 
 Status:
 - Implemented by pcdx.
+
+## 2026-05-27 - Fix Primary Entity Ontology Role Separation
+
+Instruction summary:
+- Fix Primary Entities / Characters display so ontology roles do not merge across classes and process/action/mission strings do not render as entities.
+
+Codex action summary:
+- Tightened classified Primary Entities lookup to exact entity-record matching instead of fuzzy substring matching.
+- Added entity-candidate rejection for mission/process/action strings before display aggregation.
+- Added class-consistent role rendering so Class I THE LORD / GOD cannot display messenger or carrier roles.
+- Preserved AngEL Of THE LORD as Class II messenger / revelation carrier / authority transfer participant.
+- Preserved Joseph/Mary Class III roles, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, source/derived separation, and ontology hierarchy.
+
+Files changed:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke: no `THE LORD` messenger/carrier display pattern found; process/mission phrases remain only in derived meaning/process display code and are blocked by the entity-candidate rejection filter.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

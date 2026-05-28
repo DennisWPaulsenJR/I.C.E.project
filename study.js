@@ -328,10 +328,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   function semanticKnownEntityNamesInText(values = []) {
     const text = normalizeText(asArray(values).flat(Infinity).join(" ")).toLowerCase();
     const known = [
-      ["THE LORD", /\b(the lord|god)\b/],
       ["AngEL Of THE LORD", /\bangel of the lord\b/],
+      ["THE LORD", /\b(the lord|god)\b/],
       ["JESUS CHRIST", /\bjesus christ\b/],
-      ["JESUS", /\bjesus\b|\byoung child\b|\bchild\b/],
+      ["JESUS", /\bjesus\b|\byoung child\b/],
+      ["CHILD", /\byoung child\b|\bchild\b/],
       ["Joseph", /\bjoseph\b/],
       ["Mary", /\bmary\b/],
       ["Abraham", /\babraham\b/],
@@ -344,6 +345,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Nazareth", /\bnazareth\b/]
     ];
     return known.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
+  }
+
+  function semanticEntityCandidateRejected(value) {
+    const text = normalizeText(value || "");
+    const normalized = text.toLowerCase();
+    if (!normalized) return true;
+    if (normalized.length > 80) return true;
+    if (/[;:]/.test(text)) return true;
+    if (/\b(save his people from their sins|conceived of the holy spirit|child conceived of the holy spirit)\b/i.test(text)) return true;
+    if (/\b(obedient_response_to_revealed_name|divine_message_to_obedient_response|protective_obedient_response|source_authority_to_|_to_)\b/i.test(text)) return true;
+    if (/\b(conceived|save|fulfill(?:ed|ment)?|response|process|path|mission|declaration|derived|meaning|instruction|preservation)\b/i.test(text) && !semanticKnownEntityNamesInText([text]).includes(text)) return true;
+    return false;
+  }
+
+  function semanticEntityExactRecord(name) {
+    const normalized = normalizedEntityName(name);
+    if (!normalized) return null;
+    return [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]
+      .find((item) => entityNameCandidates(item).some((candidate) => candidate === normalized)) || null;
+  }
+
+  function semanticEntityDisplayName(name) {
+    const normalized = normalizedEntityName(name);
+    if (normalized === "the lord" || normalized === "god") return normalized === "god" ? "GOD" : "THE LORD";
+    if (normalized === "angel of the lord") return "AngEL Of THE LORD";
+    if (normalized === "holy ghost" || normalized === "holy spirit") return "HOLY SPIRIT";
+    if (normalized === "jesus") return "JESUS";
+    if (normalized === "jesus christ") return "JESUS CHRIST";
+    if (normalized === "child") return "CHILD";
+    const record = semanticEntityExactRecord(name);
+    return renderDivineDisplayText(entityDisplayNameFromRecord(record || { displayName: name }) || name);
   }
   function semanticEntityCandidateValues(item = {}) {
     return [
@@ -363,11 +395,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.destinationLocation,
       asArray(item.subEvents).map((part) => [part.actor, part.speaker, part.recipient, part.target, part.concerning]),
       semanticKnownEntityNamesInText([item.principleText, item.contextSnippet, item.sourceTitle, item.plainMeaning, item.fulfillmentMeaning, item.derivedMeaning, item.sourceGrounding])
-    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean);
+    ].flat(Infinity).map((value) => normalizeText(value)).filter((value) => value && !semanticEntityCandidateRejected(value));
   }
 
   function addSemanticEntityCandidate(candidates, name, source = {}) {
-    const display = passageFunctionEntityDisplayName(name);
+    if (semanticEntityCandidateRejected(name)) return null;
+    const display = semanticEntityDisplayName(name);
     const key = normalizedEntityName(display || name);
     if (!key || /^(not recorded|unknown|current scope)$/i.test(key)) return null;
     const existing = candidates.get(key) || {
@@ -408,7 +441,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (normalized && asArray(item.relatedEntities).map(normalizedEntityName).includes(normalized)) roles.push("primary evidence entity");
     if (normalized && [item.sourceEntity, item.origin, item.authoritySource].map(normalizedEntityName).includes(normalized)) roles.push("source / authority side");
     if (normalized && [item.targetEntity, item.recipient, item.target].map(normalizedEntityName).includes(normalized)) roles.push("recipient / target side");
-    if (normalized && [item.speaker, item.messenger].map(normalizedEntityName).includes(normalized)) roles.push("speaker / messenger side");
+    if (normalized && normalizedEntityName(item.speaker) === normalized) roles.push("speaker side");
+    if (normalized && normalizedEntityName(item.messenger) === normalized && semanticEntityClassValue(name) !== "I") roles.push("messenger side");
     if (normalized && [item.originLocation].map(normalizedEntityName).includes(normalized)) roles.push("origin location");
     if (normalized && [item.destinationLocation].map(normalizedEntityName).includes(normalized)) roles.push("destination location");
     if (mode === "timeline") roles.push("narrative moment participant");
@@ -416,15 +450,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function semanticEntityClassValue(name) {
-    const record = hierarchyEntityRecord(name);
-    const fromRecord = classifyEntityDisplay(record || { displayName: name });
-    if (fromRecord) return fromRecord;
     const normalized = normalizedEntityName(name);
-    if (["the lord", "god", "jesus", "jesus christ"].includes(normalized)) return "I";
+    if (["the lord", "god", "jesus", "jesus christ", "child"].includes(normalized)) return "I";
     if (normalized === "angel of the lord") return "II";
     if (["joseph", "mary", "abraham", "david", "scripture narrator", "prophet", "quoted prophet", "wise men", "chief priests and scribes"].includes(normalized)) return "III";
     if (["bethlehem", "jerusalem", "egypt", "nazareth", "galilee", "judaea", "land of israel", "east"].includes(normalized)) return "IIIII";
-    return "";
+    const record = semanticEntityExactRecord(name);
+    return classifyEntityDisplay(record || { displayName: name }) || "";
   }
 
   function semanticEntityClassRank(name) {
@@ -518,6 +550,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  function classConsistentEntityRoles(entity) {
+    const entityClass = semanticEntityClassValue(entity.name);
+    const normalized = normalizedEntityName(entity.name);
+    const rawRoles = Array.from(entity.roles).filter(Boolean);
+    const rawLocal = Array.from(entity.localRoles).filter(Boolean);
+    const rejectMessenger = (value) => entityClass === "I" && /messenger|carrier|transfer participant/i.test(value || "");
+    const roles = rawRoles.filter((value) => !rejectMessenger(value));
+    const localRoles = rawLocal.filter((value) => !rejectMessenger(value));
+
+    if (entityClass === "I") {
+      if (normalized === "the lord" || normalized === "god") return {
+        roles: ["source authority / HOLY origin", "Divine authority / revelation origin"],
+        localRoles: localRoles.length ? localRoles : ["authority/source relevance"]
+      };
+      if (normalized === "jesus" || normalized === "child") return {
+        roles: [normalized === "child" ? "CHILD semantic referent" : "Narrative NAME / CHILD mission focus"],
+        localRoles: localRoles.length ? localRoles : ["mission/person focus"]
+      };
+      if (normalized === "jesus christ") return {
+        roles: ["Canonical/source identity"],
+        localRoles: localRoles.length ? localRoles : ["canonical identity focus"]
+      };
+    }
+
+    if (entityClass === "II" && normalized === "angel of the lord") return {
+      roles: ["messenger / revelation carrier", "authority transfer participant"],
+      localRoles: localRoles.length ? localRoles : ["messenger/revelation relevance"]
+    };
+
+    return {
+      roles: roles.length ? roles : ["semantic entity"],
+      localRoles: localRoles.length ? localRoles : ["contextual evidence entity"]
+    };
+  }
   function classifiedPrimaryEntityLines(item = {}, mode = "generic", limit = 14) {
     const entities = semanticPrimaryEntityCandidates(item, mode);
     const lines = [];
@@ -528,8 +594,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         lines.push(heading);
         currentClass = heading;
       }
-      const role = Array.from(entity.roles).filter(Boolean).slice(0, 2).join("; ") || "semantic entity";
-      const local = Array.from(entity.localRoles).filter(Boolean).slice(0, 2).join("; ") || "contextual evidence entity";
+      const consistent = classConsistentEntityRoles(entity);
+      const role = consistent.roles.slice(0, 2).join("; ");
+      const local = consistent.localRoles.slice(0, 2).join("; ");
       const suffix = normalizedEntityName(entity.name) === "jesus" ? " - Narrative NAME" : normalizedEntityName(entity.name) === "jesus christ" ? " - Canonical/source identity" : "";
       lines.push(`${entity.name}${suffix} | Role: ${role} | Local: ${local}`);
       if (lines.length >= limit) break;
@@ -3515,7 +3582,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function hierarchyEntityDisplayLine(name) {
-    const display = passageFunctionEntityDisplayName(name);
+    if (semanticEntityCandidateRejected(name)) return null;
+    const display = semanticEntityDisplayName(name);
     return display ? `${display}: ${hierarchyEntityClassLabel(name)}` : "";
   }
 

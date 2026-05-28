@@ -2340,3 +2340,31 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-27 - pcdx - Fix ontology role separation
+Summary:
+- Fixed Primary Entities / Characters ontology-role separation.
+- Replaced fuzzy classified display entity matching with exact entity matching plus explicit canonical/entity display handling.
+- Added filtering for process, action, mission, and semantic summary strings before they can render as entity labels.
+- Added class-consistent role rendering so THE LORD remains Class I source authority / HOLY origin and AngEL Of THE LORD remains Class II messenger / revelation carrier.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke checks passed for THE LORD role separation and entity candidate filtering.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

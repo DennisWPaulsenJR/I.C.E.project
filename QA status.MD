@@ -318,3 +318,21 @@ Latest QA counts:
 - Matthew 1 semantic ambiguities / relationships: 5
 - Matthew 2 movement semantics: 5
 - Matthew 2 semantic continuity: 4
+
+## 2026-05-27 - Ontology Role Separation QA
+
+Display fix:
+- Primary Entities / Characters now prevents Class I THE LORD / GOD from inheriting messenger/revelation-carrier roles.
+- Entity candidate filtering blocks mission/process/action phrases from rendering as entity labels.
+- AngEL Of THE LORD remains Class II messenger / revelation carrier.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Manual smoke:
+- THE LORD messenger/carrier display pattern: not found.
+- Process strings are filtered from entity candidates while remaining available in derived meaning/process displays.
