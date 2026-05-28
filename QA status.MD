@@ -336,3 +336,20 @@ Validation:
 Manual smoke:
 - THE LORD messenger/carrier display pattern: not found.
 - Process strings are filtered from entity candidates while remaining available in derived meaning/process displays.
+
+## 2026-05-27 - App Accuracy Wording QA
+
+Display refinement:
+- User-facing semantic labels now use `App accuracy` instead of prior confidence-oriented display wording.
+- Stored confidence values and styling hooks are preserved.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Manual smoke:
+- Targeted search found no remaining user-facing the old targeted confidence-oriented display labels.
+- Remaining `confidence` matches are internal field names, stored semantic values, CSS hooks, or historical log text.

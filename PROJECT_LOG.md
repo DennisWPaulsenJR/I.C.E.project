@@ -2,6 +2,37 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-27 - Rename App Confidence to App Accuracy
+
+Instruction summary:
+- Refine user-facing semantic confidence wording so Study Panel labels say `App accuracy` instead of the prior confidence-oriented labels.
+- Preserve stored confidence values and semantic styling while clarifying that the label estimates I.C.E. semantic resolution accuracy, not source truth.
+
+Codex action summary:
+- Updated Study Panel display labels and helper defaults from prior confidence-oriented wording to App accuracy across semantic cards, traces, previews, and review posture text.
+- Preserved stored values: explicit, probable, possible, attributed, and unresolved.
+- Left internal field names, CSS confidence hooks, and QA logic intact where they are storage/styling mechanics rather than user-facing wording.
+
+Files changed:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke: targeted search found no remaining user-facing the old targeted confidence-oriented display labels.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Phase 8.3a Matthew 2 Adversarial / Protective Semantics
 
 Instruction summary:
@@ -2560,7 +2591,7 @@ Instruction summary:
 Codex action summary:
 - Added `ICE_MOVEMENT_SEMANTICS` storage and scope-integrity coverage.
 - Added conservative Matthew 2 movement/location records for Bethlehem, Jerusalem, Egypt, Nazareth, wise men travel, Joseph protective flight, return from Egypt, and Nazareth redirection.
-- Added Study Panel Movement / Location Semantics cards with origin, destination, movement purpose, authority/revelation involvement, adversarial involvement, fulfillment linkage, source phrase, derived meaning, App confidence, evidence, related layers, and grounding.
+- Added Study Panel Movement / Location Semantics cards with origin, destination, movement purpose, authority/revelation involvement, adversarial involvement, fulfillment linkage, source phrase, derived meaning, App accuracy, evidence, related layers, and grounding.
 - Updated Matthew QA bundles/counts/samples and Matthew 2 assertions for the new layer.
 
 Files changed:

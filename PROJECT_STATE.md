@@ -252,7 +252,7 @@ Refinements:
 
 Preserve:
 - source phrase vs derived meaning
-- App confidence wording
+- App accuracy wording
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
@@ -489,7 +489,7 @@ Matthew 1 pilot:
 - Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class 𝑖 remains adversarial/opposition and visually distinct.
 
 Preserve:
-- App confidence wording
+- App accuracy wording
 - source truth distinction
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
@@ -532,11 +532,11 @@ Matthew 2 pilot records:
 
 Study Panel:
 - Added compact Movement / Location Semantics section.
-- Cards show origin location, destination, movement purpose, authority path, revelation involvement, adversarial involvement where grounded, fulfillment linkage, source phrase, derived meaning, App confidence, evidence, related layers/entities, hierarchy, semantic grounding, and scope.
+- Cards show origin location, destination, movement purpose, authority path, revelation involvement, adversarial involvement where grounded, fulfillment linkage, source phrase, derived meaning, App accuracy, evidence, related layers/entities, hierarchy, semantic grounding, and scope.
 
 Preserved:
 - source phrase vs derived meaning
-- App confidence wording
+- App accuracy wording
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
@@ -570,7 +570,7 @@ Preserved:
 - Joseph / Mary as Human narrative participants where scoped
 - lineage support for Abraham / David without forcing them into unrelated narrow cards
 - source phrase vs derived meaning
-- App confidence wording
+- App accuracy wording
 - Class I / Class i distinction
 
 ## Primary Entities Ontology-Role Separation Fix
@@ -597,3 +597,34 @@ Preserved:
 - CHILD display
 - Class I / Class i distinction
 - ontology hierarchy
+
+## App Accuracy Display Wording
+
+Status: implemented and validated.
+
+Display refinement:
+- User-facing semantic accuracy labels now render as `App accuracy`.
+- The wording clarifies that the value estimates I.C.E. semantic resolution accuracy, not scripture/source truth.
+- Stored values remain unchanged: explicit, probable, possible, attributed, and unresolved.
+
+Applied to:
+- Passage Functions
+- Revelation Patterns
+- Reference Roles
+- Semantic Ontology Roles
+- Semantic Relationship Roles
+- Semantic Ambiguities / Contrasts
+- Origin / Authority Paths
+- Semantic Continuity
+- Movement / Location Semantics
+- Semantic Resolution Trace
+- Narrative Timeline
+- Semantic Principles
+- provenance / relationship previews
+
+Preserved:
+- stored semantic records and confidence values
+- source phrase vs derived meaning separation
+- semantic styling
+- ontology hierarchy
+- Class I / Class i distinction

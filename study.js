@@ -669,7 +669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return value;
   }
 
-  function displayAppConfidence(value, label = "App confidence") {
+  function displayAppConfidence(value, label = "App accuracy") {
     return `${label}: ${displayConfidence(value)}`;
   }
 
@@ -922,7 +922,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       context.explicitDate ? `Date: ${context.explicitDate}` : "",
       context.inferredDate ? `Inferred date: ${context.inferredDate}` : "",
       context.timeRange ? `Range: ${context.timeRange}` : "",
-      context.confidence ? displayAppConfidence(context.confidence, "Source App confidence") : ""
+      context.confidence ? displayAppConfidence(context.confidence, "Source App accuracy") : ""
     ].filter(Boolean).join("\n");
   }
 
@@ -1488,7 +1488,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   // Roadmap only: future semantic/glorified rendering should map resolved
   // entityType -> entityClass -> renderClass. Do not classify by word alone;
-  // use entity resolution, context, relationship, confidence, and source scope.
+  // use entity resolution, context, relationship, accuracy, and source scope.
   // I = GOD / Divine Authority
   // II = AngEL / Messenger of GOD
   // III = Human
@@ -3669,7 +3669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const normalizedTitle = normalizeText(title).toLowerCase();
     if (/source phrase|source wording/.test(normalizedTitle)) section.classList.add("ice-source-phrase");
     if (/derived meaning|semantic purpose|meaning/.test(normalizedTitle)) section.classList.add("ice-derived-meaning");
-    if (/^(app confidence|i\.c\.e\. app confidence|confidence)$/.test(normalizedTitle)) section.classList.add("ice-confidence", confidenceClassName(content));
+    if (/^(app accuracy|i\.c\.e\. app accuracy|accuracy)$/.test(normalizedTitle)) section.classList.add("ice-confidence", confidenceClassName(content));
 
     if (options.collapsed) {
       const details = document.createElement("details");
@@ -3859,7 +3859,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     appendSemanticTraceBlock(body, "Layers Used", semanticTraceLayersUsed(item, kind));
     appendSemanticTraceBlock(body, "Evidence Used", semanticTraceEvidenceUsed(item));
     appendSemanticTraceBlock(body, "Ambiguity Check", semanticTraceAmbiguityCheck(item));
-    appendSemanticTraceBlock(body, "App confidence", [displayConfidence(item.confidence || "probable")]);
+    appendSemanticTraceBlock(body, "App accuracy", [displayConfidence(item.confidence || "probable")]);
 
     details.append(summary, body);
     section.appendChild(details);
@@ -4412,7 +4412,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Meaning", item.plainMeaning || "", { divineContext, preferHolySpirit: true }),
             createClassTransferDisplaySection(item),
 createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "passage", 10), plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "passage"),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       createPassageFunctionSection("Fulfillment Meaning", item.fulfillmentMeaning || "", { collapsed: true, divineContext, preferHolySpirit: true }),
@@ -4583,7 +4583,7 @@ createRevelationPartsSection(item.subEvents)
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
     [
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "revelation"),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
@@ -4638,7 +4638,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${patterns.length}`,
         `Layer: ICE_REVELATION_PATTERNS`,
         "Purpose: structure speech/revelation blocks that contain multiple semantic parts.",
-        "Review posture: inspect authority, speaker, recipient, ordered sub-events, evidence, confidence, and grounding."
+        "Review posture: inspect authority, speaker, recipient, ordered sub-events, evidence, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -4673,7 +4673,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${functions.length}`,
         `Layer: ICE_PASSAGE_FUNCTIONS`,
         "Purpose: why a passage or section exists, grounded in current semantic data.",
-        "Review posture: inspect meaning, evidence, confidence, and source grounding together."
+        "Review posture: inspect meaning, evidence, accuracy, and source grounding together."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -4902,7 +4902,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Resolved Being", referenceRoleResolvedBeing(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Canonical/source identity", referenceRoleCanonicalIdentity(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Why It Matters", referenceRoleWhyItMatters(item), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "reference"),
       createPassageFunctionSection("Technical Provenance", "", { collapsed: true, summaryLabel: "Show technical provenance", list: referenceRoleProvenanceLines(item), plainList: true, preserveExact: true }),
       createPassageFunctionSection("Evidence", "", { collapsed: true, summaryLabel: "Show evidence", list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
@@ -4946,7 +4946,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${roles.length}`,
         `Layer: ICE_REFERENCE_ROLES`,
         "Purpose: explain why discovered references are attached to this passage or note.",
-        "Review posture: inspect discovered reference, semantic role, linked themes/entities, evidence, confidence, and grounding."
+        "Review posture: inspect discovered reference, semantic role, linked themes/entities, evidence, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5001,7 +5001,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourceWording || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedWording || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.distinctionType, item.narrativeRole, item.canonicalRole, item.derivedWording]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
@@ -5038,7 +5038,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${distinctions.length}`,
         `Layer: ICE_SEMANTIC_DISTINCTIONS`,
         "Purpose: prevent different concepts such as name, title, role, source phrase, and canonical identity from collapsing into one bucket.",
-        "Review posture: inspect item, distinction type, narrative role, canonical role, source wording, derived wording, confidence, and grounding."
+        "Review posture: inspect item, distinction type, narrative role, canonical role, source wording, derived wording, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5095,7 +5095,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Canonical Role", item.canonicalRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "ontology"),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.semanticItem, item.narrativeRole, item.canonicalRole, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Layers", "", { collapsed: true, list: layers, plainList: true }),
@@ -5133,7 +5133,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${roles.length}`,
         `Layer: ICE_ONTOLOGY_ROLES`,
         "Purpose: distinguish NAME, title, office, role, authority, messenger, narrator, Human response, covenant role, mission role, fulfillment role, lineage role, and semantic origin role.",
-        "Review posture: inspect semantic item, ontology roles, authority/origin class, narrative role, canonical role, source phrase, derived meaning, confidence, and grounding."
+        "Review posture: inspect semantic item, ontology roles, authority/origin class, narrative role, canonical role, source phrase, derived meaning, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5219,7 +5219,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Ontology Class Path", item.ontologyClassPath || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "relationRole", 8), plainList: true, divineContext, preferHolySpirit: true }),
@@ -5260,7 +5260,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${roles.length}`,
         `Layer: ICE_ENTITY_RELATION_ROLES`,
         "Purpose: explain what kind of semantic role one entity has in relation to another.",
-        "Review posture: inspect source/target entity, role, ontology class path, source phrase, derived meaning, confidence, and grounding."
+        "Review posture: inspect source/target entity, role, ontology class path, source phrase, derived meaning, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5337,7 +5337,7 @@ createRevelationPartsSection(item.subEvents)
       item.fulfillmentLink ? createPassageFunctionSection("Fulfillment Link", item.fulfillmentLink, { divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "movement", 10), plainList: true, divineContext, preferHolySpirit: true }),
@@ -5378,7 +5378,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${records.length}`,
         `Layer: ICE_MOVEMENT_SEMANTICS`,
         "Purpose: model source-grounded movement, location, purpose, protection, and fulfillment without adding unsupported geography.",
-        "Review posture: inspect origin, destination, movement purpose, authority/revelation involvement, adversarial context, fulfillment linkage, confidence, and grounding."
+        "Review posture: inspect origin, destination, movement purpose, authority/revelation involvement, adversarial context, fulfillment linkage, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5450,7 +5450,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Revelation Pattern", item.continuedRevelationPattern || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Ontology Role", item.continuedOntologyRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Mission / Purpose", item.continuedMissionPurpose || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "continuity", 10), plainList: true, divineContext, preferHolySpirit: true }),
@@ -5491,7 +5491,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${records.length}`,
         `Layer: ICE_SEMANTIC_CONTINUITY`,
         "Purpose: identify conservative continuity between chapter semantic layers using current source-grounded entities, authority paths, revelation patterns, ontology roles, and passage functions.",
-        "Review posture: inspect continued entity, authority path, revelation pattern, ontology role, mission/purpose, transition, confidence, and grounding."
+        "Review posture: inspect continued entity, authority path, revelation pattern, ontology role, mission/purpose, transition, accuracy, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5636,7 +5636,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Derived Meaning", "", { list: derivedLines, plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Resolved?", semanticAmbiguityResolutionLabel(item.resolutionStatus), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Why It Matters", semanticAmbiguityWhyItMatters(item), { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createSemanticResolutionTraceSection(item, "ambiguity"),
       createPassageFunctionSection("Source Grounding", grounding || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Grounding / Evidence", "", { collapsed: true, summaryLabel: "Show grounding evidence", list: evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item })), divineContext }),
@@ -5673,7 +5673,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${ambiguities.length}`,
         `Layer: ICE_SEMANTIC_AMBIGUITIES`,
         "Purpose: identify relationship-aware distinctions, source/derived pairings, canonical links, and true oppositions without fabricating contradictions.",
-        "Review posture: inspect semantic items, relationship type, source phrase, derived meaning, resolution status, confidence, evidence, and grounding."
+        "Review posture: inspect semantic items, relationship type, source phrase, derived meaning, resolution status, accuracy, evidence, and grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -5752,7 +5752,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Response", item.response || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Result", item.result || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Mission / Fulfillment", item.mission || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Key Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "originAuthority", 10), plainList: true, divineContext, preferHolySpirit: true }),
@@ -5794,7 +5794,7 @@ createRevelationPartsSection(item.subEvents)
         `Derived records: ${paths.length}`,
         `Layer: ICE_ORIGIN_AUTHORITY_PATHS`,
         "Purpose: distinguish grammar, capitalization, origin, messenger path, Human response, and divine causality without flattening them into one action.",
-        "Review posture: inspect origin, messenger/means, recipient, response, result, mission, evidence, confidence, and source grounding."
+        "Review posture: inspect origin, messenger/means, recipient, response, result, mission, evidence, accuracy, and source grounding."
       ].join("\n"),
       "derived semantic layer"
     ));
@@ -6046,7 +6046,7 @@ createRevelationPartsSection(item.subEvents)
 
     const preview = filtered.slice(0, 5).map((item) => {
       const ref = item.verseRef || item.verseNumber || "no verse ref";
-      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / App confidence: ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
+      return `${item.hintType || "hint"}: ${trimText(item.text, 70)} / ${ref} / ${item.source || "dom"} / App accuracy: ${item.confidence || "source-markup"}${item.originalText ? ` / original: ${item.originalText}` : ""}${item.entityClass ? ` / Class ${item.entityClass}` : ""}`;
     }).join("\n");
     container.appendChild(createCard(
       "DOM Hint Preview",
@@ -6347,7 +6347,7 @@ createRevelationPartsSection(item.subEvents)
     [
       createPassageFunctionSection("Summary", trimText(chain.summary, 170), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Authority Flow Path", "", { list: authority, plainList: true, divineContext }),
-      createPassageFunctionSection("App confidence", displayConfidence(chain.confidence || "probable")),
+      createPassageFunctionSection("App accuracy", displayConfidence(chain.confidence || "probable")),
       createPassageFunctionSection("Flow Nodes", "", { list: nodeLabels.slice(0, 3), hiddenCount: Math.max(0, nodeLabels.length - 3), plainList: true, divineContext, preferHolySpirit: true }),
       nodeLabels.length > 3 ? createPassageFunctionSection("Full Flow Nodes", "", { collapsed: true, summaryLabel: "Show full flow path", list: nodeLabels, plainList: true, divineContext, preferHolySpirit: true }) : null,
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(chain, "flow"), divineContext })

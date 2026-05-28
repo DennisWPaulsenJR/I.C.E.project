@@ -2368,3 +2368,30 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-27 20:35 - pcdx - Rename app confidence to app accuracy
+Summary:
+- Refined Study Panel user-facing semantic accuracy wording to `App accuracy` across cards, traces, previews, and review posture text.
+- Preserved stored confidence values, internal field names, CSS styling hooks, semantic records, source phrase / derived meaning separation, and ontology hierarchy.
+- Clarified repo memory that App accuracy estimates I.C.E. semantic resolution accuracy, not source truth.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke search found no remaining targeted user-facing App accuracy wording.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
