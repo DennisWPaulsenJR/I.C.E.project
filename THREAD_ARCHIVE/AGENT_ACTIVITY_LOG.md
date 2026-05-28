@@ -2280,3 +2280,37 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-27 - pcdx - Add movement location semantics
+Summary:
+- Implemented Phase 8.3b Matthew 2 Movement / Location Semantic Layer.
+- Added `ICE_MOVEMENT_SEMANTICS` as a derived semantic layer for movement, location, purpose, protection, and fulfillment.
+- Added Study Panel Movement / Location Semantics display and diagnostics count.
+- Added QA storage/count/sample support and Matthew 2 assertions for five grounded movement/location records.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

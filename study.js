@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     originAuthorityPaths: "ICE_ORIGIN_AUTHORITY_PATHS",
     entityRelationRoles: "ICE_ENTITY_RELATION_ROLES",
     semanticContinuity: "ICE_SEMANTIC_CONTINUITY",
+    movementSemantics: "ICE_MOVEMENT_SEMANTICS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -3778,6 +3779,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       originAuthority: "originAuthorityPathsSection",
       relationRole: "entityRelationRolesSection",
       continuity: "semanticContinuitySection",
+      movement: "movementSemanticsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -4047,6 +4049,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           semanticSectionForNav("continuity"),
           continuity.continuedEntity || continuity.continuityType || "",
           semanticCardKey("continuity", continuity, `${continuity.continuedEntity || ""}-${continuity.continuityType || ""}`)
+        )));
+    }
+
+    if (mode !== "movement") {
+      asArray(studyData.movementSemantics)
+        .filter((movement) => semanticVerseOverlap(movement, item) || semanticEntityOverlap(movement, item))
+        .forEach((movement) => links.push(semanticNavItem(
+          `Movement / Location: ${movement.originLocation || "origin"} -> ${movement.destinationLocation || "destination"}`,
+          semanticSectionForNav("movement"),
+          movement.destinationLocation || movement.originLocation || movement.movementType || "",
+          semanticCardKey("movement", movement, `${movement.originLocation || ""}-${movement.destinationLocation || ""}-${movement.movementType || ""}`)
         )));
     }
     if (mode !== "timeline") {
@@ -4943,6 +4956,120 @@ createRevelationPartsSection(item.subEvents)
 
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
       container.appendChild(createEntityRelationRoleCard(item));
+    });
+  }
+  function movementSemanticSearchText(item = {}) {
+    return [
+      item.movementType,
+      item.originLocation,
+      item.destinationLocation,
+      item.movementPurpose,
+      item.authorityPath,
+      item.revelationInvolvement,
+      item.adversarialInvolvement,
+      item.fulfillmentLink,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.evidence).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      item.confidence,
+      item.sourceGrounding
+    ].join(" ");
+  }
+
+  function movementSemanticTypeLabel(type) {
+    const normalized = normalizeText(type || "movement_location_semantic").toLowerCase();
+    const labels = new Map([
+      ["prophecy_location_identification", "prophecy location identification"],
+      ["witness_travel_toward_child", "witness travel toward the CHILD"],
+      ["protective_escape_preservation", "protective escape / preservation"],
+      ["return_after_hostile_threat_removed", "return after hostile threat removed"],
+      ["protective_redirection_settlement_fulfillment", "protective redirection / settlement fulfillment"]
+    ]);
+    return labels.get(normalized) || passageFunctionTitle(type || "movement_location_semantic");
+  }
+
+  function createMovementSemanticCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.movementPurpose, item.authorityPath, item.revelationInvolvement, item.derivedMeaning, item.relatedEntities, item.evidence]);
+    const title = [item.originLocation, item.destinationLocation].filter(Boolean).join(" -> ") || "Movement / Location Semantic";
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+
+    card.className = "study-card semantic-card movement-semantic-card";
+    assignSemanticCardTarget(card, "movement", item, `${item.originLocation || ""}-${item.destinationLocation || ""}-${item.movementType || ""}`);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(title, divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [movementSemanticTypeLabel(item.movementType), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Origin Location", item.originLocation || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Destination", item.destinationLocation || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Movement Purpose", item.movementPurpose || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Authority Path", item.authorityPath || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Revelation Involvement", item.revelationInvolvement || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      item.adversarialInvolvement ? createPassageFunctionSection("Adversarial Involvement", item.adversarialInvolvement, { divineContext, preferHolySpirit: true }) : null,
+      item.fulfillmentLink ? createPassageFunctionSection("Fulfillment Link", item.fulfillmentLink, { divineContext, preferHolySpirit: true }) : null,
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App confidence", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "movement"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.movementPurpose, item.authorityPath, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Semantic Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderMovementSemantics(term) {
+    const container = document.getElementById("movementSemanticsCards");
+    const count = document.getElementById("movementSemanticsCount");
+    const records = asArray(studyData.movementSemantics);
+    const filtered = records.filter((item) => matchesSearchQuery(movementSemanticSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} movement record(s)`;
+
+    if (records.length === 0) {
+      appendEmpty(container, "No movement / location semantics derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No movement / location semantic records match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Movement / Location Semantics",
+      [
+        `Derived records: ${records.length}`,
+        `Layer: ICE_MOVEMENT_SEMANTICS`,
+        "Purpose: model source-grounded movement, location, purpose, protection, and fulfillment without adding unsupported geography.",
+        "Review posture: inspect origin, destination, movement purpose, authority/revelation involvement, adversarial context, fulfillment linkage, confidence, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createMovementSemanticCard(item));
     });
   }
   function semanticContinuitySearchText(item = {}) {
@@ -5998,6 +6125,7 @@ createRevelationPartsSection(item.subEvents)
       renderOriginAuthorityPaths(term);
       renderEntityRelationRoles(term);
       renderSemanticContinuity(term);
+      renderMovementSemantics(term);
       renderNarrativeTimeline(term);
       renderEntityScopeFocus(term);
       renderVerseScopeFocus(term);
@@ -6072,6 +6200,7 @@ createRevelationPartsSection(item.subEvents)
       originAuthorityPaths: countItems(studyData.originAuthorityPaths),
       entityRelationRoles: countItems(studyData.entityRelationRoles),
       semanticContinuity: countItems(studyData.semanticContinuity),
+      movementSemantics: countItems(studyData.movementSemantics),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -6108,12 +6237,13 @@ createRevelationPartsSection(item.subEvents)
     const originAuthorityPathCount = countItems(studyData.originAuthorityPaths);
     const entityRelationRoleCount = countItems(studyData.entityRelationRoles);
     const semanticContinuityCount = countItems(studyData.semanticContinuity);
+    const movementSemanticsCount = countItems(studyData.movementSemantics);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -6143,6 +6273,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticOriginAuthorityPaths").textContent = originAuthorityPathCount;
     document.getElementById("diagnosticEntityRelationRoles").textContent = entityRelationRoleCount;
     document.getElementById("diagnosticSemanticContinuity").textContent = semanticContinuityCount;
+    document.getElementById("diagnosticMovementSemantics").textContent = movementSemanticsCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
     document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
@@ -6163,7 +6294,8 @@ createRevelationPartsSection(item.subEvents)
         `ontologyRoles: ${ontologyRoleCount}`,
         `originAuthorityPaths: ${originAuthorityPathCount}`,
         `entityRelationRoles: ${entityRelationRoleCount}`,
-        `semanticContinuity: ${semanticContinuityCount}`
+        `semanticContinuity: ${semanticContinuityCount}`,
+        `movementSemantics: ${movementSemanticsCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

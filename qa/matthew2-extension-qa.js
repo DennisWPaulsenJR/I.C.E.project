@@ -39,7 +39,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_AMBIGUITIES",
   "ICE_ORIGIN_AUTHORITY_PATHS",
   "ICE_ENTITY_RELATION_ROLES",
-  "ICE_SEMANTIC_CONTINUITY"
+  "ICE_SEMANTIC_CONTINUITY",
+  "ICE_MOVEMENT_SEMANTICS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -96,7 +97,9 @@ function emptyCounts() {
     ontologyRoles: 0,
     semanticAmbiguities: 0,
     originAuthorityPaths: 0,
-    entityRelationRoles: 0
+    entityRelationRoles: 0,
+    semanticContinuity: 0,
+    movementSemantics: 0
   };
 }
 
@@ -120,7 +123,8 @@ function buildCounts(storageData) {
     semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
     entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
-    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY)
+    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
+    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS)
   };
 }
 
@@ -146,6 +150,7 @@ function buildSamples(storageData) {
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
     semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
+    movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -316,6 +321,19 @@ function hasEntityRelationRole(data, sourceEntity, targetEntity, semanticRole) {
 function hasOriginAuthorityPath(data, predicate = () => true) {
   return (data.ICE_ORIGIN_AUTHORITY_PATHS || []).some((item) => predicate(item));
 }
+function hasMovementSemantic(data, movementType, destinationLocation) {
+  return (data.ICE_MOVEMENT_SEMANTICS || []).some((item) =>
+    item.movementType === movementType &&
+    String(item.destinationLocation || "").includes(destinationLocation) &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    item.movementPurpose &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
 function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
@@ -341,6 +359,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_ORIGIN_AUTHORITY_PATHS) <= 0) failures.push("Expected Matthew 2 origin / authority path records count > 0.");
   if (count(data.ICE_ENTITY_RELATION_ROLES) <= 0) failures.push("Expected Matthew 2 semantic relationship role records count > 0.");
   if (count(data.ICE_SEMANTIC_CONTINUITY) <= 0) failures.push("Expected Matthew 2 cross-chapter semantic continuity records count > 0.");
+  if (count(data.ICE_MOVEMENT_SEMANTICS) <= 0) failures.push("Expected Matthew 2 movement / location semantic records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -364,6 +383,10 @@ function evaluateFailures(data) {
 
   if (!hasSemanticAmbiguity(data, "deceptive_worship_language_vs_hostile_intent", "resolved")) failures.push("Expected Matthew 2 semantic contrast for Herod deceptive worship language vs hostile intent.");
   if (!hasSemanticAmbiguity(data, "protective_obedience_vs_hostile_deception", "resolved")) failures.push("Expected Matthew 2 semantic contrast for protective obedience vs hostile deception.");
+
+  for (const [movementType, destinationLocation] of [["prophecy_location_identification", "Bethlehem"], ["witness_travel_toward_child", "Jerusalem"], ["protective_escape_preservation", "Egypt"], ["return_after_hostile_threat_removed", "land of Israel"], ["protective_redirection_settlement_fulfillment", "Nazareth"]]) {
+    if (!hasMovementSemantic(data, movementType, destinationLocation)) failures.push(`Expected Matthew 2 movement / location semantic ${movementType} -> ${destinationLocation}.`);
+  }
 
   for (const [continuedEntity, continuityType] of [["Joseph", "continued_authority_revelation_relationship"], ["JESUS / CHILD", "continued_child_identity_and_mission_preservation"], ["scripture narrator / quoted prophet", "continued_prophecy_fulfillment_chain"], ["Herod", "adversarial_escalation_against_mission_preservation"]]) {
     const found = (data.ICE_SEMANTIC_CONTINUITY || []).some((item) => item.continuedEntity === continuedEntity && item.continuityType === continuityType && item.chapterTransition === "Matthew 1 -> Matthew 2" && item.confidence && Array.isArray(item.evidence) && item.evidence.length > 0 && item.sourceGrounding);

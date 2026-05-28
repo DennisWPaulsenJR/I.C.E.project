@@ -274,3 +274,29 @@ Latest QA counts:
 - Matthew 1 semantic ambiguities / relationships: 5
 - Matthew 2 semantic ambiguities / relationships: 2
 - Matthew 2 semantic continuity: 4
+
+## 2026-05-27 - Phase 8.3b Movement / Location Semantics QA
+
+New QA coverage:
+- `ICE_MOVEMENT_SEMANTICS` is cleared, collected, counted, and sampled in Matthew QA bundles.
+- Matthew 2 now asserts grounded movement/location records for:
+  - prophecy_location_identification -> Bethlehem
+  - witness_travel_toward_child -> Jerusalem
+  - protective_escape_preservation -> Egypt
+  - return_after_hostile_threat_removed -> land of Israel
+  - protective_redirection_settlement_fulfillment -> Nazareth
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Latest counts:
+- Matthew 1 movement semantics: 0
+- Matthew 2 movement semantics: 5
+- Matthew 2 semantic continuity: 4

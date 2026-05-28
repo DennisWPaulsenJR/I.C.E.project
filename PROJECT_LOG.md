@@ -2551,3 +2551,41 @@ Commit:
 
 Status:
 - Implemented by pcdx.
+
+## 2026-05-27 - Phase 8.3b Matthew 2 Movement / Location Semantics
+
+Instruction summary:
+- Formalize Matthew 2 movement, travel, escape, location fulfillment, protective relocation, adversarial pursuit, and guided travel as a derived semantic layer.
+
+Codex action summary:
+- Added `ICE_MOVEMENT_SEMANTICS` storage and scope-integrity coverage.
+- Added conservative Matthew 2 movement/location records for Bethlehem, Jerusalem, Egypt, Nazareth, wise men travel, Joseph protective flight, return from Egypt, and Nazareth redirection.
+- Added Study Panel Movement / Location Semantics cards with origin, destination, movement purpose, authority/revelation involvement, adversarial involvement, fulfillment linkage, source phrase, derived meaning, App confidence, evidence, related layers, and grounding.
+- Updated Matthew QA bundles/counts/samples and Matthew 2 assertions for the new layer.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed with `movementSemantics: 5`.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.

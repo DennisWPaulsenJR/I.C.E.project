@@ -33,6 +33,7 @@ const SEMANTIC_AMBIGUITIES_KEY = "ICE_SEMANTIC_AMBIGUITIES";
 const ORIGIN_AUTHORITY_PATHS_KEY = "ICE_ORIGIN_AUTHORITY_PATHS";
 const ENTITY_RELATION_ROLES_KEY = "ICE_ENTITY_RELATION_ROLES";
 const SEMANTIC_CONTINUITY_KEY = "ICE_SEMANTIC_CONTINUITY";
+const MOVEMENT_SEMANTICS_KEY = "ICE_MOVEMENT_SEMANTICS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -523,6 +524,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.originAuthorityPaths, "origin_authority_path", activeAdapter);
   enrichScopeCollection(data.entityRelationRoles, "entity_relation_role", activeAdapter);
   enrichScopeCollection(data.semanticContinuity, "semantic_continuity", activeAdapter);
+  enrichScopeCollection(data.movementSemantics, "movement_semantic", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -543,7 +545,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.semanticAmbiguities || []).map((item) => ({ ...item, scopeLayer: "semantic_ambiguity" })),
     ...(data.originAuthorityPaths || []).map((item) => ({ ...item, scopeLayer: "origin_authority_path" })),
     ...(data.entityRelationRoles || []).map((item) => ({ ...item, scopeLayer: "entity_relation_role" })),
-    ...(data.semanticContinuity || []).map((item) => ({ ...item, scopeLayer: "semantic_continuity" }))
+    ...(data.semanticContinuity || []).map((item) => ({ ...item, scopeLayer: "semantic_continuity" })),
+    ...(data.movementSemantics || []).map((item) => ({ ...item, scopeLayer: "movement_semantic" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -1536,6 +1539,182 @@ const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: con
       sourceGrounding: "Matthew 1:22 distinguishes THE LORD as source from the prophet as Human witness"
     })
   ];
+}
+function movementSemanticRecord(record = {}) {
+  const key = [
+    "movement-semantic",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.movementType || "",
+    record.originLocation || "",
+    record.destinationLocation || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    movementType: record.movementType || "movement_location_semantic",
+    originLocation: record.originLocation || "Not recorded.",
+    destinationLocation: record.destinationLocation || "Not recorded.",
+    movementPurpose: record.movementPurpose || "Not recorded.",
+    authorityPath: record.authorityPath || "",
+    revelationInvolvement: record.revelationInvolvement || "",
+    adversarialInvolvement: record.adversarialInvolvement || "",
+    fulfillmentLink: record.fulfillmentLink || "",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedEntities: record.relatedEntities || [],
+    relatedPassageFunctions: record.relatedPassageFunctions || [],
+    relatedRevelationPatterns: record.relatedRevelationPatterns || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    relatedAuthorityPaths: record.relatedAuthorityPaths || [],
+    relatedEntityRelationRoles: record.relatedEntityRelationRoles || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded movement and location records"
+  };
+}
+
+function createMovementSemantics(captures = [], passageFunctions = [], revelationPatterns = [], ontologyRoles = [], originAuthorityPaths = [], entityRelationRoles = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
+  if (!isMatthewTwo) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const hasPhrase = (pattern) => pattern.test(sourceText);
+  const functionKeys = (keys) => (passageFunctions || []).filter((item) => keys.includes(item.passageFunction || "")).map((item) => item.passageFunction || item.id).filter(Boolean);
+  const patternIds = (predicate) => (revelationPatterns || []).filter(predicate).map((item) => item.id).filter(Boolean);
+  const ontologyIds = (items) => (ontologyRoles || []).filter((item) => items.includes(item.semanticItem || "")).map((item) => item.id || item.semanticItem).filter(Boolean);
+  const authorityPathIds = (predicate) => (originAuthorityPaths || []).filter(predicate).map((item) => item.id).filter(Boolean);
+  const relationRoleIds = (roles) => (entityRelationRoles || []).filter((item) => roles.includes(item.semanticRole || "")).map((item) => item.id || item.semanticRole).filter(Boolean);
+  const add = (record) => movementSemanticRecord({ sourceCaptureId, sourceContext: context, ...record });
+  const protectivePatternIds = patternIds((item) => item.speaker === "AngEL Of THE LORD" && item.recipient === "Joseph");
+  const protectiveAuthorityPathIds = authorityPathIds((item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph");
+  const records = [];
+
+  if (hasPhrase(/Bethlehem of Judaea|for thus it is written/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.5",
+      verseRange: "Matthew 2:4-6",
+      movementType: "prophecy_location_identification",
+      originLocation: "Jerusalem",
+      destinationLocation: "Bethlehem",
+      movementPurpose: "identify the written prophecy location for the CHILD / ruler expectation",
+      authorityPath: "Human religious authority witnesses cite written prophecy; not origin Divine authority",
+      revelationInvolvement: "written prophecy location witness",
+      fulfillmentLink: "Bethlehem identified through written prophecy",
+      sourcePhrase: "Bethlehem of Judaea: for thus it is written by the prophet",
+      derivedMeaning: "Bethlehem is preserved as the prophecy-linked birth/location anchor in Matthew 2.",
+      evidence: ["Bethlehem of Judaea", "for thus it is written by the prophet", "out of thee shall come a Governor"],
+      relatedEntities: ["Bethlehem", "Jerusalem", "Chief priests and scribes", "JESUS", "quoted prophet"],
+      relatedPassageFunctions: functionKeys(["prophecy_fulfillment_identification", "movement_location_prophecy_continuity"]),
+      relatedOntologyRoles: ontologyIds(["Bethlehem", "Jerusalem", "Chief priests and scribes", "JESUS"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:4-6 explicitly names Bethlehem through the written-prophecy answer given in Jerusalem."
+    }));
+  }
+
+  if (hasPhrase(/wise men from the east to Jerusalem|saw his star|fell down, and worshipped him/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.1",
+      verseRange: "Matthew 2:1-11",
+      movementType: "witness_travel_toward_child",
+      originLocation: "east",
+      destinationLocation: "Jerusalem -> Bethlehem / CHILD location",
+      movementPurpose: "wise men travel toward the CHILD as worship witnesses",
+      revelationInvolvement: "star witness and written prophecy location answer guide the travel context",
+      fulfillmentLink: "movement leads to CHILD/JESUS recognition at the source-grounded location",
+      sourcePhrase: "wise men from the east to Jerusalem; saw the young child; fell down, and worshipped him",
+      derivedMeaning: "Wise men movement is a witness path toward CHILD/JESUS, not an authority-origin path.",
+      evidence: ["wise men from the east to Jerusalem", "we have seen his star", "saw the young child", "fell down, and worshipped him"],
+      relatedEntities: ["Wise men", "Jerusalem", "Bethlehem", "JESUS", "CHILD"],
+      relatedPassageFunctions: functionKeys(["wise_men_arrival", "movement_location_prophecy_continuity"]),
+      relatedOntologyRoles: ontologyIds(["Wise men", "Jerusalem", "Bethlehem", "JESUS"]),
+      relatedEntityRelationRoles: relationRoleIds(["worship_witness_to_child"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2 directly grounds the wise men's travel, location inquiry, and worship response toward the young child."
+    }));
+  }
+
+  if (hasPhrase(/flee into Egypt|departed into Egypt|Out of Egypt have I called my son/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.13",
+      verseRange: "Matthew 2:13-15",
+      movementType: "protective_escape_preservation",
+      originLocation: "CHILD location in Judaea / Bethlehem context",
+      destinationLocation: "Egypt",
+      movementPurpose: "protective preservation of the CHILD",
+      authorityPath: "THE LORD -> AngEL Of THE LORD -> Joseph",
+      revelationInvolvement: "dream warning and protective movement command",
+      adversarialInvolvement: "Herod will seek the young child to destroy him",
+      fulfillmentLink: "Out of Egypt have I called my son",
+      sourcePhrase: "Arise, and take the young child and his mother, and flee into Egypt",
+      derivedMeaning: "Joseph moves CHILD/JESUS and Mary into Egypt as a Divine preservation path under warning.",
+      evidence: ["flee into Egypt", "Herod will seek the young child to destroy him", "departed into Egypt", "Out of Egypt have I called my son"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS", "CHILD", "Mary", "Herod", "Egypt"],
+      relatedPassageFunctions: functionKeys(["divine_warning_revelation", "protective_obedient_response", "egypt_escape_preservation", "messianic_location_fulfillment"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph", "JESUS", "Egypt", "Herod"]),
+      relatedAuthorityPaths: protectiveAuthorityPathIds,
+      relatedEntityRelationRoles: relationRoleIds(["protective_revelation_messenger_to_recipient", "protective_obedient_response_to_child", "hostile_authority_to_child_target"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:13-15 explicitly links warning, flight into Egypt, Herod's threat, Joseph's movement, and fulfillment wording."
+    }));
+  }
+
+  if (hasPhrase(/they are dead which sought the young child's life|go into the land of Israel|arose, and took the young child/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.19",
+      verseRange: "Matthew 2:19-21",
+      movementType: "return_after_hostile_threat_removed",
+      originLocation: "Egypt",
+      destinationLocation: "land of Israel",
+      movementPurpose: "return movement after hostile threat is removed",
+      authorityPath: "THE LORD -> AngEL Of THE LORD -> Joseph",
+      revelationInvolvement: "dream message after Herod's death",
+      adversarialInvolvement: "those who sought the young child's life are dead",
+      sourcePhrase: "Arise, and take the young child and his mother, and go into the land of Israel",
+      derivedMeaning: "Joseph returns with CHILD/JESUS and Mary after a Divine message identifies the threat as removed.",
+      evidence: ["the angel of the Lord appeareth in a dream to Joseph in Egypt", "go into the land of Israel", "they are dead which sought the young child's life"],
+      relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS", "CHILD", "Mary", "Egypt", "land of Israel"],
+      relatedPassageFunctions: functionKeys(["divine_warning_revelation", "protective_obedient_response", "repeated_guidance_preservation_cycle"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph", "JESUS", "Egypt"]),
+      relatedAuthorityPaths: protectiveAuthorityPathIds,
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:19-21 grounds the return in a new dream message, Joseph's obedience, and the stated removal of the hostile threat."
+    }));
+  }
+
+  if (hasPhrase(/turned aside into the parts of Galilee|dwelt in a city called Nazareth|called a Nazarene/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.2.verse.22",
+      verseRange: "Matthew 2:22-23",
+      movementType: "protective_redirection_settlement_fulfillment",
+      originLocation: "Judaea avoided / Galilee route",
+      destinationLocation: "Nazareth",
+      movementPurpose: "protective redirection and fulfillment-linked settlement",
+      revelationInvolvement: "warning of God in a dream redirects travel",
+      adversarialInvolvement: "Archelaus reigning in Judaea creates avoidance context",
+      fulfillmentLink: "He shall be called a Nazarene",
+      sourcePhrase: "being warned of God in a dream, he turned aside into the parts of Galilee; dwelt in a city called Nazareth",
+      derivedMeaning: "Nazareth settlement is modeled as guided relocation with fulfillment linkage, grounded in warning and dwelling language.",
+      evidence: ["being warned of God in a dream", "turned aside into the parts of Galilee", "dwelt in a city called Nazareth", "He shall be called a Nazarene"],
+      relatedEntities: ["Joseph", "JESUS", "CHILD", "Mary", "Archelaus", "Judaea", "Galilee", "Nazareth", "quoted prophet"],
+      relatedPassageFunctions: functionKeys(["repeated_guidance_preservation_cycle", "movement_location_prophecy_continuity", "messianic_location_fulfillment"]),
+      relatedRevelationPatterns: protectivePatternIds,
+      relatedOntologyRoles: ontologyIds(["Joseph", "JESUS", "Nazareth"]),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 2:22-23 explicitly grounds the redirection in warning, avoidance, Nazareth dwelling, and fulfillment wording."
+    }));
+  }
+
+  return records;
 }
 function semanticContinuityRecord(record = {}) {
   const key = [
@@ -5683,6 +5862,14 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRelationRoles,
       canonicalIdentities
     );
+    const movementSemantics = createMovementSemantics(
+      captures,
+      passageFunctions,
+      revelationPatterns,
+      ontologyRoles,
+      originAuthorityPaths,
+      entityRelationRoles
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -5700,7 +5887,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticAmbiguities,
       originAuthorityPaths,
       entityRelationRoles,
-      semanticContinuity
+      semanticContinuity,
+      movementSemantics
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -5719,7 +5907,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticAmbiguities,
       originAuthorityPaths,
       entityRelationRoles,
-      semanticContinuity
+      semanticContinuity,
+      movementSemantics
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -5732,7 +5921,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticAmbiguities: semanticAmbiguities.length,
       originAuthorityPaths: originAuthorityPaths.length,
       entityRelationRoles: entityRelationRoles.length,
-      semanticContinuity: semanticContinuity.length
+      semanticContinuity: semanticContinuity.length,
+      movementSemantics: movementSemantics.length
     };
     const status = {
       reason,
@@ -5762,7 +5952,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       latestCaptureWordCount: latestCapture.wordCount || 0,
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
-      analysisBuildMarker: "phase-8.3a-matthew2-adversarial-protective-semantics",
+      analysisBuildMarker: "phase-8.3b-movement-location-semantics",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -5775,6 +5965,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       originAuthorityPathCount: originAuthorityPaths.length,
       entityRelationRoleCount: entityRelationRoles.length,
       semanticContinuityCount: semanticContinuity.length,
+      movementSemanticsCount: movementSemantics.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -5808,6 +5999,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
       [ENTITY_RELATION_ROLES_KEY]: entityRelationRoles,
       [SEMANTIC_CONTINUITY_KEY]: semanticContinuity,
+      [MOVEMENT_SEMANTICS_KEY]: movementSemantics,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

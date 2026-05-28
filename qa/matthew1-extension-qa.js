@@ -39,7 +39,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_AMBIGUITIES",
   "ICE_ORIGIN_AUTHORITY_PATHS",
   "ICE_ENTITY_RELATION_ROLES",
-  "ICE_SEMANTIC_CONTINUITY"
+  "ICE_SEMANTIC_CONTINUITY",
+  "ICE_MOVEMENT_SEMANTICS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -96,7 +97,9 @@ function emptyCounts() {
     ontologyRoles: 0,
     semanticAmbiguities: 0,
     originAuthorityPaths: 0,
-    entityRelationRoles: 0
+    entityRelationRoles: 0,
+    semanticContinuity: 0,
+    movementSemantics: 0
   };
 }
 
@@ -120,7 +123,8 @@ function buildCounts(storageData) {
     semanticAmbiguities: count(storageData.ICE_SEMANTIC_AMBIGUITIES),
     originAuthorityPaths: count(storageData.ICE_ORIGIN_AUTHORITY_PATHS),
     entityRelationRoles: count(storageData.ICE_ENTITY_RELATION_ROLES),
-    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY)
+    semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
+    movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS)
   };
 }
 
@@ -146,6 +150,7 @@ function buildSamples(storageData) {
     originAuthorityPaths: sample(storageData.ICE_ORIGIN_AUTHORITY_PATHS, 20),
     entityRelationRoles: sample(storageData.ICE_ENTITY_RELATION_ROLES, 20),
     semanticContinuity: sample(storageData.ICE_SEMANTIC_CONTINUITY, 20),
+    movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }

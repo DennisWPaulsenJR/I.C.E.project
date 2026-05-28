@@ -515,3 +515,31 @@ Preserved:
 - CHILD display
 - Class I / Class i distinction
 - ontology hierarchy
+
+## Phase 8.3b Matthew 2 Movement / Location Semantic Layer
+
+Status: implemented and validated.
+
+New derived layer:
+- `ICE_MOVEMENT_SEMANTICS`
+
+Matthew 2 pilot records:
+- Jerusalem -> Bethlehem prophecy location identification.
+- east -> Jerusalem -> Bethlehem / CHILD location witness travel.
+- CHILD location in Judaea / Bethlehem context -> Egypt protective escape / preservation.
+- Egypt -> land of Israel return after hostile threat removed.
+- Judaea avoided / Galilee route -> Nazareth protective redirection and fulfillment-linked settlement.
+
+Study Panel:
+- Added compact Movement / Location Semantics section.
+- Cards show origin location, destination, movement purpose, authority path, revelation involvement, adversarial involvement where grounded, fulfillment linkage, source phrase, derived meaning, App confidence, evidence, related layers/entities, hierarchy, semantic grounding, and scope.
+
+Preserved:
+- source phrase vs derived meaning
+- App confidence wording
+- JESUS / JESUS CHRIST distinction
+- HOLY SPIRIT preference
+- CHILD display
+- Class I / Class i distinction
+- ontology hierarchy
+- conservative, source-grounded Matthew 2 pilot only
