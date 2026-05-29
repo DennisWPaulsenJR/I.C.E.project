@@ -880,6 +880,17 @@ function referenceRoleConfigForItem(item = {}) {
     };
   }
 
+  if (/\bjesus christ\b/i.test(linkText) && /\bbaptism\b/i.test(linkText)) {
+    return {
+      referenceRole: "baptism_context_support",
+      linkedThemes: ["baptism", "divine manifestation", "righteousness fulfillment", "chapter context"],
+      linkedEntities: ["JESUS", "JESUS CHRIST"],
+      relatedCharacters: ["John", "Pharisees", "Sadducees", "multitude / people"],
+      primaryReferencedBeing: "JESUS",
+      canonicalIdentity: "JESUS CHRIST",
+      confidence: "explicit"
+    };
+  }
   if (/\bjesus christ\b|\bchrist\b/i.test(linkText) || /matthew\.1\.(?:verse|note)\.1\b/i.test(scopePath)) {
     return {
       referenceRole: "messianic_identity_support",
@@ -942,6 +953,9 @@ function createReferenceRoles(sourceDiscoveryIndex = [], referenceGraph = [], pa
       referenceHref: item.href || graphEdge.toHref || "",
       referenceRole: config.referenceRole,
       linkedThemes: config.linkedThemes || [],
+      relatedCharacters: config.relatedCharacters || [],
+      primaryReferencedBeing: config.primaryReferencedBeing || "",
+      canonicalIdentity: config.canonicalIdentity || "",
       linkedPassageFunctions,
       linkedEntities,
       relatedRevelationPatterns: (revelationPatterns || [])
@@ -1446,6 +1460,7 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
   const sourceText = sourceCaptureText(captures);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
   const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
+  const isMatthewThree = context.book === "Matthew" && String(context.chapter || "") === "3";
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   if (isMatthewTwo) {
     const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
@@ -1461,6 +1476,19 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
       add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-15", semanticItem: "Egypt", ontologyRoles: ["protective refuge location", "fulfillment location", "Divine preservation path location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "refuge location and fulfillment location", canonicalRole: "place role in preservation and fulfillment chain", sourcePhrase: "flee into Egypt; Out of Egypt have I called my son", derivedMeaning: "Egypt: protective refuge and fulfillment location", relatedEntities: ["Egypt", "JESUS", "Joseph", "Mary"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:13-15 grounds Egypt in both protective movement and fulfillment wording." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.1", verseRange: "Matthew 2:1-3", semanticItem: "Jerusalem", ontologyRoles: ["arrival location", "authority conflict setting"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "place where wise men inquiry and Herod troubled response enter the narrative", canonicalRole: "location role in adversarial/protective contrast setup", sourcePhrase: "wise men from the east to Jerusalem; Herod ... was troubled, and all Jerusalem with him", derivedMeaning: "Jerusalem: inquiry location and troubled authority setting", relatedEntities: ["Jerusalem", "Wise men", "Herod", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:1-3 grounds Jerusalem as the arrival and conflict-setting location." }),
       add({ scopePath: "scripture.nt.matthew.2.verse.23", verseRange: "Matthew 2:22-23", semanticItem: "Nazareth", ontologyRoles: ["settlement location", "prophecy fulfillment location", "protective redirection location"], authorityOriginClass: "Class IIIII - Place / Location", narrativeRole: "destination after warning and avoidance of Archelaus", canonicalRole: "place role in redirected preservation and fulfillment chain", sourcePhrase: "turned aside into the parts of Galilee; dwelt in a city called Nazareth; He shall be called a Nazarene", derivedMeaning: "Nazareth: protective redirection and fulfillment location", relatedEntities: ["Nazareth", "Joseph", "JESUS", "Mary", "quoted prophet"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 2:22-23 grounds Nazareth in warning-redirection and fulfillment wording." })
+    ];
+  }
+  if (isMatthewThree) {
+    const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
+    const commonLayers = ["ICE_PASSAGE_FUNCTIONS", "ICE_REVELATION_PATTERNS", "ICE_REFERENCE_ROLES", "ICE_ENTITY_RELATION_ROLES"];
+    return [
+      add({ scopePath: "scripture.nt.matthew.3.verse.13", verseRange: "Matthew 3:13-17", semanticItem: "JESUS", ontologyRoles: ["Narrative NAME", "baptism participant", "beloved Son identity"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "comes to John for baptism and is identified in the heavenly proclamation", canonicalRole: "JESUS remains the narrative NAME while JESUS CHRIST remains canonical/source identity in reference roles", sourcePhrase: "Then cometh Jesus from Galilee to Jordan unto John; This is my beloved Son", derivedMeaning: "JESUS: Narrative NAME and primary baptism participant", relatedEntities: ["JESUS", "JESUS CHRIST", "John", "HOLY SPIRIT", "THE LORD"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 explicitly names Jesus in the baptism scene and preserves the narrative NAME distinction." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.16", verseRange: "Matthew 3:16", semanticItem: "HOLY SPIRIT", ontologyRoles: ["divine manifestation", "Spirit descending", "derived display for Spirit of God"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "appears in the baptism manifestation as the Spirit of God descending", canonicalRole: "HOLY SPIRIT preferred derived display; source wording remains Spirit of God / Holy Ghost where present", sourcePhrase: "the Spirit of God descending like a dove", derivedMeaning: "HOLY SPIRIT: Divine manifestation at baptism", relatedEntities: ["HOLY SPIRIT", "JESUS", "John"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3:16 directly describes the Spirit of God descending after JESUS is baptized." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.17", verseRange: "Matthew 3:17", semanticItem: "THE LORD", ontologyRoles: ["divine authority", "heavenly voice", "source authority"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "heavenly voice identifies JESUS as beloved Son", canonicalRole: "Divine authority/source role distinct from Human witnesses", sourcePhrase: "lo a voice from heaven, saying, This is my beloved Son", derivedMeaning: "THE LORD: Divine authority/source in heavenly proclamation", relatedEntities: ["THE LORD", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3:17 grounds the Divine authority role in the voice from heaven." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.1", verseRange: "Matthew 3:1-15", semanticItem: "John", ontologyRoles: ["Human preacher", "baptizer", "prophetic witness"], authorityOriginClass: "Class III - Human", narrativeRole: "preaches repentance, baptizes, warns, and participates in JESUS baptism", canonicalRole: "Human prophetic witness and baptism participant; not Divine origin authority", sourcePhrase: "John the Baptist; John forbad him; Then he suffered him", derivedMeaning: "John: Class III Human preacher and baptism witness", relatedEntities: ["John", "JESUS", "multitude / people", "Pharisees", "Sadducees"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 repeatedly names John and grounds his Human role in preaching, baptizing, warning, and responding to JESUS." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.7", verseRange: "Matthew 3:7-10", semanticItem: "Pharisees", ontologyRoles: ["Human religious group", "warning audience", "repentance confrontation context"], authorityOriginClass: "Class III - Human", narrativeRole: "come to John's baptism and receive warning language", canonicalRole: "Human religious group; not automatically adversarial Class i from label alone", sourcePhrase: "many of the Pharisees and Sadducees come to his baptism", derivedMeaning: "Pharisees: Class III Human warning audience in Matthew 3", relatedEntities: ["Pharisees", "John", "Sadducees"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 explicitly names Pharisees in the baptism/warning context without requiring unsupported ontology escalation." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.7", verseRange: "Matthew 3:7-10", semanticItem: "Sadducees", ontologyRoles: ["Human religious group", "warning audience", "repentance confrontation context"], authorityOriginClass: "Class III - Human", narrativeRole: "come to John's baptism and receive warning language", canonicalRole: "Human religious group; not automatically adversarial Class i from label alone", sourcePhrase: "many of the Pharisees and Sadducees come to his baptism", derivedMeaning: "Sadducees: Class III Human warning audience in Matthew 3", relatedEntities: ["Sadducees", "John", "Pharisees"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 explicitly names Sadducees in the baptism/warning context without requiring unsupported ontology escalation." }),
+      add({ scopePath: "scripture.nt.matthew.3.verse.5", verseRange: "Matthew 3:5-6", semanticItem: "multitude / people", ontologyRoles: ["Human group", "baptism recipients", "confessing response"], authorityOriginClass: "Class III - Human", narrativeRole: "people from Jerusalem, Judaea, and around Jordan come and are baptized", canonicalRole: "Human collective response group", sourcePhrase: "Then went out to him Jerusalem, and all Judaea, and all the region round about Jordan, And were baptized", derivedMeaning: "multitude / people: Class III Human baptism-response group", relatedEntities: ["multitude / people", "John"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3:5-6 grounds the people/multitude role in the described collective movement and baptism response." })
     ];
   }
   if (!isMatthewOne) return [];

@@ -2,6 +2,63 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-28 - Matthew 3 Study Panel Context and Volume Navigation Refinement
+
+Instruction summary:
+- Refine Matthew 3 Study Panel display so reference roles can separate Primary Referenced Being from related chapter characters.
+- Transparently surface LDS chapter heading/page description provenance as contextual guidance, not scripture text or direct semantic evidence.
+- Clarify Volume Context analysis target wording and prevent user confusion between active source page and Study Panel DOM.
+- Add Matthew 3 ontology/entity baseline and QA harness while preserving Matthew 1 and Matthew 2 behavior.
+
+Codex action summary:
+- Added Matthew 3 baptism reference-role configuration for `TG JESUS CHRIST, Baptism of` with Primary Referenced Being `JESUS`, canonical identity `JESUS CHRIST`, and related characters John, Pharisees, Sadducees, and multitude / people.
+- Added Reference Role display sections for Primary Referenced Being and Related Characters, plus trace output that keeps related chapter context separate from the resolved Being.
+- Added transparent LDS chapter-heading/page-description DOM hints and Study Panel provenance display: Source Type, Source Provenance, Usage, Not Scripture Text, Not Direct Semantic Evidence, and potential semantic use.
+- Added Matthew 3 ontology roles for JESUS, HOLY SPIRIT, THE LORD, John, Pharisees, Sadducees, and multitude / people.
+- Renamed Volume Context controls to Analyze active source page, Re-analyze current source page, Clear current source analysis, and Clear all I.C.E. session data; added Analysis Target and Study Panel target warning text.
+- Added `qa:matthew3` and expanded `qa:matthew-pages` to run Matthew 1, Matthew 2, and Matthew 3.
+
+Files changed:
+- `background.js`
+- `content.js`
+- `study.js`
+- `package.json`
+- `qa/matthew3-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check content.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Matthew 3 QA counts:
+- DOM hints: 176
+- Mention index: 38
+- Entity registry: 8
+- Relationship graph: 13
+- Canonical identities: 9
+- Source discovery: 177
+- Reference graph: 177
+- Reference roles: 4
+- Ontology roles: 7
+
+Known scope note:
+- Matthew 3 is stabilized for source context, reference roles, and ontology roles. Deeper Matthew 3 derived layers such as Passage Functions, Revelation Patterns, Semantic Continuity, Movement Semantics, and Semantic Causality remain future refinement work.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-27 - Phase 8.3d Volume / Session Context Interface
 
 Instruction summary:
@@ -328,13 +385,13 @@ Status:
 
 Instruction summary:
 - Add Phase 8.2r restrained semantic visual hierarchy styling.
-- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class 𝑖, source wording, and derived meaning.
+- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class ð‘–, source wording, and derived meaning.
 - Preserve semantic records, source phrases, source phrase vs Derived meaning separation, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class hierarchy.
 
 Codex action summary:
 - Added source phrase and derived meaning section classes from the Study Panel section helper.
 - Refined `ice-authority-path` styling so THE LORD -> AngEL Of THE LORD -> Joseph reads as origin -> transfer -> recipient without flashy treatment.
-- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class 𝑖 so Class 𝑖 remains visually distinct from Class I.
+- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class ð‘– so Class ð‘– remains visually distinct from Class I.
 
 Files changed:
 - `study.js`
@@ -353,14 +410,14 @@ Commit:
 
 Status:
 - Implemented by pcdx.
-## 2026-05-20 - Class 𝑖 Hierarchy Correction
+## 2026-05-20 - Class ð‘– Hierarchy Correction
 
 Instruction summary:
-- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class 𝑖`.
-- Ensure Class 𝑖 never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
+- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class ð‘–`.
+- Ensure Class ð‘– never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
 
 Codex action summary:
-- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class 𝑖`.
+- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class ð‘–`.
 - Renamed the Divine Class I CSS hook in the class-transfer display to `ice-class-i-divine` and added `ice-class-i-adversary` for future distinct styling.
 - Updated project state hierarchy notes and current class-transfer CSS hook references.
 
@@ -924,7 +981,7 @@ Instruction summary:
 - Preserve distinctions between narrator, prophet, divine speech, THE LORD, and AngEL Of THE LORD.
 
 Codex action summary:
-- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class 𝑖 - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
+- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class ð‘– - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
 - Added display fallback classification for `Scripture narrator`, `narrator`, `prophet`, and `the prophet` as `Class III - Human` when they appear as related display entities without a full registry record.
 - Added hierarchy lines to derived semantic displays, including Passage Functions, Revelation Patterns, Reference Roles, and Narrative Timeline entity previews.
 - Removed duplicated `Class:` prefixing in entity, canonical identity, focus, and role displays so hierarchy labels are visually consistent.
@@ -2417,7 +2474,7 @@ Instruction summary:
 
 Codex action summary:
 - Added class labels for Entity Registry and Canonical Identities.
-- Used hierarchy I through 𝑖 for display classification, with italic lowercase Class 𝑖 distinct from Divine Class I.
+- Used hierarchy I through ð‘– for display classification, with italic lowercase Class ð‘– distinct from Divine Class I.
 - Kept classification display-only.
 
 Files changed:
@@ -2693,7 +2750,7 @@ Status:
 ## 2026-05-26 - Phase 8.3 HOLY Action / HOLY Reference Consistency
 - Added derived-display HOLY action emphasis for Class I / HOLY-origin semantic processes while preserving quoted source phrases.
 - Added HOLY action process rendering to authority/class-transfer displays: origin, messenger/actor, transfer/action, recipient/target, and result/fulfillment.
-- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class 𝑖 distinction.
+- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class ð‘– distinction.
 
 ## 2026-05-27 - Refine Semantic Contrast Wording
 

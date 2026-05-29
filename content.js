@@ -742,10 +742,44 @@
 
     return links;
   }
+
+  function metaDescriptionText() {
+    return normalizeCapturedText(document.querySelector("meta[name='description'], meta[property='og:description']")?.getAttribute("content") || "");
+  }
+
+  function chapterHeadingCandidates() {
+    return Array.from(document.querySelectorAll("[data-testid*='heading' i], [class*='chapterHeading' i], [class*='studyIntro' i], [class*='summary' i], .study-summary, .chapter-summary, h1, h2")).filter((element) => {
+      if (!element || element.closest?.(CAPTURE_EXCLUDE_SELECTOR)) return false;
+      const text = elementText(element);
+      if (!text || text.length < 8 || text.length > 500) return false;
+      if (/^(Matthew|Mark|Luke|John)\s+\d+$/i.test(text)) return false;
+      return /\b(Jesus|John|baptiz|Holy Ghost|Spirit|Pharisees|Sadducees|repent|kingdom|heaven|fulfill|wise men|Joseph|child|Herod|Egypt|Nazareth)\b/i.test(text);
+    });
+  }
   function extractDomSemanticHints(capture) {
     const hints = [];
     const seen = new Set();
 
+    const metaDescription = metaDescriptionText();
+    if (metaDescription) {
+      const isLdsScripturePage = /\/study\/scriptures\//i.test(location.pathname || "");
+      pushDomHint(hints, seen, capture, isLdsScripturePage ? "chapter_heading" : "page_description", document.documentElement, metaDescription, {
+        selectorHint: "meta[name='description']",
+        confidence: "source-markup",
+        source: isLdsScripturePage ? "lds-chapter-heading" : "page-metadata",
+        scopePath: isLdsScripturePage ? "source.chapter_heading" : "source.description"
+      });
+    }
+
+    for (const heading of chapterHeadingCandidates().slice(0, 4)) {
+      pushDomHint(hints, seen, capture, "chapter_heading", heading, elementText(heading), {
+        attributes: hintAttributes(heading, ["id", "class", "data-testid"]),
+        confidence: "source-markup",
+        source: "lds-chapter-heading",
+        scopePath: "source.chapter_heading",
+        noHighlight: true
+      });
+    }
     // Phase 7.2 optional DOM enrichment. Future site adapters can refine this
     // into LDS scripture, BibleGateway, conference talk, generic article, and
     // DOM-to-scopePath ingestion without replacing the plain-text fallback.

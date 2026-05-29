@@ -2512,3 +2512,36 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-28 00:40 - pcdx - Refine Matthew 3 study panel context and volume navigation
+Summary:
+- Added Matthew 3 baptism reference-role context that keeps Primary Referenced Being `JESUS`, canonical/source identity `JESUS CHRIST`, and related characters separate.
+- Added transparent LDS chapter heading/page description provenance display as contextual guidance only, not scripture text or direct semantic evidence.
+- Added Matthew 3 ontology roles for Class I and Class III entities in the baptism/preaching context.
+- Refined Volume Context action labels and analysis target warning wording.
+- Added `qa:matthew3` and expanded `qa:matthew-pages` to Matthew 1 -> Matthew 2 -> Matthew 3.
+
+Files touched:
+- `background.js`
+- `content.js`
+- `study.js`
+- `package.json`
+- `qa/matthew3-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed.
+- `node --check content.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Status:
+- Implemented and validated

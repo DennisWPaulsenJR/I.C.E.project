@@ -44,6 +44,16 @@ Latest pcdx update:
 - Volume Context actions are user-driven only: analyze current page, clear current page analysis, clear all I.C.E. session data, show analyzed pages, and show continuity map.
 - No semantic record rewrites, auto-crawling, or auto-analysis behavior was added.
 
+
+Latest pcdx update:
+- Matthew 3 Study Panel semantic/UX refinement implemented.
+- Reference Roles now distinguish Primary Referenced Being from related chapter characters for Matthew 3 baptism references.
+- LDS scripture page meta descriptions are surfaced as transparent Chapter Heading / Source Heading context with Church-provided provenance, contextual-use language, and explicit Not Scripture Text / Not Direct Semantic Evidence wording.
+- Matthew 3 ontology baseline now includes Class I roles for JESUS, HOLY SPIRIT, and THE LORD, plus Class III roles for John, Pharisees, Sadducees, and multitude / people.
+- Volume Context now shows Analysis Target and clearer user-driven action labels.
+- `qa:matthew3` is available; `qa:matthew-pages` now runs Matthew 1, Matthew 2, and Matthew 3.
+- Matthew 3 deeper derived layers remain future work beyond this stabilization pass.
+
 ## Active Systems
 
 - Sacred reference formatter
@@ -317,10 +327,10 @@ Future capabilities:
 - `III` = Human
 - `IIII` = Living organism / creature / natural life
 - `IIIII` = Non-living item/object
-- `𝑖` = adversary / wicked / evil / anti-GOD
+- `ð‘–` = adversary / wicked / evil / anti-GOD
 - `AI_Actor` = artificial/tool actor category
 
-Class I is Divine Origin Authority. Class 𝑖 is adversarial / anti-origin opposition. Class 𝑖 uses an italicized lowercase i and must NEVER visually collapse with Class I.
+Class I is Divine Origin Authority. Class ð‘– is adversarial / anti-origin opposition. Class ð‘– uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 
@@ -494,7 +504,7 @@ Process model:
 Matthew 1 pilot:
 - THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
 - HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
-- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class 𝑖 remains adversarial/opposition and visually distinct.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class ð‘– remains adversarial/opposition and visually distinct.
 
 Preserve:
 - App accuracy wording
@@ -502,7 +512,7 @@ Preserve:
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
-- Class I / Class 𝑖 distinction
+- Class I / Class ð‘– distinction
 - no unsupported doctrine
 
 ## Phase 8.3b Semantic Contrast Wording Refinement

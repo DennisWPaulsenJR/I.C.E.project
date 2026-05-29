@@ -2,9 +2,24 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-27 by `pcdx`.
+Last updated: 2026-05-28 by `pcdx`.
 
 Current operational state:
+Latest validation update:
+- Matthew 3 Study Panel context and volume-navigation refinement passed full syntax, whitespace, and Matthew 1-3 QA.
+- `node --check background.js` passed.
+- `node --check content.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Matthew 1 counts: DOM hints 174, Source Discovery 136, Reference Graph 136, Passage Functions 4, Revelation Patterns 1, Reference Roles 20, Ontology Roles 10, Semantic Sequence / Causality 1.
+- Matthew 2 counts: DOM hints 156, Source Discovery 113, Reference Graph 113, Passage Functions 11, Revelation Patterns 2, Reference Roles 3, Ontology Roles 10, Semantic Continuity 4, Movement / Location Semantics 5, Semantic Sequence / Causality 2.
+- Matthew 3 counts: DOM hints 176, Source Discovery 177, Reference Graph 177, Reference Roles 4, Ontology Roles 7.
+- Matthew 3 QA status: stabilized for source context, reference roles, and ontology roles; deeper derived layers remain future work.
 Latest validation update:
 - Phase 8.3d Volume / Session Context Interface passed syntax, whitespace, and Matthew baseline QA.
 - `node --check study.js` passed.
