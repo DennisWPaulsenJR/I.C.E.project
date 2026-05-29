@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     movementSemantics: "ICE_MOVEMENT_SEMANTICS",
     semanticCausality: "ICE_SEMANTIC_CAUSALITY",
     teachingSemantics: "ICE_TEACHING_SEMANTICS",
+    principleRelationships: "ICE_PRINCIPLE_RELATIONSHIPS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -1099,6 +1100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.movementSemantics,
       STORAGE_KEYS.semanticCausality,
       STORAGE_KEYS.teachingSemantics,
+      STORAGE_KEYS.principleRelationships,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -1147,6 +1149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.movementSemantics,
       STORAGE_KEYS.semanticCausality,
       STORAGE_KEYS.teachingSemantics,
+      STORAGE_KEYS.principleRelationships,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -4541,6 +4544,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       movement: "movementSemanticsSection",
       causality: "semanticCausalitySection",
       teaching: "teachingSemanticsSection",
+      principleRelationship: "principleRelationshipsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -4832,6 +4836,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           semanticSectionForNav("causality"),
           sequence.initiatingCause || sequence.sequenceType || "",
           semanticCardKey("causality", sequence, `${sequence.sequenceType || ""}-${sequence.initiatingCause || ""}`)
+        )));
+    }
+
+    if (mode !== "principleRelationship") {
+      asArray(studyData.principleRelationships)
+        .filter((relationship) => semanticVerseOverlap(relationship, item) || semanticEntityOverlap(relationship, item) || asArray(relationship.relatedTeachingSemantics).some((id) => id && normalizeText(JSON.stringify(item)).includes(normalizeText(id))))
+        .forEach((relationship) => links.push(semanticNavItem(
+          `Principle Relationship: ${relationship.principle || "principle"} ${relationship.relationshipType || "related"} ${asArray(relationship.relatedPrinciples).join(", ") || "related principle"}`,
+          semanticSectionForNav("principleRelationship"),
+          relationship.principle || relationship.relationshipType || "",
+          semanticCardKey("principleRelationship", relationship, `${relationship.principle || ""}-${relationship.relationshipType || ""}`)
         )));
     }
 
@@ -6140,6 +6155,112 @@ createRevelationPartsSection(item.subEvents)
       container.appendChild(createTeachingSemanticCard(item));
     });
   }
+
+  function principleRelationshipSearchText(item = {}) {
+    return [
+      item.principle,
+      asArray(item.relatedPrinciples).join(" "),
+      item.relationshipType,
+      item.teachingBlock,
+      item.speaker,
+      item.canonicalIdentity,
+      item.audience,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.evidence).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      item.confidence,
+      item.sourceGrounding,
+      item.contextSnippet,
+      item.sourceTitle
+    ].join(" ");
+  }
+
+  function principleRelationshipTitle(item = {}) {
+    const related = asArray(item.relatedPrinciples).slice(0, 2).join(", ");
+    return [item.principle || "Principle", passageFunctionTitle(item.relationshipType || "related"), related].filter(Boolean).join(" | ");
+  }
+
+  function createPrincipleRelationshipCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.speaker, item.canonicalIdentity, item.principle, item.relatedPrinciples, item.derivedMeaning, item.relatedEntities, item.evidence]);
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+
+    card.className = "study-card semantic-card principle-relationship-card";
+    assignSemanticCardTarget(card, "principleRelationship", item, `${item.principle || ""}-${item.relationshipType || ""}`);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(principleRelationshipTitle(item), divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = ["principle relationship", item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Principle", item.principle || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", "", { list: asArray(item.relatedPrinciples), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationship Type", passageFunctionTitle(item.relationshipType || "related"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Block", item.teachingBlock || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Canonical/source identity", item.canonicalIdentity || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "teaching", 10), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "principleRelationship"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Semantic Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderPrincipleRelationships(term) {
+    const container = document.getElementById("principleRelationshipsCards");
+    const count = document.getElementById("principleRelationshipsCount");
+    const records = asArray(studyData.principleRelationships);
+    const filtered = records.filter((item) => matchesSearchQuery(principleRelationshipSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} relationship record(s)`;
+
+    if (records.length === 0) {
+      appendEmpty(container, "No principle relationship records derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No principle relationship records match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Principle Relationships",
+      [
+        `Derived records: ${records.length}`,
+        `Layer: ICE_PRINCIPLE_RELATIONSHIPS`,
+        "Purpose: connect source-grounded Matthew 5 principles through supports, expands, reinforces, illustrates, and related relationship types.",
+        "Review posture: inspect principle, related principles, relationship type, source phrase, derived meaning, App accuracy, teaching block, speaker, audience, and grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createPrincipleRelationshipCard(item));
+    });
+  }
   function semanticContinuitySearchText(item = {}) {
     return [
       item.continuedEntity,
@@ -7246,6 +7367,7 @@ createRevelationPartsSection(item.subEvents)
 
       renderVolumeContext(term);
       renderTeachingSemantics(term);
+      renderPrincipleRelationships(term);
       renderPassageFunctions(term);
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
@@ -7334,6 +7456,7 @@ createRevelationPartsSection(item.subEvents)
       movementSemantics: countItems(studyData.movementSemantics),
       semanticCausality: countItems(studyData.semanticCausality),
       teachingSemantics: countItems(studyData.teachingSemantics),
+      principleRelationships: countItems(studyData.principleRelationships),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -7373,12 +7496,13 @@ createRevelationPartsSection(item.subEvents)
     const movementSemanticsCount = countItems(studyData.movementSemantics);
     const semanticCausalityCount = countItems(studyData.semanticCausality);
     const teachingSemanticsCount = countItems(studyData.teachingSemantics);
+    const principleRelationshipsCount = countItems(studyData.principleRelationships);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -7411,6 +7535,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticMovementSemantics").textContent = movementSemanticsCount;
     document.getElementById("diagnosticSemanticCausality").textContent = semanticCausalityCount;
     document.getElementById("diagnosticTeachingSemantics").textContent = teachingSemanticsCount;
+    document.getElementById("diagnosticPrincipleRelationships").textContent = principleRelationshipsCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
     document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
@@ -7434,7 +7559,8 @@ createRevelationPartsSection(item.subEvents)
         `semanticContinuity: ${semanticContinuityCount}`,
         `movementSemantics: ${movementSemanticsCount}`,
         `semanticCausality: ${semanticCausalityCount}`,
-        `teachingSemantics: ${teachingSemanticsCount}`
+        `teachingSemantics: ${teachingSemanticsCount}`,
+        `principleRelationships: ${principleRelationshipsCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

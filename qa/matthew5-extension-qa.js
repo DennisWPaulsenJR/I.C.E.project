@@ -42,7 +42,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_CONTINUITY",
   "ICE_MOVEMENT_SEMANTICS",
   "ICE_SEMANTIC_CAUSALITY",
-  "ICE_TEACHING_SEMANTICS"
+  "ICE_TEACHING_SEMANTICS",
+  "ICE_PRINCIPLE_RELATIONSHIPS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -103,7 +104,8 @@ function emptyCounts() {
     semanticContinuity: 0,
     movementSemantics: 0,
     semanticCausality: 0,
-    teachingSemantics: 0
+    teachingSemantics: 0,
+    principleRelationships: 0
   };
 }
 
@@ -130,7 +132,8 @@ function buildCounts(storageData) {
     semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
     movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS),
     semanticCausality: count(storageData.ICE_SEMANTIC_CAUSALITY),
-    teachingSemantics: count(storageData.ICE_TEACHING_SEMANTICS)
+    teachingSemantics: count(storageData.ICE_TEACHING_SEMANTICS),
+    principleRelationships: count(storageData.ICE_PRINCIPLE_RELATIONSHIPS)
   };
 }
 
@@ -159,6 +162,7 @@ function buildSamples(storageData) {
     movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
     semanticCausality: sample(storageData.ICE_SEMANTIC_CAUSALITY, 20),
     teachingSemantics: sample(storageData.ICE_TEACHING_SEMANTICS, 20),
+    principleRelationships: sample(storageData.ICE_PRINCIPLE_RELATIONSHIPS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -375,6 +379,22 @@ function hasTeachingSemantic(data, discourseType, predicate = () => true) {
     predicate(item)
   );
 }
+function hasPrincipleRelationship(data, principlePattern, relationshipType, relatedPattern) {
+  return (data.ICE_PRINCIPLE_RELATIONSHIPS || []).some((item) =>
+    principlePattern.test(item.principle || "") &&
+    item.relationshipType === relationshipType &&
+    (item.relatedPrinciples || []).some((principle) => relatedPattern.test(principle || "")) &&
+    item.speaker === "JESUS" &&
+    item.canonicalIdentity === "JESUS CHRIST" &&
+    item.teachingBlock === "Sermon on the Mount" &&
+    item.sourcePhrase &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0
+  );
+}
 function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
@@ -397,6 +417,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_REFERENCE_ROLES) <= 0) failures.push("Expected Matthew 5 reference role records count > 0.");
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected Matthew 5 semantic ontology role records count > 0.");
   if (count(data.ICE_TEACHING_SEMANTICS) <= 0) failures.push("Expected Matthew 5 teaching / discourse semantic records count > 0.");
+  if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -437,6 +458,11 @@ function evaluateFailures(data) {
   if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /forswear/i.test(item.commandment || "") && /Swear not at all/i.test(item.interpretation || "") && /Yea, yea/i.test(item.application || ""))) failures.push("Expected oath/speech integrity commandment interpretation discourse record.");
   if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /eye for an eye/i.test(item.commandment || "") && /resist not evil/i.test(item.interpretation || "") && /turn to him the other also/i.test(item.application || ""))) failures.push("Expected retaliation/non-retaliation commandment interpretation discourse record.");
   if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /love thy neighbour/i.test(item.commandment || "") && /Love your enemies/i.test(item.interpretation || "") && /pray for them/i.test(item.application || ""))) failures.push("Expected love enemies commandment interpretation discourse record.");
+
+  if (!hasPrincipleRelationship(data, /Mercy/i, "supports", /Peacemaking/i)) failures.push("Expected Mercy supports Peacemaking principle relationship.");
+  if (!hasPrincipleRelationship(data, /Righteousness/i, "expands", /Law Fulfillment/i)) failures.push("Expected Righteousness expands Law Fulfillment principle relationship.");
+  if (!hasPrincipleRelationship(data, /Reconciliation/i, "supports", /Peace/i)) failures.push("Expected Reconciliation supports Peace principle relationship.");
+  if (!hasPrincipleRelationship(data, /Commandment expansion/i, "illustrates", /Reconciliation/i)) failures.push("Expected Commandment expansion illustrates Reconciliation principle relationship.");
 
   return failures;
 }async function getServiceWorker(context) {

@@ -6,6 +6,19 @@ Last updated: 2026-05-29 by `pcdx`.
 
 Current operational state:
 Latest validation update:
+- Phase 8.4b Principle Relationship Architecture passed syntax, whitespace, Matthew 1-3 baseline QA, Matthew 5 QA, and combined Matthew pages QA.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed after a clean rerun following a transient Playwright browser-context closure.
+- Matthew 5 counts: DOM hints 250, Source Discovery 310, Reference Graph 310, Reference Roles 1, Ontology Roles 3, Teaching / Discourse Structure 11, Principle Relationships 5, Canonical Identities 6.
+- Matthew 5 QA status: stabilized for source-grounded principle relationships without Strong's/POS expansion or external crawling.
+Latest validation update:
 - Phase 8.4a Matthew 5 Teaching Speaker / Audience Stabilization passed syntax, whitespace, Matthew 1-3 baseline QA, Matthew 5 QA, and combined Matthew pages QA.
 - `node --check background.js` passed.
 - `node --check study.js` passed.

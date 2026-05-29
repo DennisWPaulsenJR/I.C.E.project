@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.4b Principle Relationship Architecture implemented.
+- New derived layer: `ICE_PRINCIPLE_RELATIONSHIPS`.
+- Matthew 5 now connects source-grounded principles using relationship types such as supports, expands, reinforces, and illustrates.
+- Pilot relationships include Mercy supports Peacemaking, Reconciliation supports Peace, Righteousness expands Law Fulfillment, Commandment expansion illustrates Reconciliation, and Kingdom of heaven themes reinforce the Beatitudes frame.
+- Study Panel now includes a Principle Relationships section with principle, related principles, relationship type, teaching block, speaker, audience, source phrase, derived meaning, App accuracy, evidence, and grounding.
+- Matthew 5 QA now validates principle relationship records while preserving the existing Teaching / Discourse Structure baseline.
+
+Latest pcdx update:
 - Phase 8.4a Matthew 5 Teaching Speaker / Audience Stabilization implemented.
 - Matthew 5 teaching records now explicitly carry `JESUS` as speaker and `JESUS CHRIST` as canonical/source identity.
 - Teaching / Discourse Structure now expands the Matthew 5 pilot from 7 to 11 records, adding righteousness teaching plus oath/speech integrity, retaliation/non-retaliation, and love-enemy commandment interpretation records where grounded in source text.

@@ -3015,3 +3015,42 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-29 - Add Principle Relationships
+
+Instruction summary:
+- Begin Phase 8.4b Principle Relationship Architecture by deriving source-grounded relationships between Matthew 5 principles.
+
+Codex action summary:
+- Added `ICE_PRINCIPLE_RELATIONSHIPS` as a derived semantic layer.
+- Built Matthew 5 pilot relationship records for Mercy / Peacemaking, Reconciliation / Peace, Righteousness / Law Fulfillment, Commandment expansion / Reconciliation, and Kingdom of heaven Beatitudes reinforcement.
+- Added Study Panel Principle Relationships cards with principle, related principles, relationship type, source phrase, derived meaning, teaching block, speaker, audience, App accuracy, evidence, and grounding.
+- Added storage, scope integrity, diagnostics, search, clearing, and related-layer navigation support for the new layer.
+- Expanded Matthew 5 QA to assert principle relationship records and counts.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed with Principle Relationships: 5.
+- `npm.cmd run qa:matthew-pages` passed after a clean rerun following a transient Playwright browser-context closure.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

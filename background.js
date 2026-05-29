@@ -36,6 +36,7 @@ const SEMANTIC_CONTINUITY_KEY = "ICE_SEMANTIC_CONTINUITY";
 const MOVEMENT_SEMANTICS_KEY = "ICE_MOVEMENT_SEMANTICS";
 const SEMANTIC_CAUSALITY_KEY = "ICE_SEMANTIC_CAUSALITY";
 const TEACHING_SEMANTICS_KEY = "ICE_TEACHING_SEMANTICS";
+const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -531,6 +532,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.movementSemantics, "movement_semantic", activeAdapter);
   enrichScopeCollection(data.semanticCausality, "semantic_causality", activeAdapter);
   enrichScopeCollection(data.teachingSemantics, "teaching_semantic", activeAdapter);
+  enrichScopeCollection(data.principleRelationships, "principle_relationship", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -554,7 +556,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.semanticContinuity || []).map((item) => ({ ...item, scopeLayer: "semantic_continuity" })),
     ...(data.movementSemantics || []).map((item) => ({ ...item, scopeLayer: "movement_semantic" })),
     ...(data.semanticCausality || []).map((item) => ({ ...item, scopeLayer: "semantic_causality" })),
-    ...(data.teachingSemantics || []).map((item) => ({ ...item, scopeLayer: "teaching_semantic" }))
+    ...(data.teachingSemantics || []).map((item) => ({ ...item, scopeLayer: "teaching_semantic" })),
+    ...(data.principleRelationships || []).map((item) => ({ ...item, scopeLayer: "principle_relationship" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -2126,6 +2129,146 @@ function createTeachingSemantics(captures = [], passageFunctions = [], reference
   }
   if (hasPhrase(/Thou shalt love thy neighbour|Love your enemies|pray for them which despitefully use you/i)) {
     records.push(add({ scopePath: "scripture.nt.matthew.5.verse.43", verseRange: "Matthew 5:43-48", discourseType: "commandment_interpretation", teachingTopic: "love enemy teaching", principle: "love beyond reciprocal relationships", commandment: "Thou shalt love thy neighbour", interpretation: "But I say unto you, Love your enemies", application: "bless them that curse you; pray for them which despitefully use you", requirement: "be ye therefore perfect, even as your Father which is in heaven is perfect", sourcePhrase: "Thou shalt love thy neighbour... But I say unto you, Love your enemies... pray for them which despitefully use you", derivedMeaning: "JESUS expands love language beyond neighbor-only framing into enemy-love application, grounded in the source's command and example wording.", evidence: ["Thou shalt love thy neighbour", "Love your enemies", "pray for them which despitefully use you"], confidence: "explicit", sourceGrounding: "Matthew 5:43-48 directly grounds the love commandment citation, interpretive formula, and enemy-love application." }));
+  }
+
+  return records;
+}
+
+function principleRelationshipRecord(record = {}) {
+  const key = [
+    "principle-relationship",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.principle || "",
+    record.relationshipType || "",
+    (Array.isArray(record.relatedPrinciples) ? record.relatedPrinciples : []).join("|")
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    principle: record.principle || "",
+    relatedPrinciples: record.relatedPrinciples || [],
+    relationshipType: record.relationshipType || "related",
+    teachingBlock: record.teachingBlock || "Sermon on the Mount",
+    speaker: record.speaker || "JESUS",
+    canonicalIdentity: record.canonicalIdentity || "JESUS CHRIST",
+    audience: record.audience || "disciples; multitudes",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    relatedEntities: record.relatedEntities || ["JESUS", "JESUS CHRIST", "disciples", "multitudes"],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded principle and teaching/discourse records"
+  };
+}
+
+function createPrincipleRelationships(captures = [], teachingSemantics = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewFive = context.book === "Matthew" && String(context.chapter || "") === "5";
+  if (!isMatthewFive) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const hasPhrase = (pattern) => pattern.test(sourceText);
+  const teachingIds = (predicate) => (teachingSemantics || [])
+    .filter(predicate)
+    .map((item) => item.id || item.teachingTopic || item.principle || item.commandment || item.blessing)
+    .filter(Boolean);
+  const add = (record) => principleRelationshipRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    teachingBlock: "Sermon on the Mount",
+    speaker: "JESUS",
+    canonicalIdentity: "JESUS CHRIST",
+    audience: "disciples; multitudes",
+    ...record
+  });
+  const records = [];
+
+  if (hasPhrase(/Blessed are the merciful|they shall obtain mercy|Blessed are the peacemakers|children of God/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.5.principle.relationship.mercy-peacemaking",
+      verseRange: "Matthew 5:7-9",
+      principle: "Mercy",
+      relatedPrinciples: ["Peacemaking", "forgiveness", "reconciliation"],
+      relationshipType: "supports",
+      sourcePhrase: "Blessed are the merciful... Blessed are the peacemakers",
+      derivedMeaning: "Mercy is related with and supports the nearby peacemaking principle within the Beatitudes teaching block; forgiveness and reconciliation remain derived supporting concepts tied to mercy and peace language.",
+      evidence: ["Blessed are the merciful", "they shall obtain mercy", "Blessed are the peacemakers"],
+      relatedTeachingSemantics: teachingIds((item) => /merciful|mercy|reconciled|brother/i.test(`${item.blessing || ""} ${item.promise || ""} ${item.application || ""}`)),
+      confidence: "probable",
+      sourceGrounding: "Matthew 5:7-9 places mercy and peacemaking in the same Beatitudes sequence; reconciliation is also grounded later by Matthew 5:23-24."
+    }));
+  }
+
+  if (hasPhrase(/be reconciled to thy brother|Blessed are the peacemakers/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.5.principle.relationship.reconciliation-peace",
+      verseRange: "Matthew 5:9, 23-24",
+      principle: "Reconciliation",
+      relatedPrinciples: ["Peace", "peacemaking", "mercy"],
+      relationshipType: "supports",
+      sourcePhrase: "Blessed are the peacemakers... be reconciled to thy brother",
+      derivedMeaning: "The reconciliation application supports the peace/peacemaking principle by grounding peace in a concrete Human response within the same discourse.",
+      evidence: ["Blessed are the peacemakers", "be reconciled to thy brother"],
+      relatedTeachingSemantics: teachingIds((item) => /reconciled|peacemakers|brother/i.test(`${item.sourcePhrase || ""} ${item.application || ""}`)),
+      confidence: "probable",
+      sourceGrounding: "Matthew 5:9 states peacemaking as a blessing, and Matthew 5:23-24 gives reconciliation as a direct application."
+    }));
+  }
+
+  if (hasPhrase(/hunger and thirst after righteousness|except your righteousness shall exceed|not come to destroy, but to fulfil/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.5.principle.relationship.righteousness-fulfillment",
+      verseRange: "Matthew 5:6, 17-20",
+      principle: "Righteousness",
+      relatedPrinciples: ["Law Fulfillment", "kingdom righteousness", "commandment expansion"],
+      relationshipType: "expands",
+      sourcePhrase: "hunger and thirst after righteousness... not come to destroy, but to fulfil... except your righteousness shall exceed",
+      derivedMeaning: "Righteousness expands through the law/fulfillment teaching: the discourse moves from desire for righteousness into fulfillment and exceeding-righteousness instruction.",
+      evidence: ["hunger and thirst after righteousness", "not come to destroy, but to fulfil", "except your righteousness shall exceed"],
+      relatedTeachingSemantics: teachingIds((item) => /righteousness|fulfil|destroy/i.test(`${item.principle || ""} ${item.contrast || ""} ${item.requirement || ""}`)),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 5 directly repeats righteousness language in verse 6 and verses 17-20, tying the principle to the law/fulfillment teaching block."
+    }));
+  }
+
+  if (hasPhrase(/Thou shalt not kill|be reconciled to thy brother|Blessed are the peacemakers/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.5.principle.relationship.commandment-reconciliation",
+      verseRange: "Matthew 5:9, 21-24",
+      principle: "Commandment expansion",
+      relatedPrinciples: ["Reconciliation", "peace", "inward righteousness"],
+      relationshipType: "illustrates",
+      sourcePhrase: "Thou shalt not kill... But I say unto you... be reconciled to thy brother",
+      derivedMeaning: "The commandment expansion illustrates how teaching moves from a command into reconciliation and inward righteousness rather than leaving the command isolated.",
+      evidence: ["Thou shalt not kill", "But I say unto you", "be reconciled to thy brother"],
+      relatedTeachingSemantics: teachingIds((item) => /kill|reconciled|inward righteousness/i.test(`${item.commandment || ""} ${item.application || ""} ${item.principle || ""}`)),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 5:21-24 directly states the commandment, interpretive formula, and reconciliation application."
+    }));
+  }
+
+  if (hasPhrase(/poor in spirit|kingdom of heaven|persecuted for righteousness' sake/i)) {
+    records.push(add({
+      scopePath: "scripture.nt.matthew.5.principle.relationship.kingdom-beatitudes",
+      verseRange: "Matthew 5:3, 10",
+      principle: "Kingdom of heaven themes",
+      relatedPrinciples: ["poor in spirit", "righteousness under pressure", "Beatitude promise"],
+      relationshipType: "reinforces",
+      sourcePhrase: "theirs is the kingdom of heaven... persecuted for righteousness' sake: for theirs is the kingdom of heaven",
+      derivedMeaning: "The kingdom-of-heaven promise reinforces the Beatitudes frame by appearing at the opening and later righteousness-under-pressure blessing.",
+      evidence: ["theirs is the kingdom of heaven", "persecuted for righteousness' sake"],
+      relatedTeachingSemantics: teachingIds((item) => /kingdom of heaven|poor in spirit|righteousness/i.test(`${item.sourcePhrase || ""} ${item.promise || ""} ${item.principle || ""}`)),
+      confidence: "explicit",
+      sourceGrounding: "Matthew 5:3 and Matthew 5:10 repeat the kingdom-of-heaven promise in the Beatitudes sequence."
+    }));
   }
 
   return records;
@@ -6322,6 +6465,10 @@ async function runFullAnalysisPipeline(reason = "manual") {
       referenceRoles,
       ontologyRoles
     );
+    const principleRelationships = createPrincipleRelationships(
+      captures,
+      teachingSemantics
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -6342,7 +6489,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity,
       movementSemantics,
       semanticCausality,
-      teachingSemantics
+      teachingSemantics,
+      principleRelationships
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -6364,7 +6512,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity,
       movementSemantics,
       semanticCausality,
-      teachingSemantics
+      teachingSemantics,
+      principleRelationships
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -6394,7 +6543,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity: semanticContinuity.length,
       movementSemantics: movementSemantics.length,
       semanticCausality: semanticCausality.length,
-      teachingSemantics: teachingSemantics.length
+      teachingSemantics: teachingSemantics.length,
+      principleRelationships: principleRelationships.length
     };
     const status = {
       reason,
@@ -6441,6 +6591,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemanticsCount: movementSemantics.length,
       semanticCausalityCount: semanticCausality.length,
       teachingSemanticsCount: teachingSemantics.length,
+      principleRelationshipCount: principleRelationships.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -6507,6 +6658,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [MOVEMENT_SEMANTICS_KEY]: movementSemantics,
       [SEMANTIC_CAUSALITY_KEY]: semanticCausality,
       [TEACHING_SEMANTICS_KEY]: teachingSemantics,
+      [PRINCIPLE_RELATIONSHIPS_KEY]: principleRelationships,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
