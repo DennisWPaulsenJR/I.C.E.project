@@ -919,6 +919,221 @@ document.addEventListener("DOMContentLoaded", async () => {
     return pages.map((page) => `[${volumePageLabel(page)}]`);
   }
 
+
+  function exportPlainText(value = "", limit = 6500) {
+    const ascii = String(value || "")
+      .replace(/[\u2190\u2192\u2194]/g, "->")
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201c\u201d]/g, '"')
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/\u00a0/g, " ")
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (ascii.length <= limit) return ascii;
+    return `${ascii.slice(0, limit).trim()}\n\n[compressed: ${ascii.length - limit} additional character(s) omitted]`;
+  }
+
+  function exportLine(label, value) {
+    return `${label}: ${normalizeText(value || "Not recorded")}`;
+  }
+
+  function layerCountPairs() {
+    return [
+      ["DOM hints", countItems(studyData.domSemanticHints)],
+      ["Mention index", countItems(studyData.mentionIndex)],
+      ["Source Discovery", countItems(studyData.sourceDiscoveryIndex)],
+      ["Reference Graph", countItems(studyData.referenceGraph)],
+      ["Passage Functions", countItems(studyData.passageFunctions)],
+      ["Revelation Patterns", countItems(studyData.revelationPatterns)],
+      ["Reference Roles", countItems(studyData.referenceRoles)],
+      ["Ontology Roles", countItems(studyData.ontologyRoles)],
+      ["Semantic Relationship Roles", countItems(studyData.entityRelationRoles)],
+      ["Movement / Location", countItems(studyData.movementSemantics)],
+      ["Semantic Causality", countItems(studyData.semanticCausality)],
+      ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
+      ["Principle Relationships", countItems(studyData.principleRelationships)]
+    ];
+  }
+
+  function compactLayerCountsLine() {
+    return layerCountPairs().map(([label, value]) => `${label}: ${value}`).join(" | ");
+  }
+
+  function topWarningLines(activePage = activeSourcePageRecord()) {
+    const warnings = [];
+    const status = analysisStatusLabel(activePage);
+    if (/stale|cleared|not analyzed/i.test(status)) warnings.push(`Analysis status: ${status}`);
+    if (!studyData.activeAdapter?.adapterName && !studyData.analysisStatus?.activeAdapterName) warnings.push("Adapter not detected in current session data.");
+    if (/chrome-extension:.*study\.html|\/study\.html(?:$|[?#])/i.test(activePage?.activeUrl || "")) warnings.push("Stored active target appears to be Study Panel UI; source page should be selected before analysis.");
+    if (countItems(studyData.sourceDiscoveryIndex) > 200) warnings.push("Source Discovery is large; compact exports omit raw lists by design.");
+    if (countItems(studyData.referenceGraph) > 200) warnings.push("Reference Graph is large; compact exports omit raw edge dumps by design.");
+    return warnings.slice(0, 5);
+  }
+
+  function majorEntityLines(limit = 10) {
+    const seen = new Set();
+    const values = [];
+    const add = (name, role = "") => {
+      const label = normalizeText([name, role].filter(Boolean).join(" - "));
+      const key = label.toLowerCase();
+      if (!label || seen.has(key)) return;
+      seen.add(key);
+      values.push(label);
+    };
+    asArray(studyData.ontologyRoles).forEach((item) => add(item.semanticItem || item.entityName || item.name, item.ontologyClass || item.classLabel || item.semanticRole));
+    asArray(studyData.teachingSemantics).forEach((item) => {
+      add(item.speaker, "Speaker");
+      add(item.canonicalIdentity, "Canonical/source identity");
+      asArray(item.relatedEntities).forEach((entity) => add(entity));
+    });
+    return values.slice(0, limit);
+  }
+
+  function teachingSummaryLines(limit = 8) {
+    return asArray(studyData.teachingSemantics).slice(0, limit).map((item) => {
+      const label = item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType || "Teaching record";
+      return `${label} | ${item.verseRange || item.scopePath || "current scope"} | ${displayConfidence(item.confidence || "probable")}`;
+    });
+  }
+
+  function principleRelationshipSummaryLines(limit = 6) {
+    return asArray(studyData.principleRelationships).slice(0, limit).map((item) => {
+      const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
+      return `${item.principle || "Principle"} ${item.relationshipType || "related"} ${related || "related principles"} | ${displayConfidence(item.confidence || "probable")}`;
+    });
+  }
+
+  function studyScopeExportLines() {
+    const activePage = activeSourcePageRecord();
+    const analyzedPages = analyzedPageHistory();
+    const range = rangeFromAnalyzedPages(analyzedPages);
+    return [
+      exportLine("Active source page", activePage ? volumePageLabel(activePage) : "No active source page selected"),
+      exportLine("Active URL", activePage?.activeUrl || studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "Not recorded"),
+      exportLine("Adapter", studyData.activeAdapter?.adapterName || activePage?.activeAdapterName || studyData.analysisStatus?.activeAdapterName || "not detected"),
+      exportLine("Analysis status", analysisStatusLabel(activePage)),
+      exportLine("Current session", range ? `${volumePageLabel(range.start)} -> ${volumePageLabel(range.end)}` : "No active study range"),
+      exportLine("Analyzed pages", analyzedPages.length ? pageChipLines(analyzedPages).join(" ") : "none recorded"),
+      exportLine("Continuity", continuitySummaryLines(activePage, analyzedPages).join("; ")),
+      exportLine("Suggested next", suggestedNextPageLabel(range?.end || activePage)),
+      exportLine("Last analyzed", studyData.analysisStatus?.analyzedAt || "Never")
+    ];
+  }
+
+  function buildCompactPanelSummary() {
+    const warnings = topWarningLines();
+    return exportPlainText([
+      "I.C.E. Compact Panel Summary",
+      "",
+      ...studyScopeExportLines(),
+      exportLine("Derived layer counts", compactLayerCountsLine()),
+      "",
+      "Top issues / warnings:",
+      ...(warnings.length ? warnings.map((line) => `- ${line}`) : ["- none detected in compact snapshot"]),
+      "",
+      "Major entities:",
+      ...(majorEntityLines(10).map((line) => `- ${line}`)),
+      "",
+      "Teaching / passage summaries:",
+      ...(teachingSummaryLines(8).map((line) => `- ${line}`)),
+      "",
+      "Principle relationships:",
+      ...(principleRelationshipSummaryLines(6).map((line) => `- ${line}`))
+    ].join("\n"), 5200);
+  }
+
+  function buildDiagnosticSnapshot() {
+    return exportPlainText([
+      "I.C.E. Diagnostic Snapshot",
+      "",
+      ...studyScopeExportLines(),
+      exportLine("Source capture ID", studyData.analysisStatus?.sourceCaptureId || studyData.latestCapture?.id || "Not recorded"),
+      exportLine("Analysis reason", studyData.analysisStatus?.reason || "None"),
+      exportLine("Analysis build", studyData.analysisStatus?.analysisBuildMarker || "None"),
+      exportLine("Builder scope", studyData.analysisStatus?.derivedBuildersScope || "None"),
+      exportLine("Matthew 2 builders ran", String(Boolean(studyData.analysisStatus?.matthew2DerivedBuildersRan))),
+      exportLine("Matthew 5 teaching builders ran", String(Boolean(studyData.analysisStatus?.matthew5TeachingBuildersRan))),
+      exportLine("Derived layer counts", studyData.analysisStatus?.derivedLayerCounts ? Object.entries(studyData.analysisStatus.derivedLayerCounts).map(([key, value]) => `${key}: ${value}`).join(" | ") : compactLayerCountsLine()),
+      exportLine("Scope integrity", `scoped: ${studyData.scopeIntegrity?.scopedItemsCount || 0}; missing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`)
+    ].join("\n"), 4200);
+  }
+
+  function buildGptHandoffSummary() {
+    const activePage = activeSourcePageRecord();
+    const warnings = topWarningLines(activePage);
+    const anchor = studyData.analysisStatus?.analysisBuildMarker || "current local Study Panel state";
+    return exportPlainText([
+      "GPT Handoff Summary",
+      "",
+      exportLine("Current anchor/context", anchor),
+      exportLine("Analyzed page", activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Not recorded"),
+      exportLine("URL", activePage?.activeUrl || studyData.analysisStatus?.activeUrl || "Not recorded"),
+      exportLine("Adapter", studyData.activeAdapter?.adapterName || studyData.analysisStatus?.activeAdapterName || "not detected"),
+      exportLine("Status", analysisStatusLabel(activePage)),
+      "",
+      "What looked wrong / needs review:",
+      ...(warnings.length ? warnings.map((line) => `- ${line}`) : ["- No compact warnings detected; review requested semantic layer directly."]),
+      "",
+      "Relevant lines:",
+      ...teachingSummaryLines(5).map((line) => `- ${line}`),
+      ...principleRelationshipSummaryLines(5).map((line) => `- ${line}`)
+    ].join("\n"), 2600);
+  }
+
+  function currentSectionForExport() {
+    if (currentSemanticFocus?.targetSection) {
+      const focused = document.getElementById(currentSemanticFocus.targetSection);
+      if (focused) return focused;
+    }
+    const sections = Array.from(document.querySelectorAll("main .study-section"));
+    const headerBottom = document.querySelector(".study-header")?.getBoundingClientRect().bottom || 0;
+    return sections.find((section) => section.getBoundingClientRect().bottom > headerBottom + 40) || sections[0] || null;
+  }
+
+  function buildCurrentSectionExport() {
+    const section = currentSectionForExport();
+    if (!section) return "I.C.E. Current Section\n\nNo Study Panel section is currently available.";
+    const title = normalizeText(section.querySelector("h2")?.textContent || section.id || "Current section");
+    const text = normalizeText(section.textContent || "No section text available.").replace(/\s+/g, " ");
+    return exportPlainText([`I.C.E. Current Section: ${title}`, "", text].join("\n"), 3600);
+  }
+
+  async function copyPlainTextReport(kind, text) {
+    const output = exportPlainText(text);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(output);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = output;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      showDiagnosticMessage(`${kind} copied (${output.length} characters).`);
+    } catch (error) {
+      showDiagnosticMessage(`${kind} copy failed: ${error.message}`);
+    }
+  }
+
+  function handleExportAction(action) {
+    const reports = {
+      compact: ["Compact Panel Summary", buildCompactPanelSummary],
+      section: ["Current Section", buildCurrentSectionExport],
+      diagnostic: ["Diagnostic Snapshot", buildDiagnosticSnapshot],
+      handoff: ["GPT Handoff Summary", buildGptHandoffSummary]
+    };
+    const [label, builder] = reports[action] || [];
+    if (!builder) return;
+    copyPlainTextReport(label, builder());
+  }
+
   function createStudyScopeCard() {
     const card = document.createElement("article");
     card.className = "study-card volume-context-card";
@@ -7641,6 +7856,10 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("clearSemanticFocus")?.addEventListener("click", clearSemanticFocus);
   document.getElementById("volumeContextSection")?.addEventListener("click", handleVolumeContextAction);
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
+  document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact"));
+  document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section"));
+  document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic"));
+  document.getElementById("copyGptHandoffSummary")?.addEventListener("click", () => handleExportAction("handoff"));
   window.addEventListener("focus", refreshStudyData);
   window.addEventListener("pageshow", refreshStudyData);
   chrome.storage.onChanged.addListener((changes, areaName) => {

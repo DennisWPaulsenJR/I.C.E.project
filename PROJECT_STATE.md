@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.4c Study Panel Output Safety / Report Compression implemented.
+- Study Panel header now includes compact copy/export controls for Compact Panel Summary, Current Section Only, Diagnostic Snapshot, and GPT Handoff Summary.
+- Exported reports are generated from structured `studyData` instead of wholesale DOM dumps, keeping Source Discovery, Reference Graph, DOM Hints, and Mention Index raw lists out of compact handoffs.
+- Plain-text exports normalize decorative/encoded punctuation toward safer ASCII output, including `->` for arrows.
+- Copy actions report copied character counts through the existing diagnostic message area and include a clipboard fallback path.
+- Full Study Panel data remains accessible; the new controls only add safer review/handoff paths.
+
+Latest pcdx update:
 - Phase 8.4b Principle Relationship Architecture implemented.
 - New derived layer: `ICE_PRINCIPLE_RELATIONSHIPS`.
 - Matthew 5 now connects source-grounded principles using relationship types such as supports, expands, reinforces, and illustrates.

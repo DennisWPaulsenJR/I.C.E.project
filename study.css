@@ -49,6 +49,13 @@ body {
   font-size: 1rem;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .refresh-button {
   padding: 10px 12px;
   border: 1px solid #25364d;
@@ -56,6 +63,13 @@ body {
   background: #25364d;
   color: #ffffff;
   cursor: pointer;
+}
+
+.header-actions .refresh-button {
+  font-size: .86rem;
+  max-width: 190px;
+  min-height: 40px;
+  white-space: normal;
 }
 
 .study-shell {
@@ -295,6 +309,15 @@ body {
 }
 
 @media (max-width: 720px) {
+  .header-actions {
+    justify-content: stretch;
+  }
+
+  .header-actions .refresh-button {
+    flex: 1 1 150px;
+    max-width: none;
+  }
+
   .study-header {
     align-items: stretch;
     flex-direction: column;

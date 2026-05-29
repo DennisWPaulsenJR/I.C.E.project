@@ -3054,3 +3054,40 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-29 - Add Compact Study Panel Exports
+
+Instruction summary:
+- Add compact Study Panel copy/export modes so GPT review handoffs avoid huge source discovery, reference graph, DOM hint, mention index, and repeated UI dumps.
+
+Codex action summary:
+- Added Study Panel header controls for Compact Panel Summary, Current Section Only, Diagnostic Snapshot, and GPT Handoff Summary.
+- Added structured report builders that summarize active source page, study scope, adapter, derived layer counts, warnings, major entities, teaching summaries, principle relationships, diagnostics, and handoff context.
+- Added export text normalization for safer plain text, including ASCII arrow output and quote/dash normalization.
+- Added clipboard write support with a textarea fallback and diagnostic copied-character status messages.
+- Kept full Study Panel data accessible while avoiding raw noisy sections in compact exports.
+
+Files changed:
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Export smoke verified by code path: copy controls are wired, report builders are capped/readable, and compact exports omit raw noisy Source Discovery / Reference Graph dumps.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

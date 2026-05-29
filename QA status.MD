@@ -6,6 +6,17 @@ Last updated: 2026-05-29 by `pcdx`.
 
 Current operational state:
 Latest validation update:
+- Phase 8.4c Study Panel Output Safety / Report Compression passed syntax, whitespace, Matthew 1-3 baseline QA, Matthew 5 QA, and combined Matthew pages QA.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Export smoke: buttons and report builders are wired; compact reports cap output length, normalize copied plain text toward ASCII, and omit raw noisy Source Discovery / Reference Graph dumps.
+
+Latest validation update:
 - Phase 8.4b Principle Relationship Architecture passed syntax, whitespace, Matthew 1-3 baseline QA, Matthew 5 QA, and combined Matthew pages QA.
 - `node --check background.js` passed.
 - `node --check study.js` passed.
