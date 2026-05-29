@@ -54,6 +54,16 @@ Latest pcdx update:
 - `qa:matthew3` is available; `qa:matthew-pages` now runs Matthew 1, Matthew 2, and Matthew 3.
 - Matthew 3 deeper derived layers remain future work beyond this stabilization pass.
 
+
+Latest pcdx update:
+- Study Range / Session Scope architecture implemented.
+- Top Study Panel section is now Study Scope rather than Volume Context.
+- Session state is separated into active source page, analyzed pages, selected range, session continuity, and panel UI state.
+- New session keys: `ICE_ACTIVE_SOURCE_PAGE`, `ICE_SELECTED_RANGE`, and `ICE_PANEL_UI_STATE`.
+- Study Scope shows active source target, current session, analyzed page chips, continuity, suggested next page, and start/end range when analyzed pages exist.
+- Clearing session analysis preserves the active source target when available, so Analyze remains grounded to the source page and not the panel DOM.
+- Future range/book/volume controls are represented in UI architecture without enabling auto-crawling.
+
 ## Active Systems
 
 - Sacred reference formatter
@@ -327,10 +337,10 @@ Future capabilities:
 - `III` = Human
 - `IIII` = Living organism / creature / natural life
 - `IIIII` = Non-living item/object
-- `ð‘–` = adversary / wicked / evil / anti-GOD
+- `Ã°Ââ€˜â€“` = adversary / wicked / evil / anti-GOD
 - `AI_Actor` = artificial/tool actor category
 
-Class I is Divine Origin Authority. Class ð‘– is adversarial / anti-origin opposition. Class ð‘– uses an italicized lowercase i and must NEVER visually collapse with Class I.
+Class I is Divine Origin Authority. Class Ã°Ââ€˜â€“ is adversarial / anti-origin opposition. Class Ã°Ââ€˜â€“ uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 
@@ -504,7 +514,7 @@ Process model:
 Matthew 1 pilot:
 - THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
 - HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
-- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class ð‘– remains adversarial/opposition and visually distinct.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class Ã°Ââ€˜â€“ remains adversarial/opposition and visually distinct.
 
 Preserve:
 - App accuracy wording
@@ -512,7 +522,7 @@ Preserve:
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
-- Class I / Class ð‘– distinction
+- Class I / Class Ã°Ââ€˜â€“ distinction
 - no unsupported doctrine
 
 ## Phase 8.3b Semantic Contrast Wording Refinement

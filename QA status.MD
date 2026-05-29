@@ -6,6 +6,16 @@ Last updated: 2026-05-28 by `pcdx`.
 
 Current operational state:
 Latest validation update:
+- Study Range / Session Scope architecture passed syntax, whitespace, and Matthew 1-3 QA.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- UX status: Study Scope separates active source target from analyzed pages and selected range; clearing session analysis preserves the active source target when available.
+Latest validation update:
 - Matthew 3 Study Panel context and volume-navigation refinement passed full syntax, whitespace, and Matthew 1-3 QA.
 - `node --check background.js` passed.
 - `node --check content.js` passed.

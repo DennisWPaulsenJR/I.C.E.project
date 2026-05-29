@@ -2545,3 +2545,33 @@ Checks:
 
 Status:
 - Implemented and validated
+
+## 2026-05-28 01:20 - pcdx - Add study range session scope
+Summary:
+- Reworked top Study Panel context into Study Scope architecture.
+- Added separate session concepts for active source page, analyzed pages, selected range, session continuity, and panel UI state.
+- Added `ICE_ACTIVE_SOURCE_PAGE`, `ICE_SELECTED_RANGE`, and `ICE_PANEL_UI_STATE` session keys.
+- Clear session and clear active page analysis preserve the active source target when available, so analysis target remains visible after session data is cleared.
+- Added controlled Study Scope actions and future-ready range/book/volume controls without enabling automatic crawling.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Structural smoke verified active source target/session range separation and no Study Panel DOM source targeting path.
+
+Status:
+- Implemented and validated

@@ -2,6 +2,45 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-28 - Study Range / Session Scope Architecture
+
+Instruction summary:
+- Refine Volume / Session Context into Study Scope architecture so active source target, analyzed pages, selected range, session continuity, and panel UI state are not collapsed into one current-page concept.
+- Preserve user control for range expansion; do not auto-crawl or auto-analyze unknown pages.
+- Ensure clearing session data does not make the active analysis target ambiguous and prevent Study Panel DOM from being treated as source content.
+
+Codex action summary:
+- Added explicit session keys for `ICE_ACTIVE_SOURCE_PAGE`, `ICE_SELECTED_RANGE`, and `ICE_PANEL_UI_STATE` alongside existing `ICE_ANALYSIS_HISTORY`.
+- Renamed the top Study Panel section to Study Scope and rebuilt its display around Active Source Page, Analysis Target, Current Session, Session Data, Analyzed Pages, Continuity, Suggested Next, and Current Range.
+- Added controlled actions for Analyze active source page, Add active page to session, Re-analyze current range, Clear active page analysis, Clear session analysis, Clear all I.C.E. data, Show analyzed pages, and Show continuity map.
+- Clear session/active-page actions now preserve the active source target separately from semantic session data when available.
+- Analysis from the panel continues to avoid Study Panel DOM: it reruns the active non-extension source tab when available, otherwise uses the stored active/latest source target and warns if no source target exists.
+- Range/book/volume controls are displayed as future-ready architecture only; no automatic range crawling was enabled.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- Structural smoke: verified Study Scope storage/action paths preserve active source target separately from session analysis, avoid extension-panel URLs as source targets, and expose beginning/end range display when analyzed pages exist.
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
 ## 2026-05-28 - Matthew 3 Study Panel Context and Volume Navigation Refinement
 
 Instruction summary:
@@ -385,13 +424,13 @@ Status:
 
 Instruction summary:
 - Add Phase 8.2r restrained semantic visual hierarchy styling.
-- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class ð‘–, source wording, and derived meaning.
+- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class Ã°Ââ€˜â€“, source wording, and derived meaning.
 - Preserve semantic records, source phrases, source phrase vs Derived meaning separation, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class hierarchy.
 
 Codex action summary:
 - Added source phrase and derived meaning section classes from the Study Panel section helper.
 - Refined `ice-authority-path` styling so THE LORD -> AngEL Of THE LORD -> Joseph reads as origin -> transfer -> recipient without flashy treatment.
-- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class ð‘– so Class ð‘– remains visually distinct from Class I.
+- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class Ã°Ââ€˜â€“ so Class Ã°Ââ€˜â€“ remains visually distinct from Class I.
 
 Files changed:
 - `study.js`
@@ -410,14 +449,14 @@ Commit:
 
 Status:
 - Implemented by pcdx.
-## 2026-05-20 - Class ð‘– Hierarchy Correction
+## 2026-05-20 - Class Ã°Ââ€˜â€“ Hierarchy Correction
 
 Instruction summary:
-- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class ð‘–`.
-- Ensure Class ð‘– never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
+- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class Ã°Ââ€˜â€“`.
+- Ensure Class Ã°Ââ€˜â€“ never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
 
 Codex action summary:
-- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class ð‘–`.
+- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class Ã°Ââ€˜â€“`.
 - Renamed the Divine Class I CSS hook in the class-transfer display to `ice-class-i-divine` and added `ice-class-i-adversary` for future distinct styling.
 - Updated project state hierarchy notes and current class-transfer CSS hook references.
 
@@ -981,7 +1020,7 @@ Instruction summary:
 - Preserve distinctions between narrator, prophet, divine speech, THE LORD, and AngEL Of THE LORD.
 
 Codex action summary:
-- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class ð‘– - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
+- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class Ã°Ââ€˜â€“ - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
 - Added display fallback classification for `Scripture narrator`, `narrator`, `prophet`, and `the prophet` as `Class III - Human` when they appear as related display entities without a full registry record.
 - Added hierarchy lines to derived semantic displays, including Passage Functions, Revelation Patterns, Reference Roles, and Narrative Timeline entity previews.
 - Removed duplicated `Class:` prefixing in entity, canonical identity, focus, and role displays so hierarchy labels are visually consistent.
@@ -2474,7 +2513,7 @@ Instruction summary:
 
 Codex action summary:
 - Added class labels for Entity Registry and Canonical Identities.
-- Used hierarchy I through ð‘– for display classification, with italic lowercase Class ð‘– distinct from Divine Class I.
+- Used hierarchy I through Ã°Ââ€˜â€“ for display classification, with italic lowercase Class Ã°Ââ€˜â€“ distinct from Divine Class I.
 - Kept classification display-only.
 
 Files changed:
@@ -2750,7 +2789,7 @@ Status:
 ## 2026-05-26 - Phase 8.3 HOLY Action / HOLY Reference Consistency
 - Added derived-display HOLY action emphasis for Class I / HOLY-origin semantic processes while preserving quoted source phrases.
 - Added HOLY action process rendering to authority/class-transfer displays: origin, messenger/actor, transfer/action, recipient/target, and result/fulfillment.
-- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class ð‘– distinction.
+- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class Ã°Ââ€˜â€“ distinction.
 
 ## 2026-05-27 - Refine Semantic Contrast Wording
 

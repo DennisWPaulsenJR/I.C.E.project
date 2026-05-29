@@ -41,6 +41,7 @@ const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
+const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
@@ -6264,6 +6265,16 @@ async function runFullAnalysisPipeline(reason = "manual") {
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
     };
+    const activeSourcePage = {
+      sourceCaptureId: status.sourceCaptureId,
+      sourceTitle: status.sourceCaptureTitle,
+      sourceCaptureBook: status.sourceCaptureBook,
+      sourceCaptureChapter: status.sourceCaptureChapter,
+      activeUrl: status.activeUrl,
+      activeAdapterName: status.activeAdapterName,
+      capturedAt: latestCapture.capturedAt || "",
+      updatedAt: status.analyzedAt
+    };
     const analysisHistoryEntry = {
       sourceCaptureId: status.sourceCaptureId,
       sourceTitle: status.sourceCaptureTitle,
@@ -6319,7 +6330,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status,
-      [ANALYSIS_HISTORY_KEY]: analysisHistory
+      [ANALYSIS_HISTORY_KEY]: analysisHistory,
+      [ACTIVE_SOURCE_PAGE_KEY]: activeSourcePage
     });
 
     return status;
