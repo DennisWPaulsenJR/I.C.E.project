@@ -364,6 +364,7 @@ function hasTeachingSemantic(data, discourseType, predicate = () => true) {
   return (data.ICE_TEACHING_SEMANTICS || []).some((item) =>
     item.discourseType === discourseType &&
     item.speaker === "JESUS" &&
+    item.canonicalIdentity === "JESUS CHRIST" &&
     item.teachingBlock === "Sermon on the Mount" &&
     item.sourcePhrase &&
     item.derivedMeaning &&
@@ -404,6 +405,22 @@ function evaluateFailures(data) {
   const serialized = JSON.stringify(data);
   if (/John preaching repentance/i.test(serialized)) failures.push("Expected Matthew 5 not to inherit John preaching repentance scene wording.");
 
+  const serializedTeaching = JSON.stringify(data.ICE_TEACHING_SEMANTICS || []);
+  const unsafeConnectorCodes = new Set([0x2192, 0x2190, 0x2194, 0x00c3, 0x00c2, 0x00e2]);
+  if (Array.from(serializedTeaching).some((character) => unsafeConnectorCodes.has(character.charCodeAt(0)))) failures.push("Expected Matthew 5 teaching records to avoid corrupted or decorative connector symbols.");
+
+  const weakReferenceRoles = (data.ICE_REFERENCE_ROLES || []).filter((item) =>
+    /^(shalt|kill|in)$/i.test(String(item.discoveredReference || item.sourceInput || "")) &&
+    /name_meaning_support/i.test(String(item.referenceRole || ""))
+  );
+  if (weakReferenceRoles.length > 0) failures.push("Expected weak standalone references like shalt/kill/in not to become NAME meaning support roles.");
+
+  const chapterHeadingHint = (data.ICE_DOM_SEMANTIC_HINTS || []).find((item) =>
+    /chapter_heading/i.test(String(item.hintType || "")) &&
+    /lds-chapter-heading/i.test(String(item.source || ""))
+  );
+  if (!chapterHeadingHint) failures.push("Expected transparent LDS Chapter Heading / Source Heading DOM hint context.");
+
   if (!hasTeachingSemantic(data, "teaching_block", (item) =>
     /disciples/i.test(item.audience || "") &&
     /multitudes/i.test(item.audience || "") &&
@@ -416,6 +433,10 @@ function evaluateFailures(data) {
   if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /not kill/i.test(item.commandment || "") && /But I say unto you/i.test(item.interpretation || "") && /reconciled/i.test(item.application || ""))) failures.push("Expected kill commandment interpretation discourse record.");
   if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /adultery/i.test(item.commandment || "") && /looketh on a woman/i.test(item.interpretation || ""))) failures.push("Expected adultery commandment interpretation discourse record.");
   if (!hasTeachingSemantic(data, "contrast", (item) => /destroy/i.test(item.contrast || "") && /fulfil/i.test(item.contrast || ""))) failures.push("Expected law fulfillment contrast discourse record.");
+  if (!hasTeachingSemantic(data, "principle", (item) => /righteousness/i.test(item.principle || "") && /filled/i.test(item.promise || ""))) failures.push("Expected righteousness teaching discourse record.");
+  if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /forswear/i.test(item.commandment || "") && /Swear not at all/i.test(item.interpretation || "") && /Yea, yea/i.test(item.application || ""))) failures.push("Expected oath/speech integrity commandment interpretation discourse record.");
+  if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /eye for an eye/i.test(item.commandment || "") && /resist not evil/i.test(item.interpretation || "") && /turn to him the other also/i.test(item.application || ""))) failures.push("Expected retaliation/non-retaliation commandment interpretation discourse record.");
+  if (!hasTeachingSemantic(data, "commandment_interpretation", (item) => /love thy neighbour/i.test(item.commandment || "") && /Love your enemies/i.test(item.interpretation || "") && /pray for them/i.test(item.application || ""))) failures.push("Expected love enemies commandment interpretation discourse record.");
 
   return failures;
 }async function getServiceWorker(context) {

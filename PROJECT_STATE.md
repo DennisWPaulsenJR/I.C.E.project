@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.4a Matthew 5 Teaching Speaker / Audience Stabilization implemented.
+- Matthew 5 teaching records now explicitly carry `JESUS` as speaker and `JESUS CHRIST` as canonical/source identity.
+- Teaching / Discourse Structure now expands the Matthew 5 pilot from 7 to 11 records, adding righteousness teaching plus oath/speech integrity, retaliation/non-retaliation, and love-enemy commandment interpretation records where grounded in source text.
+- Group Entity audience display remains constrained to People / multitudes with Class III -> Class III and Human audience grounding.
+- Reference-role filtering now drops weak standalone search/reference terms such as `shalt`, `kill`, and `in` before they can become NAME meaning support.
+- Matthew 5 QA now guards canonical identity, weak reference-role filtering, LDS chapter heading hint transparency, Matthew 3 preaching leakage, and unsafe connector/mojibake symbols in teaching records.
+
+Latest pcdx update:
 - Phase 8.3d Volume / Session Context Interface implemented.
 - Study Panel now starts with a Volume Context section showing active source/page, active adapter, current/stale/not analyzed status, current chapter/page, previously analyzed pages, continuity detected, suggested next page, last analyzed time, and the Matthew 1 + Matthew 2 QA baseline.
 - New session metadata key: `ICE_ANALYSIS_HISTORY`.

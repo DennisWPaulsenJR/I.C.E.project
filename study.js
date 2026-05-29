@@ -6000,6 +6000,7 @@ createRevelationPartsSection(item.subEvents)
     return [
       item.discourseType,
       item.speaker,
+      item.canonicalIdentity,
       item.audience,
       item.teachingBlock,
       item.teachingTopic,
@@ -6044,7 +6045,7 @@ createRevelationPartsSection(item.subEvents)
       const type = group.entityType || "Group Entity";
       const range = group.currentGroundedClassRange || [group.highestObservedClass, group.lowestObservedClass].filter(Boolean).join(" -> ");
       const grounding = group.currentGrounding || "Grounding not recorded.";
-      return `${name} | ${type} | Observed range: ${range || "Not recorded."} | Current grounding: ${grounding}`;
+      return `${name} | ${type} | Observed class range: ${range || "Not recorded."} | Current grounding: ${grounding}`;
     });
   }
 
@@ -6072,6 +6073,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Canonical/source identity", item.canonicalIdentity || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Teaching Block", item.teachingBlock || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Teaching Topic", item.teachingTopic || "Not recorded.", { divineContext, preferHolySpirit: true }),

@@ -864,7 +864,9 @@ function referenceRoleConfigForItem(item = {}) {
   const linkText = normalizeWhitespace(item.linkText || "");
   const haystack = normalizeWhitespace([item.linkText, item.href, item.scopePath, item.verseRef].filter(Boolean).join(" ")).toLowerCase();
   const scopePath = item.scopePath || "";
+  const weakStandaloneReference = /^(?:shalt|kill|in)$/i.test(linkText);
   if (item.refType !== "study_note" && item.refType !== "cross_reference") return null;
+  if (weakStandaloneReference) return null;
 
   if (/\bdavid\b/i.test(linkText)) {
     return {
@@ -2024,6 +2026,7 @@ function teachingSemanticRecord(record = {}) {
     verseRange: record.verseRange || "Current scope",
     discourseType: record.discourseType || "teaching_discourse",
     speaker: record.speaker || "",
+    canonicalIdentity: record.canonicalIdentity || "",
     audience: record.audience || "",
     teachingBlock: record.teachingBlock || "",
     teachingTopic: record.teachingTopic || "",
@@ -2080,6 +2083,8 @@ function createTeachingSemantics(captures = [], passageFunctions = [], reference
     sourceContext: context,
     teachingBlock: "Sermon on the Mount",
     speaker: "JESUS",
+    canonicalIdentity: "JESUS CHRIST",
+    audience: record.audience || "disciples; multitudes",
     relatedEntities: ["JESUS", "JESUS CHRIST", "disciples", "multitudes", ...(record.relatedEntities || [])],
     groupEntities: [humanAudienceGroup, ...(record.groupEntities || [])],
     relatedOntologyRoles: ontologyIds(["JESUS", "JESUS CHRIST", "disciples", "multitudes", ...(record.relatedOntologyRoleItems || [])]),
@@ -2109,6 +2114,18 @@ function createTeachingSemantics(captures = [], passageFunctions = [], reference
   }
   if (hasPhrase(/think not that I am come to destroy the law|I am not come to destroy, but to fulfil/i)) {
     records.push(add({ scopePath: "scripture.nt.matthew.5.verse.17", verseRange: "Matthew 5:17-20", discourseType: "contrast", audience: "disciples; multitudes", teachingTopic: "law and fulfillment", principle: "fulfillment and righteousness", contrast: "destroy the law contrasted with fulfil", requirement: "righteousness exceeding scribes and Pharisees context", sourcePhrase: "Think not that I am come to destroy the law, or the prophets: I am not come to destroy, but to fulfil", derivedMeaning: "The discourse contrasts destroying with fulfilling and frames righteousness as a teaching requirement in context.", evidence: ["not come to destroy", "but to fulfil", "except your righteousness shall exceed"], confidence: "explicit", sourceGrounding: "Matthew 5:17-20 directly states the contrast and righteousness requirement context." }));
+  }
+  if (hasPhrase(/Blessed are they which do hunger and thirst after righteousness|they shall be filled/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.6", verseRange: "Matthew 5:6", discourseType: "principle", teachingTopic: "righteousness teaching", principle: "hunger and thirst after righteousness", blessing: "Blessed are they which do hunger and thirst after righteousness", promise: "they shall be filled", sourcePhrase: "Blessed are they which do hunger and thirst after righteousness: for they shall be filled", derivedMeaning: "The discourse presents righteousness as a desired teaching principle with a stated blessing and promise.", evidence: ["hunger and thirst after righteousness", "they shall be filled"], confidence: "explicit", sourceGrounding: "Matthew 5:6 directly states the righteousness blessing and promised filling." }));
+  }
+  if (hasPhrase(/Thou shalt not forswear thyself|swear not at all|Yea, yea; Nay, nay/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.33", verseRange: "Matthew 5:33-37", discourseType: "commandment_interpretation", teachingTopic: "oath and speech integrity", principle: "integrity of speech", commandment: "Thou shalt not forswear thyself", interpretation: "But I say unto you, Swear not at all", warning: "whatsoever is more than these cometh of evil", application: "let your communication be, Yea, yea; Nay, nay", sourcePhrase: "Thou shalt not forswear thyself... But I say unto you, Swear not at all... let your communication be, Yea, yea; Nay, nay", derivedMeaning: "JESUS teaches oath language as a commandment expansion focused on truthful speech and restrained commitment language.", evidence: ["Thou shalt not forswear thyself", "Swear not at all", "Yea, yea; Nay, nay"], confidence: "explicit", sourceGrounding: "Matthew 5:33-37 directly grounds the oath commandment citation, interpretive formula, and speech application." }));
+  }
+  if (hasPhrase(/An eye for an eye|resist not evil|turn to him the other also/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.38", verseRange: "Matthew 5:38-42", discourseType: "commandment_interpretation", teachingTopic: "retaliation and non-retaliation teaching", principle: "restrained response to injury", commandment: "An eye for an eye, and a tooth for a tooth", interpretation: "But I say unto you, That ye resist not evil", application: "turn to him the other also", sourcePhrase: "An eye for an eye... But I say unto you, That ye resist not evil... turn to him the other also", derivedMeaning: "JESUS teaches a response pattern that contrasts retaliation language with restrained non-retaliation application.", evidence: ["An eye for an eye", "resist not evil", "turn to him the other also"], confidence: "explicit", sourceGrounding: "Matthew 5:38-42 directly grounds the cited retaliation wording, interpretive formula, and application examples." }));
+  }
+  if (hasPhrase(/Thou shalt love thy neighbour|Love your enemies|pray for them which despitefully use you/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.43", verseRange: "Matthew 5:43-48", discourseType: "commandment_interpretation", teachingTopic: "love enemy teaching", principle: "love beyond reciprocal relationships", commandment: "Thou shalt love thy neighbour", interpretation: "But I say unto you, Love your enemies", application: "bless them that curse you; pray for them which despitefully use you", requirement: "be ye therefore perfect, even as your Father which is in heaven is perfect", sourcePhrase: "Thou shalt love thy neighbour... But I say unto you, Love your enemies... pray for them which despitefully use you", derivedMeaning: "JESUS expands love language beyond neighbor-only framing into enemy-love application, grounded in the source's command and example wording.", evidence: ["Thou shalt love thy neighbour", "Love your enemies", "pray for them which despitefully use you"], confidence: "explicit", sourceGrounding: "Matthew 5:43-48 directly grounds the love commandment citation, interpretive formula, and enemy-love application." }));
   }
 
   return records;

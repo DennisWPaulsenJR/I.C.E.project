@@ -2611,3 +2611,41 @@ Checks:
 
 Status:
 - Implemented and validated
+
+## 2026-05-29 - Stabilize Matthew 5 Teaching Context
+
+Instruction summary:
+- Stabilize Matthew 5 Teaching / Discourse Semantics around speaker, audience, teaching blocks, source heading transparency, reference-role filtering, Study Scope safety, and connector rendering.
+
+Codex action summary:
+- Added canonical/source identity to Matthew 5 teaching semantic records and Study Panel cards.
+- Expanded Matthew 5 teaching records from 7 to 11 with source-grounded righteousness, oath/speech integrity, retaliation/non-retaliation, and love-enemy teaching sections.
+- Preserved the Group Entity audience model as People / multitudes with Class III -> Class III and Human audience grounding.
+- Filtered weak standalone references such as `shalt`, `kill`, and `in` before they can be promoted into NAME meaning support.
+- Strengthened Matthew 5 QA for canonical identity, weak reference filtering, chapter heading hints, Matthew 3 leakage prevention, and connector-symbol safety.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed after sandbox network approval.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
