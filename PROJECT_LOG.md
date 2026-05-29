@@ -2,6 +2,61 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-29 - Phase 8.4 Teaching / Discourse Semantic Architecture
+
+Instruction summary:
+- Add first-class Matthew 5 teaching/discourse semantics for speaker, audience, teaching, principle, commandment, interpretation, blessing, warning, requirement, promise, contrast, example, and application.
+- Fix Matthew 3 preaching leakage into Matthew 5 so JESUS resolves as the grounded Matthew 5 teaching speaker.
+- Add Group Entity handling for multitudes/people-style audience terms and preserve source phrase vs derived meaning, App accuracy wording, ontology hierarchy, and JESUS / JESUS CHRIST distinction.
+
+Codex action summary:
+- Added `ICE_TEACHING_SEMANTICS` with Matthew 5 pilot discourse records for the Sermon on the Mount teaching setup, Beatitude blessings, commandment interpretation blocks, and law/fulfillment contrast.
+- Added Study Panel rendering for Teaching / Discourse Structure with speaker, audience, teaching topic, principle, commandment, interpretation, blessing, warning, promise, source phrase, derived meaning, App accuracy, Primary Entities / Characters, Group Entities, and semantic grounding.
+- Added Matthew 5 ontology roles for JESUS, disciples, and multitudes, plus a Matthew 5 canonical identity bridge preserving JESUS as narrative NAME and JESUS CHRIST as canonical/source identity.
+- Tightened scene classification so John preaching repentance requires John/Baptist grounding and Matthew 5 teaching can display as JESUS teaching discourse.
+- Added `qa:matthew5` and a Matthew 5 QA harness validating discourse records, group entity range, canonical identity preservation, and absence of Matthew 3 John-preaching leakage.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `package.json`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run qa:matthew5` passed.
+
+Matthew 5 QA counts:
+- DOM hints: 250
+- Mention index: 30
+- Entity registry: 4
+- Relationship graph: 1
+- Canonical identities: 6
+- Source discovery: 310
+- Reference graph: 310
+- Reference roles: 4
+- Ontology roles: 3
+- Teaching / Discourse Structure: 7
+
+Commit:
+- This commit
+
+Status:
+- Implemented by pcdx.
+
 ## 2026-05-28 - Study Range / Session Scope Architecture
 
 Instruction summary:

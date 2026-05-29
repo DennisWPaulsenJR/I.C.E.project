@@ -7,7 +7,8 @@
                     "qa:matthew1":  "node qa/matthew1-extension-qa.js",
                     "qa:matthew2":  "node qa/matthew2-extension-qa.js",
                     "qa:matthew-pages":  "npm run qa:matthew1 && npm run qa:matthew2 && npm run qa:matthew3",
-                    "qa:matthew3":  "node qa/matthew3-extension-qa.js"
+                    "qa:matthew3":  "node qa/matthew3-extension-qa.js",
+                    "qa:matthew5":  "node qa/matthew5-extension-qa.js"
                 },
     "devDependencies":  {
                             "playwright":  "^1.52.0"

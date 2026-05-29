@@ -2,9 +2,23 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-28 by `pcdx`.
+Last updated: 2026-05-29 by `pcdx`.
 
 Current operational state:
+Latest validation update:
+- Phase 8.4 Teaching / Discourse Semantic Architecture passed syntax, whitespace, Matthew 1-3 baseline QA, and new Matthew 5 QA.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run qa:matthew5` passed.
+- Matthew 5 counts: DOM hints 250, Source Discovery 310, Reference Graph 310, Reference Roles 4, Ontology Roles 3, Teaching / Discourse Structure 7, Canonical Identities 6.
+- Matthew 5 QA status: stabilized for teaching/discourse pilot semantics, Group Entity audience range, JESUS / JESUS CHRIST distinction, and Matthew 3 preaching-leakage prevention.
 Latest validation update:
 - Study Range / Session Scope architecture passed syntax, whitespace, and Matthew 1-3 QA.
 - `node --check study.js` passed.

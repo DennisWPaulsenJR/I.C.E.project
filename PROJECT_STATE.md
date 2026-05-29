@@ -64,6 +64,17 @@ Latest pcdx update:
 - Clearing session analysis preserves the active source target when available, so Analyze remains grounded to the source page and not the panel DOM.
 - Future range/book/volume controls are represented in UI architecture without enabling auto-crawling.
 
+
+Latest pcdx update:
+- Phase 8.4 Teaching / Discourse Semantic Architecture implemented.
+- New derived layer: `ICE_TEACHING_SEMANTICS`.
+- Study Panel now includes Teaching / Discourse Structure cards for Matthew 5 speaker, audience, teaching block/topic, principle, commandment, interpretation, blessing, warning, requirement, promise, contrast, example, application, source phrase, derived meaning, App accuracy, Group Entities, and semantic grounding.
+- Matthew 5 pilot records cover Sermon on the Mount setup, poor in spirit/meek/merciful Beatitudes, kill/adultery commandment interpretation, and law/fulfillment contrast.
+- Matthew 5 ontology support now grounds JESUS as Class I teaching speaker and disciples/multitudes as Class III Human audience/group entities.
+- Matthew 5 preserves JESUS as narrative NAME and JESUS CHRIST as canonical/source identity through a scoped canonical identity bridge.
+- Scene classification now prevents ungrounded John preaching repentance leakage into Matthew 5.
+- New QA script: `qa:matthew5`.
+
 ## Active Systems
 
 - Sacred reference formatter
@@ -95,6 +106,7 @@ Latest pcdx update:
 - Current-page source discovery index
 - Reference graph layer
 - Development QA automation harness
+- Teaching / discourse semantic structure
 
 Current derived layer foundation:
 - Phase 8.2 Passage Function / Narrative Purpose Layer

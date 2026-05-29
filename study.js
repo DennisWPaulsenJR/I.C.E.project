@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     semanticContinuity: "ICE_SEMANTIC_CONTINUITY",
     movementSemantics: "ICE_MOVEMENT_SEMANTICS",
     semanticCausality: "ICE_SEMANTIC_CAUSALITY",
+    teachingSemantics: "ICE_TEACHING_SEMANTICS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -483,6 +484,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ...asArray(studyData.revelationPatterns),
       ...asArray(studyData.movementSemantics),
       ...asArray(studyData.semanticContinuity),
+      ...asArray(studyData.teachingSemantics),
       ...asArray(studyData.passageFunctions)
     ];
     return layers.filter((record) => {
@@ -1096,6 +1098,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticContinuity,
       STORAGE_KEYS.movementSemantics,
       STORAGE_KEYS.semanticCausality,
+      STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -1143,6 +1146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticContinuity,
       STORAGE_KEYS.movementSemantics,
       STORAGE_KEYS.semanticCausality,
+      STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -4536,6 +4540,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       continuity: "semanticContinuitySection",
       movement: "movementSemanticsSection",
       causality: "semanticCausalitySection",
+      teaching: "teachingSemanticsSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -5990,6 +5995,149 @@ createRevelationPartsSection(item.subEvents)
       container.appendChild(createSemanticCausalityCard(item));
     });
   }
+
+  function teachingSemanticSearchText(item = {}) {
+    return [
+      item.discourseType,
+      item.speaker,
+      item.audience,
+      item.teachingBlock,
+      item.teachingTopic,
+      item.principle,
+      item.commandment,
+      item.interpretation,
+      item.blessing,
+      item.warning,
+      item.requirement,
+      item.promise,
+      item.contrast,
+      item.example,
+      item.application,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.verseRange,
+      item.scopePath,
+      asArray(item.evidence).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      asArray(item.groupEntities).map((entry) => Object.values(entry || {}).join(" ")).join(" "),
+      item.confidence,
+      item.sourceGrounding,
+      item.contextSnippet,
+      item.sourceTitle
+    ].join(" ");
+  }
+
+  function teachingSemanticTypeLabel(type) {
+    const normalized = normalizeText(type || "teaching_discourse").toLowerCase();
+    const labels = new Map([
+      ["teaching_block", "teaching block"],
+      ["blessing", "blessing"],
+      ["commandment_interpretation", "commandment / interpretation"],
+      ["contrast", "contrast"]
+    ]);
+    return labels.get(normalized) || passageFunctionTitle(type || "teaching_discourse");
+  }
+
+  function teachingGroupEntityLines(item = {}) {
+    return asArray(item.groupEntities).map((group) => {
+      const name = group.entityName || "Group Entity";
+      const type = group.entityType || "Group Entity";
+      const range = group.currentGroundedClassRange || [group.highestObservedClass, group.lowestObservedClass].filter(Boolean).join(" -> ");
+      const grounding = group.currentGrounding || "Grounding not recorded.";
+      return `${name} | ${type} | Observed range: ${range || "Not recorded."} | Current grounding: ${grounding}`;
+    });
+  }
+
+  function createTeachingSemanticCard(item) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.speaker, item.teachingBlock, item.teachingTopic, item.principle, item.commandment, item.interpretation, item.blessing, item.promise, item.derivedMeaning, item.relatedEntities, item.evidence]);
+    const shownEvidence = evidence.slice(0, 3).map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const fullEvidence = evidence.map((value) => sourceDerivedDisplayBlock(value, derivedMeaningFromSourcePhrase(value, item), { divineContext, context: item }));
+    const entities = passageFunctionOrderedEntities(item.relatedEntities).map((entry) => entry.display);
+    const title = item.teachingTopic || item.blessing || item.commandment || item.teachingBlock || "Teaching / Discourse Structure";
+
+    card.className = "study-card semantic-card teaching-semantic-card";
+    assignSemanticCardTarget(card, "teaching", item, `${item.discourseType || ""}-${item.teachingTopic || item.blessing || item.commandment || ""}`);
+    header.className = "semantic-card-header";
+    heading.textContent = renderDerivedSemanticDisplayText(title, divineContext);
+    range.className = "semantic-card-range";
+    range.textContent = [teachingSemanticTypeLabel(item.discourseType), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Block", item.teachingBlock || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Topic", item.teachingTopic || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      item.principle ? createPassageFunctionSection("Principle", item.principle, { divineContext, preferHolySpirit: true }) : null,
+      item.commandment ? createPassageFunctionSection("Commandment", item.commandment, { divineContext, preferHolySpirit: true }) : null,
+      item.interpretation ? createPassageFunctionSection("Interpretation", item.interpretation, { divineContext, preferHolySpirit: true }) : null,
+      item.blessing ? createPassageFunctionSection("Blessing", item.blessing, { divineContext, preferHolySpirit: true }) : null,
+      item.warning ? createPassageFunctionSection("Warning", item.warning, { divineContext, preferHolySpirit: true }) : null,
+      item.requirement ? createPassageFunctionSection("Requirement", item.requirement, { divineContext, preferHolySpirit: true }) : null,
+      item.promise ? createPassageFunctionSection("Promise", item.promise, { divineContext, preferHolySpirit: true }) : null,
+      item.contrast ? createPassageFunctionSection("Contrast", item.contrast, { divineContext, preferHolySpirit: true }) : null,
+      item.example ? createPassageFunctionSection("Example", item.example, { divineContext, preferHolySpirit: true }) : null,
+      item.application ? createPassageFunctionSection("Application", item.application, { divineContext, preferHolySpirit: true }) : null,
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: shownEvidence, hiddenCount: Math.max(0, evidence.length - shownEvidence.length), divineContext }),
+      evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "teaching", 10), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Group Entities", "", { list: teachingGroupEntityLines(item), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "teaching"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.speaker, item.audience, item.teachingTopic, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      createPassageFunctionSection("Semantic Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderTeachingSemantics(term) {
+    const container = document.getElementById("teachingSemanticsCards");
+    const count = document.getElementById("teachingSemanticsCount");
+    const records = asArray(studyData.teachingSemantics);
+    const filtered = records.filter((item) => matchesSearchQuery(teachingSemanticSearchText(item), term));
+
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} discourse record(s)`;
+
+    if (records.length === 0) {
+      appendEmpty(container, "No teaching / discourse structure records derived yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No teaching / discourse structure records match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Teaching / Discourse Structure",
+      [
+        `Derived records: ${records.length}`,
+        `Layer: ICE_TEACHING_SEMANTICS`,
+        "Purpose: model source-grounded speaker, audience, teaching, principle, commandment, interpretation, blessing, warning, promise, and application language.",
+        "Review posture: inspect speaker, audience, teaching category, source phrase, derived meaning, App accuracy, group entity range, and semantic grounding."
+      ].join("\n"),
+      "derived semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createTeachingSemanticCard(item));
+    });
+  }
   function semanticContinuitySearchText(item = {}) {
     return [
       item.continuedEntity,
@@ -7095,6 +7243,7 @@ createRevelationPartsSection(item.subEvents)
         .toLowerCase();
 
       renderVolumeContext(term);
+      renderTeachingSemantics(term);
       renderPassageFunctions(term);
       renderRevelationPatterns(term);
       renderReferenceRoles(term);
@@ -7182,6 +7331,7 @@ createRevelationPartsSection(item.subEvents)
       semanticContinuity: countItems(studyData.semanticContinuity),
       movementSemantics: countItems(studyData.movementSemantics),
       semanticCausality: countItems(studyData.semanticCausality),
+      teachingSemantics: countItems(studyData.teachingSemantics),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -7220,12 +7370,13 @@ createRevelationPartsSection(item.subEvents)
     const semanticContinuityCount = countItems(studyData.semanticContinuity);
     const movementSemanticsCount = countItems(studyData.movementSemantics);
     const semanticCausalityCount = countItems(studyData.semanticCausality);
+    const teachingSemanticsCount = countItems(studyData.teachingSemantics);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -7257,6 +7408,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticSemanticContinuity").textContent = semanticContinuityCount;
     document.getElementById("diagnosticMovementSemantics").textContent = movementSemanticsCount;
     document.getElementById("diagnosticSemanticCausality").textContent = semanticCausalityCount;
+    document.getElementById("diagnosticTeachingSemantics").textContent = teachingSemanticsCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
     document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
@@ -7279,7 +7431,8 @@ createRevelationPartsSection(item.subEvents)
         `entityRelationRoles: ${entityRelationRoleCount}`,
         `semanticContinuity: ${semanticContinuityCount}`,
         `movementSemantics: ${movementSemanticsCount}`,
-        `semanticCausality: ${semanticCausalityCount}`
+        `semanticCausality: ${semanticCausalityCount}`,
+        `teachingSemantics: ${teachingSemanticsCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

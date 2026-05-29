@@ -35,6 +35,7 @@ const ENTITY_RELATION_ROLES_KEY = "ICE_ENTITY_RELATION_ROLES";
 const SEMANTIC_CONTINUITY_KEY = "ICE_SEMANTIC_CONTINUITY";
 const MOVEMENT_SEMANTICS_KEY = "ICE_MOVEMENT_SEMANTICS";
 const SEMANTIC_CAUSALITY_KEY = "ICE_SEMANTIC_CAUSALITY";
+const TEACHING_SEMANTICS_KEY = "ICE_TEACHING_SEMANTICS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -529,6 +530,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.semanticContinuity, "semantic_continuity", activeAdapter);
   enrichScopeCollection(data.movementSemantics, "movement_semantic", activeAdapter);
   enrichScopeCollection(data.semanticCausality, "semantic_causality", activeAdapter);
+  enrichScopeCollection(data.teachingSemantics, "teaching_semantic", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -551,7 +553,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.entityRelationRoles || []).map((item) => ({ ...item, scopeLayer: "entity_relation_role" })),
     ...(data.semanticContinuity || []).map((item) => ({ ...item, scopeLayer: "semantic_continuity" })),
     ...(data.movementSemantics || []).map((item) => ({ ...item, scopeLayer: "movement_semantic" })),
-    ...(data.semanticCausality || []).map((item) => ({ ...item, scopeLayer: "semantic_causality" }))
+    ...(data.semanticCausality || []).map((item) => ({ ...item, scopeLayer: "semantic_causality" })),
+    ...(data.teachingSemantics || []).map((item) => ({ ...item, scopeLayer: "teaching_semantic" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -1063,6 +1066,7 @@ function createSemanticDistinctions(captures = [], canonicalIdentities = [], sem
   const context = buildSourceContext(capture);
   const sourceText = sourceCaptureText(captures);
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+
   if (!isMatthewOne) return [];
 
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
@@ -1462,6 +1466,7 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
   const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
   const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
   const isMatthewThree = context.book === "Matthew" && String(context.chapter || "") === "3";
+  const isMatthewFive = context.book === "Matthew" && String(context.chapter || "") === "5";
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   if (isMatthewTwo) {
     const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
@@ -1490,6 +1495,15 @@ function createOntologyRoles(captures = [], semanticDistinctions = [], semanticE
       add({ scopePath: "scripture.nt.matthew.3.verse.7", verseRange: "Matthew 3:7-10", semanticItem: "Pharisees", ontologyRoles: ["Human religious group", "warning audience", "repentance confrontation context"], authorityOriginClass: "Class III - Human", narrativeRole: "come to John's baptism and receive warning language", canonicalRole: "Human religious group; not automatically adversarial Class i from label alone", sourcePhrase: "many of the Pharisees and Sadducees come to his baptism", derivedMeaning: "Pharisees: Class III Human warning audience in Matthew 3", relatedEntities: ["Pharisees", "John", "Sadducees"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 explicitly names Pharisees in the baptism/warning context without requiring unsupported ontology escalation." }),
       add({ scopePath: "scripture.nt.matthew.3.verse.7", verseRange: "Matthew 3:7-10", semanticItem: "Sadducees", ontologyRoles: ["Human religious group", "warning audience", "repentance confrontation context"], authorityOriginClass: "Class III - Human", narrativeRole: "come to John's baptism and receive warning language", canonicalRole: "Human religious group; not automatically adversarial Class i from label alone", sourcePhrase: "many of the Pharisees and Sadducees come to his baptism", derivedMeaning: "Sadducees: Class III Human warning audience in Matthew 3", relatedEntities: ["Sadducees", "John", "Pharisees"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3 explicitly names Sadducees in the baptism/warning context without requiring unsupported ontology escalation." }),
       add({ scopePath: "scripture.nt.matthew.3.verse.5", verseRange: "Matthew 3:5-6", semanticItem: "multitude / people", ontologyRoles: ["Human group", "baptism recipients", "confessing response"], authorityOriginClass: "Class III - Human", narrativeRole: "people from Jerusalem, Judaea, and around Jordan come and are baptized", canonicalRole: "Human collective response group", sourcePhrase: "Then went out to him Jerusalem, and all Judaea, and all the region round about Jordan, And were baptized", derivedMeaning: "multitude / people: Class III Human baptism-response group", relatedEntities: ["multitude / people", "John"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 3:5-6 grounds the people/multitude role in the described collective movement and baptism response." })
+    ];
+  }
+  if (isMatthewFive) {
+    const add = (record) => ontologyRoleRecord({ sourceCaptureId, sourceContext: context, ...record });
+    const commonLayers = ["ICE_TEACHING_SEMANTICS", "ICE_REFERENCE_ROLES", "ICE_SOURCE_DISCOVERY_INDEX"];
+    return [
+      add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", semanticItem: "JESUS", ontologyRoles: ["Narrative NAME", "teaching speaker", "Sermon on the Mount speaker"], authorityOriginClass: "Class I - GOD / Divine Authority", narrativeRole: "opens his mouth and teaches disciples in the multitudes context", canonicalRole: "JESUS remains the narrative NAME while JESUS CHRIST remains canonical/source identity", sourcePhrase: "he opened his mouth, and taught them", derivedMeaning: "JESUS: Class I teaching speaker in Matthew 5", relatedEntities: ["JESUS", "JESUS CHRIST", "disciples", "multitudes"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 5:1-2 grounds the discourse speaker in the immediate teaching setup." }),
+      add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", semanticItem: "disciples", ontologyRoles: ["Human audience", "teaching recipients", "disciple group"], authorityOriginClass: "Class III - Human", narrativeRole: "come unto JESUS and receive the teaching discourse", canonicalRole: "Human group audience; not Divine authority", sourcePhrase: "his disciples came unto him", derivedMeaning: "disciples: Class III Human teaching audience", relatedEntities: ["disciples", "JESUS"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 5:1 directly names disciples as those who came unto him before the teaching begins." }),
+      add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", semanticItem: "multitudes", ontologyRoles: ["Human group", "surrounding audience context", "Group Entity"], authorityOriginClass: "Class III - Human", narrativeRole: "visible crowd context around the mountain teaching scene", canonicalRole: "Human collective group entity", sourcePhrase: "seeing the multitudes", derivedMeaning: "multitudes: Class III Human group entity in Matthew 5 teaching context", relatedEntities: ["multitudes", "JESUS", "disciples"], relatedLayers: commonLayers, confidence: "explicit", sourceGrounding: "Matthew 5:1 directly names multitudes as the visible audience/context for the teaching setup." })
     ];
   }
   if (!isMatthewOne) return [];
@@ -1988,6 +2002,113 @@ function createSemanticCausality(captures = [], semanticEvents = [], revelationP
       confidence: "explicit",
       sourceGrounding: "Matthew 2:19-23 grounds the sequence in threat-removal wording, Joseph's obedient return, warning-driven redirection, Nazareth dwelling, and fulfillment wording."
     }));
+  }
+
+  return records;
+}
+function teachingSemanticRecord(record = {}) {
+  const key = [
+    "teaching-semantic",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.discourseType || "",
+    record.speaker || "",
+    record.teachingTopic || record.commandment || record.blessing || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    discourseType: record.discourseType || "teaching_discourse",
+    speaker: record.speaker || "",
+    audience: record.audience || "",
+    teachingBlock: record.teachingBlock || "",
+    teachingTopic: record.teachingTopic || "",
+    principle: record.principle || "",
+    commandment: record.commandment || "",
+    interpretation: record.interpretation || "",
+    blessing: record.blessing || "",
+    warning: record.warning || "",
+    requirement: record.requirement || "",
+    promise: record.promise || "",
+    contrast: record.contrast || "",
+    example: record.example || "",
+    application: record.application || "",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedEntities: record.relatedEntities || [],
+    groupEntities: record.groupEntities || [],
+    relatedPassageFunctions: record.relatedPassageFunctions || [],
+    relatedReferenceRoles: record.relatedReferenceRoles || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded teaching/discourse records"
+  };
+}
+
+function teachingGroupEntity(record = {}) {
+  return {
+    entityName: record.entityName || "People / multitudes",
+    entityType: "Group Entity",
+    highestObservedClass: record.highestObservedClass || "Class III - Human",
+    lowestObservedClass: record.lowestObservedClass || "Class III - Human",
+    currentGroundedClassRange: record.currentGroundedClassRange || "Class III -> Class III",
+    currentGrounding: record.currentGrounding || "Human audience",
+    sourcePhrase: record.sourcePhrase || "multitudes / disciples"
+  };
+}
+
+function createTeachingSemantics(captures = [], passageFunctions = [], referenceRoles = [], ontologyRoles = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const isMatthewFive = context.book === "Matthew" && String(context.chapter || "") === "5";
+  if (!isMatthewFive) return [];
+
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const hasPhrase = (pattern) => pattern.test(sourceText);
+  const ontologyIds = (items) => (ontologyRoles || []).filter((item) => items.includes(item.semanticItem || "")).map((item) => item.id || item.semanticItem).filter(Boolean);
+  const functionKeys = (keys) => (passageFunctions || []).filter((item) => keys.includes(item.passageFunction || "")).map((item) => item.passageFunction || item.id).filter(Boolean);
+  const referenceIds = (predicate) => (referenceRoles || []).filter(predicate).map((item) => item.id || item.referenceRole || item.sourceInput).filter(Boolean);
+  const humanAudienceGroup = teachingGroupEntity({ entityName: "People / multitudes", sourcePhrase: "multitudes; disciples came unto him" });
+  const add = (record) => teachingSemanticRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    teachingBlock: "Sermon on the Mount",
+    speaker: "JESUS",
+    relatedEntities: ["JESUS", "JESUS CHRIST", "disciples", "multitudes", ...(record.relatedEntities || [])],
+    groupEntities: [humanAudienceGroup, ...(record.groupEntities || [])],
+    relatedOntologyRoles: ontologyIds(["JESUS", "JESUS CHRIST", "disciples", "multitudes", ...(record.relatedOntologyRoleItems || [])]),
+    relatedPassageFunctions: functionKeys(record.relatedPassageFunctionKeys || []),
+    relatedReferenceRoles: referenceIds((item) => /JESUS|CHRIST|Sermon|Mount|disciple|multitude/i.test(`${item.sourceInput || ""} ${item.resolvedBeing || ""} ${item.referenceRole || ""}`)),
+    ...record
+  });
+  const records = [];
+
+  if (hasPhrase(/seeing the multitudes|his disciples came unto him|opened his mouth, and taught them/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", discourseType: "teaching_block", audience: "disciples; multitudes", teachingTopic: "Sermon on the Mount teaching context", sourcePhrase: "seeing the multitudes, he went up into a mountain; his disciples came unto him; he opened his mouth, and taught them", derivedMeaning: "JESUS is the grounded speaker for Matthew 5 teaching; disciples are the direct teaching audience with multitudes as surrounding chapter context.", evidence: ["seeing the multitudes", "his disciples came unto him", "he opened his mouth, and taught them"], confidence: "explicit", sourceGrounding: "Matthew 5:1-2 directly grounds speaker, audience, and teaching posture before the discourse content begins." }));
+  }
+  if (hasPhrase(/Blessed are the poor in spirit|theirs is the kingdom of heaven/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.3", verseRange: "Matthew 5:3", discourseType: "blessing", audience: "disciples; multitudes", teachingTopic: "Beatitude blessing", principle: "kingdom humility", blessing: "Blessed are the poor in spirit", promise: "theirs is the kingdom of heaven", sourcePhrase: "Blessed are the poor in spirit: for theirs is the kingdom of heaven", derivedMeaning: "The discourse presents a blessing tied to kingdom promise without treating the promise as a separate event actor.", evidence: ["Blessed are the poor in spirit", "theirs is the kingdom of heaven"], confidence: "explicit", sourceGrounding: "Matthew 5:3 directly states the blessing and its promise." }));
+  }
+  if (hasPhrase(/Blessed are the meek|inherit the earth/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.5", verseRange: "Matthew 5:5", discourseType: "blessing", audience: "disciples; multitudes", teachingTopic: "Beatitude blessing", principle: "meekness", blessing: "Blessed are the meek", promise: "they shall inherit the earth", sourcePhrase: "Blessed are the meek: for they shall inherit the earth", derivedMeaning: "The discourse links meekness with a stated promised result.", evidence: ["Blessed are the meek", "they shall inherit the earth"], confidence: "explicit", sourceGrounding: "Matthew 5:5 directly states both the blessing and promise." }));
+  }
+  if (hasPhrase(/Blessed are the merciful|obtain mercy/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.7", verseRange: "Matthew 5:7", discourseType: "blessing", audience: "disciples; multitudes", teachingTopic: "Beatitude blessing", principle: "mercy", blessing: "Blessed are the merciful", promise: "they shall obtain mercy", sourcePhrase: "Blessed are the merciful: for they shall obtain mercy", derivedMeaning: "The discourse links mercy with a stated reciprocal mercy promise.", evidence: ["Blessed are the merciful", "they shall obtain mercy"], confidence: "explicit", sourceGrounding: "Matthew 5:7 directly states the blessing and promise." }));
+  }
+  if (hasPhrase(/Thou shalt not kill|But I say unto you|danger of the judgment/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.21", verseRange: "Matthew 5:21-24", discourseType: "commandment_interpretation", audience: "disciples; multitudes", teachingTopic: "commandment and interpretation", principle: "reconciliation and inward righteousness", commandment: "Thou shalt not kill", interpretation: "But I say unto you... whosoever is angry with his brother...", warning: "danger of the judgment", application: "be reconciled to thy brother", sourcePhrase: "Thou shalt not kill; But I say unto you... whosoever is angry with his brother... be reconciled to thy brother", derivedMeaning: "JESUS teaches commandment interpretation that moves from the known commandment into reconciliation and inward righteousness.", evidence: ["Thou shalt not kill", "But I say unto you", "danger of the judgment", "be reconciled to thy brother"], confidence: "explicit", sourceGrounding: "Matthew 5:21-24 directly grounds the commandment, interpretive formula, warning, and reconciliation application." }));
+  }
+  if (hasPhrase(/Thou shalt not commit adultery|looketh on a woman to lust/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.27", verseRange: "Matthew 5:27-30", discourseType: "commandment_interpretation", audience: "disciples; multitudes", teachingTopic: "commandment and interpretation", principle: "purity and inward righteousness", commandment: "Thou shalt not commit adultery", interpretation: "But I say unto you... looketh on a woman to lust...", warning: "offending member imagery warns against sin", sourcePhrase: "Thou shalt not commit adultery; But I say unto you, That whosoever looketh on a woman to lust after her...", derivedMeaning: "JESUS teaches commandment interpretation that treats inward desire as semantically relevant to righteousness.", evidence: ["Thou shalt not commit adultery", "But I say unto you", "looketh on a woman to lust"], confidence: "explicit", sourceGrounding: "Matthew 5:27-30 directly grounds the commandment, interpretive formula, and warning/application language." }));
+  }
+  if (hasPhrase(/think not that I am come to destroy the law|I am not come to destroy, but to fulfil/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.17", verseRange: "Matthew 5:17-20", discourseType: "contrast", audience: "disciples; multitudes", teachingTopic: "law and fulfillment", principle: "fulfillment and righteousness", contrast: "destroy the law contrasted with fulfil", requirement: "righteousness exceeding scribes and Pharisees context", sourcePhrase: "Think not that I am come to destroy the law, or the prophets: I am not come to destroy, but to fulfil", derivedMeaning: "The discourse contrasts destroying with fulfilling and frames righteousness as a teaching requirement in context.", evidence: ["not come to destroy", "but to fulfil", "except your righteousness shall exceed"], confidence: "explicit", sourceGrounding: "Matthew 5:17-20 directly states the contrast and righteousness requirement context." }));
   }
 
   return records;
@@ -4058,10 +4179,17 @@ function sceneClassificationForEvent(eventItem) {
     };
   }
 
-  if (/\bpreach(?:ed|ing)?\b|\brepent\b|\bkingdom of heaven\b/i.test(text)) {
+  if (/\bJohn\b|\bBaptist\b/i.test(text) && /\bpreach(?:ed|ing)?\b|\brepent\b/i.test(text)) {
     return {
       sceneType: "preaching",
       sceneTitle: "John preaching repentance"
+    };
+  }
+
+  if (/\bJesus\b/i.test(text) && /\btaught\b|\bteaching\b|\bkingdom of heaven\b/i.test(text)) {
+    return {
+      sceneType: "teaching",
+      sceneTitle: "JESUS teaching discourse"
     };
   }
 
@@ -5462,6 +5590,20 @@ function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEv
     }
   }
 
+
+  const hasMatthewFiveJesus = Array.from(identities.values()).some((record) =>
+    record.canonicalName === "JESUS" &&
+    (record.sourceContexts || []).some((context) => context.book === "Matthew" && String(context.chapter || "") === "5")
+  );
+  if (hasMatthewFiveJesus && !identities.has("jesus christ")) {
+    const jesus = identities.get("jesus");
+    const record = identityRecordFor(identities, "JESUS CHRIST", "divine");
+    addIdentitySurface(record, "JESUS");
+    addIdentitySurface(record, "CHRIST");
+    addIdentityEvidence(record, "Matthew 5 teaching speaker: JESUS; canonical/source identity preserved as JESUS CHRIST");
+    for (const context of jesus?.sourceContexts || []) addIdentityContext(record, context);
+  }
+
   for (const record of identities.values()) enrichKnownIdentity(record);
 
   // Phase 6.3 canonical identities stay conservative: aliases do not erase
@@ -6157,6 +6299,12 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity,
       movementSemantics
     );
+    const teachingSemantics = createTeachingSemantics(
+      captures,
+      passageFunctions,
+      referenceRoles,
+      ontologyRoles
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -6176,7 +6324,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRelationRoles,
       semanticContinuity,
       movementSemantics,
-      semanticCausality
+      semanticCausality,
+      teachingSemantics
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -6197,10 +6346,21 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRelationRoles,
       semanticContinuity,
       movementSemantics,
-      semanticCausality
+      semanticCausality,
+      teachingSemantics
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
+
+    if (latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5" && teachingSemantics.length && !canonicalIdentities.some((item) => item.canonicalName === "JESUS CHRIST")) {
+      const teachingIdentity = createCanonicalIdentityRecord("JESUS CHRIST", "divine");
+      addIdentitySurface(teachingIdentity, "JESUS");
+      addIdentitySurface(teachingIdentity, "CHRIST");
+      addIdentityContext(teachingIdentity, latestCaptureContext);
+      addIdentityEvidence(teachingIdentity, "Matthew 5 teaching speaker: JESUS; canonical/source identity preserved as JESUS CHRIST");
+      enrichKnownIdentity(teachingIdentity);
+      canonicalIdentities.push(teachingIdentity);
+    }
     const storedAnalysisHistory = await chrome.storage.local.get(ANALYSIS_HISTORY_KEY);
     const previousAnalysisHistory = Array.isArray(storedAnalysisHistory[ANALYSIS_HISTORY_KEY])
       ? storedAnalysisHistory[ANALYSIS_HISTORY_KEY]
@@ -6216,7 +6376,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       entityRelationRoles: entityRelationRoles.length,
       semanticContinuity: semanticContinuity.length,
       movementSemantics: movementSemantics.length,
-      semanticCausality: semanticCausality.length
+      semanticCausality: semanticCausality.length,
+      teachingSemantics: teachingSemantics.length
     };
     const status = {
       reason,
@@ -6246,7 +6407,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       latestCaptureWordCount: latestCapture.wordCount || 0,
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
-      analysisBuildMarker: "phase-8.3c-semantic-causality",
+      matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
+      analysisBuildMarker: "phase-8.4-teaching-discourse",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -6261,6 +6423,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuityCount: semanticContinuity.length,
       movementSemanticsCount: movementSemantics.length,
       semanticCausalityCount: semanticCausality.length,
+      teachingSemanticsCount: teachingSemantics.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -6326,6 +6489,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SEMANTIC_CONTINUITY_KEY]: semanticContinuity,
       [MOVEMENT_SEMANTICS_KEY]: movementSemantics,
       [SEMANTIC_CAUSALITY_KEY]: semanticCausality,
+      [TEACHING_SEMANTICS_KEY]: teachingSemantics,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

@@ -21,6 +21,42 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-29 02:45 - pcdx - Add teaching discourse semantics
+Summary:
+- Added `ICE_TEACHING_SEMANTICS` for Matthew 5 teaching/discourse structure with JESUS as grounded speaker, disciples/multitudes audience, Beatitude blessings, commandment interpretations, law/fulfillment contrast, and Group Entity audience range display.
+- Added Study Panel Teaching / Discourse Structure cards and diagnostics.
+- Added Matthew 5 ontology/canonical identity support and `qa:matthew5`; tightened John-preaching scene classification to avoid Matthew 3 leakage into Matthew 5.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `package.json`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/matthew5-extension-qa.js` passed
+- `python -m json.tool package.json` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- `npm.cmd run qa:matthew2` passed
+- `npm.cmd run qa:matthew3` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run qa:matthew5` passed
+
+Commit:
+- This commit
+
+Status:
+- Implemented
+
+
 ## 2026-05-22 17:20 - pcdx - Make reference roles user intuitive
 Summary:
 - Updated Reference Role cards to show user-facing role titles, plain explanations, exact source references, resolved being, canonical/source identity, why-it-matters text, and confidence before technical details.
