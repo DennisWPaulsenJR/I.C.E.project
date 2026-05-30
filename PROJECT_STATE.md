@@ -38,6 +38,12 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.4f GPT Review Report Quality / Repo Review Integration implemented.
+- GPT Review Reports now include Repo Context, Current Review Question, User Observed Issue, Top Concern Auto-Detection, and GPT Recommended Review Focus sections.
+- Concern detection flags likely review issues such as unclassified entities, zero records in primary applicable layers, stale/target risks, missing continuity across sessions, generic adapter on scripture-like pages, and large diagnostic sections.
+- Added review command variants for Matthew 1, Matthew 3, and Matthew 5 while keeping reports compact and excluding raw Source Discovery, Reference Graph, DOM Hints, and raw Mention Index dumps.
+
+Latest pcdx update:
 - GPT Review Mode implemented for the Study Panel.
 - Study Panel header now includes Run GPT Review Snapshot, Copy GPT Review Report, Save GPT Review Report, and Open Latest GPT Review Report controls.
 - GPT Review Reports are compact Markdown artifacts generated from structured Study Panel data, including active source, URL, adapter, timestamp, study scope, layer counts, semantic coverage, top warnings, derived summaries, selected evidence, QA-style summary, and explicit excluded noisy layers.

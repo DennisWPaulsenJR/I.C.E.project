@@ -2830,3 +2830,40 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-30 - Refine GPT Review Report
+
+Instruction summary:
+- Make GPT Review Mode the standard repo bridge for local browser testing and GPT architectural review.
+
+Codex action summary:
+- Added Current Review Question and User Observed Issue fields to the generated GPT review report.
+- Added Top Concern Auto-Detection for likely review risks, including unclassified entities, empty primary layers, stale/target risks, missing continuity, generic adapter on scripture-like pages, and large diagnostic sections.
+- Added GPT Recommended Review Focus bullets generated from report context.
+- Added Repo Context with canonical anchor availability, report generator identity, and target QA command.
+- Added `review:matthew1` and `review:matthew3` command variants alongside `review:matthew5`.
+- Regenerated `QA_REPORTS/latest-study-panel-report.md` with the refined compact format.
+
+Files changed:
+- `study.js`
+- `package.json`
+- `qa/generate-study-panel-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
