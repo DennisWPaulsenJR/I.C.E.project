@@ -21,6 +21,34 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add semantic evidence weighting
+Summary:
+- Added Evidence Weight display beside provenance for source-supported and I.C.E.-generated semantic records.
+- Distinguished direct source evidence, supporting source evidence, derived semantic evidence, relationship inference, continuity inference, and library awareness classification.
+- Added Evidence Weights to compact GPT review reports.
+
+Files touched:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Add semantic evidence weighting`
+
+Status:
+- Implemented and validated.
+
 ## 2026-05-30 00:00 - pcdx - Add universal provenance labels
 Summary:
 - Added visible Wording Provenance blocks for generated semantic labels across Study Panel semantic cards.

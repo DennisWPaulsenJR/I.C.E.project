@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.7 Semantic Evidence Weighting implemented.
+- Study Panel semantic cards now show Evidence Weight alongside Wording Provenance for key generated/source-supported layers.
+- Evidence types distinguish Direct Source Evidence, Supporting Source Evidence, Derived Semantic Evidence, Relationship Inference, Continuity Inference, and Library Awareness Classification.
+- GPT Review Reports now include compact Evidence Weights for repo/GPT review without changing semantic conclusions.
+- Source phrase vs derived meaning, provenance labels, App accuracy wording, and ontology hierarchy remain preserved.
+
+Latest pcdx update:
 - Phase 8.6b Universal Provenance Labels implemented.
 - Study Panel generated labels now expose visible Wording Provenance for Teaching / Discourse Structure, Principle Relationships, Character Interactions, Reference Roles, Session Continuity Review, Scripture Knowledge Graph, Library Awareness, and Semantic Coverage.
 - Provenance labels distinguish source-provided reference wording from I.C.E. generated classifications, relationships, continuity labels, library families, and knowledge graph nodes.

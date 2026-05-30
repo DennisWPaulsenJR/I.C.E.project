@@ -125,6 +125,9 @@ function libraryAwarenessLines(records, limit = 5) {
 function provenanceLine(source, label, layer, key) {
   return `${source} | Label: ${clean(label || "Not recorded")} | Layer: ${layer} | Storage key: ${key}`;
 }
+function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
+  return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
+}
 function recommendedFocus(activeTitle) {
   if (/Matthew 5/i.test(activeTitle)) {
     return [
@@ -216,6 +219,16 @@ function reportFromBundle(bundle) {
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
       ...libraryAwareness.slice(0, 4).map((item) => provenanceLine("I.C.E. Library Awareness", item.principleFamily || "Library Awareness", "Library Awareness", "ICE_LIBRARY_AWARENESS_FOUNDATION"))
     ], "no generated semantic labels available"),
+    "",
+    "## Evidence Weights",
+    ...list([
+      ...teaching.slice(0, 4).map((item) => evidenceWeightLine(item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence", item.sourcePhrase ? "directly grounded in source phrase" : "derived from teaching/discourse record", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
+      ...relationships.slice(0, 4).map((item) => evidenceWeightLine("Relationship Inference", "relationship supported by grounded principle/teaching evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length)),
+      ...characterInteractions.slice(0, 3).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
+      ...sessionContinuityReview.slice(0, 2).map((item) => evidenceWeightLine("Continuity Inference", "derived from analyzed session records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.teachingProgression).length)),
+      ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
+      ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
+    ], "no semantic evidence weights available"),
     "",
     "## Semantic Coverage",
     ...list([

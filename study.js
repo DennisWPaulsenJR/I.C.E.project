@@ -1811,7 +1811,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const provenance = document.createElement("div");
       provenance.className = "semantic-coverage-provenance";
       provenance.textContent = "Source: I.C.E. Classification | Label: coverage status | Storage key: derived panel coverage row";
-      wrapper.append(layer, status, count, provenance);
+      const weight = document.createElement("div");
+      weight.className = "semantic-coverage-evidence-weight";
+      weight.textContent = "Evidence Weight: Derived Semantic Evidence | Strength: count/status derived from current panel data";
+      wrapper.append(layer, status, count, provenance, weight);
       list.appendChild(wrapper);
     });
 
@@ -1870,6 +1873,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
     [
       createWordingProvenanceSection({ source: "I.C.E. Continuity", label: item.sessionRange || "Session Continuity Review", layer: "Session Continuity Review", storageKey: "ICE_SESSION_CONTINUITY_REVIEW", scopePath: item.scopePath || item.sessionRange, rule: "Session review labels are generated from analyzed page range, continuity records, teaching semantics, authority paths, and character interactions." }),
+      createEvidenceWeightSection({ evidenceType: "Continuity Inference", evidenceStrength: "derived from analyzed session records", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.evidence), ...asArray(item.teachingProgression), ...asArray(item.continuingCharacterInteractions)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Session Range", item.sessionRange || "Current session", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Analyzed Pages", "", { list: asArray(item.analyzedPages), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Continuing Characters", "", { list: asArray(item.continuingCharacters), plainList: true, divineContext, preferHolySpirit: true }),
@@ -1923,6 +1927,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     header.append(heading, range);
     [
       createWordingProvenanceSection({ source: "I.C.E. Knowledge Graph", label: item.node || "Knowledge Graph Node", layer: "Scripture Knowledge Graph", storageKey: "ICE_KNOWLEDGE_GRAPH", scopePath: item.scopePath || item.id, rule: "Graph node labels are generated from existing grounded semantic layer nodes and relationships; source phrase remains separately displayed." }),
+      createEvidenceWeightSection({ evidenceType: "Derived Semantic Evidence", evidenceStrength: "derived from connected semantic layer records", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.evidence), ...asArray(item.relationships), ...asArray(item.relatedNodes)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Node", item.node || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Type", item.type || "Semantic Node", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Relationships", "", { list: asArray(item.relationships), plainList: true, divineContext, preferHolySpirit: true }),
@@ -2124,6 +2129,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     [
       createWordingProvenanceSection({ source: "I.C.E. Library Awareness", label: item.principleFamily || "Library Awareness", layer: "Library Awareness", storageKey: "ICE_LIBRARY_AWARENESS_FOUNDATION", scopePath: item.scopePath || item.currentSource, rule: "Family labels are generated from already-analyzed teaching and principle relationship records; future sources remain awaiting analysis." }),
+      createEvidenceWeightSection({ evidenceType: "Library Awareness Classification", evidenceStrength: "classification from current analyzed source only", sourceGrounding: item.sourceGrounding || item.currentGrounding, supportingRecords: [item.semanticSourceLayer, ...asArray(item.knownRelatedCategories)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Principle Family", item.principleFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Teaching Family", item.teachingFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Doctrine Family", item.doctrineFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
@@ -5399,6 +5405,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (/derived meaning|semantic purpose|meaning/.test(normalizedTitle)) section.classList.add("ice-derived-meaning");
     if (/^(app accuracy|i\.c\.e\. app accuracy|accuracy)$/.test(normalizedTitle)) section.classList.add("ice-confidence", confidenceClassName(content));
     if (/provenance/.test(normalizedTitle)) section.classList.add("ice-provenance");
+    if (/evidence weight/.test(normalizedTitle)) section.classList.add("ice-evidence-weight");
 
     if (options.collapsed) {
       const details = document.createElement("details");
@@ -5434,6 +5441,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   function createWordingProvenanceSection(options = {}) {
     return createPassageFunctionSection("Wording Provenance", "", {
       list: semanticWordingProvenanceLines(options),
+      plainList: true,
+      preserveExact: true
+    });
+  }
+
+
+  function semanticEvidenceWeightLines({ evidenceType, evidenceStrength, sourceGrounding, supportingRecords = [], sourcePhrase = "" } = {}) {
+    const records = asArray(supportingRecords).map((value) => normalizeText(value)).filter(Boolean);
+    return [
+      `Evidence Type: ${evidenceType || "Derived Semantic Evidence"}`,
+      `Evidence Strength: ${evidenceStrength || "grounded by current semantic record"}`,
+      `Source Grounding: ${normalizeText(sourceGrounding || sourcePhrase || "Not recorded.")}`,
+      `Supporting Records: ${records.length ? records.slice(0, 5).join("; ") : "Not recorded."}`,
+      records.length > 5 ? `Supporting Records Hidden: ${records.length - 5}` : ""
+    ].filter(Boolean);
+  }
+
+  function createEvidenceWeightSection(options = {}) {
+    return createPassageFunctionSection("Evidence Weight", "", {
+      list: semanticEvidenceWeightLines(options),
       plainList: true,
       preserveExact: true
     });
@@ -6737,6 +6764,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createWordingProvenanceSection({ source: referenceRoleSourceProvenanceLabel(item), label: referenceRoleDisplayTitle(item), layer: "Reference Roles", storageKey: "ICE_REFERENCE_ROLES", scopePath: item.scopePath || item.sourceDiscoveryId, generated: false, rule: "The source reference wording comes from Source Discovery/Reference Graph; I.C.E. adds the role explanation and resolved being display without treating it as scripture text." }),
+      createEvidenceWeightSection({ evidenceType: "Supporting Source Evidence", evidenceStrength: "supports semantic role through source/reference context", sourceGrounding: item.sourceGrounding || item.discoveredReference, supportingRecords: [...asArray(item.evidence), item.sourceDiscoveryId, item.referenceHref], sourcePhrase: item.discoveredReference }),
       createPassageFunctionSection("Reference Role", referenceRoleDisplayTitle(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("What This Reference Helps Explain", referenceRolePlainExplanation(item), { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source Reference", item.discoveredReference || "Not recorded.", { preserveExact: true }),
@@ -7423,6 +7451,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createWordingProvenanceSection({ source: "I.C.E. Teaching Classification", label: title, layer: "Teaching / Discourse Structure", storageKey: "ICE_TEACHING_SEMANTICS", scopePath: item.scopePath || item.verseRange, rule: "Teaching labels come from the derived teachingTopic, blessing, commandment, or teachingBlock field selected from grounded source text." }),
+      createEvidenceWeightSection({ evidenceType: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence", evidenceStrength: item.sourcePhrase ? "directly grounded in displayed source phrase" : "derived from current teaching/discourse record", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: evidence, sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Canonical/source identity", item.canonicalIdentity || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
@@ -7541,6 +7570,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createWordingProvenanceSection({ source: "I.C.E. Principle Relationship", label: principleRelationshipTitle(item), layer: "Principle Relationships", storageKey: "ICE_PRINCIPLE_RELATIONSHIPS", scopePath: item.scopePath || item.verseRange, rule: "Relationship labels are generated from the principle, relationshipType, and relatedPrinciples fields derived from grounded teaching/principle evidence." }),
+      createEvidenceWeightSection({ evidenceType: "Relationship Inference", evidenceStrength: "inferred relationship supported by grounded teaching/principle evidence", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: [...evidence, ...asArray(item.relatedTeachingSemantics), ...asArray(item.relatedPrinciples)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Principle", item.principle || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Principles", "", { list: asArray(item.relatedPrinciples), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Relationship Type", passageFunctionTitle(item.relationshipType || "related"), { divineContext, preferHolySpirit: true }),
@@ -8555,6 +8585,7 @@ createRevelationPartsSection(item.subEvents)
 
     [
       createWordingProvenanceSection({ source: "I.C.E. Relationship", label: `${item.sourceCharacter || "Unknown"} -> ${item.targetCharacter || "Unknown"}`, layer: "Character Interactions", storageKey: "ICE_CHARACTER_INTERACTIONS", scopePath: item.scopePath || item.verseRange, rule: "Interaction labels are generated from grounded source character, target character, and interaction type fields." }),
+      createEvidenceWeightSection({ evidenceType: "Relationship Inference", evidenceStrength: "interaction inferred from source-grounded character/action evidence", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: [...evidence, ...asArray(item.relatedEntities)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Source Character", item.sourceCharacter || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Target Character", item.targetCharacter || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Interaction Type", passageFunctionTitle(item.interactionType || "semantic_interaction"), { divineContext, preferHolySpirit: true }),

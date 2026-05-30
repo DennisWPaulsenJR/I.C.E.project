@@ -43,6 +43,9 @@ function unique(values = []) {
 function provenanceLine(source, label, layer, key) {
   return `${source} | Label: ${clean(label || "Not recorded")} | Layer: ${layer} | Storage key: ${key}`;
 }
+function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
+  return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
+}
 function currentGitAnchor() {
   try {
     return execSync("git log --oneline -1", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -178,6 +181,15 @@ function reportFromBundles(bundles) {
       provenanceLine("I.C.E. Continuity", range, "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW"),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")))
     ], "no generated semantic labels available"),
+    "",
+    "## Evidence Weights",
+    ...list([
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.teachingSemantics).slice(0, 2).map((item) => evidenceWeightLine(item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence", item.sourcePhrase ? "directly grounded in source phrase" : "derived from teaching/discourse record", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.principleRelationships).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "relationship supported by grounded principle/teaching evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length))),
+      evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)))
+    ], "no semantic evidence weights available"),
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",

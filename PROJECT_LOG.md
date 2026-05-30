@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.7 Semantic Evidence Weighting
+
+Instruction summary:
+- Add transparency for how directly semantic labels and records are supported.
+- Distinguish Direct Source Evidence, Supporting Source Evidence, Derived Semantic Evidence, Relationship Inference, Continuity Inference, and Library Awareness Classification.
+- Preserve provenance labels, source phrase vs derived meaning, App accuracy wording, and existing semantic conclusions.
+
+Codex action summary:
+- Added shared Evidence Weight rendering helpers in the Study Panel.
+- Added Evidence Weight sections to Teaching / Discourse, Principle Relationships, Character Interactions, Reference Roles, Session Continuity Review, Scripture Knowledge Graph, Library Awareness, and Semantic Coverage.
+- Added compact Evidence Weights sections to GPT review report generators.
+- Kept the change transparency-only; no semantic interpretation or stored accuracy values were changed.
+
+Files changed:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-05-30 - Phase 8.6b Universal Provenance Labels
 
 Instruction summary:
