@@ -2,6 +2,35 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.6b Universal Provenance Labels
+
+Instruction summary:
+- Add first-class provenance visibility for displayed semantic labels, categories, headings, families, relationships, graph nodes, teaching categories, continuity labels, and coverage labels.
+- Make it clear whether wording came from scripture/source/reference material or from an I.C.E. generated semantic layer.
+- Apply first to Teaching / Discourse Structure, Principle Relationships, Knowledge Graph, Library Awareness, Session Continuity Review, Semantic Coverage, Character Interactions, and Reference Roles.
+
+Codex action summary:
+- Added shared Wording Provenance rendering helpers in the Study Panel.
+- Added visible provenance blocks to generated teaching classifications, principle relationships, character interactions, session continuity labels, knowledge graph nodes, library awareness families, semantic coverage rows, and reference role cards.
+- Added compact Provenance Labels sections to GPT review report generators.
+- Preserved source phrase vs derived meaning separation and did not alter stored semantic confidence/accuracy values or interpretation logic.
+
+Files changed:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-05-30 - Phase 8.6 Scripture Knowledge Graph Foundation
 
 Instruction summary:

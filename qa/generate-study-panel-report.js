@@ -122,6 +122,9 @@ function libraryAwarenessRecords(samples, activeTitle) {
 function libraryAwarenessLines(records, limit = 5) {
   return asArray(records).slice(0, limit).map((item) => `${item.principleFamily} | Current source: ${item.currentSource} | Related categories: ${asArray(item.knownRelatedCategories).slice(0, 3).join(", ") || "awaiting analysis"} | Future sources: awaiting analysis`);
 }
+function provenanceLine(source, label, layer, key) {
+  return `${source} | Label: ${clean(label || "Not recorded")} | Layer: ${layer} | Storage key: ${key}`;
+}
 function recommendedFocus(activeTitle) {
   if (/Matthew 5/i.test(activeTitle)) {
     return [
@@ -202,6 +205,17 @@ function reportFromBundle(bundle) {
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
+    "",
+    "## Provenance Labels",
+    ...list([
+      "I.C.E. Classification | Label: Semantic Coverage status | Layer: Semantic Coverage | Storage key: derived panel coverage row",
+      ...teaching.slice(0, 4).map((item) => provenanceLine("I.C.E. Teaching Classification", item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType, "Teaching / Discourse Structure", "ICE_TEACHING_SEMANTICS")),
+      ...relationships.slice(0, 4).map((item) => provenanceLine("I.C.E. Principle Relationship", `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")}`, "Principle Relationships", "ICE_PRINCIPLE_RELATIONSHIPS")),
+      ...characterInteractions.slice(0, 3).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS")),
+      ...sessionContinuityReview.slice(0, 2).map((item) => provenanceLine("I.C.E. Continuity", item.sessionRange || "Session Continuity Review", "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW")),
+      ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
+      ...libraryAwareness.slice(0, 4).map((item) => provenanceLine("I.C.E. Library Awareness", item.principleFamily || "Library Awareness", "Library Awareness", "ICE_LIBRARY_AWARENESS_FOUNDATION"))
+    ], "no generated semantic labels available"),
     "",
     "## Semantic Coverage",
     ...list([

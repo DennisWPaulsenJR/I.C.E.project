@@ -21,6 +21,34 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add universal provenance labels
+Summary:
+- Added visible Wording Provenance blocks for generated semantic labels across Study Panel semantic cards.
+- Distinguished I.C.E. generated classifications, relationships, continuity labels, library families, knowledge graph nodes, coverage labels, and source/reference wording.
+- Added Provenance Labels sections to compact GPT review reports.
+
+Files touched:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Add universal provenance labels`
+
+Status:
+- Implemented and validated.
+
 ## 2026-05-30 00:00 - pcdx - Add scripture knowledge graph foundation
 Summary:
 - Added `ICE_KNOWLEDGE_GRAPH` derived graph foundation for reviewable semantic nodes and relationships.

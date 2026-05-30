@@ -40,6 +40,9 @@ function unique(values = []) {
   });
 }
 
+function provenanceLine(source, label, layer, key) {
+  return `${source} | Label: ${clean(label || "Not recorded")} | Layer: ${layer} | Storage key: ${key}`;
+}
 function currentGitAnchor() {
   try {
     return execSync("git log --oneline -1", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -165,6 +168,16 @@ function reportFromBundles(bundles) {
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
+    "",
+    "## Provenance Labels",
+    ...list([
+      "I.C.E. Classification | Label: Semantic Coverage status | Layer: Semantic Coverage | Storage key: derived panel coverage row",
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.teachingSemantics).slice(0, 2).map((item) => provenanceLine("I.C.E. Teaching Classification", item.teachingTopic || item.blessing || item.commandment || "Teaching", "Teaching / Discourse Structure", "ICE_TEACHING_SEMANTICS"))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.principleRelationships).slice(0, 2).map((item) => provenanceLine("I.C.E. Principle Relationship", `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")}`, "Principle Relationships", "ICE_PRINCIPLE_RELATIONSHIPS"))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS"))),
+      provenanceLine("I.C.E. Continuity", range, "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW"),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")))
+    ], "no generated semantic labels available"),
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",

@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.6b Universal Provenance Labels implemented.
+- Study Panel generated labels now expose visible Wording Provenance for Teaching / Discourse Structure, Principle Relationships, Character Interactions, Reference Roles, Session Continuity Review, Scripture Knowledge Graph, Library Awareness, and Semantic Coverage.
+- Provenance labels distinguish source-provided reference wording from I.C.E. generated classifications, relationships, continuity labels, library families, and knowledge graph nodes.
+- GPT Review Reports now include compact Provenance Labels so repo review can tell whether wording came from source/reference data or I.C.E. generated semantic layers.
+- Source phrase vs derived meaning, App accuracy wording, ontology hierarchy, Study Scope, and GPT Review Mode remain preserved.
+
+Latest pcdx update:
 - Phase 8.6 Scripture Knowledge Graph Foundation implemented.
 - New derived graph layer: `ICE_KNOWLEDGE_GRAPH`.
 - Knowledge Graph records connect existing source-grounded semantic layers into reviewable nodes and relationships without visual graph rendering yet.
