@@ -2725,3 +2725,35 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-30 - Refine GPT Handoff Export
+
+Instruction summary:
+- Refine Copy GPT Handoff Summary into a structured issue-review format for cdx/GPT review.
+
+Codex action summary:
+- Reworked the GPT handoff export into a fixed `I.C.E. GPT Handoff` format.
+- Added explicit Active Source, URL, Study Scope, Analyzed Pages, Adapter, Relevant Section, Observed Issue, Likely Issue, Layer Counts, Top Evidence, Suggested Review, Data To Review, and Do Not Paste blocks.
+- Added helpers that infer the relevant section, summarize nonzero layer counts, select the top compact evidence lines, and suggest review checks based on the section.
+- Kept the handoff concise and capped, with existing export normalization preserving ASCII arrows and avoiding raw Source Discovery / Reference Graph / DOM Hints / raw Mention Index dumps.
+
+Files changed:
+- `study.js`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed after a clean rerun following a transient Matthew 2 page-load timeout.
+- Manual smoke by code path: Copy GPT Handoff Summary now emits the structured short issue-review format and includes Do Not Paste guardrails.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

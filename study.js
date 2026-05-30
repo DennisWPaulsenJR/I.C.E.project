@@ -1060,26 +1060,117 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].join("\n"), 4200);
   }
 
+  function relevantHandoffSection() {
+    if (currentSemanticFocus?.targetSection) {
+      const focused = document.getElementById(currentSemanticFocus.targetSection);
+      const title = normalizeText(focused?.querySelector("h2")?.textContent || "");
+      if (title) return title;
+    }
+    if (countItems(studyData.teachingSemantics) > 0) return "Teaching / Discourse Structure";
+    if (countItems(studyData.principleRelationships) > 0) return "Principle Relationships";
+    if (countItems(studyData.passageFunctions) > 0) return "Passage Functions";
+    return "Current Study Panel section";
+  }
+
+  function handoffLayerCountLines() {
+    return layerCountPairs()
+      .filter(([, value]) => value > 0)
+      .slice(0, 10)
+      .map(([label, value]) => `${label}: ${value}`);
+  }
+
+  function topEvidenceLines(limit = 3) {
+    const values = [];
+    asArray(studyData.teachingSemantics).forEach((item) => {
+      const phrase = normalizeText(item.sourcePhrase || "");
+      const meaning = normalizeText(item.derivedMeaning || "");
+      if (phrase) values.push(`${phrase}${meaning ? ` | ${meaning}` : ""}`);
+    });
+    asArray(studyData.principleRelationships).forEach((item) => {
+      const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
+      if (item.principle) values.push(`${item.principle} ${item.relationshipType || "related"} ${related || "related principles"} | ${item.sourcePhrase || "source phrase not recorded"}`);
+    });
+    asArray(studyData.passageFunctions).forEach((item) => {
+      if (item.plainMeaning || item.sourcePhrase) values.push(`${item.passageFunction || "passage function"} | ${item.plainMeaning || item.sourcePhrase}`);
+    });
+    return values.slice(0, limit);
+  }
+
+  function suggestedReviewLines(section = relevantHandoffSection()) {
+    if (/teaching|discourse/i.test(section)) {
+      return [
+        "check speaker resolution",
+        "check audience classification",
+        "check teaching block and source-text grounding",
+        "check reference role filtering"
+      ];
+    }
+    if (/principle/i.test(section)) {
+      return [
+        "check principle relationship type",
+        "check related principles are grounded",
+        "check source phrase vs derived meaning separation"
+      ];
+    }
+    return [
+      "check active source target",
+      "check relevant semantic layer counts",
+      "check source phrase vs derived meaning separation"
+    ];
+  }
+
   function buildGptHandoffSummary() {
     const activePage = activeSourcePageRecord();
+    const analyzedPages = analyzedPageHistory();
+    const range = rangeFromAnalyzedPages(analyzedPages);
     const warnings = topWarningLines(activePage);
-    const anchor = studyData.analysisStatus?.analysisBuildMarker || "current local Study Panel state";
+    const relevantSection = relevantHandoffSection();
+    const evidence = topEvidenceLines(3);
     return exportPlainText([
-      "GPT Handoff Summary",
+      "I.C.E. GPT Handoff",
       "",
-      exportLine("Current anchor/context", anchor),
-      exportLine("Analyzed page", activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Not recorded"),
-      exportLine("URL", activePage?.activeUrl || studyData.analysisStatus?.activeUrl || "Not recorded"),
-      exportLine("Adapter", studyData.activeAdapter?.adapterName || studyData.analysisStatus?.activeAdapterName || "not detected"),
-      exportLine("Status", analysisStatusLabel(activePage)),
+      "Active Source:",
+      activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Not recorded",
+      "URL:",
+      activePage?.activeUrl || studyData.analysisStatus?.activeUrl || "Not recorded",
       "",
-      "What looked wrong / needs review:",
-      ...(warnings.length ? warnings.map((line) => `- ${line}`) : ["- No compact warnings detected; review requested semantic layer directly."]),
+      "Study Scope:",
+      range ? `${volumePageLabel(range.start)} -> ${volumePageLabel(range.end)}` : "No active study range",
+      "Analyzed Pages:",
+      analyzedPages.length ? analyzedPages.map(volumePageLabel).join(", ") : "none recorded",
       "",
-      "Relevant lines:",
-      ...teachingSummaryLines(5).map((line) => `- ${line}`),
-      ...principleRelationshipSummaryLines(5).map((line) => `- ${line}`)
-    ].join("\n"), 2600);
+      "Adapter:",
+      studyData.activeAdapter?.adapterName || activePage?.activeAdapterName || studyData.analysisStatus?.activeAdapterName || "not detected",
+      "",
+      "Relevant Section:",
+      relevantSection,
+      "",
+      "Observed Issue:",
+      warnings.length ? warnings[0] : "User requested review of the relevant Study Panel section; no compact warning was detected.",
+      "",
+      "Likely Issue:",
+      warnings.length ? "Study/session state may need targeted review before pasting larger panel data." : "Semantic output needs human review in the named section, using the compact evidence below.",
+      "",
+      "Layer Counts:",
+      ...handoffLayerCountLines(),
+      "",
+      "Top Evidence:",
+      ...(evidence.length ? evidence.map((line, index) => `${index + 1}. ${line}`) : ["1. No compact evidence lines available."]),
+      "",
+      "Suggested Review:",
+      ...suggestedReviewLines(relevantSection).map((line) => `- ${line}`),
+      "",
+      "Data To Review:",
+      `- ${relevantSection}`,
+      "- Study Scope",
+      "- Diagnostic Snapshot if target/session state is unclear",
+      "",
+      "Do Not Paste:",
+      "- full Source Discovery",
+      "- full Reference Graph",
+      "- huge DOM hints",
+      "- full raw mention index"
+    ].join("\n"), 3200);
   }
 
   function currentSectionForExport() {
