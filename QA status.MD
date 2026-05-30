@@ -2,9 +2,30 @@
 
 Purpose: lightweight repo-visible QA readiness snapshot for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
 
-Last updated: 2026-05-29 by `pcdx`.
+Last updated: 2026-05-30 by `pcdx`.
 
 Current operational state:
+Latest validation update:
+- Phase 8.5b Session Continuity Review Architecture passed syntax, package JSON, whitespace, Matthew 1/2/3/5 QA, combined Matthew pages QA, and session review report generation.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- Latest session report shows Matthew 1 -> Matthew 5 range with analyzed pages Matthew 1, Matthew 2, Matthew 3, and Matthew 5; Matthew 4 is not included because it was not analyzed in this command.
+
 Latest validation update:
 - Phase 8.4f GPT Review Report Quality / Repo Review Integration passed syntax, package JSON, whitespace, Matthew 5 review report generation, and combined Matthew pages QA.
 - `node --check study.js` passed.

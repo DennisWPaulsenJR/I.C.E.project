@@ -2,6 +2,48 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.5b Session Continuity Review Architecture
+
+Instruction summary:
+- Add a derived review layer to help I.C.E. understand analyzed page ranges as one developing narrative/teaching structure without implementing full-book analysis.
+- Primary pilot range is Matthew 1 -> Matthew 5, spanning genealogy, revelation, protection, baptism/preaching, preparation, and teaching.
+- Preserve chapter-level grounding, source phrase vs derived meaning, App accuracy wording, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, LDS heading provenance, and no crawling.
+
+Codex action summary:
+- Added `ICE_SESSION_CONTINUITY_REVIEW` storage and builder support.
+- Added conservative session review records built from analyzed page history plus current semantic continuity, ontology roles, principle relationships, character interactions, authority paths, teaching semantics, and relationship roles.
+- Added a Study Panel `Session Continuity Review` section with session range, analyzed pages, continuing characters, themes, authority paths, teaching progression, principle families, character interactions, source phrase, derived meaning, App accuracy, evidence, related layers, and grounding.
+- Added Session Continuity Review to Semantic Coverage, layer counts, GPT Review Reports, and QA-style summaries.
+- Added repo-side `qa/generate-session-continuity-report.js` and `npm.cmd run review:matthew-session` for compact Matthew 1 -> Matthew 5 continuity review artifacts.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `package.json`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
 ## 2026-05-30 - Phase 8.5a Character Interaction Architecture
 
 Instruction summary:

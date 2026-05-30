@@ -42,7 +42,8 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_CONTINUITY",
   "ICE_MOVEMENT_SEMANTICS",
   "ICE_SEMANTIC_CAUSALITY",
-  "ICE_CHARACTER_INTERACTIONS"
+  "ICE_CHARACTER_INTERACTIONS",
+  "ICE_SESSION_CONTINUITY_REVIEW"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -103,7 +104,8 @@ function emptyCounts() {
     semanticContinuity: 0,
     movementSemantics: 0,
     semanticCausality: 0,
-    characterInteractions: 0
+    characterInteractions: 0,
+    sessionContinuityReview: 0
   };
 }
 
@@ -130,7 +132,8 @@ function buildCounts(storageData) {
     semanticContinuity: count(storageData.ICE_SEMANTIC_CONTINUITY),
     movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS),
     semanticCausality: count(storageData.ICE_SEMANTIC_CAUSALITY),
-    characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS)
+    characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
+    sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW)
   };
 }
 
@@ -159,6 +162,7 @@ function buildSamples(storageData) {
     movementSemantics: sample(storageData.ICE_MOVEMENT_SEMANTICS, 20),
     semanticCausality: sample(storageData.ICE_SEMANTIC_CAUSALITY, 20),
     characterInteractions: sample(storageData.ICE_CHARACTER_INTERACTIONS, 20),
+    sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }

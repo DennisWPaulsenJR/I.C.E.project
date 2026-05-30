@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     teachingSemantics: "ICE_TEACHING_SEMANTICS",
     principleRelationships: "ICE_PRINCIPLE_RELATIONSHIPS",
     characterInteractions: "ICE_CHARACTER_INTERACTIONS",
+    sessionContinuityReview: "ICE_SESSION_CONTINUITY_REVIEW",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -390,6 +391,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return [
       item.relatedEntities,
       item.linkedEntities,
+      item.continuingCharacters,
+      item.continuingAuthorityPaths,
+      item.continuingCharacterInteractions,
       item.entities,
       item.semanticItems,
       item.sourceEntity,
@@ -901,6 +905,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     return ["No cross-page continuity detected yet"];
   }
 
+  function sessionContinuityReviewRecords() {
+    const stored = asArray(studyData.sessionContinuityReview);
+    if (stored.length) return stored;
+    const analyzedPages = analyzedPageHistory();
+    const range = rangeFromAnalyzedPages(analyzedPages);
+    if (!range || analyzedPages.length < 2) return [];
+    const labels = analyzedPages.map(volumePageLabel).filter(Boolean);
+    const chapterSet = new Set(analyzedPages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean));
+    const hasChapter = (chapter) => chapterSet.has(chapter);
+    const unique = (values = []) => Array.from(new Set(values.map((value) => normalizeText(value)).filter(Boolean)));
+    return [{
+      id: `session-continuity-review-${labels.join("-").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      sessionRange: `${volumePageLabel(range.start)} -> ${volumePageLabel(range.end)}`,
+      analyzedPages: labels,
+      continuingCharacters: unique([
+        hasChapter(1) || hasChapter(2) || hasChapter(3) || hasChapter(5) ? "JESUS" : "",
+        hasChapter(1) || hasChapter(2) ? "Joseph" : "",
+        hasChapter(1) || hasChapter(2) ? "Mary" : "",
+        hasChapter(3) ? "John" : "",
+        hasChapter(5) ? "disciples" : "",
+        hasChapter(5) ? "People / multitudes" : "",
+        ...asArray(studyData.characterInteractions).flatMap((item) => [item.sourceCharacter, item.targetCharacter])
+      ]).slice(0, 12),
+      continuingThemes: unique([
+        hasChapter(1) ? "mission revealed" : "",
+        hasChapter(2) ? "mission preserved" : "",
+        hasChapter(3) ? "mission announced" : "",
+        hasChapter(4) ? "mission prepared" : "",
+        hasChapter(5) ? "mission taught" : "",
+        ...asArray(studyData.principleRelationships).flatMap((item) => [item.principle, ...asArray(item.relatedPrinciples)]),
+        ...asArray(studyData.semanticContinuity).flatMap((item) => asArray(item.continuity))
+      ]).slice(0, 14),
+      continuingAuthorityPaths: unique([
+        hasChapter(1) || hasChapter(2) ? "THE LORD -> AngEL Of THE LORD -> Joseph" : "",
+        hasChapter(3) ? "HOLY SPIRIT source wording / derived display continuity" : "",
+        hasChapter(5) ? "JESUS -> disciples / multitudes" : "",
+        ...asArray(studyData.originAuthorityPaths).map((item) => [item.origin, item.messenger, item.recipient].filter(Boolean).join(" -> "))
+      ]).slice(0, 8),
+      teachingProgression: [
+        hasChapter(1) ? "Matthew 1: mission revealed" : "",
+        hasChapter(2) ? "Matthew 2: mission preserved" : "",
+        hasChapter(3) ? "Matthew 3: mission announced" : "",
+        hasChapter(4) ? "Matthew 4: mission prepared" : "",
+        hasChapter(5) ? "Matthew 5: mission taught" : ""
+      ].filter(Boolean),
+      continuingPrincipleFamilies: unique([
+        ...asArray(studyData.principleRelationships).map((item) => item.principle),
+        ...asArray(studyData.teachingSemantics).flatMap((item) => [item.principle, item.teachingTopic, item.blessing, item.commandment]),
+        hasChapter(5) ? "righteousness" : "",
+        hasChapter(5) ? "kingdom" : "",
+        hasChapter(5) ? "mercy" : "",
+        hasChapter(1) || hasChapter(2) ? "obedience" : "",
+        hasChapter(1) || hasChapter(2) ? "fulfillment" : ""
+      ]).slice(0, 12),
+      continuingCharacterInteractions: unique([
+        ...asArray(studyData.characterInteractions).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
+        hasChapter(3) ? "John -> people | preaches / prepares" : "",
+        hasChapter(5) ? "JESUS -> disciples | teaches" : "",
+        hasChapter(5) ? "JESUS -> People / multitudes | teaches in surrounding audience context" : ""
+      ]).slice(0, 10),
+      sourcePhrase: "Analyzed session metadata plus current source-grounded semantic layers",
+      derivedMeaning: `The current study session can be reviewed as ${volumePageLabel(range.start)} -> ${volumePageLabel(range.end)}; continuity is summarized from analyzed page history and current semantic layers without crawling or whole-book indexing.`,
+      evidence: unique([
+        `Analyzed session pages: ${labels.join(", ")}`,
+        countItems(studyData.semanticContinuity) ? `Semantic continuity records available: ${countItems(studyData.semanticContinuity)}` : "",
+        countItems(studyData.ontologyRoles) ? `Ontology role records available: ${countItems(studyData.ontologyRoles)}` : "",
+        countItems(studyData.principleRelationships) ? `Principle relationship records available: ${countItems(studyData.principleRelationships)}` : "",
+        countItems(studyData.characterInteractions) ? `Character interaction records available: ${countItems(studyData.characterInteractions)}` : ""
+      ]),
+      confidence: hasChapter(5) && countItems(studyData.teachingSemantics) ? "probable" : "possible",
+      sourceGrounding: "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages."
+    }];
+  }
   function suggestedNextPageLabel(page) {
     const chapterNumber = Number(page?.sourceCaptureChapter || page?.chapter || 0);
     const book = page?.sourceCaptureBook || page?.book || "";
@@ -957,6 +1034,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
       ["Principle Relationships", countItems(studyData.principleRelationships)],
       ["Character Interactions", countItems(studyData.characterInteractions)],
+      ["Session Continuity Review", countItems(sessionContinuityReviewRecords())],
       ["Library Awareness", countItems(libraryAwarenessRecords())]
     ];
   }
@@ -1014,6 +1092,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       return `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${passageFunctionTitle(item.interactionType || "interaction")} | ${displayConfidence(item.confidence || "probable")}`;
     });
   }
+  function sessionContinuityReviewSummaryLines(limit = 5) {
+    return sessionContinuityReviewRecords().slice(0, limit).map((item) => {
+      const range = item.sessionRange || "Current session";
+      const progression = asArray(item.teachingProgression).slice(0, 3).join("; ") || "progression awaiting grounded session records";
+      return `${range} | ${progression} | ${displayConfidence(item.confidence || "probable")}`;
+    });
+  }
+
   function studyScopeExportLines() {
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
@@ -1075,6 +1161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const title = normalizeText(focused?.querySelector("h2")?.textContent || "");
       if (title) return title;
     }
+    if (countItems(sessionContinuityReviewRecords()) > 0) return "Session Continuity Review";
     if (countItems(studyData.teachingSemantics) > 0) return "Teaching / Discourse Structure";
     if (countItems(studyData.principleRelationships) > 0) return "Principle Relationships";
     if (countItems(studyData.passageFunctions) > 0) return "Passage Functions";
@@ -1102,6 +1189,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     asArray(studyData.characterInteractions).forEach((item) => {
       if (item.sourceCharacter || item.targetCharacter) values.push(`${item.sourceCharacter || "source"} -> ${item.targetCharacter || "target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
+    sessionContinuityReviewRecords().forEach((item) => {
+      if (item.sessionRange) values.push(`${item.sessionRange} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"}`);
+    });
     asArray(studyData.passageFunctions).forEach((item) => {
       if (item.plainMeaning || item.sourcePhrase) values.push(`${item.passageFunction || "passage function"} | ${item.plainMeaning || item.sourcePhrase}`);
     });
@@ -1115,6 +1205,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         "check audience classification",
         "check teaching block and source-text grounding",
         "check reference role filtering"
+      ];
+    }
+    if (/session continuity/i.test(section)) {
+      return [
+        "check analyzed page range",
+        "check continuing characters are grounded",
+        "check teaching progression does not include unanalyzed pages",
+        "check continuity uses current semantic layers"
       ];
     }
     if (/principle/i.test(section)) {
@@ -1150,6 +1248,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `teachingSemantics: ${countItems(studyData.teachingSemantics)}`,
       `principleRelationships: ${countItems(studyData.principleRelationships)}`,
       `characterInteractions: ${countItems(studyData.characterInteractions)}`,
+      `sessionContinuityReview: ${countItems(sessionContinuityReviewRecords())}`,
       `libraryAwareness: ${countItems(libraryAwarenessRecords())}`,
       `scopeMissing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`
     ];
@@ -1159,6 +1258,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function currentReviewQuestion() {
     const section = relevantHandoffSection();
     if (/teaching|discourse/i.test(section)) return "Is the teaching/discourse structure resolving speaker, audience, teaching blocks, and grounding correctly?";
+    if (/session continuity/i.test(section)) return "Does the current study range preserve grounded continuity across analyzed pages without fabricating unanalyzed links?";
     if (/principle/i.test(section)) return "Are principle relationships grounded and classified with the right relationship type?";
     if (/movement/i.test(section)) return "Are movement/location records grounded to the active source and purpose?";
     return `Does the ${section} output match the active source and expected semantic layer behavior?`;
@@ -1240,6 +1340,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       "## Semantic Coverage",
       ...markdownList(semanticCoverageSummaryLines(10)),
       "",
+      "## Session Continuity Review",
+      ...markdownList(sessionContinuityReviewSummaryLines(5), "no session continuity review records available"),
+      "",
       "## Library Awareness",
       ...markdownList(libraryAwarenessSummaryLines(5), "no library awareness records available"),
       "",
@@ -1253,7 +1356,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ...markdownList([
         ...teachingSummaryLines(6),
         ...principleRelationshipSummaryLines(5),
-        ...characterInteractionSummaryLines(5)
+        ...characterInteractionSummaryLines(5),
+        ...sessionContinuityReviewSummaryLines(5)
       ], "no teaching/principle summaries available"),
       "",
       "## Selected Evidence",
@@ -1498,6 +1602,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         status: coverageStatus({ count: countItems(studyData.characterInteractions), applicable: chapter === 1 || chapter === 2 || chapter === 5, pilot: true })
       },
       {
+        layer: "Session Continuity Review",
+        count: countItems(sessionContinuityReviewRecords()),
+        status: coverageStatus({ count: countItems(sessionContinuityReviewRecords()), applicable: true, pilot: true, sessionScoped: true })
+      },
+      {
         layer: "Semantic Sequence / Causality",
         count: countItems(studyData.semanticCausality),
         status: coverageStatus({ count: countItems(studyData.semanticCausality), applicable: chapter === 1 || chapter === 2 })
@@ -1579,6 +1688,87 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
 
+  function sessionContinuityReviewSearchText(item = {}) {
+    return [
+      item.sessionRange,
+      item.analyzedPages,
+      item.continuingCharacters,
+      item.continuingThemes,
+      item.continuingAuthorityPaths,
+      item.teachingProgression,
+      item.continuingPrincipleFamilies,
+      item.continuingCharacterInteractions,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.evidence,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createSessionContinuityReviewCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card session-continuity-review-card";
+    assignSemanticCardTarget(card, "sessionContinuityReview", item, item.sessionRange || item.id || "session-continuity-review");
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = item.sessionRange || "Session Continuity Review";
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_SESSION_CONTINUITY_REVIEW", displayConfidence(item.confidence || "probable")].join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.continuingCharacters, item.continuingAuthorityPaths, item.derivedMeaning, item.sourceGrounding]);
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Session Range", item.sessionRange || "Current session", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Analyzed Pages", "", { list: asArray(item.analyzedPages), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Continuing Characters", "", { list: asArray(item.continuingCharacters), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Continuing Themes", "", { list: asArray(item.continuingThemes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Continuing Authority Paths", "", { list: asArray(item.continuingAuthorityPaths), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Progression", "", { list: asArray(item.teachingProgression), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Continuing Principle Families", "", { list: asArray(item.continuingPrincipleFamilies), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Continuing Character Interactions", "", { list: asArray(item.continuingCharacterInteractions), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence).slice(0, 6), hiddenCount: Math.max(0, asArray(item.evidence).length - 6), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "sessionContinuityReview"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderSessionContinuityReview(term) {
+    const container = document.getElementById("sessionContinuityReviewCards");
+    const count = document.getElementById("sessionContinuityReviewCount");
+    if (!container || !count) return;
+    const records = sessionContinuityReviewRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(sessionContinuityReviewSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} review record(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No session continuity review yet. Add at least two analyzed pages to the Study Scope to review range continuity.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Session Continuity Review",
+      [
+        `Review records: ${records.length}`,
+        "Layer: ICE_SESSION_CONTINUITY_REVIEW",
+        "Purpose: review analyzed page ranges as one developing narrative/teaching structure.",
+        "Boundary: derived review only; no auto-crawling, no whole-book analysis, and no fabricated unanalyzed links."
+      ].join("\n"),
+      "derived session review layer"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No session continuity review records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSessionContinuityReviewCard(item)));
+  }
   function uniqueLibraryList(values = []) {
     const seen = new Set();
     return asArray(values)
@@ -5387,6 +5577,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       principleRelationship: "principleRelationshipsSection",
       characterInteraction: "interactionsSection",
       libraryAwareness: "libraryAwarenessSection",
+      sessionContinuityReview: "sessionContinuityReviewSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -5443,6 +5634,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return [
       item.relatedEntities,
       item.linkedEntities,
+      item.continuingCharacters,
+      item.continuingAuthorityPaths,
+      item.continuingCharacterInteractions,
       item.authoritySource,
       item.speaker,
       item.recipient,
@@ -5702,6 +5896,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           semanticCardKey("characterInteraction", interaction, `${interaction.sourceCharacter || ""}-${interaction.targetCharacter || ""}-${interaction.interactionType || ""}`)
         )));
     }
+    if (mode !== "sessionContinuityReview") {
+      sessionContinuityReviewRecords()
+        .filter((review) => semanticEntityOverlap(review, item) || matchesSearchQuery(sessionContinuityReviewSearchText(review), semanticRecordEntityNames(item).join(" ")))
+        .forEach((review) => links.push(semanticNavItem(
+          `Session Continuity Review: ${review.sessionRange || "current session"}`,
+          semanticSectionForNav("sessionContinuityReview"),
+          review.sessionRange || "session continuity",
+          semanticCardKey("sessionContinuityReview", review, review.sessionRange || review.id)
+        )));
+    }
+
     if (mode !== "timeline") {
       timelineEntries
         .filter((entry) => semanticNarrativeMatchesRecord(entry, item))
@@ -8295,6 +8500,7 @@ createRevelationPartsSection(item.subEvents)
 
       renderVolumeContext(term);
       renderSemanticCoverage(term);
+      renderSessionContinuityReview(term);
       renderLibraryAwareness(term);
       renderTeachingSemantics(term);
       renderPrincipleRelationships(term);

@@ -38,6 +38,7 @@ const SEMANTIC_CAUSALITY_KEY = "ICE_SEMANTIC_CAUSALITY";
 const TEACHING_SEMANTICS_KEY = "ICE_TEACHING_SEMANTICS";
 const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
 const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
+const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -2213,6 +2214,166 @@ function createCharacterInteractions(captures = [], ontologyRoles = [], entityRe
     records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", sourceCharacter: "JESUS", targetCharacter: "People / multitudes", interactionType: "teaches in surrounding audience context", authorityClass: "Class I - GOD / Divine Authority -> Class III - Human group", sourcePhrase: "seeing the multitudes... he opened his mouth, and taught them", derivedMeaning: "JESUS teaches with multitudes as surrounding Human audience context while disciples remain direct addressees in the source phrase.", evidence: ["seeing the multitudes", "he opened his mouth, and taught them"], relatedEntities: ["JESUS", "JESUS CHRIST", "disciples", "multitudes", "People / multitudes"], relatedOntologyRoles: ontologyIds(["JESUS", "multitudes"]), relatedTeachingSemantics: teachingIds((item) => /multitudes|disciples|audience/i.test(`${item.audience || ""} ${item.derivedMeaning || ""}`)), confidence: "probable", sourceGrounding: "Matthew 5:1-2 grounds multitudes as surrounding audience context and disciples as direct teaching recipients." }));
     records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", sourceCharacter: "disciples", targetCharacter: "JESUS", interactionType: "come to teacher / receive teaching", authorityClass: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "his disciples came unto him", derivedMeaning: "The disciples approach JESUS and become the direct grounded teaching audience.", evidence: ["his disciples came unto him"], relatedEntities: ["disciples", "JESUS", "JESUS CHRIST"], relatedOntologyRoles: ontologyIds(["disciples", "JESUS"]), relatedTeachingSemantics: teachingIds((item) => /disciples/i.test(`${item.audience || ""} ${item.sourcePhrase || ""}`)), confidence: "explicit", sourceGrounding: "Matthew 5:1 directly states that His disciples came unto Him before the teaching begins." }));
   }
+
+  return records;
+}
+function sessionContinuityReviewRecord(record = {}) {
+  const key = [
+    "session-continuity-review",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.sessionRange || "",
+    record.reviewType || "session_continuity_review"
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "session.scope.current_range",
+    reviewType: record.reviewType || "session_continuity_review",
+    sessionRange: record.sessionRange || "Current session",
+    analyzedPages: record.analyzedPages || [],
+    continuingCharacters: record.continuingCharacters || [],
+    continuingThemes: record.continuingThemes || [],
+    continuingAuthorityPaths: record.continuingAuthorityPaths || [],
+    teachingProgression: record.teachingProgression || [],
+    continuingPrincipleFamilies: record.continuingPrincipleFamilies || [],
+    continuingCharacterInteractions: record.continuingCharacterInteractions || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedSemanticContinuity: record.relatedSemanticContinuity || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    relatedPrincipleRelationships: record.relatedPrincipleRelationships || [],
+    relatedCharacterInteractions: record.relatedCharacterInteractions || [],
+    relatedAuthorityPaths: record.relatedAuthorityPaths || [],
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from analyzed session metadata and current source-grounded semantic layers"
+  };
+}
+
+function createSessionContinuityReview(captures = [], analysisHistory = [], semanticContinuity = [], ontologyRoles = [], principleRelationships = [], characterInteractions = [], originAuthorityPaths = [], teachingSemantics = [], entityRelationRoles = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const currentPage = {
+    sourceCaptureBook: context.book || "",
+    sourceCaptureChapter: context.chapter || "",
+    sourceTitle: context.sourceTitle || capture.title || "",
+    activeUrl: context.sourceUrl || capture.url || ""
+  };
+  const pageKey = (page = {}) => [page.sourceCaptureBook || page.book || "", page.sourceCaptureChapter || page.chapter || "", page.sourceTitle || "", page.activeUrl || page.url || ""].map((value) => normalizeWhitespace(value || "").toLowerCase()).join("|");
+  const pageLabel = (page = {}) => {
+    const book = page.sourceCaptureBook || page.book || "";
+    const chapter = page.sourceCaptureChapter || page.chapter || "";
+    if (book && chapter) return `${book} ${chapter}`;
+    return page.sourceTitle || page.title || page.activeUrl || page.url || "Unknown page";
+  };
+  const pages = [currentPage, ...(analysisHistory || [])]
+    .filter((page) => page?.sourceCaptureBook || page?.book || page?.sourceTitle || page?.activeUrl || page?.url)
+    .filter((page, index, list) => list.findIndex((candidate) => pageKey(candidate) === pageKey(page)) === index)
+    .sort((left, right) => Number(left.sourceCaptureChapter || left.chapter || 0) - Number(right.sourceCaptureChapter || right.chapter || 0));
+  const matthewPages = pages.filter((page) => (page.sourceCaptureBook || page.book) === "Matthew" && Number(page.sourceCaptureChapter || page.chapter || 0) > 0);
+  if (matthewPages.length < 2) return [];
+
+  const chapters = new Set(matthewPages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean));
+  const hasChapter = (chapter) => chapters.has(chapter);
+  const analyzedPages = matthewPages.map(pageLabel);
+  const sessionRange = analyzedPages.length ? `${analyzedPages[0]} -> ${analyzedPages[analyzedPages.length - 1]}` : "Current session";
+  const ids = (items = [], fallback) => (items || []).map((item) => item.id || item[fallback] || "").filter(Boolean);
+  const ontologyIds = ids(ontologyRoles, "semanticItem");
+  const principleIds = ids(principleRelationships, "principle");
+  const interactionIds = ids(characterInteractions, "interactionType");
+  const authorityPathIds = ids(originAuthorityPaths, "pathType");
+  const teachingIds = ids(teachingSemantics, "teachingTopic");
+  const relationIds = ids(entityRelationRoles, "semanticRole");
+  const unique = (values = []) => Array.from(new Set(values.map((value) => normalizeWhitespace(value || "")).filter(Boolean)));
+  const sourceText = sourceCaptureText(captures);
+
+  const continuingCharacters = unique([
+    hasChapter(1) || hasChapter(2) || hasChapter(3) || hasChapter(5) ? "JESUS" : "",
+    hasChapter(1) || hasChapter(2) ? "Joseph" : "",
+    hasChapter(1) || hasChapter(2) ? "Mary" : "",
+    hasChapter(3) ? "John" : "",
+    hasChapter(5) ? "disciples" : "",
+    hasChapter(5) ? "People / multitudes" : "",
+    ...(characterInteractions || []).flatMap((item) => [item.sourceCharacter, item.targetCharacter])
+  ]).slice(0, 12);
+  const continuingThemes = unique([
+    hasChapter(1) ? "mission revealed" : "",
+    hasChapter(2) ? "mission preserved" : "",
+    hasChapter(3) ? "mission announced" : "",
+    hasChapter(4) ? "mission prepared" : "",
+    hasChapter(5) ? "mission taught" : "",
+    ...(principleRelationships || []).flatMap((item) => [item.principle, ...(item.relatedPrinciples || [])]),
+    ...(semanticContinuity || []).flatMap((item) => item.continuity || [])
+  ]).slice(0, 14);
+  const continuingAuthorityPaths = unique([
+    hasChapter(1) || hasChapter(2) ? "THE LORD -> AngEL Of THE LORD -> Joseph" : "",
+    hasChapter(3) ? "HOLY SPIRIT source wording / derived display continuity" : "",
+    hasChapter(5) ? "JESUS -> disciples / multitudes" : "",
+    ...(originAuthorityPaths || []).map((item) => [item.origin, item.messenger, item.recipient].filter(Boolean).join(" -> "))
+  ]).slice(0, 8);
+  const teachingProgression = [
+    hasChapter(1) ? "Matthew 1: mission revealed" : "",
+    hasChapter(2) ? "Matthew 2: mission preserved" : "",
+    hasChapter(3) ? "Matthew 3: mission announced" : "",
+    hasChapter(4) ? "Matthew 4: mission prepared" : "",
+    hasChapter(5) ? "Matthew 5: mission taught" : ""
+  ].filter(Boolean);
+  const continuingPrincipleFamilies = unique([
+    ...(principleRelationships || []).map((item) => item.principle),
+    ...(teachingSemantics || []).flatMap((item) => [item.principle, item.teachingTopic, item.blessing, item.commandment]),
+    hasChapter(5) ? "righteousness" : "",
+    hasChapter(5) ? "kingdom" : "",
+    hasChapter(5) ? "mercy" : "",
+    hasChapter(1) || hasChapter(2) ? "obedience" : "",
+    hasChapter(1) || hasChapter(2) ? "fulfillment" : ""
+  ]).slice(0, 12);
+  const continuingCharacterInteractions = unique([
+    ...(characterInteractions || []).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
+    hasChapter(3) ? "John -> people | preaches / prepares" : "",
+    hasChapter(5) ? "JESUS -> disciples | teaches" : "",
+    hasChapter(5) ? "JESUS -> People / multitudes | teaches in surrounding audience context" : ""
+  ]).slice(0, 10);
+
+  const evidence = unique([
+    `Analyzed session pages: ${analyzedPages.join(", ")}`,
+    semanticContinuity.length ? `Semantic continuity records available: ${semanticContinuity.length}` : "",
+    ontologyRoles.length ? `Ontology role records available: ${ontologyRoles.length}` : "",
+    principleRelationships.length ? `Principle relationship records available: ${principleRelationships.length}` : "",
+    characterInteractions.length ? `Character interaction records available: ${characterInteractions.length}` : "",
+    originAuthorityPaths.length ? `Authority path records available: ${originAuthorityPaths.length}` : "",
+    teachingSemantics.length ? `Teaching semantic records available: ${teachingSemantics.length}` : ""
+  ]);
+
+  const records = [sessionContinuityReviewRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    scopePath: "session.scope.matthew.current_range",
+    sessionRange,
+    analyzedPages,
+    continuingCharacters,
+    continuingThemes,
+    continuingAuthorityPaths,
+    teachingProgression,
+    continuingPrincipleFamilies,
+    continuingCharacterInteractions,
+    sourcePhrase: sourceText ? "Current source text plus analyzed session metadata" : "Analyzed session metadata",
+    derivedMeaning: `The current study session can be reviewed as ${sessionRange}; continuity is summarized from analyzed page history and current source-grounded semantic layers without crawling or whole-book indexing.`,
+    evidence,
+    relatedSemanticContinuity: ids(semanticContinuity, "continuityType"),
+    relatedOntologyRoles: ontologyIds,
+    relatedPrincipleRelationships: principleIds,
+    relatedCharacterInteractions: interactionIds,
+    relatedAuthorityPaths: authorityPathIds,
+    relatedTeachingSemantics: teachingIds,
+    relatedEntityRelationRoles: relationIds,
+    confidence: hasChapter(5) && teachingSemantics.length ? "probable" : "possible",
+    sourceGrounding: "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages."
+  })];
 
   return records;
 }
@@ -6560,6 +6721,21 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       semanticCausality
     );
+    const storedAnalysisHistory = await chrome.storage.local.get(ANALYSIS_HISTORY_KEY);
+    const previousAnalysisHistory = Array.isArray(storedAnalysisHistory[ANALYSIS_HISTORY_KEY])
+      ? storedAnalysisHistory[ANALYSIS_HISTORY_KEY]
+      : [];
+    const sessionContinuityReview = createSessionContinuityReview(
+      captures,
+      previousAnalysisHistory,
+      semanticContinuity,
+      ontologyRoles,
+      principleRelationships,
+      characterInteractions,
+      originAuthorityPaths,
+      teachingSemantics,
+      entityRelationRoles
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -6582,7 +6758,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticCausality,
       teachingSemantics,
       principleRelationships,
-      characterInteractions
+      characterInteractions,
+      sessionContinuityReview
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -6606,7 +6783,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticCausality,
       teachingSemantics,
       principleRelationships,
-      characterInteractions
+      characterInteractions,
+      sessionContinuityReview
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -6620,10 +6798,6 @@ async function runFullAnalysisPipeline(reason = "manual") {
       enrichKnownIdentity(teachingIdentity);
       canonicalIdentities.push(teachingIdentity);
     }
-    const storedAnalysisHistory = await chrome.storage.local.get(ANALYSIS_HISTORY_KEY);
-    const previousAnalysisHistory = Array.isArray(storedAnalysisHistory[ANALYSIS_HISTORY_KEY])
-      ? storedAnalysisHistory[ANALYSIS_HISTORY_KEY]
-      : [];
     const derivedLayerCounts = {
       passageFunctions: passageFunctions.length,
       revelationPatterns: revelationPatterns.length,
@@ -6638,7 +6812,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticCausality: semanticCausality.length,
       teachingSemantics: teachingSemantics.length,
       principleRelationships: principleRelationships.length,
-      characterInteractions: characterInteractions.length
+      characterInteractions: characterInteractions.length,
+      sessionContinuityReview: sessionContinuityReview.length
     };
     const status = {
       reason,
@@ -6669,7 +6844,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-8.5a-character-interactions",
+      analysisBuildMarker: "phase-8.5b-session-continuity-review",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -6687,6 +6862,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       teachingSemanticsCount: teachingSemantics.length,
       principleRelationshipCount: principleRelationships.length,
       characterInteractionCount: characterInteractions.length,
+      sessionContinuityReviewCount: sessionContinuityReview.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -6755,6 +6931,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [TEACHING_SEMANTICS_KEY]: teachingSemantics,
       [PRINCIPLE_RELATIONSHIPS_KEY]: principleRelationships,
       [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
+      [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

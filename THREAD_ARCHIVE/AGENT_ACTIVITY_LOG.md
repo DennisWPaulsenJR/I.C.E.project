@@ -21,6 +21,54 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add session continuity review
+Summary:
+- Added `ICE_SESSION_CONTINUITY_REVIEW` as a derived review layer for analyzed page ranges.
+- Added Study Panel Session Continuity Review cards for session range, analyzed pages, continuing characters/themes/authority paths, teaching progression, principle families, character interactions, App accuracy, evidence, and grounding.
+- Added compact GPT/repo report support and `npm.cmd run review:matthew-session` for Matthew 1 -> Matthew 5 review artifacts.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `package.json`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `node --check qa/matthew2-extension-qa.js` passed
+- `node --check qa/matthew3-extension-qa.js` passed
+- `node --check qa/matthew5-extension-qa.js` passed
+- `python -m json.tool package.json` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- `npm.cmd run qa:matthew2` passed
+- `npm.cmd run qa:matthew3` passed
+- `npm.cmd run qa:matthew5` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew5` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Add session continuity review`
+
+Status:
+- Implementation validated and ready to commit.
+
 ## 2026-05-30 00:00 - pcdx - Add character interaction architecture
 Summary:
 - Added `ICE_CHARACTER_INTERACTIONS` derived layer for source-grounded Character / Group / Authority interactions.
