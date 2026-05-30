@@ -6,6 +6,16 @@ Last updated: 2026-05-29 by `pcdx`.
 
 Current operational state:
 Latest validation update:
+- GPT Review Mode passed syntax, package JSON, whitespace, Matthew 5 review report generation, and combined Matthew pages QA.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run qa:matthew-pages` passed.
+- Manual smoke artifact: `QA_REPORTS/latest-study-panel-report.md` is compact, readable, and excludes full Source Discovery, Reference Graph, DOM Hints, and raw Mention Index dumps.
+
+Latest validation update:
 - Phase 8.4c Study Panel Output Safety / Report Compression passed syntax, whitespace, Matthew 1-3 baseline QA, Matthew 5 QA, and combined Matthew pages QA.
 - `node --check study.js` passed.
 - `git diff --check` passed.

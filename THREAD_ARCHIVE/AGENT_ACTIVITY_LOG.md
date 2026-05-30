@@ -2792,3 +2792,41 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-30 - Add GPT Review Mode
+
+Instruction summary:
+- Design and implement GPT Review Mode so I.C.E. can generate a compact review artifact for GPT/cdx without copying the full Study Panel.
+
+Codex action summary:
+- Added Study Panel controls for Run GPT Review Snapshot, Copy GPT Review Report, Save GPT Review Report, and Open Latest GPT Review Report.
+- Added a compact Markdown GPT Review Report builder from structured `studyData`, covering active source page, URL, adapter, analysis timestamp, study scope/range, layer counts, semantic coverage, top warnings/issues, top derived sections, selected evidence, chapter type, and QA-style summary.
+- Stored latest GPT Review Report in extension storage for copy/save/open workflows.
+- Added browser-side save/open support via Markdown blob download/open; full panel data remains accessible.
+- Added local generator `qa/generate-study-panel-report.js` for repo-visible review artifacts from QA bundles.
+- Added `npm.cmd run review:matthew5`, which runs Matthew 5 QA and regenerates `QA_REPORTS/latest-study-panel-report.md`.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `package.json`
+- `qa/generate-study-panel-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `python -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed and regenerated the compact report artifact.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

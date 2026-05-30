@@ -1,16 +1,17 @@
 {
-    "name":  "ice-scripture-engine",
-    "version":  "1.0.0",
-    "private":  true,
-    "description":  "Development tools for the I.C.E. Manifest V3 scripture study extension.",
-    "scripts":  {
-                    "qa:matthew1":  "node qa/matthew1-extension-qa.js",
-                    "qa:matthew2":  "node qa/matthew2-extension-qa.js",
-                    "qa:matthew-pages":  "npm run qa:matthew1 && npm run qa:matthew2 && npm run qa:matthew3",
-                    "qa:matthew3":  "node qa/matthew3-extension-qa.js",
-                    "qa:matthew5":  "node qa/matthew5-extension-qa.js"
-                },
-    "devDependencies":  {
-                            "playwright":  "^1.52.0"
-                        }
+  "name": "ice-scripture-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development tools for the I.C.E. Manifest V3 scripture study extension.",
+  "scripts": {
+    "qa:matthew1": "node qa/matthew1-extension-qa.js",
+    "qa:matthew2": "node qa/matthew2-extension-qa.js",
+    "qa:matthew-pages": "npm run qa:matthew1 && npm run qa:matthew2 && npm run qa:matthew3",
+    "qa:matthew3": "node qa/matthew3-extension-qa.js",
+    "qa:matthew5": "node qa/matthew5-extension-qa.js",
+    "review:matthew5": "npm run qa:matthew5 && node qa/generate-study-panel-report.js qa-output/latest-matthew5-qa-bundle.json QA_REPORTS/latest-study-panel-report.md"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
 }

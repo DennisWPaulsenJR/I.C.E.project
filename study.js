@@ -40,7 +40,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     analysisHistory: "ICE_ANALYSIS_HISTORY",
     activeSourcePage: "ICE_ACTIVE_SOURCE_PAGE",
     selectedRange: "ICE_SELECTED_RANGE",
-    panelUiState: "ICE_PANEL_UI_STATE"
+    panelUiState: "ICE_PANEL_UI_STATE",
+    gptReviewReport: "ICE_GPT_REVIEW_REPORT"
   };
   const DISPLAY_LIMIT = 5;
 
@@ -1117,6 +1118,135 @@ document.addEventListener("DOMContentLoaded", async () => {
       "check relevant semantic layer counts",
       "check source phrase vs derived meaning separation"
     ];
+  }
+
+
+  function markdownList(lines, fallback = "none recorded") {
+    const values = asArray(lines).map((line) => normalizeText(line)).filter(Boolean);
+    return values.length ? values.map((line) => `- ${line}`) : [`- ${fallback}`];
+  }
+
+  function semanticCoverageSummaryLines(limit = 8) {
+    return semanticCoverageRows().slice(0, limit).map((row) => `${row.layer}: ${row.status} (${row.count} record(s))`);
+  }
+
+  function qaStyleSummaryLines() {
+    return [
+      `latestCapture: ${studyData.latestCapture ? 1 : 0}`,
+      `domSemanticHints: ${countItems(studyData.domSemanticHints)}`,
+      `sourceDiscovery: ${countItems(studyData.sourceDiscoveryIndex)}`,
+      `referenceGraph: ${countItems(studyData.referenceGraph)}`,
+      `teachingSemantics: ${countItems(studyData.teachingSemantics)}`,
+      `principleRelationships: ${countItems(studyData.principleRelationships)}`,
+      `scopeMissing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`
+    ];
+  }
+
+  function buildGptReviewReport() {
+    const activePage = activeSourcePageRecord();
+    const analyzedPages = analyzedPageHistory();
+    const range = rangeFromAnalyzedPages(analyzedPages);
+    const reportTime = new Date().toISOString();
+    return exportPlainText([
+      "# I.C.E. GPT Review Report",
+      "",
+      "## Source",
+      exportLine("Active source page", activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Not recorded"),
+      exportLine("URL", activePage?.activeUrl || studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "Not recorded"),
+      exportLine("Adapter", studyData.activeAdapter?.adapterName || activePage?.activeAdapterName || studyData.analysisStatus?.activeAdapterName || "not detected"),
+      exportLine("Analysis timestamp", studyData.analysisStatus?.analyzedAt || "Never"),
+      exportLine("Report generated", reportTime),
+      exportLine("Current page/chapter type", activeChapterType()),
+      "",
+      "## Study Scope",
+      exportLine("Range", range ? `${volumePageLabel(range.start)} -> ${volumePageLabel(range.end)}` : "No active study range"),
+      exportLine("Analyzed pages", analyzedPages.length ? analyzedPages.map(volumePageLabel).join(", ") : "none recorded"),
+      exportLine("Continuity", continuitySummaryLines(activePage, analyzedPages).join("; ")),
+      "",
+      "## Layer Counts",
+      ...layerCountPairs().map(([label, value]) => `${label}: ${value}`),
+      "",
+      "## Semantic Coverage",
+      ...markdownList(semanticCoverageSummaryLines(10)),
+      "",
+      "## Top Warnings / Issues",
+      ...markdownList(topWarningLines(activePage), "none detected in compact review snapshot"),
+      "",
+      "## Top Derived Sections",
+      ...markdownList([
+        ...teachingSummaryLines(6),
+        ...principleRelationshipSummaryLines(5)
+      ], "no teaching/principle summaries available"),
+      "",
+      "## Selected Evidence",
+      ...(topEvidenceLines(5).length ? topEvidenceLines(5).map((line, index) => `${index + 1}. ${line}`) : ["1. No compact evidence lines available."]),
+      "",
+      "## QA-Style Summary",
+      ...qaStyleSummaryLines(),
+      "",
+      "## Excluded From This Report",
+      "- full Source Discovery",
+      "- full Reference Graph",
+      "- huge DOM hints",
+      "- full raw mention index",
+      "",
+      "## Review Notes",
+      "This report is generated from local Study Panel data. GPT reviews this artifact; it does not control the browser or crawl pages."
+    ].join("\n"), 6500);
+  }
+
+  async function storeGptReviewReport(report = buildGptReviewReport()) {
+    const activePage = activeSourcePageRecord();
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      sourceTitle: activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Not recorded",
+      sourceUrl: activePage?.activeUrl || studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "",
+      report
+    };
+    await chrome.storage.local.set({ [STORAGE_KEYS.gptReviewReport]: payload });
+    return payload;
+  }
+
+  async function latestGptReviewReport() {
+    const raw = await chrome.storage.local.get(STORAGE_KEYS.gptReviewReport);
+    return raw[STORAGE_KEYS.gptReviewReport] || null;
+  }
+
+  function downloadTextFile(filename, text) {
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  async function runGptReviewSnapshot() {
+    const payload = await storeGptReviewReport();
+    showDiagnosticMessage(`GPT Review Snapshot generated (${payload.report.length} characters).`);
+  }
+
+  async function copyGptReviewReport() {
+    const payload = await latestGptReviewReport() || await storeGptReviewReport();
+    await copyPlainTextReport("GPT Review Report", payload.report);
+  }
+
+  async function saveGptReviewReport() {
+    const payload = await latestGptReviewReport() || await storeGptReviewReport();
+    downloadTextFile("latest-study-panel-report.md", payload.report);
+    showDiagnosticMessage(`GPT Review Report saved from latest snapshot (${payload.report.length} characters).`);
+  }
+
+  async function openGptReviewReport() {
+    const payload = await latestGptReviewReport() || await storeGptReviewReport();
+    const blob = new Blob([payload.report], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    showDiagnosticMessage("Latest GPT Review Report opened in a new tab.");
   }
 
   function buildGptHandoffSummary() {
@@ -8083,6 +8213,10 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("clearSemanticFocus")?.addEventListener("click", clearSemanticFocus);
   document.getElementById("volumeContextSection")?.addEventListener("click", handleVolumeContextAction);
   document.getElementById("refreshStudyData").addEventListener("click", refreshStudyData);
+  document.getElementById("runGptReviewSnapshot")?.addEventListener("click", runGptReviewSnapshot);
+  document.getElementById("copyGptReviewReport")?.addEventListener("click", copyGptReviewReport);
+  document.getElementById("saveGptReviewReport")?.addEventListener("click", saveGptReviewReport);
+  document.getElementById("openGptReviewReport")?.addEventListener("click", openGptReviewReport);
   document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact"));
   document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section"));
   document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic"));

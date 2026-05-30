@@ -1,0 +1,67 @@
+# I.C.E. GPT Review Report
+
+## Source
+Active source page: Matthew 5
+URL: https://www.churchofjesuschrist.org/study/scriptures/nt/matt/5?lang=eng
+Adapter: lds_scripture_adapter
+Analysis timestamp: 2026-05-30T17:51:34.137Z
+Current page/chapter type: Teaching / discourse heavy
+
+## Study Scope
+Range: Matthew 5
+Analyzed pages: Matthew 5
+Continuity: no cross-page continuity in standalone QA bundle
+
+## Layer Counts
+DOM hints: 250
+Source Discovery: 310
+Reference Graph: 310
+Reference Roles: 1
+Ontology Roles: 3
+Teaching / Discourse: 11
+Principle Relationships: 5
+
+## Semantic Coverage
+- Teaching / Discourse Structure: Primary semantic layer for this chapter; grounded records found
+- Principle Relationships: Pilot layer; grounded records found
+- Movement / Location Semantics: Not applicable to current chapter
+- Cross-Chapter Continuity: Available when session scope spans multiple pages
+
+## Top Warnings / Issues
+- none detected in compact review snapshot
+
+## Top Derived Sections
+- Sermon on the Mount teaching context | Matthew 5:1-2 | App accuracy: explicit
+- Beatitude blessing | Matthew 5:3 | App accuracy: explicit
+- Beatitude blessing | Matthew 5:5 | App accuracy: explicit
+- Beatitude blessing | Matthew 5:7 | App accuracy: explicit
+- commandment and interpretation | Matthew 5:21-24 | App accuracy: explicit
+- commandment and interpretation | Matthew 5:27-30 | App accuracy: explicit
+- Mercy supports Peacemaking, forgiveness, reconciliation | App accuracy: probable
+- Reconciliation supports Peace, peacemaking, mercy | App accuracy: probable
+- Righteousness expands Law Fulfillment, kingdom righteousness, commandment expansion | App accuracy: explicit
+- Commandment expansion illustrates Reconciliation, peace, inward righteousness | App accuracy: explicit
+- Kingdom of heaven themes reinforces poor in spirit, righteousness under pressure, Beatitude promise | App accuracy: explicit
+
+## Selected Evidence
+1. seeing the multitudes, he went up into a mountain; his disciples came unto him; he opened his mouth, and taught them | JESUS is the grounded speaker for Matthew 5 teaching; disciples are the direct teaching audience with multitudes as surrounding chapter context.
+2. Blessed are the poor in spirit: for theirs is the kingdom of heaven | The discourse presents a blessing tied to kingdom promise without treating the promise as a separate event actor.
+3. Blessed are the meek: for they shall inherit the earth | The discourse links meekness with a stated promised result.
+4. Blessed are the merciful: for they shall obtain mercy | The discourse links mercy with a stated reciprocal mercy promise.
+5. Mercy supports Peacemaking, forgiveness, reconciliation | Blessed are the merciful... Blessed are the peacemakers
+
+## QA-Style Summary
+pass: true
+latestCapture: 1
+domSemanticHints: 250
+teachingSemantics: 11
+principleRelationships: 5
+
+## Excluded From This Report
+- full Source Discovery
+- full Reference Graph
+- huge DOM hints
+- full raw mention index
+
+## Review Notes
+This report is generated from local QA output. GPT reviews this artifact; it does not control the browser or crawl pages.

@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- GPT Review Mode implemented for the Study Panel.
+- Study Panel header now includes Run GPT Review Snapshot, Copy GPT Review Report, Save GPT Review Report, and Open Latest GPT Review Report controls.
+- GPT Review Reports are compact Markdown artifacts generated from structured Study Panel data, including active source, URL, adapter, timestamp, study scope, layer counts, semantic coverage, top warnings, derived summaries, selected evidence, QA-style summary, and explicit excluded noisy layers.
+- Reports are stored in local extension storage for copy/save/open workflows and avoid full Source Discovery, Reference Graph, DOM Hints, and raw Mention Index dumps.
+- Added local generator `qa/generate-study-panel-report.js` and `npm.cmd run review:matthew5` to regenerate `QA_REPORTS/latest-study-panel-report.md` from the latest Matthew 5 QA bundle.
+
+Latest pcdx update:
 - Phase 8.4e Semantic Coverage Awareness implemented.
 - Study Panel now includes a Semantic Coverage section near the top of the panel.
 - Coverage status distinguishes grounded records, no grounded records, not-applicable layers, session-scoped continuity, pilot layers, and future layers.
