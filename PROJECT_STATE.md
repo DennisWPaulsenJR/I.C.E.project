@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.5 Semantic Library Awareness Foundation implemented.
+- Study Panel now includes a Library Awareness section after Semantic Coverage.
+- Library Awareness derives framework-only principle, teaching, and doctrine family displays from already-analyzed teaching/discourse and principle relationship records.
+- Matthew 5 pilot family displays include Mercy, Righteousness, Reconciliation, Purity, and Love and Integrity where grounded by current source records.
+- Future sources remain explicitly `Awaiting analysis`; the layer does not crawl, auto-index, or fabricate cross-book links.
+- GPT Review Reports now include Library Awareness counts and compact family summaries.
+Latest pcdx update:
 - Phase 8.4f GPT Review Report Quality / Repo Review Integration implemented.
 - GPT Review Reports now include Repo Context, Current Review Question, User Observed Issue, Top Concern Auto-Detection, and GPT Recommended Review Focus sections.
 - Concern detection flags likely review issues such as unclassified entities, zero records in primary applicable layers, stale/target risks, missing continuity across sessions, generic adapter on scripture-like pages, and large diagnostic sections.

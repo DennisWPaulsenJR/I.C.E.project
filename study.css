@@ -192,6 +192,18 @@ body {
   text-align: right;
 }
 
+.library-awareness-section {
+  border-bottom: 1px solid #d8dde6;
+  padding-bottom: 8px;
+}
+
+.library-awareness-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.library-awareness-card .semantic-card-range {
+  color: #5f6b7a;
+}
 .semantic-focus-status {
   align-items: center;
   background: #ffffff;

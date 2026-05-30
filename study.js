@@ -954,7 +954,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Movement / Location", countItems(studyData.movementSemantics)],
       ["Semantic Causality", countItems(studyData.semanticCausality)],
       ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
-      ["Principle Relationships", countItems(studyData.principleRelationships)]
+      ["Principle Relationships", countItems(studyData.principleRelationships)],
+      ["Library Awareness", countItems(libraryAwarenessRecords())]
     ];
   }
 
@@ -1138,6 +1139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `referenceGraph: ${countItems(studyData.referenceGraph)}`,
       `teachingSemantics: ${countItems(studyData.teachingSemantics)}`,
       `principleRelationships: ${countItems(studyData.principleRelationships)}`,
+      `libraryAwareness: ${countItems(libraryAwarenessRecords())}`,
       `scopeMissing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`
     ];
   }
@@ -1226,6 +1228,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       "",
       "## Semantic Coverage",
       ...markdownList(semanticCoverageSummaryLines(10)),
+      "",
+      "## Library Awareness",
+      ...markdownList(libraryAwarenessSummaryLines(5), "no library awareness records available"),
       "",
       "## Top Concern Auto-Detection",
       ...markdownList(autoDetectedConcernLines(activePage), "none detected in compact review snapshot"),
@@ -1496,6 +1501,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         status: coverageStatus({ count: countItems(studyData.referenceRoles), applicable: true })
       },
       {
+        layer: "Library Awareness",
+        count: countItems(libraryAwarenessRecords()),
+        status: coverageStatus({ count: countItems(libraryAwarenessRecords()), applicable: isTeaching, pilot: true })
+      },
+      {
         layer: "Future Strong's / POS Layer",
         count: 0,
         status: coverageStatus({ future: true })
@@ -1551,6 +1561,185 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.appendChild(createSemanticCoverageCard(filtered));
   }
 
+
+  function uniqueLibraryList(values = []) {
+    const seen = new Set();
+    return asArray(values)
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function currentLibrarySourceLabel() {
+    const activePage = activeSourcePageRecord();
+    return activePage ? volumePageLabel(activePage) : normalizeText(studyData.analysisStatus?.sourceCaptureTitle || studyData.latestCapture?.title || "Current source");
+  }
+
+  function analyzedLibrarySourceLabels() {
+    const labels = analyzedPageHistory().map(volumePageLabel);
+    const current = currentLibrarySourceLabel();
+    return uniqueLibraryList(labels.length ? labels : [current]);
+  }
+
+  function libraryAwarenessFamilyForText(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/merciful|mercy|peace|peacemak|forgiv|compassion/.test(text)) {
+      return { principleFamily: "Mercy", teachingFamily: "Sermon on the Mount / Beatitudes", doctrineFamily: "Mercy / Peacemaking", relatedCategories: ["Forgiveness", "Peacemaking", "Compassion"] };
+    }
+    if (/righteous|law|fulfil|fulfill|commandment|kingdom/.test(text)) {
+      return { principleFamily: "Righteousness", teachingFamily: "Sermon on the Mount / Law Fulfillment", doctrineFamily: "Kingdom righteousness", relatedCategories: ["Law Fulfillment", "Commandment Expansion", "Kingdom of heaven themes"] };
+    }
+    if (/reconcil|brother|agree|altar/.test(text)) {
+      return { principleFamily: "Reconciliation", teachingFamily: "Sermon on the Mount / Righteousness Teaching", doctrineFamily: "Peace / Relationship repair", relatedCategories: ["Peace", "Mercy", "Inward Righteousness"] };
+    }
+    if (/pure|heart|adulter|lust/.test(text)) {
+      return { principleFamily: "Purity", teachingFamily: "Sermon on the Mount / Commandment Interpretation", doctrineFamily: "Inward righteousness", relatedCategories: ["Purity of heart", "Commandment Expansion", "Inner intent"] };
+    }
+    if (/enemy|love|persecut|retaliat|oath|speech/.test(text)) {
+      return { principleFamily: "Love and Integrity", teachingFamily: "Sermon on the Mount / Commandment Interpretation", doctrineFamily: "Covenant conduct", relatedCategories: ["Love of enemy", "Speech integrity", "Non-retaliation"] };
+    }
+    return null;
+  }
+
+  function libraryAwarenessRecordFromPrinciple(item = {}) {
+    const text = [item.principle, asArray(item.relatedPrinciples).join(" "), item.teachingBlock, item.sourcePhrase, item.derivedMeaning].join(" ");
+    const family = libraryAwarenessFamilyForText(text);
+    if (!family) return null;
+    return {
+      ...family,
+      currentSource: currentLibrarySourceLabel(),
+      currentGrounding: trimText(item.sourcePhrase || item.sourceGrounding || item.derivedMeaning || "Current source grounding recorded in principle relationship layer.", 180),
+      knownRelatedCategories: uniqueLibraryList([...family.relatedCategories, ...asArray(item.relatedPrinciples)]),
+      analyzedSources: analyzedLibrarySourceLabels(),
+      futureScope: "Awaiting analysis; no cross-library source links generated yet.",
+      sourcePhrase: item.sourcePhrase || "Not recorded.",
+      derivedMeaning: item.derivedMeaning || item.principle || family.principleFamily,
+      confidence: item.confidence || "probable",
+      sourceGrounding: item.sourceGrounding || "Framework derived from already-analyzed source records only.",
+      semanticSourceLayer: "Principle Relationships"
+    };
+  }
+
+  function libraryAwarenessRecordFromTeaching(item = {}) {
+    const text = [item.principle, item.teachingTopic, item.blessing, item.commandment, item.interpretation, item.sourcePhrase, item.derivedMeaning].join(" ");
+    const family = libraryAwarenessFamilyForText(text);
+    if (!family) return null;
+    return {
+      ...family,
+      currentSource: currentLibrarySourceLabel(),
+      currentGrounding: trimText(item.sourcePhrase || item.sourceGrounding || item.derivedMeaning || "Current source grounding recorded in teaching layer.", 180),
+      knownRelatedCategories: uniqueLibraryList(family.relatedCategories),
+      analyzedSources: analyzedLibrarySourceLabels(),
+      futureScope: "Awaiting analysis; no cross-library source links generated yet.",
+      sourcePhrase: item.sourcePhrase || "Not recorded.",
+      derivedMeaning: item.derivedMeaning || item.teachingTopic || item.principle || family.principleFamily,
+      confidence: item.confidence || "probable",
+      sourceGrounding: item.sourceGrounding || "Framework derived from already-analyzed source records only.",
+      semanticSourceLayer: "Teaching / Discourse Structure"
+    };
+  }
+
+  function libraryAwarenessRecords() {
+    const records = [
+      ...asArray(studyData.principleRelationships).map(libraryAwarenessRecordFromPrinciple),
+      ...asArray(studyData.teachingSemantics).map(libraryAwarenessRecordFromTeaching)
+    ].filter(Boolean);
+    const seen = new Set();
+    return records.filter((item) => {
+      const key = [item.principleFamily, item.currentSource].join("|").toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function libraryAwarenessSearchText(item = {}) {
+    return [item.principleFamily, item.teachingFamily, item.doctrineFamily, item.currentSource, item.currentGrounding, asArray(item.knownRelatedCategories).join(" "), asArray(item.analyzedSources).join(" "), item.futureScope, item.sourcePhrase, item.derivedMeaning, item.sourceGrounding, item.semanticSourceLayer].join(" ");
+  }
+
+  function libraryAwarenessSummaryLines(limit = 5) {
+    return libraryAwarenessRecords().slice(0, limit).map((item) => {
+      const categories = asArray(item.knownRelatedCategories).slice(0, 3).join(", ");
+      return `${item.principleFamily} | Current source: ${item.currentSource} | Related categories: ${categories || "awaiting analysis"} | Future sources: awaiting analysis`;
+    });
+  }
+
+  function createLibraryAwarenessCard(item = {}) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const divineContext = hasDivineDisplayContext([item.principleFamily, item.teachingFamily, item.doctrineFamily, item.sourcePhrase, item.derivedMeaning]);
+
+    card.className = "study-card semantic-card library-awareness-card";
+    assignSemanticCardTarget(card, "libraryAwareness", item, `${item.principleFamily || "library"}-${item.currentSource || "source"}`);
+    header.className = "semantic-card-header";
+    heading.textContent = item.principleFamily || "Library Awareness";
+    range.className = "semantic-card-range";
+    range.textContent = ["framework only", item.currentSource].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Principle Family", item.principleFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Family", item.teachingFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Doctrine Family", item.doctrineFamily || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Source", item.currentSource || "Not recorded."),
+      createPassageFunctionSection("Current Grounding", item.currentGrounding || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Known Related Categories", "", { list: asArray(item.knownRelatedCategories), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Analyzed Sources", "", { list: asArray(item.analyzedSources), plainList: true }),
+      createPassageFunctionSection("Future Scope", item.futureScope || "Awaiting analysis; no cross-library source links generated yet."),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Semantic Grounding", item.sourceGrounding || "Framework derived from already-analyzed source records only.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Framework Boundary", "No full-library crawl, auto-indexing, or future-source claim is generated by this layer.")
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
+  function renderLibraryAwareness(term) {
+    const container = document.getElementById("libraryAwarenessCards");
+    const count = document.getElementById("libraryAwarenessCount");
+    const records = libraryAwarenessRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(libraryAwarenessSearchText(item), term));
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} framework record(s)`;
+
+    if (records.length === 0) {
+      appendEmpty(container, "No library awareness framework records derived from current analyzed teaching/principle layers yet.");
+      return;
+    }
+
+    if (filtered.length === 0) {
+      appendEmpty(container, "No library awareness records match current filter.");
+      return;
+    }
+
+    container.appendChild(createCard(
+      "Library Awareness",
+      [
+        `Framework records: ${records.length}`,
+        "Layer: ICE_LIBRARY_AWARENESS_FOUNDATION",
+        "Purpose: show current-source principle, teaching, and doctrine families while future sources remain awaiting analysis.",
+        "Boundary: no auto-crawling, no whole-library index, and no fabricated cross-book links."
+      ].join("\n"),
+      "framework semantic layer"
+    ));
+
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => {
+      container.appendChild(createLibraryAwarenessCard(item));
+    });
+  }
   function createStudyScopeCard() {
     const card = document.createElement("article");
     card.className = "study-card volume-context-card";
@@ -5177,6 +5366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       causality: "semanticCausalitySection",
       teaching: "teachingSemanticsSection",
       principleRelationship: "principleRelationshipsSection",
+      libraryAwareness: "libraryAwarenessSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
       timeline: "narrativeTimelineSection",
@@ -7999,6 +8189,7 @@ createRevelationPartsSection(item.subEvents)
 
       renderVolumeContext(term);
       renderSemanticCoverage(term);
+      renderLibraryAwareness(term);
       renderTeachingSemantics(term);
       renderPrincipleRelationships(term);
       renderPassageFunctions(term);

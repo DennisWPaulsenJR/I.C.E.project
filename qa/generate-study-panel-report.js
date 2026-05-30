@@ -56,6 +56,72 @@ function autoConcerns(bundle, activeTitle, adapterName) {
   return Array.from(new Set(concerns));
 }
 
+function uniqueList(values = []) {
+  const seen = new Set();
+  return asArray(values).map(clean).filter(Boolean).filter((value) => {
+    const key = value.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function libraryFamilyForText(value = "") {
+  const text = clean(value).toLowerCase();
+  if (/merciful|mercy|peace|peacemak|forgiv|compassion/.test(text)) {
+    return { principleFamily: "Mercy", teachingFamily: "Sermon on the Mount / Beatitudes", doctrineFamily: "Mercy / Peacemaking", relatedCategories: ["Forgiveness", "Peacemaking", "Compassion"] };
+  }
+  if (/righteous|law|fulfil|fulfill|commandment|kingdom/.test(text)) {
+    return { principleFamily: "Righteousness", teachingFamily: "Sermon on the Mount / Law Fulfillment", doctrineFamily: "Kingdom righteousness", relatedCategories: ["Law Fulfillment", "Commandment Expansion", "Kingdom of heaven themes"] };
+  }
+  if (/reconcil|brother|agree|altar/.test(text)) {
+    return { principleFamily: "Reconciliation", teachingFamily: "Sermon on the Mount / Righteousness Teaching", doctrineFamily: "Peace / Relationship repair", relatedCategories: ["Peace", "Mercy", "Inward Righteousness"] };
+  }
+  if (/pure|heart|adulter|lust/.test(text)) {
+    return { principleFamily: "Purity", teachingFamily: "Sermon on the Mount / Commandment Interpretation", doctrineFamily: "Inward righteousness", relatedCategories: ["Purity of heart", "Commandment Expansion", "Inner intent"] };
+  }
+  if (/enemy|love|persecut|retaliat|oath|speech/.test(text)) {
+    return { principleFamily: "Love and Integrity", teachingFamily: "Sermon on the Mount / Commandment Interpretation", doctrineFamily: "Covenant conduct", relatedCategories: ["Love of enemy", "Speech integrity", "Non-retaliation"] };
+  }
+  return null;
+}
+
+function libraryAwarenessRecords(samples, activeTitle) {
+  const records = [];
+  asArray(samples.principleRelationships).forEach((item) => {
+    const family = libraryFamilyForText([item.principle, asArray(item.relatedPrinciples).join(" "), item.sourcePhrase, item.derivedMeaning].join(" "));
+    if (!family) return;
+    records.push({
+      ...family,
+      currentSource: clean(activeTitle || "Current source"),
+      currentGrounding: clean(item.sourcePhrase || item.sourceGrounding || item.derivedMeaning || "Current source grounding recorded in principle relationship layer."),
+      knownRelatedCategories: uniqueList([...family.relatedCategories, ...asArray(item.relatedPrinciples)]),
+      futureScope: "Awaiting analysis; no cross-library source links generated yet."
+    });
+  });
+  asArray(samples.teachingSemantics).forEach((item) => {
+    const family = libraryFamilyForText([item.principle, item.teachingTopic, item.blessing, item.commandment, item.interpretation, item.sourcePhrase, item.derivedMeaning].join(" "));
+    if (!family) return;
+    records.push({
+      ...family,
+      currentSource: clean(activeTitle || "Current source"),
+      currentGrounding: clean(item.sourcePhrase || item.sourceGrounding || item.derivedMeaning || "Current source grounding recorded in teaching layer."),
+      knownRelatedCategories: uniqueList(family.relatedCategories),
+      futureScope: "Awaiting analysis; no cross-library source links generated yet."
+    });
+  });
+  const seen = new Set();
+  return records.filter((item) => {
+    const key = `${item.principleFamily}|${item.currentSource}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function libraryAwarenessLines(records, limit = 5) {
+  return asArray(records).slice(0, limit).map((item) => `${item.principleFamily} | Current source: ${item.currentSource} | Related categories: ${asArray(item.knownRelatedCategories).slice(0, 3).join(", ") || "awaiting analysis"} | Future sources: awaiting analysis`);
+}
 function recommendedFocus(activeTitle) {
   if (/Matthew 5/i.test(activeTitle)) {
     return [
@@ -91,6 +157,7 @@ function reportFromBundle(bundle) {
     ...relationships.slice(0, 3).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | ${item.sourcePhrase || "source phrase not recorded"}`)
   ];
   const adapterName = clean(activeAdapter.adapterName || "lds_scripture_adapter");
+  const libraryAwareness = libraryAwarenessRecords(samples, activeTitle);
   const concerns = autoConcerns(bundle, activeTitle, adapterName);
 
   return [
@@ -125,14 +192,19 @@ function reportFromBundle(bundle) {
     `Ontology Roles: ${counts.ontologyRoles || 0}`,
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
+    `Library Awareness: ${libraryAwareness.length}`,
     "",
     "## Semantic Coverage",
     ...list([
       counts.teachingSemantics ? "Teaching / Discourse Structure: Primary semantic layer for this chapter; grounded records found" : "Teaching / Discourse Structure: Primary semantic layer for this chapter; awaiting grounding",
       counts.principleRelationships ? "Principle Relationships: Pilot layer; grounded records found" : "Principle Relationships: Pilot layer; no grounded records found",
+      libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
     ]),
+    "",
+    "## Library Awareness",
+    ...list(libraryAwarenessLines(libraryAwareness), "no library awareness records available"),
     "",
     "## Top Concern Auto-Detection",
     ...list(concerns, "none detected in compact review snapshot"),
@@ -155,6 +227,7 @@ function reportFromBundle(bundle) {
     `domSemanticHints: ${counts.domSemanticHints || 0}`,
     `teachingSemantics: ${counts.teachingSemantics || 0}`,
     `principleRelationships: ${counts.principleRelationships || 0}`,
+    `libraryAwareness: ${libraryAwareness.length}`,
     "",
     "## Excluded From This Report",
     "- full Source Discovery",

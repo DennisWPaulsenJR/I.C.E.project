@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add library awareness foundation
+Summary:
+- Added framework-only Library Awareness to the Study Panel and GPT Review Report path.
+- Derived current-source principle/teaching/doctrine families from existing teaching semantics and principle relationships.
+- Preserved no-crawl/no-auto-index boundaries and labeled future sources as awaiting analysis.
+
+Files touched:
+- `study.html`
+- `study.css`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run review:matthew5` passed
+- `npm.cmd run qa:matthew-pages` passed
+
+Commit:
+- `pcdx: Add library awareness foundation`
+
+Status:
+- Completed locally; ready for commit/push verification.
+
 ## 2026-05-29 02:45 - pcdx - Add teaching discourse semantics
 Summary:
 - Added `ICE_TEACHING_SEMANTICS` for Matthew 5 teaching/discourse structure with JESUS as grounded speaker, disciples/multitudes audience, Beatitude blessings, commandment interpretations, law/fulfillment contrast, and Group Entity audience range display.

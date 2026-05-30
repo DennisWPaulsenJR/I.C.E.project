@@ -2,6 +2,37 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.5 Semantic Library Awareness Foundation
+
+Instruction summary:
+- Add a framework-only Library Awareness layer so I.C.E. can show current-source principle, teaching, and doctrine families without crawling, indexing, or fabricating future source links.
+- Display current source, current grounding, known related categories, analyzed sources, future scope, source phrase, derived meaning, App accuracy, and semantic grounding.
+- Preserve source grounding, teaching/discourse architecture, principle relationships, continuity model, and GPT-safe compact reporting.
+
+Codex action summary:
+- Added a Study Panel `Library Awareness` section after Semantic Coverage.
+- Added display-derived Library Awareness records from existing Teaching / Discourse Structure and Principle Relationships data.
+- Added Matthew 5 pilot family grouping for grounded categories such as Mercy, Righteousness, Reconciliation, Purity, and Love and Integrity.
+- Added Library Awareness to Semantic Coverage, layer counts, GPT Review Reports, QA-style summaries, and the repo report generator.
+- Kept future sources labeled as awaiting analysis and documented that no full-library crawl, auto-indexing, or cross-book source claim is generated.
+
+Files changed:
+- `study.html`
+- `study.css`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
 ## 2026-05-29 - Phase 8.4 Teaching / Discourse Semantic Architecture
 
 Instruction summary:
