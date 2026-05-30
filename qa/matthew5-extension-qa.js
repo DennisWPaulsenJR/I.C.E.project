@@ -43,7 +43,8 @@ const STORAGE_KEYS = [
   "ICE_MOVEMENT_SEMANTICS",
   "ICE_SEMANTIC_CAUSALITY",
   "ICE_TEACHING_SEMANTICS",
-  "ICE_PRINCIPLE_RELATIONSHIPS"
+  "ICE_PRINCIPLE_RELATIONSHIPS",
+  "ICE_CHARACTER_INTERACTIONS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -105,7 +106,8 @@ function emptyCounts() {
     movementSemantics: 0,
     semanticCausality: 0,
     teachingSemantics: 0,
-    principleRelationships: 0
+    principleRelationships: 0,
+    characterInteractions: 0
   };
 }
 
@@ -133,7 +135,8 @@ function buildCounts(storageData) {
     movementSemantics: count(storageData.ICE_MOVEMENT_SEMANTICS),
     semanticCausality: count(storageData.ICE_SEMANTIC_CAUSALITY),
     teachingSemantics: count(storageData.ICE_TEACHING_SEMANTICS),
-    principleRelationships: count(storageData.ICE_PRINCIPLE_RELATIONSHIPS)
+    principleRelationships: count(storageData.ICE_PRINCIPLE_RELATIONSHIPS),
+    characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS)
   };
 }
 
@@ -163,6 +166,7 @@ function buildSamples(storageData) {
     semanticCausality: sample(storageData.ICE_SEMANTIC_CAUSALITY, 20),
     teachingSemantics: sample(storageData.ICE_TEACHING_SEMANTICS, 20),
     principleRelationships: sample(storageData.ICE_PRINCIPLE_RELATIONSHIPS, 20),
+    characterInteractions: sample(storageData.ICE_CHARACTER_INTERACTIONS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -418,6 +422,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected Matthew 5 semantic ontology role records count > 0.");
   if (count(data.ICE_TEACHING_SEMANTICS) <= 0) failures.push("Expected Matthew 5 teaching / discourse semantic records count > 0.");
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
+  if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);

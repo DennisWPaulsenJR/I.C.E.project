@@ -21,6 +21,46 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add character interaction architecture
+Summary:
+- Added `ICE_CHARACTER_INTERACTIONS` derived layer for source-grounded Character / Group / Authority interactions.
+- Added Matthew 1, Matthew 2, and Matthew 5 pilot interaction records with authority class paths, source phrases, derived meanings, App accuracy, evidence, and grounding.
+- Updated Study Panel Character Interactions, QA bundles, and GPT Review Report output.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `node --check qa/matthew2-extension-qa.js` passed
+- `node --check qa/matthew3-extension-qa.js` passed
+- `node --check qa/matthew5-extension-qa.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew1` passed
+- `npm.cmd run qa:matthew2` passed
+- `npm.cmd run qa:matthew3` passed
+- `npm.cmd run qa:matthew5` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew5` passed
+
+Commit:
+- Pending: `pcdx: Add character interaction architecture`
+
+Status:
+- Ready to commit.
 ## 2026-05-30 00:00 - pcdx - Add library awareness foundation
 Summary:
 - Added framework-only Library Awareness to the Study Panel and GPT Review Report path.

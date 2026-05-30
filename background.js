@@ -37,6 +37,7 @@ const MOVEMENT_SEMANTICS_KEY = "ICE_MOVEMENT_SEMANTICS";
 const SEMANTIC_CAUSALITY_KEY = "ICE_SEMANTIC_CAUSALITY";
 const TEACHING_SEMANTICS_KEY = "ICE_TEACHING_SEMANTICS";
 const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
+const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -533,6 +534,7 @@ function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.semanticCausality, "semantic_causality", activeAdapter);
   enrichScopeCollection(data.teachingSemantics, "teaching_semantic", activeAdapter);
   enrichScopeCollection(data.principleRelationships, "principle_relationship", activeAdapter);
+  enrichScopeCollection(data.characterInteractions, "character_interaction", activeAdapter);
 }
 
 function createScopeIntegrityReport(data, activeAdapter) {
@@ -557,7 +559,8 @@ function createScopeIntegrityReport(data, activeAdapter) {
     ...(data.movementSemantics || []).map((item) => ({ ...item, scopeLayer: "movement_semantic" })),
     ...(data.semanticCausality || []).map((item) => ({ ...item, scopeLayer: "semantic_causality" })),
     ...(data.teachingSemantics || []).map((item) => ({ ...item, scopeLayer: "teaching_semantic" })),
-    ...(data.principleRelationships || []).map((item) => ({ ...item, scopeLayer: "principle_relationship" }))
+    ...(data.principleRelationships || []).map((item) => ({ ...item, scopeLayer: "principle_relationship" })),
+    ...(data.characterInteractions || []).map((item) => ({ ...item, scopeLayer: "character_interaction" }))
   ];
   const scopedCount = scopedItems.filter((item) => item?.scopePath).length;
   const missingScopeCount = scopedItems.length - scopedCount;
@@ -2134,6 +2137,85 @@ function createTeachingSemantics(captures = [], passageFunctions = [], reference
   return records;
 }
 
+
+function characterInteractionRecord(record = {}) {
+  const key = [
+    "character-interaction",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.sourceCharacter || "",
+    record.targetCharacter || "",
+    record.interactionType || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    sourceCharacter: record.sourceCharacter || "",
+    targetCharacter: record.targetCharacter || "",
+    interactionType: record.interactionType || "semantic_interaction",
+    authorityClass: record.authorityClass || "",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedEntities: record.relatedEntities || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    relatedRelationshipRoles: record.relatedRelationshipRoles || [],
+    relatedAuthorityPaths: record.relatedAuthorityPaths || [],
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    relatedMovementSemantics: record.relatedMovementSemantics || [],
+    relatedSemanticCausality: record.relatedSemanticCausality || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from current source-grounded character, group, authority, and relationship records"
+  };
+}
+
+function createCharacterInteractions(captures = [], ontologyRoles = [], entityRelationRoles = [], originAuthorityPaths = [], teachingSemantics = [], movementSemantics = [], semanticCausality = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceText = sourceCaptureText(captures);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const isMatthewOne = context.book === "Matthew" && String(context.chapter || "") === "1";
+  const isMatthewTwo = context.book === "Matthew" && String(context.chapter || "") === "2";
+  const isMatthewFive = context.book === "Matthew" && String(context.chapter || "") === "5";
+  if (!isMatthewOne && !isMatthewTwo && !isMatthewFive) return [];
+
+  const hasPhrase = (pattern) => pattern.test(sourceText);
+  const ontologyIds = (items) => (ontologyRoles || []).filter((item) => items.includes(item.semanticItem || "")).map((item) => item.id || item.semanticItem).filter(Boolean);
+  const relationIds = (roles) => (entityRelationRoles || []).filter((item) => roles.includes(item.semanticRole || "")).map((item) => item.id || item.semanticRole).filter(Boolean);
+  const authorityPathIds = (predicate) => (originAuthorityPaths || []).filter(predicate).map((item) => item.id).filter(Boolean);
+  const teachingIds = (predicate) => (teachingSemantics || []).filter(predicate).map((item) => item.id || item.teachingTopic || item.sourcePhrase).filter(Boolean);
+  const movementIds = (types) => (movementSemantics || []).filter((item) => types.includes(item.movementType || "")).map((item) => item.id || item.movementType).filter(Boolean);
+  const causalityIds = (types) => (semanticCausality || []).filter((item) => types.includes(item.sequenceType || "")).map((item) => item.id || item.sequenceType).filter(Boolean);
+  const add = (record) => characterInteractionRecord({ sourceCaptureId, sourceContext: context, ...record });
+  const records = [];
+
+  if (isMatthewOne && hasPhrase(/angel of the Lord appeared unto him|angel of THE LORD appeared unto him|did as the angel of the Lord had bidden him|called his name JESUS/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.1.verse.20", verseRange: "Matthew 1:20-21", sourceCharacter: "THE LORD", targetCharacter: "AngEL Of THE LORD", interactionType: "authorizes messenger", authorityClass: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD", sourcePhrase: "the angel of THE LORD appeared unto him", derivedMeaning: "THE LORD is the source authority behind the messenger appearance; AngEL Of THE LORD carries the revelation path.", evidence: ["the angel of THE LORD appeared unto him"], relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph"], relatedOntologyRoles: ontologyIds(["THE LORD", "AngEL Of THE LORD"]), relatedRelationshipRoles: relationIds(["source_authority_to_messenger"]), relatedAuthorityPaths: authorityPathIds((item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD"), confidence: "probable", sourceGrounding: "Matthew 1 grounds AngEL Of THE LORD as messenger by LORD wording while origin authority is preserved through authority-path semantics." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.1.verse.20", verseRange: "Matthew 1:20-21", sourceCharacter: "AngEL Of THE LORD", targetCharacter: "Joseph", interactionType: "reveals / instructs", authorityClass: "Class II - AngEL / Messenger of GOD -> Class III - Human", sourcePhrase: "appeared unto him in a dream, saying, Joseph... fear not", derivedMeaning: "AngEL Of THE LORD speaks revelation and instruction to Joseph as Human recipient.", evidence: ["appeared unto him in a dream", "saying, Joseph", "fear not to take unto thee Mary thy wife"], relatedEntities: ["AngEL Of THE LORD", "Joseph", "Mary", "JESUS"], relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph"]), relatedRelationshipRoles: relationIds(["revelation_messenger_to_recipient"]), relatedAuthorityPaths: authorityPathIds((item) => item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph"), confidence: "explicit", sourceGrounding: "Matthew 1:20 directly states the messenger appearance, speech, and Joseph as addressed recipient." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.1.verse.24", verseRange: "Matthew 1:24-25", sourceCharacter: "Joseph", targetCharacter: "Mary", interactionType: "takes as wife / covenant response", authorityClass: "Class III - Human -> Class III - Human", sourcePhrase: "took unto him his wife", derivedMeaning: "Joseph responds to revelation by taking Mary as wife, preserving the Human covenant/family interaction without collapsing Mary into process wording.", evidence: ["took unto him his wife"], relatedEntities: ["Joseph", "Mary"], relatedOntologyRoles: ontologyIds(["Joseph", "Mary"]), relatedRelationshipRoles: relationIds(["covenant_steward_to_covenant_participant"]), confidence: "explicit", sourceGrounding: "Matthew 1:24 directly grounds Joseph's response toward Mary." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.1.verse.25", verseRange: "Matthew 1:25", sourceCharacter: "Joseph", targetCharacter: "JESUS", interactionType: "names", authorityClass: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "called his name JESUS", derivedMeaning: "Joseph names JESUS according to revealed instruction while preserving JESUS as narrative NAME and JESUS CHRIST as canonical/source identity.", evidence: ["called his name JESUS", "thou shalt call his name JESUS"], relatedEntities: ["Joseph", "JESUS", "JESUS CHRIST"], relatedOntologyRoles: ontologyIds(["Joseph", "JESUS", "JESUS CHRIST"]), relatedRelationshipRoles: relationIds(["obedient_response_to_revealed_name"]), confidence: "explicit", sourceGrounding: "Matthew 1:25 directly states Joseph called His name JESUS after the revealed instruction." }));
+  }
+
+  if (isMatthewTwo && hasPhrase(/Herod|wise men|young child|flee into Egypt|destroy him|worshipped him/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.2.verse.7", verseRange: "Matthew 2:7-8", sourceCharacter: "Herod", targetCharacter: "Wise men", interactionType: "questions / directs deceptively", authorityClass: "Class i - Adversarial / Oppositional -> Class III - Human", sourcePhrase: "Herod... privily called the wise men... that I may come and worship him also", derivedMeaning: "Herod interacts with the wise men through secret inquiry and deceptive worship language, grounded in source wording.", evidence: ["privily called the wise men", "enquired of them diligently", "that I may come and worship him also"], relatedEntities: ["Herod", "Wise men", "JESUS"], relatedOntologyRoles: ontologyIds(["Herod", "Wise men"]), relatedRelationshipRoles: relationIds(["hostile_authority_to_child_target"]), confidence: /that I may come and worship him also|destroy him/i.test(sourceText) ? "explicit" : "probable", sourceGrounding: "Matthew 2:7-8 grounds the Herod-to-wise-men interaction in private inquiry and stated direction." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-14", sourceCharacter: "THE LORD", targetCharacter: "AngEL Of THE LORD", interactionType: "authorizes protective messenger", authorityClass: "Class I - GOD / Divine Authority -> Class II - AngEL / Messenger of GOD", sourcePhrase: "the angel of the Lord appeareth to Joseph in a dream", derivedMeaning: "THE LORD remains source authority while AngEL Of THE LORD carries protective preservation instruction.", evidence: ["the angel of the Lord appeareth to Joseph in a dream"], relatedEntities: ["THE LORD", "AngEL Of THE LORD", "Joseph", "JESUS"], relatedOntologyRoles: ontologyIds(["THE LORD", "AngEL Of THE LORD"]), relatedRelationshipRoles: relationIds(["source_authority_to_protective_messenger"]), relatedAuthorityPaths: authorityPathIds((item) => item.origin === "THE LORD" && item.messenger === "AngEL Of THE LORD"), confidence: "probable", sourceGrounding: "Matthew 2 preserves LORD wording in the messenger title; authority-path records keep origin and messenger distinct." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.2.verse.13", verseRange: "Matthew 2:13-14, 19-21", sourceCharacter: "AngEL Of THE LORD", targetCharacter: "Joseph", interactionType: "warns / commands protective movement", authorityClass: "Class II - AngEL / Messenger of GOD -> Class III - Human", sourcePhrase: "Arise, and take the young child and his mother, and flee into Egypt", derivedMeaning: "AngEL Of THE LORD gives Joseph protective movement instructions concerning CHILD/JESUS and Mary.", evidence: ["Arise", "take the young child", "flee into Egypt"], relatedEntities: ["AngEL Of THE LORD", "Joseph", "JESUS", "CHILD", "Mary"], relatedOntologyRoles: ontologyIds(["AngEL Of THE LORD", "Joseph", "JESUS"]), relatedRelationshipRoles: relationIds(["protective_revelation_messenger_to_recipient"]), relatedAuthorityPaths: authorityPathIds((item) => item.messenger === "AngEL Of THE LORD" && item.recipient === "Joseph"), relatedMovementSemantics: movementIds(["protective_escape_preservation", "return_after_hostile_threat_removed"]), confidence: "explicit", sourceGrounding: "Matthew 2:13 directly states the messenger command to Joseph." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.2.verse.14", verseRange: "Matthew 2:14-15, 21-23", sourceCharacter: "Joseph", targetCharacter: "CHILD / JESUS", interactionType: "protects / moves", authorityClass: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "took the young child and his mother... departed into Egypt", derivedMeaning: "Joseph protects and moves CHILD/JESUS in obedient response to Divine warning.", evidence: ["took the young child and his mother", "departed into Egypt", "dwelt in a city called Nazareth"], relatedEntities: ["Joseph", "JESUS", "CHILD", "Mary", "Egypt", "Nazareth"], relatedOntologyRoles: ontologyIds(["Joseph", "JESUS"]), relatedRelationshipRoles: relationIds(["protective_obedient_response_to_child"]), relatedMovementSemantics: movementIds(["protective_escape_preservation", "protective_redirection_settlement_fulfillment"]), relatedSemanticCausality: causalityIds(["hostile_threat_warning_preservation_sequence", "threat_removed_guided_return_fulfillment_sequence"]), confidence: "explicit", sourceGrounding: "Matthew 2 repeatedly grounds Joseph's protective interaction in took/departed/returned/dwelt movement language." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.2.verse.16", verseRange: "Matthew 2:13, 16", sourceCharacter: "Herod", targetCharacter: "CHILD / JESUS", interactionType: "adversary targets", authorityClass: "Class i - Adversarial / Oppositional -> Class I - GOD / Divine Authority", sourcePhrase: "Herod will seek the young child to destroy him", derivedMeaning: "Herod is modeled as adversarial targeter of CHILD/JESUS only where destroy-him wording grounds hostile intent.", evidence: ["Herod will seek the young child to destroy him", "destroy him"], relatedEntities: ["Herod", "JESUS", "CHILD"], relatedOntologyRoles: ontologyIds(["Herod", "JESUS"]), relatedRelationshipRoles: relationIds(["hostile_authority_to_child_target"]), relatedSemanticCausality: causalityIds(["hostile_threat_warning_preservation_sequence"]), confidence: /destroy him/i.test(sourceText) ? "explicit" : "probable", sourceGrounding: "Matthew 2 grounds this interaction with direct destroy-him wording, avoiding automatic adversarial classification." }));
+  }
+
+  if (isMatthewFive && hasPhrase(/seeing the multitudes|disciples came unto him|opened his mouth, and taught them/i)) {
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", sourceCharacter: "JESUS", targetCharacter: "disciples", interactionType: "teaches", authorityClass: "Class I - GOD / Divine Authority -> Class III - Human", sourcePhrase: "his disciples came unto him; he opened his mouth, and taught them", derivedMeaning: "JESUS teaches disciples within the Sermon on the Mount discourse.", evidence: ["his disciples came unto him", "he opened his mouth, and taught them"], relatedEntities: ["JESUS", "JESUS CHRIST", "disciples"], relatedOntologyRoles: ontologyIds(["JESUS", "disciples"]), relatedTeachingSemantics: teachingIds((item) => /Sermon on the Mount teaching context|teaching/i.test(`${item.teachingTopic || ""} ${item.derivedMeaning || ""}`)), confidence: "explicit", sourceGrounding: "Matthew 5:1-2 directly grounds JESUS as speaker/teacher and disciples as teaching audience." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", sourceCharacter: "JESUS", targetCharacter: "People / multitudes", interactionType: "teaches in surrounding audience context", authorityClass: "Class I - GOD / Divine Authority -> Class III - Human group", sourcePhrase: "seeing the multitudes... he opened his mouth, and taught them", derivedMeaning: "JESUS teaches with multitudes as surrounding Human audience context while disciples remain direct addressees in the source phrase.", evidence: ["seeing the multitudes", "he opened his mouth, and taught them"], relatedEntities: ["JESUS", "JESUS CHRIST", "disciples", "multitudes", "People / multitudes"], relatedOntologyRoles: ontologyIds(["JESUS", "multitudes"]), relatedTeachingSemantics: teachingIds((item) => /multitudes|disciples|audience/i.test(`${item.audience || ""} ${item.derivedMeaning || ""}`)), confidence: "probable", sourceGrounding: "Matthew 5:1-2 grounds multitudes as surrounding audience context and disciples as direct teaching recipients." }));
+    records.push(add({ scopePath: "scripture.nt.matthew.5.verse.1", verseRange: "Matthew 5:1-2", sourceCharacter: "disciples", targetCharacter: "JESUS", interactionType: "come to teacher / receive teaching", authorityClass: "Class III - Human -> Class I - GOD / Divine Authority", sourcePhrase: "his disciples came unto him", derivedMeaning: "The disciples approach JESUS and become the direct grounded teaching audience.", evidence: ["his disciples came unto him"], relatedEntities: ["disciples", "JESUS", "JESUS CHRIST"], relatedOntologyRoles: ontologyIds(["disciples", "JESUS"]), relatedTeachingSemantics: teachingIds((item) => /disciples/i.test(`${item.audience || ""} ${item.sourcePhrase || ""}`)), confidence: "explicit", sourceGrounding: "Matthew 5:1 directly states that His disciples came unto Him before the teaching begins." }));
+  }
+
+  return records;
+}
 function principleRelationshipRecord(record = {}) {
   const key = [
     "principle-relationship",
@@ -6469,6 +6551,15 @@ async function runFullAnalysisPipeline(reason = "manual") {
       captures,
       teachingSemantics
     );
+    const characterInteractions = createCharacterInteractions(
+      captures,
+      ontologyRoles,
+      entityRelationRoles,
+      originAuthorityPaths,
+      teachingSemantics,
+      movementSemantics,
+      semanticCausality
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -6490,7 +6581,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       semanticCausality,
       teachingSemantics,
-      principleRelationships
+      principleRelationships,
+      characterInteractions
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -6513,7 +6605,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       semanticCausality,
       teachingSemantics,
-      principleRelationships
+      principleRelationships,
+      characterInteractions
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -6544,7 +6637,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics: movementSemantics.length,
       semanticCausality: semanticCausality.length,
       teachingSemantics: teachingSemantics.length,
-      principleRelationships: principleRelationships.length
+      principleRelationships: principleRelationships.length,
+      characterInteractions: characterInteractions.length
     };
     const status = {
       reason,
@@ -6575,7 +6669,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-8.4-teaching-discourse",
+      analysisBuildMarker: "phase-8.5a-character-interactions",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -6592,6 +6686,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticCausalityCount: semanticCausality.length,
       teachingSemanticsCount: teachingSemantics.length,
       principleRelationshipCount: principleRelationships.length,
+      characterInteractionCount: characterInteractions.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -6659,6 +6754,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SEMANTIC_CAUSALITY_KEY]: semanticCausality,
       [TEACHING_SEMANTICS_KEY]: teachingSemantics,
       [PRINCIPLE_RELATIONSHIPS_KEY]: principleRelationships,
+      [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

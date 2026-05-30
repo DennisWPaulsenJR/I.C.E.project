@@ -149,12 +149,14 @@ function reportFromBundle(bundle) {
   const activeAdapter = samples.activeAdapter || {};
   const teaching = asArray(samples.teachingSemantics);
   const relationships = asArray(samples.principleRelationships);
+  const characterInteractions = asArray(samples.characterInteractions);
   const source = teaching[0]?.sourceContext || {};
   const activeTitle = source.sourceTitle || bundle.pageTitle || "Matthew 5";
   const activeUrl = source.sourceUrl || bundle.url || "Not recorded";
   const evidence = [
     ...teaching.slice(0, 4).map((item) => `${item.sourcePhrase || item.teachingTopic || "Teaching"} | ${item.derivedMeaning || "derived meaning not recorded"}`),
-    ...relationships.slice(0, 3).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | ${item.sourcePhrase || "source phrase not recorded"}`)
+    ...relationships.slice(0, 3).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | ${item.sourcePhrase || "source phrase not recorded"}`),
+    ...characterInteractions.slice(0, 3).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`)
   ];
   const adapterName = clean(activeAdapter.adapterName || "lds_scripture_adapter");
   const libraryAwareness = libraryAwarenessRecords(samples, activeTitle);
@@ -192,12 +194,14 @@ function reportFromBundle(bundle) {
     `Ontology Roles: ${counts.ontologyRoles || 0}`,
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
+    `Character Interactions: ${counts.characterInteractions || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
     "",
     "## Semantic Coverage",
     ...list([
       counts.teachingSemantics ? "Teaching / Discourse Structure: Primary semantic layer for this chapter; grounded records found" : "Teaching / Discourse Structure: Primary semantic layer for this chapter; awaiting grounding",
       counts.principleRelationships ? "Principle Relationships: Pilot layer; grounded records found" : "Principle Relationships: Pilot layer; no grounded records found",
+      counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
@@ -215,7 +219,8 @@ function reportFromBundle(bundle) {
     "## Top Derived Sections",
     ...list([
       ...teaching.slice(0, 6).map((item) => `${item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType} | ${item.verseRange || item.scopePath || "current scope"} | App accuracy: ${item.confidence || "probable"}`),
-      ...relationships.slice(0, 5).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | App accuracy: ${item.confidence || "probable"}`)
+      ...relationships.slice(0, 5).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | App accuracy: ${item.confidence || "probable"}`),
+      ...characterInteractions.slice(0, 5).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | App accuracy: ${item.confidence || "probable"}`)
     ], "no derived teaching/principle summaries available"),
     "",
     "## Selected Evidence",
@@ -227,6 +232,7 @@ function reportFromBundle(bundle) {
     `domSemanticHints: ${counts.domSemanticHints || 0}`,
     `teachingSemantics: ${counts.teachingSemantics || 0}`,
     `principleRelationships: ${counts.principleRelationships || 0}`,
+    `characterInteractions: ${counts.characterInteractions || 0}`,
     `libraryAwareness: ${libraryAwareness.length}`,
     "",
     "## Excluded From This Report",

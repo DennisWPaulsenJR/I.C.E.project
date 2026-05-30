@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.5a Character Interaction Architecture implemented.
+- New derived layer: `ICE_CHARACTER_INTERACTIONS`.
+- Matthew 1 now models THE LORD -> AngEL Of THE LORD, AngEL Of THE LORD -> Joseph, Joseph -> Mary, and Joseph -> JESUS interactions where grounded.
+- Matthew 2 now models Herod -> Wise men, THE LORD -> AngEL Of THE LORD, AngEL Of THE LORD -> Joseph, Joseph -> CHILD / JESUS, and Herod -> CHILD / JESUS interactions where grounded.
+- Matthew 5 now models JESUS -> disciples, JESUS -> People / multitudes, and disciples -> JESUS teaching-audience interactions.
+- Study Panel Character Interactions now renders semantic interaction cards before legacy interaction graph previews.
+- Matthew QA bundles and GPT Review Reports now include character interaction counts and compact summaries.
+Latest pcdx update:
 - Phase 8.5 Semantic Library Awareness Foundation implemented.
 - Study Panel now includes a Library Awareness section after Semantic Coverage.
 - Library Awareness derives framework-only principle, teaching, and doctrine family displays from already-analyzed teaching/discourse and principle relationship records.

@@ -2,6 +2,49 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.5a Character Interaction Architecture
+
+Instruction summary:
+- Add a derived character interaction layer for source-grounded interactions between Characters, Groups, and Authorities.
+- Model interaction types such as teacher/audience, messenger/recipient, authority/recipient, adversary/target, witness/event, and protective response.
+- Preserve ontology hierarchy, source phrase vs derived meaning, App accuracy wording, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, and Group Entity model.
+
+Codex action summary:
+- Added `ICE_CHARACTER_INTERACTIONS` storage and builder support in the analysis pipeline.
+- Added Matthew 1 pilot records for THE LORD -> AngEL Of THE LORD, AngEL Of THE LORD -> Joseph, Joseph -> Mary, and Joseph -> JESUS.
+- Added Matthew 2 pilot records for Herod -> Wise men, THE LORD -> AngEL Of THE LORD, AngEL Of THE LORD -> Joseph, Joseph -> CHILD / JESUS, and Herod -> CHILD / JESUS.
+- Added Matthew 5 pilot records for JESUS -> disciples, JESUS -> People / multitudes, and disciples -> JESUS.
+- Updated Study Panel Character Interactions to render semantic cards with source character, target character, interaction type, authority class, source phrase, derived meaning, App accuracy, evidence, related layers, and grounding.
+- Updated QA bundles and GPT Review Report generation to include character interaction counts and summaries.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
 ## 2026-05-30 - Phase 8.5 Semantic Library Awareness Foundation
 
 Instruction summary:

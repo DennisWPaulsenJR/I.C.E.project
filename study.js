@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     semanticCausality: "ICE_SEMANTIC_CAUSALITY",
     teachingSemantics: "ICE_TEACHING_SEMANTICS",
     principleRelationships: "ICE_PRINCIPLE_RELATIONSHIPS",
+    characterInteractions: "ICE_CHARACTER_INTERACTIONS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -955,6 +956,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Semantic Causality", countItems(studyData.semanticCausality)],
       ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
       ["Principle Relationships", countItems(studyData.principleRelationships)],
+      ["Character Interactions", countItems(studyData.characterInteractions)],
       ["Library Awareness", countItems(libraryAwarenessRecords())]
     ];
   }
@@ -1007,6 +1009,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function characterInteractionSummaryLines(limit = 6) {
+    return asArray(studyData.characterInteractions).slice(0, limit).map((item) => {
+      return `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${passageFunctionTitle(item.interactionType || "interaction")} | ${displayConfidence(item.confidence || "probable")}`;
+    });
+  }
   function studyScopeExportLines() {
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
@@ -1092,6 +1099,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
       if (item.principle) values.push(`${item.principle} ${item.relationshipType || "related"} ${related || "related principles"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
+    asArray(studyData.characterInteractions).forEach((item) => {
+      if (item.sourceCharacter || item.targetCharacter) values.push(`${item.sourceCharacter || "source"} -> ${item.targetCharacter || "target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`);
+    });
     asArray(studyData.passageFunctions).forEach((item) => {
       if (item.plainMeaning || item.sourcePhrase) values.push(`${item.passageFunction || "passage function"} | ${item.plainMeaning || item.sourcePhrase}`);
     });
@@ -1139,6 +1149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `referenceGraph: ${countItems(studyData.referenceGraph)}`,
       `teachingSemantics: ${countItems(studyData.teachingSemantics)}`,
       `principleRelationships: ${countItems(studyData.principleRelationships)}`,
+      `characterInteractions: ${countItems(studyData.characterInteractions)}`,
       `libraryAwareness: ${countItems(libraryAwarenessRecords())}`,
       `scopeMissing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`
     ];
@@ -1241,7 +1252,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       "## Top Derived Sections",
       ...markdownList([
         ...teachingSummaryLines(6),
-        ...principleRelationshipSummaryLines(5)
+        ...principleRelationshipSummaryLines(5),
+        ...characterInteractionSummaryLines(5)
       ], "no teaching/principle summaries available"),
       "",
       "## Selected Evidence",
@@ -1479,6 +1491,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         layer: "Principle Relationships",
         count: countItems(studyData.principleRelationships),
         status: coverageStatus({ count: countItems(studyData.principleRelationships), applicable: isTeaching, pilot: true })
+      },
+      {
+        layer: "Character Interactions",
+        count: countItems(studyData.characterInteractions),
+        status: coverageStatus({ count: countItems(studyData.characterInteractions), applicable: chapter === 1 || chapter === 2 || chapter === 5, pilot: true })
       },
       {
         layer: "Semantic Sequence / Causality",
@@ -1922,6 +1939,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticCausality,
       STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.principleRelationships,
+      STORAGE_KEYS.characterInteractions,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -1971,6 +1989,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticCausality,
       STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.principleRelationships,
+      STORAGE_KEYS.characterInteractions,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -5366,6 +5385,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       causality: "semanticCausalitySection",
       teaching: "teachingSemanticsSection",
       principleRelationship: "principleRelationshipsSection",
+      characterInteraction: "interactionsSection",
       libraryAwareness: "libraryAwarenessSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -5672,6 +5692,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         )));
     }
 
+    if (mode !== "characterInteraction") {
+      asArray(studyData.characterInteractions)
+        .filter((interaction) => semanticVerseOverlap(interaction, item) || semanticEntityOverlap(interaction, item))
+        .forEach((interaction) => links.push(semanticNavItem(
+          `Character Interaction: ${interaction.sourceCharacter || "source"} -> ${interaction.targetCharacter || "target"} | ${interaction.interactionType || "interaction"}`,
+          semanticSectionForNav("characterInteraction"),
+          interaction.sourceCharacter || interaction.targetCharacter || interaction.interactionType || "",
+          semanticCardKey("characterInteraction", interaction, `${interaction.sourceCharacter || ""}-${interaction.targetCharacter || ""}-${interaction.interactionType || ""}`)
+        )));
+    }
     if (mode !== "timeline") {
       timelineEntries
         .filter((entry) => semanticNarrativeMatchesRecord(entry, item))
@@ -8003,29 +8033,105 @@ createRevelationPartsSection(item.subEvents)
     }, "No scenes match.", "scene");
   }
 
+  function characterInteractionSearchText(item = {}) {
+    return [
+      item.sourceCharacter,
+      item.targetCharacter,
+      item.interactionType,
+      item.authorityClass,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      asArray(item.evidence).join(" "),
+      asArray(item.relatedEntities).join(" "),
+      item.sourceGrounding,
+      item.confidence,
+      item.verseRange,
+      item.scopePath
+    ].join(" ");
+  }
+
+  function createCharacterInteractionCard(item = {}) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const evidence = asArray(item.evidence).map((value) => normalizeText(value)).filter(Boolean);
+    const divineContext = hasDivineDisplayContext([item.sourceCharacter, item.targetCharacter, item.authorityClass, item.sourcePhrase, item.derivedMeaning, item.relatedEntities]);
+
+    card.className = "study-card semantic-card character-interaction-card";
+    assignSemanticCardTarget(card, "characterInteraction", item, `${item.sourceCharacter || "source"}-${item.targetCharacter || "target"}-${item.interactionType || "interaction"}`);
+    header.className = "semantic-card-header";
+    heading.textContent = `${item.sourceCharacter || "Unknown"} -> ${item.targetCharacter || "Unknown"}`;
+    range.className = "semantic-card-range";
+    range.textContent = [passageFunctionTitle(item.interactionType || "interaction"), item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+
+    [
+      createPassageFunctionSection("Source Character", item.sourceCharacter || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Target Character", item.targetCharacter || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Interaction Type", passageFunctionTitle(item.interactionType || "semantic_interaction"), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Authority Class", item.authorityClass || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: evidence.slice(0, 4), hiddenCount: Math.max(0, evidence.length - 4), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "characterInteraction", 10), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "characterInteraction"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+
+    card.append(header, body);
+    return card;
+  }
+
   function renderInteractions(term) {
     const container = document.getElementById("interactionCards");
     const count = document.getElementById("interactionCount");
-    const interactions = Array.isArray(studyData.interactionGraph)
+    if (!container || !count) return;
+    const semanticRecords = asArray(studyData.characterInteractions);
+    const filteredSemantic = semanticRecords.filter((item) => matchesSearchQuery(characterInteractionSearchText(item), term));
+    const legacyInteractions = Array.isArray(studyData.interactionGraph)
       ? dedupeInteractions(studyData.interactionGraph)
       : [];
-    const filtered = interactions.filter((item) =>
-      itemMatches(item, [
-        "actorA",
-        "actorB",
-        "interactionType",
-        "sourceSnippet",
-        "confidence"
-      ], term)
+    const filteredLegacy = legacyInteractions.filter((item) =>
+      itemMatches(item, ["actorA", "actorB", "interactionType", "sourceSnippet", "confidence"], term)
     );
 
-    renderLimited(container, filtered, count, (item) => createCard(
+    clearElement(container);
+    count.textContent = `${filteredSemantic.length} semantic record(s)`;
+
+    if (semanticRecords.length > 0) {
+      container.appendChild(createCard(
+        "Character Interactions",
+        [
+          `Derived records: ${semanticRecords.length}`,
+          "Layer: ICE_CHARACTER_INTERACTIONS",
+          "Purpose: model source-grounded interactions between Characters, Groups, and Authorities.",
+          "Review posture: inspect source character, target character, interaction type, authority class, source phrase, derived meaning, App accuracy, and grounding."
+        ].join("\n"),
+        "derived semantic layer"
+      ));
+      if (filteredSemantic.length === 0) {
+        appendEmpty(container, "No semantic character interaction records match current filter.");
+      } else {
+        filteredSemantic.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createCharacterInteractionCard(item)));
+      }
+      if (filteredLegacy.length) {
+        const legacyPreview = createPassageFunctionSection("Legacy Interaction Graph", "", { collapsed: true, summaryLabel: "Show legacy interaction graph preview", list: filteredLegacy.slice(0, 8).map((item) => `${item.actorA || "Unknown"} <-> ${item.actorB || "Unknown"} | ${item.interactionType || "interaction"}`), plainList: true });
+        if (legacyPreview) container.appendChild(legacyPreview);
+      }
+      return;
+    }
+
+    renderLimited(container, filteredLegacy, count, (item) => createCard(
       `${item.actorA || "Unknown"} <-> ${item.actorB || "Unknown"}`,
       trimText(item.sourceSnippet, 180),
       `${item.interactionType || "interaction"} | ${displayAppConfidence(item.confidence || "probable")}`
     ), "No character interactions match.", "interaction");
   }
-
   function renderTimeline(term) {
     const container = document.getElementById("timelineCards");
     const count = document.getElementById("timelineCount");
@@ -8281,6 +8387,7 @@ createRevelationPartsSection(item.subEvents)
       semanticCausality: countItems(studyData.semanticCausality),
       teachingSemantics: countItems(studyData.teachingSemantics),
       principleRelationships: countItems(studyData.principleRelationships),
+      characterInteractions: countItems(studyData.characterInteractions),
       activeAdapter: studyData.activeAdapter?.adapterName || "",
       scopedItems: studyData.scopeIntegrity?.scopedItemsCount || 0,
       principles: countItems(studyData.principleItems),
@@ -8321,12 +8428,13 @@ createRevelationPartsSection(item.subEvents)
     const semanticCausalityCount = countItems(studyData.semanticCausality);
     const teachingSemanticsCount = countItems(studyData.teachingSemantics);
     const principleRelationshipsCount = countItems(studyData.principleRelationships);
+    const characterInteractionsCount = countItems(studyData.characterInteractions);
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
