@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add semantic resolution explanations
+Summary:
+- Added derived `ICE_RESOLUTION_EXPLANATIONS` Study Panel layer.
+- Explanation cards show result, source/supporting evidence, ontology role, relationship inputs, teaching inputs, reasoning path, evidence weight, provenance, source phrase, derived meaning, App accuracy, and scope.
+- Added compact Semantic Resolution Explanations to GPT review reports.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Add semantic resolution explanations`
+
+Status:
+- Implemented and validated.
+
 ## 2026-05-30 00:00 - pcdx - Add semantic evidence weighting
 Summary:
 - Added Evidence Weight display beside provenance for source-supported and I.C.E.-generated semantic records.

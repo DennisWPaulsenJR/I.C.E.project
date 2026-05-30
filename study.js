@@ -1151,6 +1151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
       ["Principle Relationships", countItems(studyData.principleRelationships)],
       ["Character Interactions", countItems(studyData.characterInteractions)],
+      ["Semantic Resolution Explanations", countItems(resolutionExplanationRecords())],
       ["Session Continuity Review", countItems(sessionContinuityReviewRecords())],
       ["Scripture Knowledge Graph", countItems(knowledgeGraphRecords())],
       ["Library Awareness", countItems(libraryAwarenessRecords())]
@@ -1745,6 +1746,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         status: coverageStatus({ count: countItems(studyData.characterInteractions), applicable: chapter === 1 || chapter === 2 || chapter === 5, pilot: true })
       },
       {
+        layer: "Semantic Resolution Explanations",
+        count: countItems(resolutionExplanationRecords()),
+        status: coverageStatus({ count: countItems(resolutionExplanationRecords()), applicable: true, pilot: true })
+      },
+      {
         layer: "Session Continuity Review",
         count: countItems(sessionContinuityReviewRecords()),
         status: coverageStatus({ count: countItems(sessionContinuityReviewRecords()), applicable: true, pilot: true, sessionScoped: true })
@@ -1782,6 +1788,273 @@ document.addEventListener("DOMContentLoaded", async () => {
     ];
   }
 
+  function compactEvidenceWeightLabel(type = "") {
+    const normalized = normalizeText(type);
+    if (/Direct Source Evidence/i.test(normalized)) return "Direct Source Evidence";
+    if (/Supporting Source Evidence/i.test(normalized)) return "Supporting Source Evidence";
+    if (/Relationship Inference/i.test(normalized)) return "Relationship Inference";
+    if (/Continuity Inference/i.test(normalized)) return "Continuity Inference";
+    if (/Library Awareness Classification/i.test(normalized)) return "Library Awareness Classification";
+    return "Derived Semantic Evidence";
+  }
+
+  function resolutionExplanationRecord(record = {}) {
+    return {
+      result: record.result || "Semantic resolution",
+      sourceEvidence: normalizeText(record.sourceEvidence || record.sourcePhrase || "Not recorded."),
+      supportingEvidence: asArray(record.supportingEvidence).map((value) => normalizeText(value)).filter(Boolean),
+      ontologyRole: normalizeText(record.ontologyRole || "Not recorded."),
+      relationshipInputs: asArray(record.relationshipInputs).map((value) => normalizeText(value)).filter(Boolean),
+      teachingInputs: asArray(record.teachingInputs).map((value) => normalizeText(value)).filter(Boolean),
+      reasoningPath: asArray(record.reasoningPath).map((value) => normalizeText(value)).filter(Boolean),
+      evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+      provenance: record.provenance || "I.C.E. Derived",
+      sourcePhrase: record.sourcePhrase || record.sourceEvidence || "",
+      derivedMeaning: record.derivedMeaning || record.result || "",
+      confidence: record.confidence || "probable",
+      sourceGrounding: record.sourceGrounding || record.sourceEvidence || "Not recorded.",
+      scopePath: record.scopePath || "",
+      relatedSemanticLayers: asArray(record.relatedSemanticLayers).map((value) => normalizeText(value)).filter(Boolean)
+    };
+  }
+
+  function resolutionExplanationRecords() {
+    const records = [];
+    asArray(studyData.ontologyRoles).slice(0, 8).forEach((item) => {
+      const result = [item.semanticItem || item.entityName || item.name || "Entity", item.semanticRole || item.ontologyRole || item.ontologyClass || item.classLabel || "Ontology role"].filter(Boolean).join(" = ");
+      records.push(resolutionExplanationRecord({
+        result,
+        sourceEvidence: item.sourcePhrase || item.sourceGrounding || item.contextSnippet,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: item.semanticRole || item.ontologyRole || item.ontologyClass || item.classLabel,
+        relationshipInputs: asArray(item.relatedRelationshipRoles),
+        teachingInputs: asArray(item.relatedTeachingSemantics),
+        reasoningPath: ["source phrase", "ontology role", "class-consistent rendering", "final resolution"],
+        evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
+        provenance: "I.C.E. Classification",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning || result,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath,
+        relatedSemanticLayers: ["Semantic Ontology Roles"]
+      }));
+    });
+    asArray(studyData.referenceRoles).slice(0, 5).forEach((item) => {
+      records.push(resolutionExplanationRecord({
+        result: [referenceRolePrimaryReferencedBeing(item), referenceRoleDisplayTitle(item)].filter(Boolean).join(" = ") || "Reference role resolution",
+        sourceEvidence: item.discoveredReference,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: referenceRoleCanonicalIdentity(item),
+        relationshipInputs: asArray(item.linkedThemes),
+        teachingInputs: referenceRoleRelatedCharacters(item),
+        reasoningPath: ["source reference", "reference role", "related characters", "final reference resolution"],
+        evidenceWeight: "Supporting Source Evidence",
+        provenance: referenceRoleSourceProvenanceLabel(item),
+        sourcePhrase: item.discoveredReference,
+        derivedMeaning: referenceRolePlainExplanation(item),
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.sourceDiscoveryId,
+        relatedSemanticLayers: ["Reference Roles", "Source Discovery", "Reference Graph"]
+      }));
+    });
+    asArray(studyData.teachingSemantics).slice(0, 8).forEach((item) => {
+      const label = item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType || "Teaching";
+      records.push(resolutionExplanationRecord({
+        result: label,
+        sourceEvidence: item.sourcePhrase,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: item.speaker ? `${item.speaker} as speaker` : "Not recorded.",
+        relationshipInputs: asArray(item.relatedEntities),
+        teachingInputs: [item.teachingBlock, item.audience, item.principle, item.commandment, item.blessing, item.promise].filter(Boolean),
+        reasoningPath: ["source phrase", "speaker/audience context", "teaching category", "final teaching resolution"],
+        evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
+        provenance: "I.C.E. Teaching Classification",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.verseRange,
+        relatedSemanticLayers: ["Teaching / Discourse Structure"]
+      }));
+    });
+    asArray(studyData.principleRelationships).slice(0, 8).forEach((item) => {
+      const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
+      records.push(resolutionExplanationRecord({
+        result: `${item.principle || "Principle"} ${passageFunctionTitle(item.relationshipType || "related")} ${related || "related principle"}`,
+        sourceEvidence: item.sourcePhrase,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: item.speaker ? `${item.speaker} as teaching source` : "Not recorded.",
+        relationshipInputs: asArray(item.relatedPrinciples),
+        teachingInputs: [item.teachingBlock, item.audience, ...asArray(item.relatedTeachingSemantics)].filter(Boolean),
+        reasoningPath: ["source teaching evidence", "shared discourse context", "relationship type", "final principle relationship"],
+        evidenceWeight: "Relationship Inference",
+        provenance: "I.C.E. Principle Relationship",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.verseRange,
+        relatedSemanticLayers: ["Principle Relationships", "Teaching / Discourse Structure"]
+      }));
+    });
+    asArray(studyData.characterInteractions).slice(0, 8).forEach((item) => {
+      records.push(resolutionExplanationRecord({
+        result: `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`,
+        sourceEvidence: item.sourcePhrase,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: item.authorityClass || "Not recorded.",
+        relationshipInputs: [passageFunctionTitle(item.interactionType || "interaction"), ...asArray(item.relatedEntities)],
+        teachingInputs: asArray(item.relatedTeachingSemantics),
+        reasoningPath: ["source character", "target character", "interaction type", "final interaction resolution"],
+        evidenceWeight: "Relationship Inference",
+        provenance: "I.C.E. Relationship",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.verseRange,
+        relatedSemanticLayers: ["Character Interactions"]
+      }));
+    });
+    sessionContinuityReviewRecords().slice(0, 3).forEach((item) => {
+      records.push(resolutionExplanationRecord({
+        result: item.sessionRange || "Session Continuity Review",
+        sourceEvidence: item.sourcePhrase || item.sessionRange,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: asArray(item.continuingAuthorityPaths).slice(0, 2).join("; "),
+        relationshipInputs: asArray(item.continuingCharacterInteractions),
+        teachingInputs: asArray(item.teachingProgression),
+        reasoningPath: ["analyzed pages", "continuing characters/themes", "session review", "final continuity resolution"],
+        evidenceWeight: "Continuity Inference",
+        provenance: "I.C.E. Continuity",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.sessionRange,
+        relatedSemanticLayers: ["Session Continuity Review"]
+      }));
+    });
+    libraryAwarenessRecords().slice(0, 5).forEach((item) => {
+      records.push(resolutionExplanationRecord({
+        result: item.principleFamily || "Library Awareness",
+        sourceEvidence: item.sourcePhrase || item.currentGrounding,
+        supportingEvidence: asArray(item.knownRelatedCategories),
+        ontologyRole: item.doctrineFamily,
+        relationshipInputs: asArray(item.knownRelatedCategories),
+        teachingInputs: [item.teachingFamily, item.semanticSourceLayer].filter(Boolean),
+        reasoningPath: ["current source grounding", "family classification", "future sources held open", "final library awareness label"],
+        evidenceWeight: "Library Awareness Classification",
+        provenance: "I.C.E. Library Awareness",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.currentSource,
+        relatedSemanticLayers: ["Library Awareness", item.semanticSourceLayer].filter(Boolean)
+      }));
+    });
+    knowledgeGraphRecords().slice(0, 8).forEach((item) => {
+      records.push(resolutionExplanationRecord({
+        result: `${item.node || "Node"} = ${item.type || "Semantic Node"}`,
+        sourceEvidence: item.sourcePhrase,
+        supportingEvidence: asArray(item.evidence),
+        ontologyRole: item.type,
+        relationshipInputs: [...asArray(item.relationships), ...asArray(item.relatedNodes)],
+        teachingInputs: asArray(item.relatedPrinciples),
+        reasoningPath: ["existing semantic records", "node relationship aggregation", "scope preservation", "final graph node"],
+        evidenceWeight: "Derived Semantic Evidence",
+        provenance: "I.C.E. Knowledge Graph",
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        confidence: item.confidence,
+        sourceGrounding: item.sourceGrounding,
+        scopePath: item.scopePath || item.id,
+        relatedSemanticLayers: ["Scripture Knowledge Graph"]
+      }));
+    });
+    const seen = new Set();
+    return records.filter((item) => {
+      const key = [item.result, item.scopePath, item.provenance].join("|").toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 80);
+  }
+
+  function resolutionExplanationSearchText(item = {}) {
+    return [item.result, item.sourceEvidence, item.supportingEvidence, item.ontologyRole, item.relationshipInputs, item.teachingInputs, item.reasoningPath, item.evidenceWeight, item.provenance, item.sourceGrounding, item.scopePath].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function resolutionExplanationSummaryLines(limit = 6) {
+    return resolutionExplanationRecords().slice(0, limit).map((item) => `${item.result} | ${compactEvidenceWeightLabel(item.evidenceWeight)} | ${item.provenance}`);
+  }
+
+  function createResolutionExplanationCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card resolution-explanation-card";
+    assignSemanticCardTarget(card, "resolutionExplanation", item, `${item.result || "resolution"}-${item.scopePath || "scope"}`);
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = item.result || "Semantic resolution";
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_RESOLUTION_EXPLANATIONS", displayConfidence(item.confidence || "probable")].join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.result, item.sourceEvidence, item.supportingEvidence, item.ontologyRole, item.derivedMeaning]);
+    header.append(heading, range);
+    [
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Derived", label: item.result || "Semantic resolution", layer: "Semantic Resolution Explanation", storageKey: "ICE_RESOLUTION_EXPLANATIONS", scopePath: item.scopePath, rule: "Explanation records are constructed from existing semantic records; no new semantic conclusion is introduced." }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "explanation uses current record grounding only", sourceGrounding: item.sourceGrounding || item.sourceEvidence, supportingRecords: [...asArray(item.supportingEvidence), ...asArray(item.relationshipInputs), ...asArray(item.teachingInputs)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Result", item.result || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Evidence", item.sourceEvidence || "Not recorded.", { divineContext, sourceQuote: Boolean(item.sourcePhrase) }),
+      createPassageFunctionSection("Supporting Evidence", "", { list: asArray(item.supportingEvidence).slice(0, 5), hiddenCount: Math.max(0, asArray(item.supportingEvidence).length - 5), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Ontology Role", item.ontologyRole || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationship Inputs", "", { list: asArray(item.relationshipInputs).slice(0, 6), hiddenCount: Math.max(0, asArray(item.relationshipInputs).length - 6), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Teaching Inputs", "", { list: asArray(item.teachingInputs).slice(0, 6), hiddenCount: Math.max(0, asArray(item.teachingInputs).length - 6), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", list: asArray(item.relatedSemanticLayers), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderResolutionExplanations(term) {
+    const container = document.getElementById("resolutionExplanationCards");
+    const count = document.getElementById("resolutionExplanationCount");
+    if (!container || !count) return;
+    const records = resolutionExplanationRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(resolutionExplanationSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} explanation record(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No semantic resolution explanations derived yet.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Semantic Resolution Explanation",
+      [
+        `Derived records: ${records.length}`,
+        "Layer: ICE_RESOLUTION_EXPLANATIONS",
+        "Purpose: explain why I.C.E. resolved a result from existing source evidence, semantic roles, relationship inputs, teaching inputs, provenance, and evidence weight.",
+        "Boundary: derived explanation only; no new semantic conclusion, no crawling, and no freeform speculation."
+      ].join("\n"),
+      "derived explanation layer"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic resolution explanations match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createResolutionExplanationCard(item)));
+  }
   function createSemanticCoverageCard(rows) {
     const card = document.createElement("article");
     card.className = "study-card semantic-coverage-card";
@@ -8812,6 +9085,7 @@ createRevelationPartsSection(item.subEvents)
 
       renderVolumeContext(term);
       renderSemanticCoverage(term);
+      renderResolutionExplanations(term);
       renderSessionContinuityReview(term);
       renderKnowledgeGraph(term);
       renderLibraryAwareness(term);
@@ -8949,12 +9223,13 @@ createRevelationPartsSection(item.subEvents)
     const principleRelationshipsCount = countItems(studyData.principleRelationships);
     const characterInteractionsCount = countItems(studyData.characterInteractions);
     const knowledgeGraphCount = countItems(knowledgeGraphRecords());
+    const resolutionExplanationCount = countItems(resolutionExplanationRecords());
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + knowledgeGraphCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;

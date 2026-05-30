@@ -46,7 +46,19 @@ function provenanceLine(source, label, layer, key) {
 function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
   return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
 }
-function currentGitAnchor() {
+function resolutionExplanationLines(sorted, range, limit = 8) {
+  const values = sorted.flatMap((entry) => {
+    const samples = entry.bundle.samples || {};
+    return [
+      ...asArray(samples.teachingSemantics).slice(0, 2).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`),
+      ...asArray(samples.principleRelationships).slice(0, 2).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`),
+      ...asArray(samples.characterInteractions).slice(0, 2).map((item) => `${clean(item.sourceCharacter || "Source")} -> ${clean(item.targetCharacter || "Target")} | Relationship Inference | source character -> target character -> interaction type -> final interaction resolution`),
+      ...asArray(samples.knowledgeGraph).slice(0, 2).map((item) => `${clean(item.node || "Node")} = ${clean(item.type || "Semantic Node")} | Derived Semantic Evidence | existing semantic records -> node relationship aggregation -> scope preservation -> final graph node`)
+    ];
+  });
+  values.push(`${clean(range)} | Continuity Inference | analyzed pages -> continuing characters/themes -> session review -> final continuity resolution`);
+  return unique(values).slice(0, limit);
+}function currentGitAnchor() {
   try {
     return execSync("git log --oneline -1", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch (_error) {
@@ -171,6 +183,7 @@ function reportFromBundles(bundles) {
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
+    `Semantic Resolution Explanations: ${resolutionExplanationLines(sorted, range).length}`,
     "",
     "## Provenance Labels",
     ...list([
@@ -190,6 +203,9 @@ function reportFromBundles(bundles) {
       evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)))
     ], "no semantic evidence weights available"),
+    "",
+    "## Semantic Resolution Explanations",
+    ...list(resolutionExplanationLines(sorted, range), "no resolution explanations available"),
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",

@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.8 Semantic Resolution Explanation Layer implemented.
+- Added derived `ICE_RESOLUTION_EXPLANATIONS` Study Panel section.
+- Explanation records are constructed from existing ontology, reference role, teaching, principle relationship, character interaction, session continuity, library awareness, and knowledge graph records.
+- Each explanation shows result, source evidence, supporting evidence, ontology role, relationship inputs, teaching inputs, reasoning path, evidence weight, provenance, source phrase, derived meaning, App accuracy, and scope.
+- GPT Review Reports now include compact Semantic Resolution Explanations.
+- No semantic conclusions, crawling behavior, App accuracy values, or Strong's/POS behavior were changed.
+
+Latest pcdx update:
 - Phase 8.7 Semantic Evidence Weighting implemented.
 - Study Panel semantic cards now show Evidence Weight alongside Wording Provenance for key generated/source-supported layers.
 - Evidence types distinguish Direct Source Evidence, Supporting Source Evidence, Derived Semantic Evidence, Relationship Inference, Continuity Inference, and Library Awareness Classification.

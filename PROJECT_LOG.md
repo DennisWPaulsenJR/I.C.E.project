@@ -2,6 +2,36 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.8 Semantic Resolution Explanation Layer
+
+Instruction summary:
+- Add a derived explanation layer so users can inspect why I.C.E. resolved an item a certain way.
+- Build explanations from existing semantic records only, including source evidence, supporting evidence, ontology roles, relationship inputs, teaching inputs, reasoning path, evidence weight, and provenance.
+- Preserve provenance labels, evidence weights, source phrase vs derived meaning, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, and no crawling.
+
+Codex action summary:
+- Added Study Panel `Semantic Resolution Explanation` section backed by derived `ICE_RESOLUTION_EXPLANATIONS` records.
+- Built explanation records from existing ontology roles, reference roles, teaching semantics, principle relationships, character interactions, session continuity review, library awareness, and knowledge graph records.
+- Added compact Semantic Resolution Explanations to Study Panel GPT review exports and repo-side GPT review report generators.
+- Kept the layer explanation-only; no semantic interpretation results or stored App accuracy values were changed.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-05-30 - Phase 8.7 Semantic Evidence Weighting
 
 Instruction summary:

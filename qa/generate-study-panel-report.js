@@ -128,7 +128,14 @@ function provenanceLine(source, label, layer, key) {
 function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
   return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
 }
-function recommendedFocus(activeTitle) {
+function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
+  const teaching = asArray(samples.teachingSemantics).slice(0, 3).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`);
+  const relationships = asArray(samples.principleRelationships).slice(0, 3).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`);
+  const interactions = asArray(samples.characterInteractions).slice(0, 2).map((item) => `${clean(item.sourceCharacter || "Source")} -> ${clean(item.targetCharacter || "Target")} | Relationship Inference | source character -> target character -> interaction type -> final interaction resolution`);
+  const graph = asArray(samples.knowledgeGraph).slice(0, 2).map((item) => `${clean(item.node || "Node")} = ${clean(item.type || "Semantic Node")} | Derived Semantic Evidence | existing semantic records -> node relationship aggregation -> scope preservation -> final graph node`);
+  const library = asArray(libraryAwareness).slice(0, 2).map((item) => `${clean(item.principleFamily || "Library Awareness")} | Library Awareness Classification | current source grounding -> family classification -> future sources held open -> final library awareness label`);
+  return [...teaching, ...relationships, ...interactions, ...graph, ...library].slice(0, limit);
+}function recommendedFocus(activeTitle) {
   if (/Matthew 5/i.test(activeTitle)) {
     return [
       "check speaker resolution",
@@ -208,6 +215,7 @@ function reportFromBundle(bundle) {
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
+    `Semantic Resolution Explanations: ${resolutionExplanationLines(samples, libraryAwareness).length}`,
     "",
     "## Provenance Labels",
     ...list([
@@ -229,6 +237,9 @@ function reportFromBundle(bundle) {
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
       ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
     ], "no semantic evidence weights available"),
+    "",
+    "## Semantic Resolution Explanations",
+    ...list(resolutionExplanationLines(samples, libraryAwareness), "no resolution explanations available"),
     "",
     "## Semantic Coverage",
     ...list([
