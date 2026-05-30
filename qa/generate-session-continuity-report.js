@@ -91,7 +91,8 @@ function reportFromBundles(bundles) {
       ...asArray(bundleSamples.semanticContinuity).map((item) => `Continuity: ${item.continuedEntity || "entity"} | ${item.chapterTransition || entry.label}`),
       ...asArray(bundleSamples.characterInteractions).map((item) => `Interaction: ${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
       ...asArray(bundleSamples.teachingSemantics).map((item) => `Teaching: ${item.teachingTopic || item.blessing || item.commandment || "teaching"} | ${item.sourcePhrase || entry.label}`),
-      ...asArray(bundleSamples.principleRelationships).map((item) => `Principle: ${item.principle || "principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")}`)
+      ...asArray(bundleSamples.principleRelationships).map((item) => `Principle: ${item.principle || "principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")}`),
+      ...asArray(bundleSamples.knowledgeGraph).map((item) => `Knowledge Graph: ${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ")}`)
     ];
   });
   const continuingCharacters = unique([
@@ -144,6 +145,10 @@ function reportFromBundles(bundles) {
     `Analyzed pages: ${labels.join(", ") || "none recorded"}`,
     "Continuity: session continuity review generated from separate local QA bundles; no auto-crawling performed",
     "",
+    "## Scripture Knowledge Graph",
+    `Graph foundation nodes: ${counts.knowledgeGraph || 0}`,
+    "Purpose: connect existing semantic layers into reviewable graph node summaries; no visual graph rendering yet.",
+    "",
     "## Session Continuity Review",
     `Session Range: ${range}`,
     ...list(continuingCharacters.map((item) => `Continuing Character: ${item}`)),
@@ -158,9 +163,11 @@ function reportFromBundles(bundles) {
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
+    `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
     "",
     "## Semantic Coverage",
+    "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",
     "- Session Continuity Review: Pilot layer; grounded review generated from analyzed QA bundles",
     "- Cross-Chapter Continuity: Available from Matthew 2 and session range metadata",
     "- Teaching / Discourse Structure: Primary semantic layer for Matthew 5",
@@ -174,6 +181,7 @@ function reportFromBundles(bundles) {
     "- check continuing characters are grounded to analyzed chapter anchors",
     "- check teaching progression does not include unanalyzed pages",
     "- check current semantic layers support continuity claims",
+    "- check knowledge graph nodes do not imply ungrounded visual relationships",
     "",
     "## Selected Evidence",
     ...(unique(samples).slice(0, 8).map((line, index) => `${index + 1}. ${line}`)),

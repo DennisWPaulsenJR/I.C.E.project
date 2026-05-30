@@ -21,6 +21,44 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Add scripture knowledge graph foundation
+Summary:
+- Added `ICE_KNOWLEDGE_GRAPH` derived graph foundation for reviewable semantic nodes and relationships.
+- Derived graph nodes from Character Interactions, Principle Relationships, Teaching Semantics, Authority Paths, Semantic Continuity, Session Continuity Review, and Ontology Roles.
+- Added Study Panel Scripture Knowledge Graph cards plus compact GPT/repo report and QA bundle support.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA status.MD`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `node --check qa/matthew1-extension-qa.js` passed
+- `node --check qa/matthew2-extension-qa.js` passed
+- `node --check qa/matthew3-extension-qa.js` passed
+- `node --check qa/matthew5-extension-qa.js` passed
+- `git diff --check` passed
+
+Commit:
+- `pcdx: Add scripture knowledge graph foundation`
+
+Status:
+- Implementation ready for Matthew QA/review validation.
 ## 2026-05-30 00:00 - pcdx - Add session continuity review
 Summary:
 - Added `ICE_SESSION_CONTINUITY_REVIEW` as a derived review layer for analyzed page ranges.

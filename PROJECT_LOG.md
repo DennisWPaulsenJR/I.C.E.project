@@ -2,6 +2,43 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 8.6 Scripture Knowledge Graph Foundation
+
+Instruction summary:
+- Add a derived Scripture Knowledge Graph foundation that lets users review emerging graph nodes and relationships across existing semantic layers.
+- Connect Characters, Interactions, Principles, Teachings, Authority Paths, Continuity, Chapters, Session Scope, and Library/Principle families without visual graph rendering yet.
+- Preserve source phrase vs derived meaning, App accuracy wording, ontology hierarchy, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, and no crawling.
+
+Codex action summary:
+- Added `ICE_KNOWLEDGE_GRAPH` storage and builder support in the analysis pipeline.
+- Added graph node records derived from Character Interactions, Principle Relationships, Teaching Semantics, Origin / Authority Paths, Semantic Continuity, Session Continuity Review, and Ontology Roles.
+- Added Study Panel `Scripture Knowledge Graph` cards showing node, type, relationships, related nodes, related principles, source phrase, derived meaning, chapter scope, session scope, App accuracy, evidence, related semantic layers, and grounding.
+- Added Knowledge Graph to Semantic Coverage, compact exports, GPT Review Reports, QA bundle counts/samples, and session review reports.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
 ## 2026-05-30 - Phase 8.5b Session Continuity Review Architecture
 
 Instruction summary:

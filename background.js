@@ -39,6 +39,7 @@ const TEACHING_SEMANTICS_KEY = "ICE_TEACHING_SEMANTICS";
 const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
 const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
+const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -2376,6 +2377,290 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
   })];
 
   return records;
+}
+function knowledgeGraphRecord(record = {}) {
+  const key = [
+    "knowledge-graph",
+    record.sourceCaptureId || "",
+    record.node || "",
+    record.type || "",
+    record.chapterScope || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "knowledge.graph.current_scope",
+    node: record.node || "",
+    type: record.type || "Semantic Node",
+    relationships: record.relationships || [],
+    relatedNodes: record.relatedNodes || [],
+    relatedPrinciples: record.relatedPrinciples || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    chapterScope: record.chapterScope || "Current source",
+    sessionScope: record.sessionScope || "Current session",
+    evidence: record.evidence || [],
+    relatedOntologyRoles: record.relatedOntologyRoles || [],
+    relatedRelationshipRoles: record.relatedRelationshipRoles || [],
+    relatedCharacterInteractions: record.relatedCharacterInteractions || [],
+    relatedPrincipleRelationships: record.relatedPrincipleRelationships || [],
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    relatedAuthorityPaths: record.relatedAuthorityPaths || [],
+    relatedContinuity: record.relatedContinuity || [],
+    relatedSessionContinuityReview: record.relatedSessionContinuityReview || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "derived from existing source-grounded semantic layers"
+  };
+}
+
+function createKnowledgeGraph(captures = [], ontologyRoles = [], entityRelationRoles = [], characterInteractions = [], principleRelationships = [], teachingSemantics = [], originAuthorityPaths = [], semanticContinuity = [], sessionContinuityReview = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const chapterScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const sessionScope = (sessionContinuityReview || [])[0]?.sessionRange || chapterScope;
+  const records = [];
+  const byNode = new Map();
+  const normalizeNode = (value = "") => normalizeWhitespace(value || "");
+  const idList = (items = [], fallback) => (items || []).map((item) => item.id || item[fallback] || "").filter(Boolean);
+  const ontologyIdsFor = (node) => (ontologyRoles || [])
+    .filter((item) => normalizeNode(item.semanticItem || item.entityName || item.name).toLowerCase() === normalizeNode(node).toLowerCase())
+    .map((item) => item.id || item.semanticItem)
+    .filter(Boolean);
+  const addNode = (node, type, update = {}) => {
+    const name = normalizeNode(node);
+    if (!name) return null;
+    const key = `${type}|${name}`.toLowerCase();
+    if (!byNode.has(key)) {
+      byNode.set(key, {
+        node: name,
+        type,
+        relationships: [],
+        relatedNodes: [],
+        relatedPrinciples: [],
+        sourcePhrase: "",
+        derivedMeaning: "",
+        evidence: [],
+        relatedOntologyRoles: ontologyIdsFor(name),
+        relatedRelationshipRoles: [],
+        relatedCharacterInteractions: [],
+        relatedPrincipleRelationships: [],
+        relatedTeachingSemantics: [],
+        relatedAuthorityPaths: [],
+        relatedContinuity: [],
+        relatedSessionContinuityReview: idList(sessionContinuityReview, "reviewType"),
+        confidence: "probable",
+        sourceGrounding: "derived from existing source-grounded semantic layers"
+      });
+    }
+    const item = byNode.get(key);
+    const pushUnique = (field, values) => {
+      for (const value of (Array.isArray(values) ? values : [values]).map((entry) => normalizeNode(entry)).filter(Boolean)) {
+        if (!item[field].includes(value)) item[field].push(value);
+      }
+    };
+    pushUnique("relationships", update.relationships || []);
+    pushUnique("relatedNodes", update.relatedNodes || []);
+    pushUnique("relatedPrinciples", update.relatedPrinciples || []);
+    pushUnique("evidence", update.evidence || []);
+    pushUnique("relatedOntologyRoles", update.relatedOntologyRoles || []);
+    pushUnique("relatedRelationshipRoles", update.relatedRelationshipRoles || []);
+    pushUnique("relatedCharacterInteractions", update.relatedCharacterInteractions || []);
+    pushUnique("relatedPrincipleRelationships", update.relatedPrincipleRelationships || []);
+    pushUnique("relatedTeachingSemantics", update.relatedTeachingSemantics || []);
+    pushUnique("relatedAuthorityPaths", update.relatedAuthorityPaths || []);
+    pushUnique("relatedContinuity", update.relatedContinuity || []);
+    pushUnique("relatedSessionContinuityReview", update.relatedSessionContinuityReview || []);
+    if (update.sourcePhrase && !item.sourcePhrase) item.sourcePhrase = update.sourcePhrase;
+    if (update.derivedMeaning && !item.derivedMeaning) item.derivedMeaning = update.derivedMeaning;
+    if (update.confidence === "explicit" || item.confidence !== "explicit") item.confidence = update.confidence || item.confidence;
+    if (update.sourceGrounding) item.sourceGrounding = update.sourceGrounding;
+    return item;
+  };
+
+  for (const interaction of characterInteractions || []) {
+    const source = interaction.sourceCharacter || "";
+    const target = interaction.targetCharacter || "";
+    const interactionType = interaction.interactionType || "interacts with";
+    const relation = `${interactionType} -> ${target}`;
+    const reverseRelation = `${source} -> ${interactionType}`;
+    const graphType = /multitudes|people|disciples|wise men/i.test(source) ? "Group / Character" : /THE LORD|JESUS|HOLY SPIRIT/i.test(source) ? "Authority / Character" : "Character";
+    const targetType = /multitudes|people|disciples|wise men/i.test(target) ? "Group / Character" : /THE LORD|JESUS|HOLY SPIRIT|CHILD/i.test(target) ? "Authority / Character" : "Character";
+    addNode(source, graphType, {
+      relationships: [relation],
+      relatedNodes: [target],
+      sourcePhrase: interaction.sourcePhrase,
+      derivedMeaning: interaction.derivedMeaning,
+      evidence: interaction.evidence,
+      relatedCharacterInteractions: [interaction.id || interactionType],
+      relatedOntologyRoles: interaction.relatedOntologyRoles,
+      relatedRelationshipRoles: interaction.relatedRelationshipRoles,
+      relatedAuthorityPaths: interaction.relatedAuthorityPaths,
+      relatedTeachingSemantics: interaction.relatedTeachingSemantics,
+      confidence: interaction.confidence,
+      sourceGrounding: interaction.sourceGrounding
+    });
+    addNode(target, targetType, {
+      relationships: [reverseRelation],
+      relatedNodes: [source],
+      sourcePhrase: interaction.sourcePhrase,
+      derivedMeaning: interaction.derivedMeaning,
+      evidence: interaction.evidence,
+      relatedCharacterInteractions: [interaction.id || interactionType],
+      relatedOntologyRoles: interaction.relatedOntologyRoles,
+      relatedRelationshipRoles: interaction.relatedRelationshipRoles,
+      relatedAuthorityPaths: interaction.relatedAuthorityPaths,
+      relatedTeachingSemantics: interaction.relatedTeachingSemantics,
+      confidence: interaction.confidence,
+      sourceGrounding: interaction.sourceGrounding
+    });
+  }
+
+  for (const relationship of principleRelationships || []) {
+    const principle = relationship.principle || "";
+    const related = relationship.relatedPrinciples || [];
+    addNode(principle, "Principle", {
+      relationships: related.map((item) => `${relationship.relationshipType || "related"} -> ${item}`),
+      relatedNodes: related,
+      relatedPrinciples: related,
+      sourcePhrase: relationship.sourcePhrase,
+      derivedMeaning: relationship.derivedMeaning,
+      evidence: relationship.evidence,
+      relatedPrincipleRelationships: [relationship.id || relationship.principle],
+      relatedTeachingSemantics: relationship.relatedTeachingSemantics,
+      confidence: relationship.confidence,
+      sourceGrounding: relationship.sourceGrounding
+    });
+    for (const relatedPrinciple of related) {
+      addNode(relatedPrinciple, "Principle", {
+        relationships: [`related with -> ${principle}`],
+        relatedNodes: [principle],
+        relatedPrinciples: [principle],
+        sourcePhrase: relationship.sourcePhrase,
+        evidence: relationship.evidence,
+        relatedPrincipleRelationships: [relationship.id || relationship.principle],
+        confidence: relationship.confidence,
+        sourceGrounding: relationship.sourceGrounding
+      });
+    }
+  }
+
+  for (const teaching of teachingSemantics || []) {
+    const topic = teaching.teachingTopic || teaching.blessing || teaching.commandment || teaching.principle || teaching.discourseType || "Teaching / Discourse";
+    const relatedPrinciples = [teaching.principle, teaching.blessing, teaching.commandment, teaching.promise, teaching.warning]
+      .map((value) => normalizeNode(value))
+      .filter(Boolean);
+    addNode(topic, "Teaching", {
+      relationships: relatedPrinciples.map((item) => `teaches / frames -> ${item}`),
+      relatedNodes: [teaching.speaker, teaching.audience, ...relatedPrinciples],
+      relatedPrinciples,
+      sourcePhrase: teaching.sourcePhrase,
+      derivedMeaning: teaching.derivedMeaning,
+      evidence: teaching.evidence,
+      relatedTeachingSemantics: [teaching.id || topic],
+      confidence: teaching.confidence,
+      sourceGrounding: teaching.sourceGrounding
+    });
+    if (teaching.speaker) {
+      addNode(teaching.speaker, /JESUS/i.test(teaching.speaker) ? "Authority / Character" : "Character", {
+        relationships: [`teaches -> ${teaching.audience || topic}`],
+        relatedNodes: [teaching.audience, topic].filter(Boolean),
+        relatedPrinciples,
+        sourcePhrase: teaching.sourcePhrase,
+        evidence: teaching.evidence,
+        relatedTeachingSemantics: [teaching.id || topic],
+        confidence: teaching.confidence,
+        sourceGrounding: teaching.sourceGrounding
+      });
+    }
+  }
+
+  for (const path of originAuthorityPaths || []) {
+    const origin = path.origin || path.authoritySource || "";
+    const recipient = path.recipient || path.target || path.response || "";
+    addNode(origin, "Authority Path", {
+      relationships: [`${path.pathType || "authority path"} -> ${recipient || path.messenger || "recipient"}`],
+      relatedNodes: [path.messenger, recipient].filter(Boolean),
+      sourcePhrase: path.sourcePhrase,
+      derivedMeaning: path.derivedMeaning,
+      evidence: path.evidence,
+      relatedAuthorityPaths: [path.id || path.pathType],
+      confidence: path.confidence,
+      sourceGrounding: path.sourceGrounding
+    });
+  }
+
+  for (const continuity of semanticContinuity || []) {
+    addNode(continuity.chapterTransition || continuity.continuedEntity, "Continuity", {
+      relationships: [`continues -> ${continuity.continuedEntity || "semantic continuity"}`],
+      relatedNodes: [continuity.continuedEntity, ...(continuity.authorityContinuity || [])],
+      sourcePhrase: continuity.sourcePhrase || continuity.chapterTransition,
+      derivedMeaning: continuity.continuedMissionPurpose || continuity.continuityType,
+      evidence: continuity.evidence,
+      relatedContinuity: [continuity.id || continuity.continuityType],
+      relatedOntologyRoles: continuity.relatedOntologyRoles,
+      relatedAuthorityPaths: continuity.relatedAuthorityPaths,
+      confidence: continuity.confidence,
+      sourceGrounding: continuity.sourceGrounding
+    });
+  }
+
+  for (const review of sessionContinuityReview || []) {
+    addNode(review.sessionRange, "Session Scope", {
+      relationships: [
+        ...(review.continuingCharacters || []).map((item) => `continues character -> ${item}`),
+        ...(review.continuingPrincipleFamilies || []).map((item) => `continues principle family -> ${item}`)
+      ],
+      relatedNodes: [...(review.continuingCharacters || []), ...(review.continuingThemes || [])],
+      relatedPrinciples: review.continuingPrincipleFamilies,
+      sourcePhrase: review.sourcePhrase,
+      derivedMeaning: review.derivedMeaning,
+      evidence: review.evidence,
+      relatedSessionContinuityReview: [review.id || review.reviewType],
+      confidence: review.confidence,
+      sourceGrounding: review.sourceGrounding
+    });
+  }
+
+  for (const role of ontologyRoles || []) {
+    addNode(role.semanticItem || role.entityName || role.name, role.ontologyClass || role.classLabel || "Ontology Role", {
+      relationships: [role.semanticRole || role.ontologyRole || role.ontologyClass || "classified as ontology role"],
+      sourcePhrase: role.sourcePhrase,
+      derivedMeaning: role.derivedMeaning,
+      evidence: role.evidence,
+      relatedOntologyRoles: [role.id || role.semanticItem],
+      confidence: role.confidence,
+      sourceGrounding: role.sourceGrounding
+    });
+  }
+
+  for (const item of byNode.values()) {
+    if (!item.relationships.length && !item.relatedNodes.length) continue;
+    records.push(knowledgeGraphRecord({
+      sourceCaptureId,
+      sourceContext: context,
+      scopePath: `knowledge.graph.${textHash(`${item.type}|${item.node}`)}`,
+      chapterScope,
+      sessionScope,
+      ...item,
+      relationships: item.relationships.slice(0, 12),
+      relatedNodes: item.relatedNodes.slice(0, 12),
+      relatedPrinciples: item.relatedPrinciples.slice(0, 8),
+      evidence: item.evidence.slice(0, 8),
+      relatedOntologyRoles: item.relatedOntologyRoles.slice(0, 12),
+      relatedRelationshipRoles: item.relatedRelationshipRoles.slice(0, 12),
+      relatedCharacterInteractions: item.relatedCharacterInteractions.slice(0, 12),
+      relatedPrincipleRelationships: item.relatedPrincipleRelationships.slice(0, 12),
+      relatedTeachingSemantics: item.relatedTeachingSemantics.slice(0, 12),
+      relatedAuthorityPaths: item.relatedAuthorityPaths.slice(0, 12),
+      relatedContinuity: item.relatedContinuity.slice(0, 12),
+      relatedSessionContinuityReview: item.relatedSessionContinuityReview.slice(0, 12)
+    }));
+  }
+
+  return records.slice(0, 80);
 }
 function principleRelationshipRecord(record = {}) {
   const key = [
@@ -6736,6 +7021,17 @@ async function runFullAnalysisPipeline(reason = "manual") {
       teachingSemantics,
       entityRelationRoles
     );
+    const knowledgeGraph = createKnowledgeGraph(
+      captures,
+      ontologyRoles,
+      entityRelationRoles,
+      characterInteractions,
+      principleRelationships,
+      teachingSemantics,
+      originAuthorityPaths,
+      semanticContinuity,
+      sessionContinuityReview
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -6759,7 +7055,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       teachingSemantics,
       principleRelationships,
       characterInteractions,
-      sessionContinuityReview
+      sessionContinuityReview,
+      knowledgeGraph
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -6784,7 +7081,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       teachingSemantics,
       principleRelationships,
       characterInteractions,
-      sessionContinuityReview
+      sessionContinuityReview,
+      knowledgeGraph
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -6813,7 +7111,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       teachingSemantics: teachingSemantics.length,
       principleRelationships: principleRelationships.length,
       characterInteractions: characterInteractions.length,
-      sessionContinuityReview: sessionContinuityReview.length
+      sessionContinuityReview: sessionContinuityReview.length,
+      knowledgeGraph: knowledgeGraph.length
     };
     const status = {
       reason,
@@ -6844,7 +7143,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-8.5b-session-continuity-review",
+      analysisBuildMarker: "phase-8.6-knowledge-graph-foundation",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -6863,6 +7162,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleRelationshipCount: principleRelationships.length,
       characterInteractionCount: characterInteractions.length,
       sessionContinuityReviewCount: sessionContinuityReview.length,
+      knowledgeGraphCount: knowledgeGraph.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -6932,6 +7232,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [PRINCIPLE_RELATIONSHIPS_KEY]: principleRelationships,
       [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
       [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
+      [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

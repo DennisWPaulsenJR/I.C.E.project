@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     principleRelationships: "ICE_PRINCIPLE_RELATIONSHIPS",
     characterInteractions: "ICE_CHARACTER_INTERACTIONS",
     sessionContinuityReview: "ICE_SESSION_CONTINUITY_REVIEW",
+    knowledgeGraph: "ICE_KNOWLEDGE_GRAPH",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -394,6 +395,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.continuingCharacters,
       item.continuingAuthorityPaths,
       item.continuingCharacterInteractions,
+      item.node,
+      item.relatedNodes,
+      item.relatedPrinciples,
       item.entities,
       item.semanticItems,
       item.sourceEntity,
@@ -978,6 +982,119 @@ document.addEventListener("DOMContentLoaded", async () => {
       sourceGrounding: "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages."
     }];
   }
+  function knowledgeGraphRecords() {
+    const stored = asArray(studyData.knowledgeGraph);
+    if (stored.length) return stored;
+    const records = [];
+    const byNode = new Map();
+    const activePage = activeSourcePageRecord();
+    const chapterScope = activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Current source";
+    const sessionReview = sessionContinuityReviewRecords()[0] || null;
+    const sessionScope = sessionReview?.sessionRange || chapterScope;
+    const uniquePush = (target, field, values) => {
+      asArray(values).map((value) => normalizeText(value)).filter(Boolean).forEach((value) => {
+        if (!target[field].includes(value)) target[field].push(value);
+      });
+    };
+    const addNode = (node, type, update = {}) => {
+      const label = normalizeText(node);
+      if (!label) return;
+      const key = `${type}|${label}`.toLowerCase();
+      if (!byNode.has(key)) {
+        byNode.set(key, {
+          id: `knowledge-graph-${key.replace(/[^a-z0-9]+/g, "-")}`,
+          node: label,
+          type,
+          relationships: [],
+          relatedNodes: [],
+          relatedPrinciples: [],
+          sourcePhrase: "",
+          derivedMeaning: "",
+          chapterScope,
+          sessionScope,
+          evidence: [],
+          confidence: "probable",
+          sourceGrounding: "derived from existing source-grounded semantic layers"
+        });
+      }
+      const item = byNode.get(key);
+      uniquePush(item, "relationships", update.relationships || []);
+      uniquePush(item, "relatedNodes", update.relatedNodes || []);
+      uniquePush(item, "relatedPrinciples", update.relatedPrinciples || []);
+      uniquePush(item, "evidence", update.evidence || []);
+      if (update.sourcePhrase && !item.sourcePhrase) item.sourcePhrase = update.sourcePhrase;
+      if (update.derivedMeaning && !item.derivedMeaning) item.derivedMeaning = update.derivedMeaning;
+      if (update.confidence === "explicit" || item.confidence !== "explicit") item.confidence = update.confidence || item.confidence;
+      if (update.sourceGrounding) item.sourceGrounding = update.sourceGrounding;
+    };
+
+    asArray(studyData.characterInteractions).forEach((interaction) => {
+      const source = interaction.sourceCharacter || "";
+      const target = interaction.targetCharacter || "";
+      const type = /multitudes|people|disciples|wise men/i.test(source) ? "Group / Character" : /THE LORD|JESUS|HOLY SPIRIT/i.test(source) ? "Authority / Character" : "Character";
+      addNode(source, type, {
+        relationships: [`${interaction.interactionType || "interacts with"} -> ${target}`],
+        relatedNodes: [target],
+        sourcePhrase: interaction.sourcePhrase,
+        derivedMeaning: interaction.derivedMeaning,
+        evidence: interaction.evidence,
+        confidence: interaction.confidence,
+        sourceGrounding: interaction.sourceGrounding
+      });
+    });
+    asArray(studyData.principleRelationships).forEach((relationship) => {
+      const related = asArray(relationship.relatedPrinciples);
+      addNode(relationship.principle, "Principle", {
+        relationships: related.map((item) => `${relationship.relationshipType || "related"} -> ${item}`),
+        relatedNodes: related,
+        relatedPrinciples: related,
+        sourcePhrase: relationship.sourcePhrase,
+        derivedMeaning: relationship.derivedMeaning,
+        evidence: relationship.evidence,
+        confidence: relationship.confidence,
+        sourceGrounding: relationship.sourceGrounding
+      });
+    });
+    asArray(studyData.teachingSemantics).forEach((teaching) => {
+      const topic = teaching.teachingTopic || teaching.blessing || teaching.commandment || teaching.principle || teaching.discourseType || "Teaching / Discourse";
+      const relatedPrinciples = [teaching.principle, teaching.blessing, teaching.commandment, teaching.promise, teaching.warning].map((value) => normalizeText(value)).filter(Boolean);
+      addNode(topic, "Teaching", {
+        relationships: relatedPrinciples.map((item) => `teaches / frames -> ${item}`),
+        relatedNodes: [teaching.speaker, teaching.audience, ...relatedPrinciples],
+        relatedPrinciples,
+        sourcePhrase: teaching.sourcePhrase,
+        derivedMeaning: teaching.derivedMeaning,
+        evidence: teaching.evidence,
+        confidence: teaching.confidence,
+        sourceGrounding: teaching.sourceGrounding
+      });
+    });
+    if (sessionReview) {
+      addNode(sessionReview.sessionRange, "Session Scope", {
+        relationships: [
+          ...asArray(sessionReview.continuingCharacters).map((item) => `continues character -> ${item}`),
+          ...asArray(sessionReview.continuingPrincipleFamilies).map((item) => `continues principle family -> ${item}`)
+        ],
+        relatedNodes: [...asArray(sessionReview.continuingCharacters), ...asArray(sessionReview.continuingThemes)],
+        relatedPrinciples: sessionReview.continuingPrincipleFamilies,
+        sourcePhrase: sessionReview.sourcePhrase,
+        derivedMeaning: sessionReview.derivedMeaning,
+        evidence: sessionReview.evidence,
+        confidence: sessionReview.confidence,
+        sourceGrounding: sessionReview.sourceGrounding
+      });
+    }
+    byNode.forEach((item) => {
+      if (item.relationships.length || item.relatedNodes.length) records.push({
+        ...item,
+        relationships: item.relationships.slice(0, 12),
+        relatedNodes: item.relatedNodes.slice(0, 12),
+        relatedPrinciples: item.relatedPrinciples.slice(0, 8),
+        evidence: item.evidence.slice(0, 8)
+      });
+    });
+    return records.slice(0, 80);
+  }
   function suggestedNextPageLabel(page) {
     const chapterNumber = Number(page?.sourceCaptureChapter || page?.chapter || 0);
     const book = page?.sourceCaptureBook || page?.book || "";
@@ -1035,6 +1152,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Principle Relationships", countItems(studyData.principleRelationships)],
       ["Character Interactions", countItems(studyData.characterInteractions)],
       ["Session Continuity Review", countItems(sessionContinuityReviewRecords())],
+      ["Scripture Knowledge Graph", countItems(knowledgeGraphRecords())],
       ["Library Awareness", countItems(libraryAwarenessRecords())]
     ];
   }
@@ -1092,6 +1210,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       return `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${passageFunctionTitle(item.interactionType || "interaction")} | ${displayConfidence(item.confidence || "probable")}`;
     });
   }
+  function knowledgeGraphSummaryLines(limit = 6) {
+    return knowledgeGraphRecords().slice(0, limit).map((item) => {
+      const relations = asArray(item.relationships).slice(0, 2).join("; ") || "relationships awaiting grounded layers";
+      return `${item.node || "Node"} | ${item.type || "Semantic Node"} | ${relations} | ${displayConfidence(item.confidence || "probable")}`;
+    });
+  }
+
   function sessionContinuityReviewSummaryLines(limit = 5) {
     return sessionContinuityReviewRecords().slice(0, limit).map((item) => {
       const range = item.sessionRange || "Current session";
@@ -1161,6 +1286,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const title = normalizeText(focused?.querySelector("h2")?.textContent || "");
       if (title) return title;
     }
+    if (countItems(knowledgeGraphRecords()) > 0) return "Scripture Knowledge Graph";
     if (countItems(sessionContinuityReviewRecords()) > 0) return "Session Continuity Review";
     if (countItems(studyData.teachingSemantics) > 0) return "Teaching / Discourse Structure";
     if (countItems(studyData.principleRelationships) > 0) return "Principle Relationships";
@@ -1189,6 +1315,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     asArray(studyData.characterInteractions).forEach((item) => {
       if (item.sourceCharacter || item.targetCharacter) values.push(`${item.sourceCharacter || "source"} -> ${item.targetCharacter || "target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
+    knowledgeGraphRecords().forEach((item) => {
+      if (item.node) values.push(`${item.node} | ${asArray(item.relationships).slice(0, 2).join("; ") || "knowledge graph node"}`);
+    });
     sessionContinuityReviewRecords().forEach((item) => {
       if (item.sessionRange) values.push(`${item.sessionRange} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"}`);
     });
@@ -1205,6 +1334,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         "check audience classification",
         "check teaching block and source-text grounding",
         "check reference role filtering"
+      ];
+    }
+    if (/knowledge graph/i.test(section)) {
+      return [
+        "check graph nodes reuse existing semantic layers",
+        "check relationships are grounded",
+        "check chapter and session scope",
+        "check no visual graph assumptions are implied"
       ];
     }
     if (/session continuity/i.test(section)) {
@@ -1249,6 +1386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       `principleRelationships: ${countItems(studyData.principleRelationships)}`,
       `characterInteractions: ${countItems(studyData.characterInteractions)}`,
       `sessionContinuityReview: ${countItems(sessionContinuityReviewRecords())}`,
+      `knowledgeGraph: ${countItems(knowledgeGraphRecords())}`,
       `libraryAwareness: ${countItems(libraryAwarenessRecords())}`,
       `scopeMissing: ${studyData.scopeIntegrity?.missingScopeCount || 0}`
     ];
@@ -1258,6 +1396,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function currentReviewQuestion() {
     const section = relevantHandoffSection();
     if (/teaching|discourse/i.test(section)) return "Is the teaching/discourse structure resolving speaker, audience, teaching blocks, and grounding correctly?";
+    if (/knowledge graph/i.test(section)) return "Does the Scripture Knowledge Graph connect existing semantic layers without fabricating relationships?";
     if (/session continuity/i.test(section)) return "Does the current study range preserve grounded continuity across analyzed pages without fabricating unanalyzed links?";
     if (/principle/i.test(section)) return "Are principle relationships grounded and classified with the right relationship type?";
     if (/movement/i.test(section)) return "Are movement/location records grounded to the active source and purpose?";
@@ -1340,6 +1479,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       "## Semantic Coverage",
       ...markdownList(semanticCoverageSummaryLines(10)),
       "",
+      "## Scripture Knowledge Graph",
+      ...markdownList(knowledgeGraphSummaryLines(6), "no knowledge graph records available"),
+      "",
       "## Session Continuity Review",
       ...markdownList(sessionContinuityReviewSummaryLines(5), "no session continuity review records available"),
       "",
@@ -1357,7 +1499,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         ...teachingSummaryLines(6),
         ...principleRelationshipSummaryLines(5),
         ...characterInteractionSummaryLines(5),
-        ...sessionContinuityReviewSummaryLines(5)
+        ...sessionContinuityReviewSummaryLines(5),
+        ...knowledgeGraphSummaryLines(6)
       ], "no teaching/principle summaries available"),
       "",
       "## Selected Evidence",
@@ -1739,6 +1882,86 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;
+  }
+
+  function knowledgeGraphSearchText(item = {}) {
+    return [
+      item.node,
+      item.type,
+      item.relationships,
+      item.relatedNodes,
+      item.relatedPrinciples,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.chapterScope,
+      item.sessionScope,
+      item.evidence,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createKnowledgeGraphCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card knowledge-graph-card";
+    assignSemanticCardTarget(card, "knowledgeGraph", item, item.node || item.id || "knowledge-graph");
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = item.node || "Knowledge Graph Node";
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.type || "Semantic Node", displayConfidence(item.confidence || "probable")].join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.node, item.relationships, item.relatedNodes, item.sourceGrounding]);
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Node", item.node || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Type", item.type || "Semantic Node", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Relationships", "", { list: asArray(item.relationships), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Nodes", "", { list: asArray(item.relatedNodes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", "", { list: asArray(item.relatedPrinciples), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Chapter Scope", item.chapterScope || "Current source", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Session Scope", item.sessionScope || "Current session", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence).slice(0, 6), hiddenCount: Math.max(0, asArray(item.evidence).length - 6), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "knowledgeGraph"), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderKnowledgeGraph(term) {
+    const container = document.getElementById("knowledgeGraphCards");
+    const count = document.getElementById("knowledgeGraphCount");
+    if (!container || !count) return;
+    const records = knowledgeGraphRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(knowledgeGraphSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} graph node(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No Scripture Knowledge Graph records derived yet.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Scripture Knowledge Graph",
+      [
+        `Graph nodes: ${records.length}`,
+        "Layer: ICE_KNOWLEDGE_GRAPH",
+        "Purpose: connect characters, interactions, principles, teachings, authority paths, continuity, chapters, and library/session families.",
+        "Boundary: derived graph foundation only; no visual graph rendering, no auto-crawling, and no fabricated relationships."
+      ].join("\n"),
+      "derived graph foundation"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No knowledge graph records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createKnowledgeGraphCard(item)));
   }
 
   function renderSessionContinuityReview(term) {
@@ -2130,6 +2353,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.principleRelationships,
       STORAGE_KEYS.characterInteractions,
+      STORAGE_KEYS.sessionContinuityReview,
+      STORAGE_KEYS.knowledgeGraph,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -2180,6 +2405,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.teachingSemantics,
       STORAGE_KEYS.principleRelationships,
       STORAGE_KEYS.characterInteractions,
+      STORAGE_KEYS.sessionContinuityReview,
+      STORAGE_KEYS.knowledgeGraph,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -5577,6 +5804,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       principleRelationship: "principleRelationshipsSection",
       characterInteraction: "interactionsSection",
       libraryAwareness: "libraryAwarenessSection",
+      knowledgeGraph: "knowledgeGraphSection",
       sessionContinuityReview: "sessionContinuityReviewSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -5896,6 +6124,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           semanticCardKey("characterInteraction", interaction, `${interaction.sourceCharacter || ""}-${interaction.targetCharacter || ""}-${interaction.interactionType || ""}`)
         )));
     }
+    if (mode !== "knowledgeGraph") {
+      knowledgeGraphRecords()
+        .filter((graph) => semanticEntityOverlap(graph, item) || matchesSearchQuery(knowledgeGraphSearchText(graph), semanticRecordEntityNames(item).join(" ")))
+        .forEach((graph) => links.push(semanticNavItem(
+          `Knowledge Graph: ${graph.node || "node"} | ${graph.type || "Semantic Node"}`,
+          semanticSectionForNav("knowledgeGraph"),
+          graph.node || graph.type || "knowledge graph",
+          semanticCardKey("knowledgeGraph", graph, graph.node || graph.id)
+        )));
+    }
+
     if (mode !== "sessionContinuityReview") {
       sessionContinuityReviewRecords()
         .filter((review) => semanticEntityOverlap(review, item) || matchesSearchQuery(sessionContinuityReviewSearchText(review), semanticRecordEntityNames(item).join(" ")))
@@ -8501,6 +8740,7 @@ createRevelationPartsSection(item.subEvents)
       renderVolumeContext(term);
       renderSemanticCoverage(term);
       renderSessionContinuityReview(term);
+      renderKnowledgeGraph(term);
       renderLibraryAwareness(term);
       renderTeachingSemantics(term);
       renderPrincipleRelationships(term);
@@ -8635,12 +8875,13 @@ createRevelationPartsSection(item.subEvents)
     const teachingSemanticsCount = countItems(studyData.teachingSemantics);
     const principleRelationshipsCount = countItems(studyData.principleRelationships);
     const characterInteractionsCount = countItems(studyData.characterInteractions);
+    const knowledgeGraphCount = countItems(knowledgeGraphRecords());
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + knowledgeGraphCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -8698,7 +8939,8 @@ createRevelationPartsSection(item.subEvents)
         `movementSemantics: ${movementSemanticsCount}`,
         `semanticCausality: ${semanticCausalityCount}`,
         `teachingSemantics: ${teachingSemanticsCount}`,
-        `principleRelationships: ${principleRelationshipsCount}`
+        `principleRelationships: ${principleRelationshipsCount}`,
+        `knowledgeGraph: ${knowledgeGraphCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

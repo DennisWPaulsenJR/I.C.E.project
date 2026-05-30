@@ -6,6 +6,22 @@ Last updated: 2026-05-30 by `pcdx`.
 
 Current operational state:
 Latest validation update:
+- Phase 8.6 Scripture Knowledge Graph Foundation passed syntax, whitespace, Matthew pages QA, and session review report generation.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- Knowledge Graph counts: Matthew 1 = 16, Matthew 2 = 18, Matthew 3 = 7, Matthew 5 = 28, session report aggregate = 69.
+- Latest session report remains grounded to analyzed pages Matthew 1, Matthew 2, Matthew 3, and Matthew 5; Matthew 4 is not included because no Matthew 4 QA/analyzed page was run.
+
+Latest validation update:
 - Phase 8.5b Session Continuity Review Architecture passed syntax, package JSON, whitespace, Matthew 1/2/3/5 QA, combined Matthew pages QA, and session review report generation.
 - `node --check background.js` passed.
 - `node --check study.js` passed.

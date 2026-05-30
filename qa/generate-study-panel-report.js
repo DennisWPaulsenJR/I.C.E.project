@@ -151,6 +151,7 @@ function reportFromBundle(bundle) {
   const relationships = asArray(samples.principleRelationships);
   const characterInteractions = asArray(samples.characterInteractions);
   const sessionContinuityReview = asArray(samples.sessionContinuityReview);
+  const knowledgeGraph = asArray(samples.knowledgeGraph);
   const source = teaching[0]?.sourceContext || {};
   const activeTitle = source.sourceTitle || bundle.pageTitle || "Matthew 5";
   const activeUrl = source.sourceUrl || bundle.url || "Not recorded";
@@ -158,7 +159,8 @@ function reportFromBundle(bundle) {
     ...teaching.slice(0, 4).map((item) => `${item.sourcePhrase || item.teachingTopic || "Teaching"} | ${item.derivedMeaning || "derived meaning not recorded"}`),
     ...relationships.slice(0, 3).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | ${item.sourcePhrase || "source phrase not recorded"}`),
     ...characterInteractions.slice(0, 3).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`),
-    ...sessionContinuityReview.slice(0, 2).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"}`)
+    ...sessionContinuityReview.slice(0, 2).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"}`),
+    ...knowledgeGraph.slice(0, 3).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ") || "relationships not recorded"}`)
   ];
   const adapterName = clean(activeAdapter.adapterName || "lds_scripture_adapter");
   const libraryAwareness = libraryAwarenessRecords(samples, activeTitle);
@@ -198,6 +200,7 @@ function reportFromBundle(bundle) {
     `Principle Relationships: ${counts.principleRelationships || 0}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
+    `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
     "",
     "## Semantic Coverage",
@@ -206,10 +209,14 @@ function reportFromBundle(bundle) {
       counts.principleRelationships ? "Principle Relationships: Pilot layer; grounded records found" : "Principle Relationships: Pilot layer; no grounded records found",
       counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
+      (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
       libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
     ]),
+    "",
+    "## Scripture Knowledge Graph",
+    ...list(knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 3).join("; ") || "relationships awaiting grounding"}`), "no knowledge graph records available"),
     "",
     "## Session Continuity Review",
     ...list(sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 5).join("; ") || "progression awaiting session records"}`), "no session continuity review records available"),
@@ -228,7 +235,8 @@ function reportFromBundle(bundle) {
       ...teaching.slice(0, 6).map((item) => `${item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType} | ${item.verseRange || item.scopePath || "current scope"} | App accuracy: ${item.confidence || "probable"}`),
       ...relationships.slice(0, 5).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | App accuracy: ${item.confidence || "probable"}`),
       ...characterInteractions.slice(0, 5).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | App accuracy: ${item.confidence || "probable"}`),
-      ...sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"} | App accuracy: ${item.confidence || "probable"}`)
+      ...sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"} | App accuracy: ${item.confidence || "probable"}`),
+      ...knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | App accuracy: ${item.confidence || "probable"}`)
     ], "no derived teaching/principle summaries available"),
     "",
     "## Selected Evidence",
@@ -242,6 +250,7 @@ function reportFromBundle(bundle) {
     `principleRelationships: ${counts.principleRelationships || 0}`,
     `characterInteractions: ${counts.characterInteractions || 0}`,
     `sessionContinuityReview: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
+    `knowledgeGraph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `libraryAwareness: ${libraryAwareness.length}`,
     "",
     "## Excluded From This Report",

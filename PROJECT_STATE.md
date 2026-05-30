@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.6 Scripture Knowledge Graph Foundation implemented.
+- New derived graph layer: `ICE_KNOWLEDGE_GRAPH`.
+- Knowledge Graph records connect existing source-grounded semantic layers into reviewable nodes and relationships without visual graph rendering yet.
+- Current node types include Character, Group / Character, Authority / Character, Principle, Teaching, Authority Path, Continuity, Session Scope, and Ontology Role-derived nodes.
+- Study Panel now includes a Scripture Knowledge Graph section after Session Continuity Review and before Library Awareness.
+- GPT Review Reports and QA bundles now include Knowledge Graph counts and compact node summaries.
+- The layer is derived only: no crawling, no Strong's/POS integration, no fabricated relationships, and no visual graph assumptions.
+Latest pcdx update:
 - Phase 8.5b Session Continuity Review Architecture implemented.
 - New derived review layer: `ICE_SESSION_CONTINUITY_REVIEW`.
 - Study Panel now includes a Session Continuity Review section near the top of the panel, after Semantic Coverage and before Library Awareness.
@@ -45,6 +53,7 @@ Latest pcdx update:
 - The layer remains a derived review surface only: it uses analyzed page history and current source-grounded semantic layers and does not crawl, whole-book analyze, or fabricate unanalyzed links.
 - GPT Review Reports and QA bundles now include Session Continuity Review counts and compact summaries.
 - Added `npm.cmd run review:matthew-session` to generate a compact Matthew 1 -> Matthew 5 session continuity report from local QA bundles.
+
 Latest pcdx update:
 - Phase 8.5a Character Interaction Architecture implemented.
 - New derived layer: `ICE_CHARACTER_INTERACTIONS`.
@@ -54,6 +63,7 @@ Latest pcdx update:
 - Study Panel Character Interactions now renders semantic interaction cards before legacy interaction graph previews.
 - Matthew QA bundles and GPT Review Reports now include character interaction counts and compact summaries.
 
+
 Latest pcdx update:
 - Phase 8.5 Semantic Library Awareness Foundation implemented.
 - Study Panel now includes a Library Awareness section after Semantic Coverage.
@@ -62,11 +72,13 @@ Latest pcdx update:
 - Future sources remain explicitly `Awaiting analysis`; the layer does not crawl, auto-index, or fabricate cross-book links.
 - GPT Review Reports now include Library Awareness counts and compact family summaries.
 
+
 Latest pcdx update:
 - Phase 8.4f GPT Review Report Quality / Repo Review Integration implemented.
 - GPT Review Reports now include Repo Context, Current Review Question, User Observed Issue, Top Concern Auto-Detection, and GPT Recommended Review Focus sections.
 - Concern detection flags likely review issues such as unclassified entities, zero records in primary applicable layers, stale/target risks, missing continuity across sessions, generic adapter on scripture-like pages, and large diagnostic sections.
 - Added review command variants for Matthew 1, Matthew 3, and Matthew 5 while keeping reports compact and excluding raw Source Discovery, Reference Graph, DOM Hints, and raw Mention Index dumps.
+
 
 
 Latest pcdx update:
@@ -77,12 +89,14 @@ Latest pcdx update:
 - Added local generator `qa/generate-study-panel-report.js` and `npm.cmd run review:matthew5` to regenerate `QA_REPORTS/latest-study-panel-report.md` from the latest Matthew 5 QA bundle.
 
 
+
 Latest pcdx update:
 - Phase 8.4e Semantic Coverage Awareness implemented.
 - Study Panel now includes a Semantic Coverage section near the top of the panel.
 - Coverage status distinguishes grounded records, no grounded records, not-applicable layers, session-scoped continuity, pilot layers, and future layers.
 - Chapter type is surfaced for the active source, including Matthew 1 narrative-heavy, Matthew 2 narrative + movement + protection, Matthew 3 narrative + preaching + baptism context, and Matthew 5 teaching / discourse heavy.
 - The section is display-only and does not fabricate or rewrite semantic records.
+
 
 
 Latest pcdx update:
@@ -94,6 +108,7 @@ Latest pcdx update:
 - Full Study Panel data remains accessible; the new controls only add safer review/handoff paths.
 
 
+
 Latest pcdx update:
 - Phase 8.4b Principle Relationship Architecture implemented.
 - New derived layer: `ICE_PRINCIPLE_RELATIONSHIPS`.
@@ -101,6 +116,7 @@ Latest pcdx update:
 - Pilot relationships include Mercy supports Peacemaking, Reconciliation supports Peace, Righteousness expands Law Fulfillment, Commandment expansion illustrates Reconciliation, and Kingdom of heaven themes reinforce the Beatitudes frame.
 - Study Panel now includes a Principle Relationships section with principle, related principles, relationship type, teaching block, speaker, audience, source phrase, derived meaning, App accuracy, evidence, and grounding.
 - Matthew 5 QA now validates principle relationship records while preserving the existing Teaching / Discourse Structure baseline.
+
 
 
 Latest pcdx update:
@@ -112,12 +128,14 @@ Latest pcdx update:
 - Matthew 5 QA now guards canonical identity, weak reference-role filtering, LDS chapter heading hint transparency, Matthew 3 preaching leakage, and unsafe connector/mojibake symbols in teaching records.
 
 
+
 Latest pcdx update:
 - Phase 8.3d Volume / Session Context Interface implemented.
 - Study Panel now starts with a Volume Context section showing active source/page, active adapter, current/stale/not analyzed status, current chapter/page, previously analyzed pages, continuity detected, suggested next page, last analyzed time, and the Matthew 1 + Matthew 2 QA baseline.
 - New session metadata key: `ICE_ANALYSIS_HISTORY`.
 - Volume Context actions are user-driven only: analyze current page, clear current page analysis, clear all I.C.E. session data, show analyzed pages, and show continuity map.
 - No semantic record rewrites, auto-crawling, or auto-analysis behavior was added.
+
 
 
 
@@ -132,6 +150,7 @@ Latest pcdx update:
 
 
 
+
 Latest pcdx update:
 - Study Range / Session Scope architecture implemented.
 - Top Study Panel section is now Study Scope rather than Volume Context.
@@ -140,6 +159,7 @@ Latest pcdx update:
 - Study Scope shows active source target, current session, analyzed page chips, continuity, suggested next page, and start/end range when analyzed pages exist.
 - Clearing session analysis preserves the active source target when available, so Analyze remains grounded to the source page and not the panel DOM.
 - Future range/book/volume controls are represented in UI architecture without enabling auto-crawling.
+
 
 
 
