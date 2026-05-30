@@ -146,6 +146,52 @@ body {
   0% { background: #eef4fb; }
   100% { background: transparent; }
 }
+
+.semantic-coverage-section {
+  border-bottom: 1px solid #d8dde6;
+  padding-bottom: 8px;
+}
+
+.semantic-coverage-grid {
+  grid-template-columns: 1fr;
+}
+
+.semantic-coverage-card {
+  display: grid;
+  gap: 12px;
+}
+
+.semantic-coverage-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.semantic-coverage-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) 1fr minmax(70px, auto);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid #eef1f6;
+  padding-top: 8px;
+}
+
+.semantic-coverage-layer {
+  color: #25364d;
+  font-weight: 700;
+}
+
+.semantic-coverage-status {
+  color: #344255;
+  line-height: 1.35;
+}
+
+.semantic-coverage-count {
+  color: #687587;
+  font-size: .84rem;
+  text-align: right;
+}
+
 .semantic-focus-status {
   align-items: center;
   background: #ffffff;
@@ -316,6 +362,14 @@ body {
   .header-actions .refresh-button {
     flex: 1 1 150px;
     max-width: none;
+  }
+
+  .semantic-coverage-row {
+    grid-template-columns: 1fr;
+  }
+
+  .semantic-coverage-count {
+    text-align: left;
   }
 
   .study-header {

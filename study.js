@@ -1225,6 +1225,141 @@ document.addEventListener("DOMContentLoaded", async () => {
     copyPlainTextReport(label, builder());
   }
 
+
+  function activeChapterNumber() {
+    const page = activeSourcePageRecord();
+    return Number(page?.sourceCaptureChapter || page?.chapter || studyData.analysisStatus?.sourceCaptureChapter || 0);
+  }
+
+  function activeChapterType() {
+    const page = activeSourcePageRecord();
+    const book = normalizeText(page?.sourceCaptureBook || studyData.analysisStatus?.sourceCaptureBook || "");
+    const chapter = activeChapterNumber();
+    if (/Matthew/i.test(book) && chapter === 1) return "Narrative-heavy";
+    if (/Matthew/i.test(book) && chapter === 2) return "Narrative + movement + protection";
+    if (/Matthew/i.test(book) && chapter === 5) return "Teaching / discourse heavy";
+    if (/Matthew/i.test(book) && chapter === 3) return "Narrative + preaching + baptism context";
+    return book && chapter ? "General source analysis" : "Unknown / no active source";
+  }
+
+  function coverageStatus({ count = 0, applicable = true, primary = false, future = false, pilot = false, sessionScoped = false } = {}) {
+    if (future) return "Future layer";
+    if (!applicable) return "Not applicable to current chapter";
+    if (sessionScoped && analyzedPageHistory().length < 2) return "Available when session scope spans multiple pages";
+    if (primary && count > 0) return "Primary semantic layer for this chapter; grounded records found";
+    if (primary) return "Primary semantic layer for this chapter; awaiting grounding";
+    if (count > 0) return pilot ? "Pilot layer; grounded records found" : "Implemented; grounded records found";
+    return pilot ? "Pilot layer; no grounded records found" : "Implemented; no grounded records found";
+  }
+
+  function semanticCoverageRows() {
+    const chapter = activeChapterNumber();
+    const type = activeChapterType();
+    const isNarrative = /Narrative/i.test(type);
+    const isMovement = chapter === 2;
+    const isTeaching = chapter === 5;
+    return [
+      {
+        layer: "Passage Functions",
+        count: countItems(studyData.passageFunctions),
+        status: coverageStatus({ count: countItems(studyData.passageFunctions), applicable: isNarrative || isMovement, primary: isNarrative || isMovement })
+      },
+      {
+        layer: "Revelation Patterns",
+        count: countItems(studyData.revelationPatterns),
+        status: coverageStatus({ count: countItems(studyData.revelationPatterns), applicable: chapter === 1 || chapter === 2 || chapter === 3 })
+      },
+      {
+        layer: "Movement / Location Semantics",
+        count: countItems(studyData.movementSemantics),
+        status: coverageStatus({ count: countItems(studyData.movementSemantics), applicable: isMovement, primary: isMovement })
+      },
+      {
+        layer: "Teaching / Discourse Structure",
+        count: countItems(studyData.teachingSemantics),
+        status: coverageStatus({ count: countItems(studyData.teachingSemantics), applicable: isTeaching, primary: isTeaching, pilot: true })
+      },
+      {
+        layer: "Principle Relationships",
+        count: countItems(studyData.principleRelationships),
+        status: coverageStatus({ count: countItems(studyData.principleRelationships), applicable: isTeaching, pilot: true })
+      },
+      {
+        layer: "Semantic Sequence / Causality",
+        count: countItems(studyData.semanticCausality),
+        status: coverageStatus({ count: countItems(studyData.semanticCausality), applicable: chapter === 1 || chapter === 2 })
+      },
+      {
+        layer: "Cross-Chapter Continuity",
+        count: countItems(studyData.semanticContinuity),
+        status: coverageStatus({ count: countItems(studyData.semanticContinuity), applicable: true, sessionScoped: true })
+      },
+      {
+        layer: "Semantic Ontology Roles",
+        count: countItems(studyData.ontologyRoles),
+        status: coverageStatus({ count: countItems(studyData.ontologyRoles), applicable: true })
+      },
+      {
+        layer: "Reference Roles",
+        count: countItems(studyData.referenceRoles),
+        status: coverageStatus({ count: countItems(studyData.referenceRoles), applicable: true })
+      },
+      {
+        layer: "Future Strong's / POS Layer",
+        count: 0,
+        status: coverageStatus({ future: true })
+      }
+    ];
+  }
+
+  function createSemanticCoverageCard(rows) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-coverage-card";
+    const heading = document.createElement("h3");
+    heading.textContent = "Semantic Coverage";
+    const intro = document.createElement("p");
+    intro.textContent = [
+      `Chapter type: ${activeChapterType()}`,
+      `Purpose: distinguish grounded records from empty, not-applicable, pilot, session-scoped, and future layers.`
+    ].join("\n");
+
+    const list = document.createElement("div");
+    list.className = "semantic-coverage-list";
+    rows.forEach((row) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "semantic-coverage-row";
+      const layer = document.createElement("div");
+      layer.className = "semantic-coverage-layer";
+      layer.textContent = row.layer;
+      const status = document.createElement("div");
+      status.className = "semantic-coverage-status";
+      status.textContent = row.status;
+      const count = document.createElement("div");
+      count.className = "semantic-coverage-count";
+      count.textContent = `${row.count} record(s)`;
+      wrapper.append(layer, status, count);
+      list.appendChild(wrapper);
+    });
+
+    card.append(heading, intro, list);
+    return card;
+  }
+
+  function renderSemanticCoverage(term) {
+    const container = document.getElementById("semanticCoverageCards");
+    const count = document.getElementById("semanticCoverageCount");
+    if (!container || !count) return;
+    const rows = semanticCoverageRows();
+    const filtered = rows.filter((row) => matchesSearchQuery([row.layer, row.status, activeChapterType()].join(" "), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} layer status(es)`;
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic coverage rows match current filter.");
+      return;
+    }
+    container.appendChild(createSemanticCoverageCard(filtered));
+  }
+
   function createStudyScopeCard() {
     const card = document.createElement("article");
     card.className = "study-card volume-context-card";
@@ -7672,6 +7807,7 @@ createRevelationPartsSection(item.subEvents)
         .toLowerCase();
 
       renderVolumeContext(term);
+      renderSemanticCoverage(term);
       renderTeachingSemantics(term);
       renderPrincipleRelationships(term);
       renderPassageFunctions(term);

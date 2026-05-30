@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 8.4e Semantic Coverage Awareness implemented.
+- Study Panel now includes a Semantic Coverage section near the top of the panel.
+- Coverage status distinguishes grounded records, no grounded records, not-applicable layers, session-scoped continuity, pilot layers, and future layers.
+- Chapter type is surfaced for the active source, including Matthew 1 narrative-heavy, Matthew 2 narrative + movement + protection, Matthew 3 narrative + preaching + baptism context, and Matthew 5 teaching / discourse heavy.
+- The section is display-only and does not fabricate or rewrite semantic records.
+
+Latest pcdx update:
 - Phase 8.4c Study Panel Output Safety / Report Compression implemented.
 - Study Panel header now includes compact copy/export controls for Compact Panel Summary, Current Section Only, Diagnostic Snapshot, and GPT Handoff Summary.
 - Exported reports are generated from structured `studyData` instead of wholesale DOM dumps, keeping Source Discovery, Reference Graph, DOM Hints, and Mention Index raw lists out of compact handoffs.

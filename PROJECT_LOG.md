@@ -3123,3 +3123,38 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-30 - Add Semantic Coverage Awareness
+
+Instruction summary:
+- Add Semantic Coverage / Applicability status so users understand whether empty sections mean no grounded records, not applicable, pilot/future layer, or session-scoped availability.
+
+Codex action summary:
+- Added a new Study Panel `Semantic Coverage` section near the top of the panel.
+- Added chapter-type awareness for Matthew 1, Matthew 2, Matthew 3, and Matthew 5.
+- Added per-layer status rows for Passage Functions, Revelation Patterns, Movement / Location Semantics, Teaching / Discourse Structure, Principle Relationships, Semantic Sequence / Causality, Cross-Chapter Continuity, Semantic Ontology Roles, Reference Roles, and a future Strong's / POS layer.
+- Coverage rows show layer name, status, and record count without creating or changing semantic records.
+- Added responsive styling for the new coverage card.
+
+Files changed:
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew2` passed.
+- `npm.cmd run qa:matthew3` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
