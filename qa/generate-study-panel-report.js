@@ -194,6 +194,30 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
     `Not Yet Explored: ${notYet.slice(0, 5).join(", ") || "none detected from current compact records"}`,
     `Suggested Next: ${next} | Why: connected through existing semantic layers | Evidence Weight: Relationship Inference / Derived Semantic Evidence`
   ].slice(0, limit);
+}function principleHierarchyLines(samples, limit = 14) {
+  const rows = [];
+  const push = (category, label, item = {}) => {
+    const cleanLabel = clean(label);
+    if (!cleanLabel) return;
+    rows.push(`${category}: ${cleanLabel} | Source phrase: ${clean(item.sourcePhrase || "Not recorded")} | App accuracy: ${clean(item.confidence || "probable")}`);
+  };
+  asArray(samples.teachingSemantics).forEach((item) => {
+    if (item.principle) push(/blessing|principle/i.test(item.discourseType || "") ? "Core Principles" : "Supporting Principles", item.principle, item);
+    if (item.teachingTopic) push("Teaching Themes", item.teachingTopic, item);
+    if (item.commandment) push("Commandments", item.commandment, item);
+    if (item.application) String(item.application).split(/;|,/).forEach((part) => push("Applications", part, item));
+    if (item.promise) push("Promises", item.promise, item);
+    if (item.warning) push("Warnings / Consequences", item.warning, item);
+    if (item.requirement) push(/kingdom of heaven|exceeding/i.test(item.requirement) ? "Audience Conditions" : "Warnings / Consequences", item.requirement, item);
+    if (item.contrast) push("Contrasts", item.contrast, item);
+    if (item.example) push("Examples", item.example, item);
+    if (item.audience) push("Audience Conditions", item.audience, item);
+  });
+  asArray(samples.principleRelationships).forEach((item) => {
+    if (item.principle) push("Supporting Principles", item.principle, item);
+    asArray(item.relatedPrinciples).forEach((part) => push("Supporting Principles", part, item));
+  });
+  return unique(rows).slice(0, limit);
 }function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
   const teaching = asArray(samples.teachingSemantics).slice(0, 3).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`);
   const relationships = asArray(samples.principleRelationships).slice(0, 3).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`);
@@ -277,6 +301,7 @@ function reportFromBundle(bundle) {
     `Ontology Roles: ${counts.ontologyRoles || 0}`,
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
+    `Principle Hierarchy Items: ${principleHierarchyLines(samples).length}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
@@ -305,6 +330,9 @@ function reportFromBundle(bundle) {
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
       ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
     ], "no semantic evidence weights available"),
+    "",
+    "## Principle Hierarchy",
+    ...list(principleHierarchyLines(samples), "no principle hierarchy records available"),
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(samples, libraryAwareness), "no resolution explanations available"),

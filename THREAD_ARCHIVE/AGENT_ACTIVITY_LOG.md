@@ -21,6 +21,38 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-31 00:00 - pcdx - Refine principle hierarchy
+Summary:
+- Added grouped Principle Hierarchy display inside Principles / Teachings.
+- Groups include Core Principles, Supporting Principles, Teaching Themes, Commandments, Applications, Promises, Warnings / Consequences, Contrasts, Examples, and Audience Conditions.
+- Added grounded Matthew 5 pure-in-heart and peacemaking teaching records and compact report output.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check background.js` passed
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew5` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew5` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Refine principle hierarchy`
+
+Status:
+- Implemented and validated.
 ## 2026-05-31 00:00 - pcdx - Fix suggested next page processing
 Summary:
 - Fixed Study Scope so Suggested Next remains display-only and cannot become analyzed/selected range state.

@@ -38,6 +38,12 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1a Principle Hierarchy Refinement implemented.
+- Principles / Teachings now derives grouped hierarchy cards from existing Teaching / Discourse Structure and Principle Relationships records.
+- Groups include Core Principles, Supporting Principles, Teaching Themes, Commandments, Applications, Promises, Warnings / Consequences, Contrasts, Examples, and Audience Conditions.
+- Matthew 5 teaching records now include grounded pure-in-heart and peacemaking Beatitude records, plus clearer warning/application fields where already source-grounded.
+- GPT Review Reports now include compact Principle Hierarchy counts and grouped lines.
+Latest pcdx update:
 - Critical Study Scope bug fixed: Suggested Next is now display-only and cannot become analyzed or selected range state.
 - `analyzedPageHistory()` now ignores stale `analysisStatus` records when they do not match the active source target.
 - Stored selected ranges are honored only when both start and end pages already exist in analyzed pages; otherwise the range falls back to analyzed pages only.

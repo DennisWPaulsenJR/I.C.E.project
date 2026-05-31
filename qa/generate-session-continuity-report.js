@@ -88,6 +88,33 @@ function guidedStudyLines(sorted, limit = 6) {
     `Not Yet Explored: ${notYet.slice(0, 5).join(", ") || "none detected from current compact records"}`,
     `Suggested Next: ${next} | Why: connected through existing semantic layers | Evidence Weight: Relationship Inference / Derived Semantic Evidence`
   ].slice(0, limit);
+}function principleHierarchyLines(sorted, limit = 14) {
+  const rows = [];
+  const push = (category, label, item = {}) => {
+    const cleanLabel = clean(label);
+    if (!cleanLabel) return;
+    rows.push(`${category}: ${cleanLabel} | Source phrase: ${clean(item.sourcePhrase || "Not recorded")} | App accuracy: ${clean(item.confidence || "probable")}`);
+  };
+  sorted.forEach((entry) => {
+    const samples = entry.bundle.samples || {};
+    asArray(samples.teachingSemantics).forEach((item) => {
+      if (item.principle) push(/blessing|principle/i.test(item.discourseType || "") ? "Core Principles" : "Supporting Principles", item.principle, item);
+      if (item.teachingTopic) push("Teaching Themes", item.teachingTopic, item);
+      if (item.commandment) push("Commandments", item.commandment, item);
+      if (item.application) String(item.application).split(/;|,/).forEach((part) => push("Applications", part, item));
+      if (item.promise) push("Promises", item.promise, item);
+      if (item.warning) push("Warnings / Consequences", item.warning, item);
+      if (item.requirement) push(/kingdom of heaven|exceeding/i.test(item.requirement) ? "Audience Conditions" : "Warnings / Consequences", item.requirement, item);
+      if (item.contrast) push("Contrasts", item.contrast, item);
+      if (item.example) push("Examples", item.example, item);
+      if (item.audience) push("Audience Conditions", item.audience, item);
+    });
+    asArray(samples.principleRelationships).forEach((item) => {
+      if (item.principle) push("Supporting Principles", item.principle, item);
+      asArray(item.relatedPrinciples).forEach((part) => push("Supporting Principles", part, item));
+    });
+  });
+  return unique(rows).slice(0, limit);
 }function resolutionExplanationLines(sorted, range, limit = 8) {
   const values = sorted.flatMap((entry) => {
     const samples = entry.bundle.samples || {};
@@ -222,6 +249,7 @@ function reportFromBundles(bundles) {
     `Authority Paths: ${counts.originAuthorityPaths || 0}`,
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
+    `Principle Hierarchy Items: ${principleHierarchyLines(sorted).length}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
@@ -247,6 +275,9 @@ function reportFromBundles(bundles) {
       evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)))
     ], "no semantic evidence weights available"),
+    "",
+    "## Principle Hierarchy",
+    ...list(principleHierarchyLines(sorted), "no principle hierarchy records available"),
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(sorted, range), "no resolution explanations available"),

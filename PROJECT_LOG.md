@@ -2,6 +2,40 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-31 - Phase 9.1a Principle Hierarchy Refinement
+
+Instruction summary:
+- Refine Principles / Teachings so Matthew 5 principle-like items are not treated as one flat category.
+- Distinguish Core Principles, Supporting Principles, Teaching Themes, Commandments, Applications, Promises, Warnings / Consequences, Contrasts, Examples, and Audience Conditions.
+- Preserve source phrase vs derived meaning, provenance, evidence weighting, App accuracy wording, Teaching / Discourse Structure, Principle Relationships, and no crawling.
+
+Codex action summary:
+- Added derived Principle Hierarchy display records in the Principles / Teachings section using existing teaching semantics and principle relationships.
+- Each hierarchy card shows label, category/type, source phrase, derived meaning, speaker, audience, provenance, evidence weight, App accuracy, scope, and supporting layers.
+- Added grounded Matthew 5 teaching records for pure in heart / seeing GOD and peacemakers / children of GOD.
+- Refined existing Matthew 5 law/non-retaliation records with source-grounded warning/application fields.
+- Added compact Principle Hierarchy lines to GPT review reports.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
 ## 2026-05-31 - Critical Study Scope Suggested Next Fix
 
 Instruction summary:

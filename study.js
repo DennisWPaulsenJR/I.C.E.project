@@ -9430,6 +9430,143 @@ createRevelationPartsSection(item.subEvents)
       return card;
     }, "No semantic events match.", "semantic event");
   }
+  const PRINCIPLE_HIERARCHY_GROUPS = [
+    "Core Principles",
+    "Supporting Principles",
+    "Teaching Themes",
+    "Commandments",
+    "Applications",
+    "Promises",
+    "Warnings / Consequences",
+    "Contrasts",
+    "Examples",
+    "Audience Conditions"
+  ];
+
+  function principleHierarchyKey(category, label, sourcePhrase = "") {
+    return [category, label, sourcePhrase].map((value) => normalizeText(value).toLowerCase()).join("|");
+  }
+
+  function principleHierarchyRecord(record = {}) {
+    return {
+      category: record.category || "Teaching Themes",
+      label: normalizeText(record.label || "Not recorded"),
+      type: record.type || record.category || "Principle / Teaching",
+      sourcePhrase: record.sourcePhrase || "",
+      derivedMeaning: record.derivedMeaning || "",
+      speaker: record.speaker || "",
+      audience: record.audience || "",
+      provenance: record.provenance || "I.C.E. Teaching Classification",
+      evidenceWeight: record.evidenceWeight || "Direct Source Evidence",
+      confidence: record.confidence || "probable",
+      scopePath: record.scopePath || "",
+      verseRange: record.verseRange || "",
+      sourceGrounding: record.sourceGrounding || "",
+      supportingLayers: uniqueStudyList(record.supportingLayers || []),
+      related: uniqueStudyList(record.related || [])
+    };
+  }
+
+  function principleHierarchyRecords() {
+    const records = [];
+    const seen = new Set();
+    const add = (record = {}) => {
+      const item = principleHierarchyRecord(record);
+      if (!item.label || /^not recorded$/i.test(item.label)) return;
+      const key = principleHierarchyKey(item.category, item.label, item.sourcePhrase);
+      if (seen.has(key)) return;
+      seen.add(key);
+      records.push(item);
+    };
+    asArray(studyData.teachingSemantics).forEach((item) => {
+      const common = {
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        speaker: item.speaker || "JESUS",
+        audience: item.audience,
+        confidence: item.confidence,
+        scopePath: item.scopePath,
+        verseRange: item.verseRange,
+        sourceGrounding: item.sourceGrounding,
+        supportingLayers: ["Teaching / Discourse Structure"]
+      };
+      if (item.principle) add({ ...common, category: /blessing|principle/i.test(item.discourseType || "") ? "Core Principles" : "Supporting Principles", label: item.principle, type: item.discourseType || "principle" });
+      if (item.teachingTopic) add({ ...common, category: "Teaching Themes", label: item.teachingTopic, type: item.discourseType || "teaching theme" });
+      if (item.commandment) add({ ...common, category: "Commandments", label: item.commandment, type: "commandment" });
+      if (item.application) {
+        item.application.split(/;|,/).map((value) => normalizeText(value)).filter(Boolean).forEach((label) => add({ ...common, category: "Applications", label, type: "application" }));
+      }
+      if (item.promise) add({ ...common, category: "Promises", label: item.promise, type: "promise" });
+      if (item.warning) add({ ...common, category: "Warnings / Consequences", label: item.warning, type: "warning / consequence" });
+      if (item.requirement) add({ ...common, category: /kingdom of heaven|exceeding/i.test(item.requirement) ? "Audience Conditions" : "Warnings / Consequences", label: item.requirement, type: "requirement / condition" });
+      if (item.contrast) add({ ...common, category: "Contrasts", label: item.contrast, type: "contrast" });
+      if (item.example) add({ ...common, category: "Examples", label: item.example, type: "example" });
+      if (item.audience) add({ ...common, category: "Audience Conditions", label: item.audience, type: "audience" });
+    });
+    asArray(studyData.principleRelationships).forEach((item) => {
+      const common = {
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        speaker: item.speaker || "JESUS",
+        audience: item.audience,
+        confidence: item.confidence,
+        scopePath: item.scopePath,
+        verseRange: item.verseRange,
+        sourceGrounding: item.sourceGrounding,
+        provenance: "I.C.E. Principle Relationship",
+        evidenceWeight: "Relationship Inference",
+        supportingLayers: ["Principle Relationships", "Teaching / Discourse Structure"]
+      };
+      if (item.principle) add({ ...common, category: "Supporting Principles", label: item.principle, type: `relationship: ${passageFunctionTitle(item.relationshipType || "related")}`, related: item.relatedPrinciples });
+      asArray(item.relatedPrinciples).forEach((label) => add({ ...common, category: "Supporting Principles", label, type: `related through ${item.principle || "principle"}`, related: [item.principle] }));
+    });
+    return records.sort((left, right) => PRINCIPLE_HIERARCHY_GROUPS.indexOf(left.category) - PRINCIPLE_HIERARCHY_GROUPS.indexOf(right.category));
+  }
+
+  function principleHierarchySearchText(item = {}) {
+    return [item.category, item.label, item.type, item.sourcePhrase, item.derivedMeaning, item.speaker, item.audience, item.provenance, item.evidenceWeight, item.scopePath, item.verseRange, item.sourceGrounding, item.supportingLayers, item.related].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createPrincipleHierarchyCard(item = {}) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const divineContext = hasDivineDisplayContext([item.label, item.sourcePhrase, item.derivedMeaning, item.speaker, item.related]);
+    card.className = "study-card semantic-card principle-card principle-hierarchy-card";
+    assignSemanticCardTarget(card, "principle", item, `${item.category || "principle"}-${item.label || "label"}`);
+    header.className = "semantic-card-header";
+    heading.textContent = renderIceBeingDisplayText(item.label || "Principle / Teaching", { divineContext, preferHolySpirit: true });
+    range.className = "semantic-card-range";
+    range.textContent = [item.category, item.type, item.verseRange || item.scopePath].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createWordingProvenanceSection({ source: item.provenance, label: item.label, layer: "Principles / Teachings", storageKey: "ICE_TEACHING_SEMANTICS + ICE_PRINCIPLE_RELATIONSHIPS", scopePath: item.scopePath || item.verseRange, rule: "Principle hierarchy labels are grouped from existing teaching/discourse and principle relationship records; source phrase remains separately displayed." }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: item.sourcePhrase ? "directly grounded or relationship-grounded from Matthew 5 source records" : "derived from current semantic relationship records", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: item.supportingLayers, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Label", item.label || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Category / Type", [item.category, item.type].filter(Boolean).join(" | "), { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Related", "", { list: asArray(item.related), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Layers", "", { collapsed: true, summaryLabel: "Show supporting layers", list: asArray(item.supportingLayers), plainList: true }),
+      createPassageFunctionSection("Scope", item.scopePath || item.verseRange || "Not scoped.", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function appendPrincipleHierarchyGroup(container, category, records = []) {
+    const matching = records.filter((item) => item.category === category);
+    if (!matching.length) return;
+    container.appendChild(createCard(category, `${matching.length} grounded item(s)`, "principle hierarchy group"));
+    matching.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createPrincipleHierarchyCard(item)));
+    if (matching.length > DISPLAY_LIMIT) appendEmpty(container, `${matching.length - DISPLAY_LIMIT} more ${category.toLowerCase()} item(s) hidden by preview limit. Use search/filter to narrow.`);
+  }
   function createPrincipleCard(item) {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
@@ -9453,10 +9590,12 @@ createRevelationPartsSection(item.subEvents)
   function renderPrinciples(term) {
     const container = document.getElementById("principleCards");
     const count = document.getElementById("principleCount");
-    const principles = Array.isArray(studyData.principleItems)
+    const hierarchyRecords = principleHierarchyRecords();
+    const filteredHierarchy = hierarchyRecords.filter((item) => matchesSearchQuery(principleHierarchySearchText(item), term));
+    const legacyPrinciples = Array.isArray(studyData.principleItems)
       ? dedupePrincipleItems(studyData.principleItems)
       : [];
-    const filtered = principles.filter((item) =>
+    const filteredLegacy = legacyPrinciples.filter((item) =>
       itemMatches(item, [
         "principleText",
         "principleType",
@@ -9466,9 +9605,31 @@ createRevelationPartsSection(item.subEvents)
       ], term)
     );
 
-    renderLimited(container, filtered, count, (item) => createPrincipleCard(item), "No principle or teaching items match.");
-  }
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = hierarchyRecords.length ? `${filteredHierarchy.length} hierarchy item(s)` : `${filteredLegacy.length} principle item(s)`;
 
+    if (hierarchyRecords.length) {
+      if (!filteredHierarchy.length) {
+        appendEmpty(container, "No principle hierarchy items match current filter.");
+        return;
+      }
+      container.appendChild(createCard(
+        "Principle Hierarchy",
+        [
+          `Derived items: ${hierarchyRecords.length}`,
+          "Purpose: group Matthew 5 principles and teachings by semantic type instead of flattening every item into one list.",
+          "Groups: Core Principles, Supporting Principles, Teaching Themes, Commandments, Applications, Promises, Warnings / Consequences, Contrasts, Examples, Audience Conditions.",
+          "Boundary: display grouping only; no doctrinal invention, no crawling, and no Strong's/POS analysis."
+        ].join("\n"),
+        "derived principle hierarchy"
+      ));
+      PRINCIPLE_HIERARCHY_GROUPS.forEach((category) => appendPrincipleHierarchyGroup(container, category, filteredHierarchy));
+      return;
+    }
+
+    renderLimited(container, filteredLegacy, count, (item) => createPrincipleCard(item), "No principle or teaching items match.");
+  }
   function renderProphecyLinks(term) {
     const container = document.getElementById("prophecyLinkCards");
     const count = document.getElementById("prophecyLinkCount");
