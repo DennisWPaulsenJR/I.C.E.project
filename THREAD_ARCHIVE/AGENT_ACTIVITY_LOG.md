@@ -21,6 +21,36 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-31 00:00 - pcdx - Add study progression engine
+Summary:
+- Added Study Progression section for current focus, explored topics, related topics, not-yet-explored topics, and suggested next topic.
+- Progression records are derived from existing semantic layers only and show provenance, evidence weight, supporting layers, App accuracy, and session scope.
+- Added compact Study Progression output to GPT review reports.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Add study progression engine`
+
+Status:
+- Implemented and validated.
+
 ## 2026-05-30 00:00 - pcdx - Refine guided study UI
 Summary:
 - Added Guided Study section with readable Suggested Study Path cards.

@@ -146,6 +146,45 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   const family = asArray(libraryAwareness)[0];
   if (family) lines.push(`Study the ${clean(family.principleFamily || "principle")} family in this source | Library Awareness Focus | Source: I.C.E. generated study suggestion from Library Awareness | Evidence Weight: Library Awareness Classification`);
   return lines.slice(0, limit);
+}function studyProgressionLines(samples, libraryAwareness, limit = 4) {
+  const teaching = asArray(samples.teachingSemantics);
+  const relationships = asArray(samples.principleRelationships);
+  const interactions = asArray(samples.characterInteractions);
+  const graph = asArray(samples.knowledgeGraph);
+  const library = asArray(libraryAwareness);
+  const explored = [];
+  const related = [];
+  if (teaching.some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || ""))) explored.push("JESUS as Teacher");
+  teaching.forEach((item) => {
+    if (item.teachingBlock || item.teachingTopic || item.discourseType) explored.push(clean(item.teachingBlock || item.teachingTopic || item.discourseType));
+    if (item.principle || item.commandment || item.blessing || item.promise || item.warning) related.push(clean(item.principle || item.commandment || item.blessing || item.promise || item.warning));
+  });
+  relationships.forEach((item) => {
+    if (item.principle) explored.push(clean(item.principle));
+    asArray(item.relatedPrinciples).forEach((topic) => related.push(clean(topic)));
+  });
+  interactions.forEach((item) => {
+    if (item.sourceCharacter || item.targetCharacter) explored.push(`${clean(item.sourceCharacter || "source")} and ${clean(item.targetCharacter || "target")}`);
+    if (item.interactionType) related.push(clean(item.interactionType));
+  });
+  graph.forEach((item) => {
+    if (item.node) related.push(clean(item.node));
+    asArray(item.relatedPrinciples).forEach((topic) => related.push(clean(topic)));
+  });
+  library.forEach((item) => {
+    if (item.principleFamily) explored.push(clean(item.principleFamily));
+    asArray(item.knownRelatedCategories).forEach((topic) => related.push(clean(topic)));
+  });
+  const exploredSet = new Set(unique(explored).map((item) => item.toLowerCase()));
+  const notYet = unique(related).filter((item) => item && !exploredSet.has(item.toLowerCase()));
+  const next = notYet.find((item) => /reconciliation|righteousness|law fulfillment|peacemak|mercy|kingdom/i.test(item)) || notYet[0] || "Review another grounded Guided Study suggestion";
+  if (!explored.length && !related.length) return [];
+  return [
+    `Current Focus: ${teaching[0]?.teachingTopic || teaching[0]?.teachingBlock || "Current analyzed source"}`,
+    `Explored Topics: ${unique(explored).slice(0, 5).join(", ") || "grounded topics awaiting review"}`,
+    `Not Yet Explored: ${notYet.slice(0, 5).join(", ") || "none detected from current compact records"}`,
+    `Suggested Next: ${next} | Why: connected through existing semantic layers | Evidence Weight: Relationship Inference / Derived Semantic Evidence`
+  ].slice(0, limit);
 }function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
   const teaching = asArray(samples.teachingSemantics).slice(0, 3).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`);
   const relationships = asArray(samples.principleRelationships).slice(0, 3).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`);
@@ -234,6 +273,7 @@ function reportFromBundle(bundle) {
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
     `Guided Study: ${guidedStudyLines(samples, libraryAwareness).length}`,
+    `Study Progression: ${studyProgressionLines(samples, libraryAwareness).length}`,
     `Semantic Resolution Explanations: ${resolutionExplanationLines(samples, libraryAwareness).length}`,
     "",
     "## Provenance Labels",
@@ -262,6 +302,9 @@ function reportFromBundle(bundle) {
     "",
     "## Guided Study",
     ...list(guidedStudyLines(samples, libraryAwareness), "no guided study suggestions available"),
+    "",
+    "## Study Progression",
+    ...list(studyProgressionLines(samples, libraryAwareness), "no study progression records available"),
     "",
     "## Semantic Coverage",
     ...list([

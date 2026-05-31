@@ -58,6 +58,36 @@ function guidedStudyLines(sorted, limit = 6) {
   if (relation) lines.push(`Study ${clean(relation.sourceCharacter || "source")} and ${clean(relation.targetCharacter || "target")} | Relationship Focus | Source: I.C.E. generated study suggestion from Character Interactions | Evidence Weight: Relationship Inference`);
   lines.push("Study continuity across the current session | Session Continuity Focus | Source: I.C.E. generated study suggestion from Session Continuity Review | Evidence Weight: Continuity Inference");
   return unique(lines).slice(0, limit);
+}function studyProgressionLines(sorted, limit = 4) {
+  const allSamples = sorted.flatMap((entry) => [entry.bundle.samples || {}]);
+  const teachings = allSamples.flatMap((samples) => asArray(samples.teachingSemantics));
+  const relationships = allSamples.flatMap((samples) => asArray(samples.principleRelationships));
+  const interactions = allSamples.flatMap((samples) => asArray(samples.characterInteractions));
+  const explored = [];
+  const related = [];
+  if (teachings.some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || ""))) explored.push("JESUS as Teacher");
+  teachings.forEach((item) => {
+    if (item.teachingBlock || item.teachingTopic || item.discourseType) explored.push(clean(item.teachingBlock || item.teachingTopic || item.discourseType));
+    if (item.principle || item.commandment || item.blessing || item.promise || item.warning) related.push(clean(item.principle || item.commandment || item.blessing || item.promise || item.warning));
+  });
+  relationships.forEach((item) => {
+    if (item.principle) explored.push(clean(item.principle));
+    asArray(item.relatedPrinciples).forEach((topic) => related.push(clean(topic)));
+  });
+  interactions.forEach((item) => {
+    if (item.sourceCharacter || item.targetCharacter) explored.push(`${clean(item.sourceCharacter || "source")} and ${clean(item.targetCharacter || "target")}`);
+    if (item.interactionType) related.push(clean(item.interactionType));
+  });
+  const exploredSet = new Set(unique(explored).map((item) => item.toLowerCase()));
+  const notYet = unique(related).filter((item) => item && !exploredSet.has(item.toLowerCase()));
+  const next = notYet.find((item) => /reconciliation|righteousness|law fulfillment|peacemak|mercy|kingdom/i.test(item)) || notYet[0] || "Review another grounded Guided Study suggestion";
+  if (!explored.length && !related.length) return [];
+  return [
+    `Current Focus: ${teachings[0]?.teachingTopic || teachings[0]?.teachingBlock || "Current analyzed session"}`,
+    `Explored Topics: ${unique(explored).slice(0, 5).join(", ") || "grounded topics awaiting review"}`,
+    `Not Yet Explored: ${notYet.slice(0, 5).join(", ") || "none detected from current compact records"}`,
+    `Suggested Next: ${next} | Why: connected through existing semantic layers | Evidence Weight: Relationship Inference / Derived Semantic Evidence`
+  ].slice(0, limit);
 }function resolutionExplanationLines(sorted, range, limit = 8) {
   const values = sorted.flatMap((entry) => {
     const samples = entry.bundle.samples || {};
@@ -196,6 +226,7 @@ function reportFromBundles(bundles) {
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
     `Guided Study: ${guidedStudyLines(sorted).length}`,
+    `Study Progression: ${studyProgressionLines(sorted).length}`,
     `Semantic Resolution Explanations: ${resolutionExplanationLines(sorted, range).length}`,
     "",
     "## Provenance Labels",
@@ -222,6 +253,9 @@ function reportFromBundles(bundles) {
     "",
     "## Guided Study",
     ...list(guidedStudyLines(sorted), "no guided study suggestions available"),
+    "",
+    "## Study Progression",
+    ...list(studyProgressionLines(sorted), "no study progression records available"),
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",

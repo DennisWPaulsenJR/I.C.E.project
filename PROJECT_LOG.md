@@ -2,6 +2,37 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-31 - Phase 9.1 Study Progression Engine
+
+Instruction summary:
+- Add `ICE_STUDY_PROGRESSION` as a study-navigation layer that helps users move through grounded study paths intentionally.
+- Track current focus, explored topics, related topics, not-yet-explored topics, suggested next topic, reason for suggestion, supporting layers, provenance, evidence weight, and session scope.
+- Do not store personal beliefs, user conclusions, profiles, belief scores, doctrinal advice, or auto-crawl behavior.
+
+Codex action summary:
+- Added `Study Progression` section to the Study Panel below Guided Study.
+- Derived progression records from current semantic focus plus existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Library Awareness, and Session Continuity Review records.
+- Added provenance/evidence-weight display and compact GPT Review Report output for Study Progression.
+- Kept Study Progression as a derived navigation layer only.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-05-30 - Phase 9.0a Guided Study UI Refinement
 
 Instruction summary:

@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1 Study Progression Engine implemented.
+- Added Study Progression section to the Study Panel as a study-navigation layer.
+- Study progression derives Current Focus, Explored Topics, Related Topics, Not Yet Explored, Suggested Next Topic, and Reason for Suggestion from existing semantic records only.
+- The layer uses Teaching Semantics, Principle Relationships, Character Interactions, Scripture Knowledge Graph, Library Awareness, Session Continuity Review, and active semantic focus when present.
+- No personal beliefs, user conclusions, belief scoring, auto-crawling, or doctrinal advice are stored or generated.
+- GPT Review Reports now include compact Study Progression lines.
+
+Latest pcdx update:
 - Phase 9.0a Guided Study UI Refinement implemented.
 - Added Guided Study section to the Study Panel as a readable study-companion surface.
 - Guided suggestions are generated only from existing grounded semantic records: Teaching Semantics, Principle Relationships, Character Interactions, Session Continuity Review, Library Awareness, and Knowledge Graph.
