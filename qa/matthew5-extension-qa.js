@@ -47,6 +47,7 @@ const STORAGE_KEYS = [
   "ICE_CHARACTER_INTERACTIONS",
   "ICE_SESSION_CONTINUITY_REVIEW",
   "ICE_KNOWLEDGE_GRAPH",
+  "ICE_PRINCIPLE_NETWORKS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -114,6 +115,7 @@ function emptyCounts() {
     characterInteractions: 0,
     sessionContinuityReview: 0,
     knowledgeGraph: 0,
+    principleNetworks: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -147,6 +149,7 @@ function buildCounts(storageData) {
     characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
+    principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -181,6 +184,7 @@ function buildSamples(storageData) {
     characterInteractions: sample(storageData.ICE_CHARACTER_INTERACTIONS, 20),
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
+    principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
@@ -415,7 +419,40 @@ function hasPrincipleRelationship(data, principlePattern, relationshipType, rela
     item.evidence.length > 0
   );
 }
-function isGroundedPassageFunction(item) {
+function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
+  return (data.ICE_PRINCIPLE_NETWORKS || []).some((item) =>
+    corePattern.test(item.corePrinciple || "") &&
+    (item.relatedPrinciples || []).some((principle) => relatedPattern.test(principle || "")) &&
+    requiredPattern.test(JSON.stringify({
+      commands: item.commands || [],
+      applications: item.applications || [],
+      promises: item.promises || [],
+      warnings: item.warnings || [],
+      consequences: item.consequences || [],
+      themes: item.themes || [],
+      authorityContext: item.authorityContext || "",
+      characterExamples: item.characterExamples || [],
+      speaker: item.speaker || "",
+      audience: item.audience || "",
+      provenance: item.provenance || "",
+      evidenceWeight: item.evidenceWeight || "",
+      reasoningPath: item.reasoningPath || []
+    })) &&
+    item.speaker === "JESUS" &&
+    item.canonicalIdentity === "JESUS CHRIST" &&
+    /Sermon on the Mount/i.test(item.authorityContext || "") &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning &&
+    item.provenance === "I.C.E. Principle Network" &&
+    /Derived Semantic Evidence|Relationship Inference/i.test(item.evidenceWeight || "") &&
+    Array.isArray(item.reasoningPath) &&
+    item.reasoningPath.length > 0 &&
+    Array.isArray(item.evidence) &&
+    item.evidence.length > 0 &&
+    item.sourceGrounding &&
+    /Awaiting analysis; no cross-library source links generated yet/i.test(item.futureLibraryConnections || "")
+  );
+}function isGroundedPassageFunction(item) {
   return Boolean(
     item?.scopePath &&
     item?.verseRange &&
@@ -483,6 +520,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_ONTOLOGY_ROLES) <= 0) failures.push("Expected Matthew 5 semantic ontology role records count > 0.");
   if (count(data.ICE_TEACHING_SEMANTICS) <= 0) failures.push("Expected Matthew 5 teaching / discourse semantic records count > 0.");
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
+  if (count(data.ICE_PRINCIPLE_NETWORKS) <= 0) failures.push("Expected Matthew 5 principle network records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
   if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
   if (count(data.ICE_TRUST_VERIFICATION) <= 0) failures.push("Expected Matthew 5 trust verification records count > 0.");
@@ -531,6 +569,9 @@ function evaluateFailures(data) {
   if (!hasPrincipleRelationship(data, /Righteousness/i, "expands", /Law Fulfillment/i)) failures.push("Expected Righteousness expands Law Fulfillment principle relationship.");
   if (!hasPrincipleRelationship(data, /Reconciliation/i, "supports", /Peace/i)) failures.push("Expected Reconciliation supports Peace principle relationship.");
   if (!hasPrincipleRelationship(data, /Commandment expansion/i, "illustrates", /Reconciliation/i)) failures.push("Expected Commandment expansion illustrates Reconciliation principle relationship.");
+
+  if (!hasPrincipleNetwork(data, /Mercy/i, /Peacemaking|forgiveness|reconciliation/i, /obtain mercy|be reconciled|Beatitude|Sermon on the Mount|JESUS/)) failures.push("Expected Mercy principle network with related principles, promise/application, theme, speaker, provenance, and evidence weighting.");
+  if (!hasPrincipleNetwork(data, /righteousness/i, /Law Fulfillment|commandment expansion/i, /filled|fulfil|But I say unto you|Sermon on the Mount|JESUS/)) failures.push("Expected righteousness principle network grounded by teaching progression and principle relationships.");
 
   if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
   if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");

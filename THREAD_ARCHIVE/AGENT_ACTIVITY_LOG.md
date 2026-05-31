@@ -508,7 +508,7 @@ Status:
 - Implemented
 ## 2026-05-20 21:22 - pcdx - Add semantic visual ontology styling
 Summary:
-- Added restrained visual ontology styling for source phrases, derived meanings, Divine Class I, Class II messenger, Class III Human, adversarial Class 𝑖, and authority transfer paths.
+- Added restrained visual ontology styling for source phrases, derived meanings, Divine Class I, Class II messenger, Class III Human, adversarial Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ, and authority transfer paths.
 - Kept styling accessible and low-contrast enough to support review without overwhelming semantic cards.
 
 Files touched:
@@ -528,9 +528,9 @@ Commit:
 
 Status:
 - Implemented
-## 2026-05-20 20:24 - pcdx - Correct Class 𝑖 hierarchy display
+## 2026-05-20 20:24 - pcdx - Correct Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ hierarchy display
 Summary:
-- Corrected adversarial hierarchy display to italic lowercase `Class 𝑖` so it cannot visually collapse with Divine `Class I`.
+- Corrected adversarial hierarchy display to italic lowercase `Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ` so it cannot visually collapse with Divine `Class I`.
 - Updated class-transfer CSS hooks to use `ice-class-i-divine` and added `ice-class-i-adversary` for future visual hierarchy styling.
 - Updated project state hierarchy notes.
 
@@ -2622,7 +2622,7 @@ Status:
 ## 2026-05-26 - pcdx - Add HOLY action process display consistency
 - Refined Phase 8.3 derived semantic displays so Class I / HOLY-origin processes show HOLY ontology emphasis.
 - Added process-path display for THE LORD -> AngEL Of THE LORD -> Joseph -> Instruction -> CHILD protection / fulfillment.
-- Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class 𝑖 distinction.
+- Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ distinction.
 ## 2026-05-27 - pcdx - Refine Matthew 2 adversarial semantics
 Summary:
 - Implemented Phase 8.3a Matthew 2 adversarial/protective semantic refinement.
@@ -3489,3 +3489,46 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-31 - pcdx - Add Principle Network Architecture
+
+Task:
+- Begin Phase 9.1b: Principle Network Architecture.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added derived `ICE_PRINCIPLE_NETWORKS` records for current-page/session principle neighborhoods.
+- Derived networks from existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, and Resolution Explanation inputs only.
+- Added Study Panel Principle Networks display with provenance, evidence weight, source phrase, derived meaning, App accuracy, reasoning path, speaker, audience, authority context, and future-library boundary text.
+- Added QA/report support and Matthew 5 assertions for Mercy and righteousness principle networks.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed after rerunning a transient Matthew 1 adapter/page-load failure.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit: `pcdx: Add principle network architecture`

@@ -222,6 +222,8 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
     asArray(item.relatedPrinciples).forEach((part) => push("Supporting Principles", part, item));
   });
   return unique(rows).slice(0, limit);
+}function principleNetworkLines(samples, limit = 8) {
+  return asArray(samples.principleNetworks).slice(0, limit).map((item) => `${clean(item.corePrinciple || "Principle")} | Related: ${asArray(item.relatedPrinciples).slice(0, 3).map(clean).join(", ") || "related principles awaiting records"} | Promises: ${asArray(item.promises).slice(0, 2).map(clean).join(", ") || "none recorded"} | Authority: ${clean(item.authorityContext || "Current source")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference")}`);
 }function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
   const teaching = asArray(samples.teachingSemantics).slice(0, 3).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`);
   const relationships = asArray(samples.principleRelationships).slice(0, 3).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`);
@@ -259,6 +261,7 @@ function reportFromBundle(bundle) {
   const characterInteractions = asArray(samples.characterInteractions);
   const sessionContinuityReview = asArray(samples.sessionContinuityReview);
   const knowledgeGraph = asArray(samples.knowledgeGraph);
+  const principleNetworks = asArray(samples.principleNetworks);
   const semanticQuestions = asArray(samples.semanticQuestions);
   const trustVerification = asArray(samples.trustVerification);
   const answeredSemanticQuestions = semanticQuestions.filter((item) => item.questionKind !== "suggested");
@@ -309,6 +312,7 @@ function reportFromBundle(bundle) {
     `Ontology Roles: ${counts.ontologyRoles || 0}`,
     `Teaching / Discourse: ${counts.teachingSemantics || 0}`,
     `Principle Relationships: ${counts.principleRelationships || 0}`,
+    `Principle Networks: ${counts.principleNetworks || principleNetworks.length || 0}`,
     `Principle Hierarchy Items: ${principleHierarchyLines(samples).length}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
@@ -325,6 +329,7 @@ function reportFromBundle(bundle) {
       "I.C.E. Classification | Label: Semantic Coverage status | Layer: Semantic Coverage | Storage key: derived panel coverage row",
       ...teaching.slice(0, 4).map((item) => provenanceLine("I.C.E. Teaching Classification", item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType, "Teaching / Discourse Structure", "ICE_TEACHING_SEMANTICS")),
       ...relationships.slice(0, 4).map((item) => provenanceLine("I.C.E. Principle Relationship", `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")}`, "Principle Relationships", "ICE_PRINCIPLE_RELATIONSHIPS")),
+      ...principleNetworks.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Principle Network", `${item.corePrinciple || "Principle"} network`, "Principle Networks", "ICE_PRINCIPLE_NETWORKS")),
       ...characterInteractions.slice(0, 3).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS")),
       ...sessionContinuityReview.slice(0, 2).map((item) => provenanceLine("I.C.E. Continuity", item.sessionRange || "Session Continuity Review", "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW")),
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
@@ -338,6 +343,7 @@ function reportFromBundle(bundle) {
     ...list([
       ...teaching.slice(0, 4).map((item) => evidenceWeightLine(item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence", item.sourcePhrase ? "directly grounded in source phrase" : "derived from teaching/discourse record", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
       ...relationships.slice(0, 4).map((item) => evidenceWeightLine("Relationship Inference", "relationship supported by grounded principle/teaching evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length)),
+      ...principleNetworks.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference", "principle neighborhood derived from existing semantic records", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length)),
       ...characterInteractions.slice(0, 3).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
       ...sessionContinuityReview.slice(0, 2).map((item) => evidenceWeightLine("Continuity Inference", "derived from analyzed session records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.teachingProgression).length)),
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
@@ -349,6 +355,9 @@ function reportFromBundle(bundle) {
     "",
     "## Principle Hierarchy",
     ...list(principleHierarchyLines(samples), "no principle hierarchy records available"),
+    "",
+    "## Principle Networks",
+    ...list(principleNetworkLines(samples), "no principle network records available"),
     "",
     "## Trust & Verification",
     ...list(trustVerification.slice(0, 6).map((item) => `${item.result || "Trust result"} | Source: ${clean(item.sourceBasis || "source basis not recorded")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")} | Signals: ${asArray(item.trustSignals).slice(0, 3).join(", ") || "signals awaiting records"}`), "no trust verification records available"),
@@ -366,6 +375,7 @@ function reportFromBundle(bundle) {
     ...list([
       counts.teachingSemantics ? "Teaching / Discourse Structure: Primary semantic layer for this chapter; grounded records found" : "Teaching / Discourse Structure: Primary semantic layer for this chapter; awaiting grounding",
       counts.principleRelationships ? "Principle Relationships: Pilot layer; grounded records found" : "Principle Relationships: Pilot layer; no grounded records found",
+      (counts.principleNetworks || principleNetworks.length) ? "Principle Networks: Derived principle-neighborhood records found" : "Principle Networks: Awaiting grounded principle records",
       counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
       (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
@@ -402,6 +412,7 @@ function reportFromBundle(bundle) {
     ...list([
       ...teaching.slice(0, 6).map((item) => `${item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType} | ${item.verseRange || item.scopePath || "current scope"} | App accuracy: ${item.confidence || "probable"}`),
       ...relationships.slice(0, 5).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | App accuracy: ${item.confidence || "probable"}`),
+      ...principleNetworks.slice(0, 5).map((item) => `${item.corePrinciple || "Principle"} network | ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")} | App accuracy: ${item.confidence || "probable"}`),
       ...characterInteractions.slice(0, 5).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | App accuracy: ${item.confidence || "probable"}`),
       ...sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"} | App accuracy: ${item.confidence || "probable"}`),
       ...knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | App accuracy: ${item.confidence || "probable"}`)

@@ -40,6 +40,7 @@ const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
 const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
+const PRINCIPLE_NETWORKS_KEY = "ICE_PRINCIPLE_NETWORKS";
 const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
 const TRUST_VERIFICATION_KEY = "ICE_TRUST_VERIFICATION";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
@@ -2745,6 +2746,168 @@ function createKnowledgeGraph(captures = [], ontologyRoles = [], entityRelationR
   }
 
   return records.slice(0, 80);
+}
+function principleNetworkRecord(record = {}) {
+  const key = [
+    "principle-network",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.corePrinciple || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    corePrinciple: record.corePrinciple || "",
+    relatedPrinciples: record.relatedPrinciples || [],
+    commands: record.commands || [],
+    applications: record.applications || [],
+    promises: record.promises || [],
+    warnings: record.warnings || [],
+    consequences: record.consequences || [],
+    themes: record.themes || [],
+    authorityContext: record.authorityContext || "",
+    characterExamples: record.characterExamples || [],
+    currentScope: record.currentScope || "Current source",
+    futureLibraryConnections: record.futureLibraryConnections || "Awaiting analysis; no cross-library source links generated yet.",
+    speaker: record.speaker || "",
+    canonicalIdentity: record.canonicalIdentity || "",
+    audience: record.audience || "",
+    provenance: record.provenance || "I.C.E. Principle Network",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence / Relationship Inference",
+    reasoningPath: record.reasoningPath || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    relatedPrincipleRelationships: record.relatedPrincipleRelationships || [],
+    relatedCharacterInteractions: record.relatedCharacterInteractions || [],
+    relatedKnowledgeGraph: record.relatedKnowledgeGraph || [],
+    relatedSessionContinuityReview: record.relatedSessionContinuityReview || [],
+    relatedResolutionExplanations: record.relatedResolutionExplanations || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "principle network derived from existing source-grounded semantic records"
+  };
+}
+
+function createPrincipleNetworks(captures = [], teachingSemantics = [], principleRelationships = [], characterInteractions = [], knowledgeGraph = [], sessionContinuityReview = [], resolutionExplanations = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const sourceScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const unique = (values = []) => Array.from(new Set(values.flat(Infinity).map((value) => normalizeWhitespace(value == null ? "" : String(value))).filter(Boolean).map((value) => value.replace(/^\s+|\s+$/g, ""))));
+  const sameText = (left = "", right = "") => normalizeWhitespace(left).toLowerCase() === normalizeWhitespace(right).toLowerCase();
+  const ids = (items = [], fallback = "id") => unique((items || []).map((item) => item.id || item[fallback] || "")).slice(0, 12);
+  const evidenceFrom = (items = [], limit = 10) => unique((items || []).flatMap((item) => [item.sourcePhrase, item.derivedMeaning, item.sourceGrounding, ...(item.evidence || [])])).slice(0, limit);
+  const includesTerm = (item = {}, term = "") => {
+    const pattern = normalizeWhitespace(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return pattern ? new RegExp(pattern, "i").test([
+      item.principle,
+      item.teachingTopic,
+      item.blessing,
+      item.commandment,
+      item.application,
+      item.promise,
+      item.warning,
+      item.requirement,
+      item.contrast,
+      item.derivedMeaning,
+      item.sourcePhrase,
+      item.node,
+      item.relationships,
+      item.relatedPrinciples
+    ].flat(Infinity).join(" ")) : false;
+  };
+  const addCandidate = (map, value, item) => {
+    const label = normalizeWhitespace(value || "");
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (!map.has(key)) map.set(key, { label, items: [] });
+    map.get(key).items.push(item);
+  };
+  const candidates = new Map();
+
+  for (const relationship of principleRelationships || []) {
+    addCandidate(candidates, relationship.principle, relationship);
+  }
+  for (const teaching of teachingSemantics || []) {
+    addCandidate(candidates, teaching.principle, teaching);
+  }
+
+  const records = [];
+  for (const candidate of candidates.values()) {
+    const core = candidate.label;
+    const relationshipMatches = (principleRelationships || []).filter((item) => sameText(item.principle, core) || (item.relatedPrinciples || []).some((related) => sameText(related, core)) || includesTerm(item, core));
+    const relatedFromRelationships = relationshipMatches.flatMap((item) => [item.principle, ...(item.relatedPrinciples || [])]).filter((item) => !sameText(item, core));
+    const relatedTerms = unique(relatedFromRelationships);
+    const teachingMatches = (teachingSemantics || []).filter((item) => includesTerm(item, core) || relatedTerms.some((term) => includesTerm(item, term)));
+    const graphMatches = (knowledgeGraph || []).filter((item) => includesTerm(item, core) || relatedTerms.some((term) => includesTerm(item, term)));
+    const interactionMatches = (characterInteractions || []).filter((item) => /teach|audience|disciple|multitude|reconcil|mercy|peace|righteous/i.test(`${item.interactionType || ""} ${item.derivedMeaning || ""} ${item.sourcePhrase || ""}`));
+    const resolutionMatches = (resolutionExplanations || []).filter((item) => includesTerm(item, core) || relatedTerms.some((term) => includesTerm(item, term)));
+    if (!relationshipMatches.length && !teachingMatches.length) continue;
+
+    const commands = unique(teachingMatches.flatMap((item) => [item.commandment, item.interpretation]).filter(Boolean)).slice(0, 8);
+    const applications = unique(teachingMatches.flatMap((item) => [item.application, item.requirement]).filter(Boolean).flatMap((value) => String(value).split(/;|,/))).slice(0, 8);
+    const promises = unique(teachingMatches.flatMap((item) => [item.promise, item.blessing]).filter(Boolean)).slice(0, 8);
+    const warnings = unique(teachingMatches.flatMap((item) => [item.warning]).filter(Boolean)).slice(0, 8);
+    const consequences = unique(teachingMatches.flatMap((item) => [item.requirement, item.contrast]).filter(Boolean)).slice(0, 8);
+    const themes = unique([
+      ...teachingMatches.flatMap((item) => [item.teachingTopic, item.discourseType, item.teachingBlock]),
+      ...relationshipMatches.flatMap((item) => [item.teachingBlock, item.relationshipType]),
+      ...graphMatches.flatMap((item) => [item.type])
+    ]).slice(0, 10);
+    const speakers = unique(teachingMatches.map((item) => item.speaker).concat(relationshipMatches.map((item) => item.speaker))).slice(0, 3);
+    const canonicalIdentities = unique(teachingMatches.map((item) => item.canonicalIdentity).concat(relationshipMatches.map((item) => item.canonicalIdentity))).slice(0, 3);
+    const audiences = unique(teachingMatches.map((item) => item.audience).concat(relationshipMatches.map((item) => item.audience))).slice(0, 3);
+    const authorityContext = unique(teachingMatches.map((item) => item.teachingBlock).concat(relationshipMatches.map((item) => item.teachingBlock))).find(Boolean) || sourceScope;
+    const characterExamples = unique([
+      ...interactionMatches.flatMap((item) => [item.sourceCharacter, item.targetCharacter]),
+      ...teachingMatches.flatMap((item) => [item.speaker, item.audience])
+    ]).slice(0, 8);
+    const sourcePhrase = evidenceFrom([...teachingMatches, ...relationshipMatches], 2)[0] || "";
+    const derivedMeaning = `${core} network is derived from existing teaching fields, principle relationship records, character interactions, knowledge graph links, and session continuity in ${sourceScope}.`;
+
+    records.push(principleNetworkRecord({
+      sourceCaptureId,
+      sourceContext: context,
+      scopePath: `principle.network.${textHash(`${sourceScope}|${core}`)}`,
+      verseRange: unique([...teachingMatches.map((item) => item.verseRange), ...relationshipMatches.map((item) => item.verseRange)]).join("; ") || sourceScope,
+      corePrinciple: core,
+      relatedPrinciples: relatedTerms.slice(0, 12),
+      commands,
+      applications,
+      promises,
+      warnings,
+      consequences,
+      themes,
+      authorityContext,
+      characterExamples,
+      currentScope: sourceScope,
+      futureLibraryConnections: "Awaiting analysis; no cross-library source links generated yet.",
+      speaker: speakers.join(", "),
+      canonicalIdentity: canonicalIdentities.join(", "),
+      audience: audiences.join(", "),
+      provenance: "I.C.E. Principle Network",
+      evidenceWeight: relationshipMatches.length ? "Derived Semantic Evidence / Relationship Inference" : "Derived Semantic Evidence",
+      reasoningPath: ["Core principle candidate", "Teaching Semantics fields", "Principle Relationships neighborhood", "Character/authority context", "Knowledge Graph support", "Network summary"],
+      sourcePhrase,
+      derivedMeaning,
+      evidence: evidenceFrom([...teachingMatches, ...relationshipMatches, ...graphMatches], 10),
+      relatedTeachingSemantics: ids(teachingMatches, "teachingTopic"),
+      relatedPrincipleRelationships: ids(relationshipMatches, "principle"),
+      relatedCharacterInteractions: ids(interactionMatches, "interactionType"),
+      relatedKnowledgeGraph: ids(graphMatches, "node"),
+      relatedSessionContinuityReview: ids(sessionContinuityReview, "reviewType"),
+      relatedResolutionExplanations: ids(resolutionMatches, "result"),
+      confidence: [...teachingMatches, ...relationshipMatches].some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: `Derived review layer only: ${core} is included because existing Teaching Semantics or Principle Relationships records in ${sourceScope} already mention the principle or its related neighborhood.`
+    }));
+  }
+
+  return records.slice(0, 32);
 }
 function semanticQuestionRecord(record = {}) {
   const key = [
@@ -7665,6 +7828,15 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity,
       sessionContinuityReview
     );
+    const principleNetworks = createPrincipleNetworks(
+      captures,
+      teachingSemantics,
+      principleRelationships,
+      characterInteractions,
+      knowledgeGraph,
+      sessionContinuityReview,
+      []
+    );
     const semanticQuestions = createSemanticQuestions(
       captures,
       teachingSemantics,
@@ -7712,6 +7884,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions,
       sessionContinuityReview,
       knowledgeGraph,
+      principleNetworks,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -7740,6 +7913,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions,
       sessionContinuityReview,
       knowledgeGraph,
+      principleNetworks,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -7772,6 +7946,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions: characterInteractions.length,
       sessionContinuityReview: sessionContinuityReview.length,
       knowledgeGraph: knowledgeGraph.length,
+      principleNetworks: principleNetworks.length,
       semanticQuestions: semanticQuestions.length,
       trustVerification: trustVerification.length
     };
@@ -7804,7 +7979,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.4-canonical-analyzed-page-state",
+      analysisBuildMarker: "phase-9.1b-principle-network-architecture",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -7824,6 +7999,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractionCount: characterInteractions.length,
       sessionContinuityReviewCount: sessionContinuityReview.length,
       knowledgeGraphCount: knowledgeGraph.length,
+      principleNetworkCount: principleNetworks.length,
       semanticQuestionCount: semanticQuestions.length,
       trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
@@ -7905,6 +8081,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
       [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
       [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
+      [PRINCIPLE_NETWORKS_KEY]: principleNetworks,
       [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
       [TRUST_VERIFICATION_KEY]: trustVerification,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,

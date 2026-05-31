@@ -1,3 +1,53 @@
+## 2026-05-31 - Phase 9.1b Principle Network Architecture
+
+Instruction summary:
+- Add a derived Principle Networks layer so each principle can show its broader semantic neighborhood.
+- Include core principle, related principles, commands, applications, promises, warnings, consequences, teaching themes, authority context, character examples, current scope, future library connections, provenance, evidence weight, App accuracy, and reasoning path.
+- Use only existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, and Resolution Explanation records.
+- Preserve source phrase vs derived meaning, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, Class I / Class i distinction, no crawling, no Strong's/POS, and no invented doctrine.
+
+Codex action summary:
+- Added `ICE_PRINCIPLE_NETWORKS` storage and builder support in the background analysis pipeline.
+- Derived principle network records from existing teaching fields, principle relationship neighborhoods, character interaction context, knowledge graph support, session continuity references, and resolution-explanation links where present.
+- Added Study Panel `Principle Networks` cards with provenance, evidence weight, source phrase, derived meaning, App accuracy, reasoning path, speaker, audience, authority context, and future-library boundary text.
+- Added Principle Networks to Study Panel diagnostics, compact exports, GPT review reports, Matthew QA bundle counts/samples, and session review reports.
+- Added Matthew 5 QA assertions for Mercy and righteousness networks.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed after rerunning a transient Matthew 1 adapter/page-load failure.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 # I.C.E. Project Log
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
@@ -848,13 +898,13 @@ Status:
 
 Instruction summary:
 - Add Phase 8.2r restrained semantic visual hierarchy styling.
-- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class Ã°Ââ€˜â€“, source wording, and derived meaning.
+- Use existing ontology/class CSS hooks to differentiate Divine Origin, messenger/transfer, Human response, adversarial Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ, source wording, and derived meaning.
 - Preserve semantic records, source phrases, source phrase vs Derived meaning separation, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class hierarchy.
 
 Codex action summary:
 - Added source phrase and derived meaning section classes from the Study Panel section helper.
 - Refined `ice-authority-path` styling so THE LORD -> AngEL Of THE LORD -> Joseph reads as origin -> transfer -> recipient without flashy treatment.
-- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class Ã°Ââ€˜â€“ so Class Ã°Ââ€˜â€“ remains visually distinct from Class I.
+- Tuned class hooks for Divine Class I, Class II messenger, Class III Human, and adversarial Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ so Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ remains visually distinct from Class I.
 
 Files changed:
 - `study.js`
@@ -873,14 +923,14 @@ Commit:
 
 Status:
 - Implemented by pcdx.
-## 2026-05-20 - Class Ã°Ââ€˜â€“ Hierarchy Correction
+## 2026-05-20 - Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ Hierarchy Correction
 
 Instruction summary:
-- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class Ã°Ââ€˜â€“`.
-- Ensure Class Ã°Ââ€˜â€“ never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
+- Correct adversarial hierarchy display from uppercase sequence class to italic lowercase `Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ`.
+- Ensure Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ never visually collapses with Divine `Class I` before future semantic visual hierarchy styling.
 
 Codex action summary:
-- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class Ã°Ââ€˜â€“`.
+- Updated display classification so adversary / wicked / evil / anti-GOD resolves to `Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ`.
 - Renamed the Divine Class I CSS hook in the class-transfer display to `ice-class-i-divine` and added `ice-class-i-adversary` for future distinct styling.
 - Updated project state hierarchy notes and current class-transfer CSS hook references.
 
@@ -1444,7 +1494,7 @@ Instruction summary:
 - Preserve distinctions between narrator, prophet, divine speech, THE LORD, and AngEL Of THE LORD.
 
 Codex action summary:
-- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class Ã°Ââ€˜â€“ - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
+- Updated class display labels to the required `Class I - ...`, `Class II - ...`, `Class III - Human`, `Class IIII - Living organism / creature`, `Class IIIII - Non-living item/object`, `Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ - adversary / wicked / evil / anti-GOD`, and `AI_Actor - artificial/tool actor category` wording.
 - Added display fallback classification for `Scripture narrator`, `narrator`, `prophet`, and `the prophet` as `Class III - Human` when they appear as related display entities without a full registry record.
 - Added hierarchy lines to derived semantic displays, including Passage Functions, Revelation Patterns, Reference Roles, and Narrative Timeline entity previews.
 - Removed duplicated `Class:` prefixing in entity, canonical identity, focus, and role displays so hierarchy labels are visually consistent.
@@ -2937,7 +2987,7 @@ Instruction summary:
 
 Codex action summary:
 - Added class labels for Entity Registry and Canonical Identities.
-- Used hierarchy I through Ã°Ââ€˜â€“ for display classification, with italic lowercase Class Ã°Ââ€˜â€“ distinct from Divine Class I.
+- Used hierarchy I through ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ for display classification, with italic lowercase Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ distinct from Divine Class I.
 - Kept classification display-only.
 
 Files changed:
@@ -3213,7 +3263,7 @@ Status:
 ## 2026-05-26 - Phase 8.3 HOLY Action / HOLY Reference Consistency
 - Added derived-display HOLY action emphasis for Class I / HOLY-origin semantic processes while preserving quoted source phrases.
 - Added HOLY action process rendering to authority/class-transfer displays: origin, messenger/actor, transfer/action, recipient/target, and result/fulfillment.
-- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class Ã°Ââ€˜â€“ distinction.
+- Updated Matthew 1 derived records for HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT while preserving Holy Ghost source wording, confidence labels, JESUS / JESUS CHRIST distinction, HOLY SPIRIT preference, CHILD display, and Class I / Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ distinction.
 
 ## 2026-05-27 - Refine Semantic Contrast Wording
 

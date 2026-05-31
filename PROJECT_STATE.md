@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1b Principle Network Architecture implemented.
+- Added persisted derived `ICE_PRINCIPLE_NETWORKS` records that summarize each principle's semantic neighborhood from existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, and Resolution Explanation inputs.
+- Principle Network records include Core Principle, Related Principles, Commands, Applications, Promises, Warnings, Consequences, Themes, Speaker, Audience, Authority Context, Character Examples, Current Scope, future-library status, provenance, evidence weight, source phrase, derived meaning, App accuracy, and reasoning path.
+- Study Panel now includes a Principle Networks section with visible provenance and evidence weighting.
+- Matthew QA bundles and GPT/session review reports now include Principle Networks counts and compact summaries.
+- The layer remains derived only: no crawling, Strong's/POS, freeform answers, invented doctrine, or future-library source links were added.
+Latest pcdx update:
 - Study Panel top action controls refined for normal study use.
 - Primary actions now show Refresh Study Data and Run GPT Review Snapshot first.
 - GPT Review actions are grouped together with helper text: For GPT review, use Run GPT Review Snapshot, then Copy GPT Review Report.
@@ -546,10 +553,10 @@ Future capabilities:
 - `III` = Human
 - `IIII` = Living organism / creature / natural life
 - `IIIII` = Non-living item/object
-- `ð‘–` = adversary / wicked / evil / anti-GOD
+- `Ã°Ââ€˜â€“` = adversary / wicked / evil / anti-GOD
 - `AI_Actor` = artificial/tool actor category
 
-Class I is Divine Origin Authority. Class ð‘– is adversarial / anti-origin opposition. Class ð‘– uses an italicized lowercase i and must NEVER visually collapse with Class I.
+Class I is Divine Origin Authority. Class Ã°Ââ€˜â€“ is adversarial / anti-origin opposition. Class Ã°Ââ€˜â€“ uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 
@@ -723,7 +730,7 @@ Process model:
 Matthew 1 pilot:
 - THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
 - HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
-- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class ð‘– remains adversarial/opposition and visually distinct.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class Ã°Ââ€˜â€“ remains adversarial/opposition and visually distinct.
 
 Preserve:
 - App accuracy wording
@@ -731,7 +738,7 @@ Preserve:
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
-- Class I / Class ð‘– distinction
+- Class I / Class Ã°Ââ€˜â€“ distinction
 - no unsupported doctrine
 
 ## Phase 8.3b Semantic Contrast Wording Refinement

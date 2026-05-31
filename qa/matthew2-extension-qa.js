@@ -45,6 +45,7 @@ const STORAGE_KEYS = [
   "ICE_CHARACTER_INTERACTIONS",
   "ICE_SESSION_CONTINUITY_REVIEW",
   "ICE_KNOWLEDGE_GRAPH",
+  "ICE_PRINCIPLE_NETWORKS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -110,6 +111,7 @@ function emptyCounts() {
     characterInteractions: 0,
     sessionContinuityReview: 0,
     knowledgeGraph: 0,
+    principleNetworks: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -141,6 +143,7 @@ function buildCounts(storageData) {
     characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
+    principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -173,6 +176,7 @@ function buildSamples(storageData) {
     characterInteractions: sample(storageData.ICE_CHARACTER_INTERACTIONS, 20),
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
+    principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
