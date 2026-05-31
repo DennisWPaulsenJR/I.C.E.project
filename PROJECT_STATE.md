@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.0a Guided Study UI Refinement implemented.
+- Added Guided Study section to the Study Panel as a readable study-companion surface.
+- Guided suggestions are generated only from existing grounded semantic records: Teaching Semantics, Principle Relationships, Character Interactions, Session Continuity Review, Library Awareness, and Knowledge Graph.
+- Suggested paths include Character Focus, Principle Focus, Teaching Focus, Relationship Focus, Session Continuity Focus, and Library Awareness Focus where grounded.
+- Each suggestion shows Why, Related, Evidence, Source Phrase, Derived Meaning, Source/provenance, Evidence Weight, App accuracy, and supporting layers.
+- GPT Review Reports now include compact Guided Study suggestions.
+
+Latest pcdx update:
 - Phase 8.8 Semantic Resolution Explanation Layer implemented.
 - Added derived `ICE_RESOLUTION_EXPLANATIONS` Study Panel section.
 - Explanation records are constructed from existing ontology, reference role, teaching, principle relationship, character interaction, session continuity, library awareness, and knowledge graph records.

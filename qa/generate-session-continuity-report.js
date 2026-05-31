@@ -46,7 +46,19 @@ function provenanceLine(source, label, layer, key) {
 function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
   return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
 }
-function resolutionExplanationLines(sorted, range, limit = 8) {
+function guidedStudyLines(sorted, limit = 6) {
+  const lines = [];
+  const allSamples = sorted.flatMap((entry) => [entry.bundle.samples || {}]);
+  if (allSamples.some((samples) => asArray(samples.teachingSemantics).some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || "")))) {
+    lines.push("Study JESUS as Teacher | Character Focus | Source: I.C.E. generated study suggestion from Teaching Semantics + Knowledge Graph | Evidence Weight: Derived Semantic Evidence / Relationship Inference");
+  }
+  const principle = allSamples.flatMap((samples) => asArray(samples.principleRelationships)).find((item) => /mercy|merciful|peace|peacemak|reconcil/i.test([item.principle, asArray(item.relatedPrinciples).join(" "), item.derivedMeaning].join(" ")));
+  if (principle) lines.push(`Study ${clean(principle.principle || "Mercy")} with related principles | Principle Focus | Source: I.C.E. generated study suggestion from Principle Relationships | Evidence Weight: Relationship Inference`);
+  const relation = allSamples.flatMap((samples) => asArray(samples.characterInteractions)).find((item) => item.sourceCharacter || item.targetCharacter);
+  if (relation) lines.push(`Study ${clean(relation.sourceCharacter || "source")} and ${clean(relation.targetCharacter || "target")} | Relationship Focus | Source: I.C.E. generated study suggestion from Character Interactions | Evidence Weight: Relationship Inference`);
+  lines.push("Study continuity across the current session | Session Continuity Focus | Source: I.C.E. generated study suggestion from Session Continuity Review | Evidence Weight: Continuity Inference");
+  return unique(lines).slice(0, limit);
+}function resolutionExplanationLines(sorted, range, limit = 8) {
   const values = sorted.flatMap((entry) => {
     const samples = entry.bundle.samples || {};
     return [
@@ -183,6 +195,7 @@ function reportFromBundles(bundles) {
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     "Session Continuity Review: 1",
+    `Guided Study: ${guidedStudyLines(sorted).length}`,
     `Semantic Resolution Explanations: ${resolutionExplanationLines(sorted, range).length}`,
     "",
     "## Provenance Labels",
@@ -206,6 +219,9 @@ function reportFromBundles(bundles) {
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(sorted, range), "no resolution explanations available"),
+    "",
+    "## Guided Study",
+    ...list(guidedStudyLines(sorted), "no guided study suggestions available"),
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",

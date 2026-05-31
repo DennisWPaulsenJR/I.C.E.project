@@ -1477,6 +1477,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       "## Layer Counts",
       ...layerCountPairs().map(([label, value]) => `${label}: ${value}`),
       "",
+      "## Guided Study",
+      ...markdownList(guidedStudySummaryLines(6), "no guided study suggestions available"),
+      "",
       "## Semantic Coverage",
       ...markdownList(semanticCoverageSummaryLines(10)),
       "",
@@ -2095,6 +2098,214 @@ document.addEventListener("DOMContentLoaded", async () => {
     return card;
   }
 
+  function uniqueStudyList(values = []) {
+    const seen = new Set();
+    return asArray(values)
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function guidedStudyRecord(record = {}) {
+    return {
+      pathType: record.pathType || "Study Focus",
+      title: record.title || "Study current source",
+      why: record.why || "This suggestion is grounded in the current analyzed semantic records.",
+      related: uniqueStudyList(record.related).slice(0, 8),
+      evidence: uniqueStudyList(record.evidence).slice(0, 5),
+      sourcePhrase: record.sourcePhrase || asArray(record.evidence)[0] || "",
+      derivedMeaning: record.derivedMeaning || record.why || "",
+      provenance: record.provenance || "I.C.E. generated study suggestion",
+      evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+      confidence: record.confidence || "probable",
+      sourceGrounding: record.sourceGrounding || record.why || "Grounded in current semantic records.",
+      supportingLayers: uniqueStudyList(record.supportingLayers)
+    };
+  }
+
+  function guidedStudyRecords() {
+    const records = [];
+    const teachings = asArray(studyData.teachingSemantics);
+    const principles = asArray(studyData.principleRelationships);
+    const interactions = asArray(studyData.characterInteractions);
+    const graph = knowledgeGraphRecords();
+    const sessionReview = sessionContinuityReviewRecords();
+    const library = libraryAwarenessRecords();
+    const jesusTeaching = teachings.find((item) => /\bJESUS\b/i.test(item.speaker || item.relatedEntities || item.derivedMeaning || ""));
+    if (jesusTeaching || graph.some((item) => /\bJESUS\b/i.test(item.node || ""))) {
+      records.push(guidedStudyRecord({
+        pathType: "Character Focus",
+        title: "Study JESUS as Teacher",
+        why: "JESUS is resolved as the speaker/teacher where Matthew 5 grounds the teaching context.",
+        related: ["Sermon on the Mount", "Kingdom of Heaven", "Righteousness", "Mercy", "Peacemaking", ...asArray(jesusTeaching?.relatedEntities)],
+        evidence: [jesusTeaching?.sourcePhrase, jesusTeaching?.derivedMeaning, ...graph.filter((item) => /\bJESUS\b/i.test(item.node || "")).slice(0, 2).map((item) => item.derivedMeaning || item.sourceGrounding)],
+        sourcePhrase: jesusTeaching?.sourcePhrase,
+        derivedMeaning: jesusTeaching?.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Teaching Semantics + Knowledge Graph",
+        evidenceWeight: "Derived Semantic Evidence / Relationship Inference",
+        confidence: jesusTeaching?.confidence || "probable",
+        sourceGrounding: jesusTeaching?.sourceGrounding || "Teaching and graph records ground JESUS as central speaker/teacher where available.",
+        supportingLayers: ["Teaching / Discourse Structure", "Scripture Knowledge Graph"]
+      }));
+    }
+    const mercyPrinciple = principles.find((item) => /mercy|merciful|peace|peacemak|reconcil/i.test([item.principle, asArray(item.relatedPrinciples).join(" "), item.derivedMeaning].join(" ")));
+    if (mercyPrinciple) {
+      records.push(guidedStudyRecord({
+        pathType: "Principle Focus",
+        title: `Study ${mercyPrinciple.principle || "Mercy"} with related principles`,
+        why: "This principle is connected to related principles by grounded Matthew 5 teaching records.",
+        related: asArray(mercyPrinciple.relatedPrinciples),
+        evidence: [mercyPrinciple.sourcePhrase, mercyPrinciple.derivedMeaning, ...asArray(mercyPrinciple.evidence)],
+        sourcePhrase: mercyPrinciple.sourcePhrase,
+        derivedMeaning: mercyPrinciple.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Principle Relationships",
+        evidenceWeight: "Relationship Inference",
+        confidence: mercyPrinciple.confidence,
+        sourceGrounding: mercyPrinciple.sourceGrounding,
+        supportingLayers: ["Principle Relationships", "Teaching / Discourse Structure"]
+      }));
+    }
+    const teachingBlock = teachings.find((item) => item.teachingBlock || item.teachingTopic || item.discourseType);
+    if (teachingBlock) {
+      records.push(guidedStudyRecord({
+        pathType: "Teaching Focus",
+        title: `Study ${teachingBlock.teachingBlock || teachingBlock.teachingTopic || "the teaching block"}`,
+        why: "A teaching/discourse record identifies the current passage as teaching-oriented and gives a grounded topic to review.",
+        related: [teachingBlock.teachingTopic, teachingBlock.principle, teachingBlock.commandment, teachingBlock.blessing, teachingBlock.promise, teachingBlock.audience],
+        evidence: [teachingBlock.sourcePhrase, teachingBlock.derivedMeaning, ...asArray(teachingBlock.evidence)],
+        sourcePhrase: teachingBlock.sourcePhrase,
+        derivedMeaning: teachingBlock.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Teaching Semantics",
+        evidenceWeight: teachingBlock.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
+        confidence: teachingBlock.confidence,
+        sourceGrounding: teachingBlock.sourceGrounding,
+        supportingLayers: ["Teaching / Discourse Structure"]
+      }));
+    }
+    const relation = interactions.find((item) => /JESUS|THE LORD|AngEL|Joseph|Herod/i.test([item.sourceCharacter, item.targetCharacter].join(" ")));
+    if (relation) {
+      records.push(guidedStudyRecord({
+        pathType: "Relationship Focus",
+        title: `Study ${relation.sourceCharacter || "source"} and ${relation.targetCharacter || "target"}`,
+        why: "A character interaction record shows a grounded relationship between source and target characters.",
+        related: [passageFunctionTitle(relation.interactionType || "interaction"), relation.authorityClass, ...asArray(relation.relatedEntities)],
+        evidence: [relation.sourcePhrase, relation.derivedMeaning, ...asArray(relation.evidence)],
+        sourcePhrase: relation.sourcePhrase,
+        derivedMeaning: relation.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Character Interactions",
+        evidenceWeight: "Relationship Inference",
+        confidence: relation.confidence,
+        sourceGrounding: relation.sourceGrounding,
+        supportingLayers: ["Character Interactions"]
+      }));
+    }
+    const continuity = sessionReview[0];
+    if (continuity) {
+      records.push(guidedStudyRecord({
+        pathType: "Session Continuity Focus",
+        title: `Study continuity across ${continuity.sessionRange || "the current session"}`,
+        why: "The current session review connects analyzed pages through continuing characters, themes, authority paths, and teaching progression.",
+        related: [...asArray(continuity.continuingCharacters), ...asArray(continuity.continuingThemes), ...asArray(continuity.continuingPrincipleFamilies)],
+        evidence: [continuity.sourcePhrase, continuity.derivedMeaning, ...asArray(continuity.evidence), ...asArray(continuity.teachingProgression)],
+        sourcePhrase: continuity.sourcePhrase,
+        derivedMeaning: continuity.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Session Continuity Review",
+        evidenceWeight: "Continuity Inference",
+        confidence: continuity.confidence,
+        sourceGrounding: continuity.sourceGrounding,
+        supportingLayers: ["Session Continuity Review"]
+      }));
+    }
+    const family = library[0];
+    if (family) {
+      records.push(guidedStudyRecord({
+        pathType: "Library Awareness Focus",
+        title: `Study the ${family.principleFamily || "principle"} family in this source`,
+        why: "Library Awareness groups current-source principles into a family while keeping future sources marked as awaiting analysis.",
+        related: [family.teachingFamily, family.doctrineFamily, ...asArray(family.knownRelatedCategories)],
+        evidence: [family.sourcePhrase, family.currentGrounding, family.derivedMeaning],
+        sourcePhrase: family.sourcePhrase,
+        derivedMeaning: family.derivedMeaning,
+        provenance: "I.C.E. generated study suggestion from Library Awareness",
+        evidenceWeight: "Library Awareness Classification",
+        confidence: family.confidence,
+        sourceGrounding: family.sourceGrounding || family.currentGrounding,
+        supportingLayers: ["Library Awareness", family.semanticSourceLayer]
+      }));
+    }
+    return records.slice(0, 8);
+  }
+
+  function guidedStudySearchText(item = {}) {
+    return [item.pathType, item.title, item.why, item.related, item.evidence, item.provenance, item.evidenceWeight, item.sourceGrounding, item.supportingLayers].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function guidedStudySummaryLines(limit = 6) {
+    return guidedStudyRecords().slice(0, limit).map((item, index) => `${index + 1}. ${item.title} | ${item.pathType} | ${item.evidenceWeight}`);
+  }
+
+  function createGuidedStudyCard(item = {}, index = 0) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card guided-study-card";
+    assignSemanticCardTarget(card, "guidedStudy", item, `${item.pathType || "study"}-${item.title || index}`);
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = `${index + 1}. ${item.title || "Study current source"}`;
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.pathType || "Study Focus", displayConfidence(item.confidence || "probable")].join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.title, item.why, item.related, item.evidence, item.derivedMeaning]);
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Why", item.why || "Grounded study suggestion from current semantic records.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related", "", { list: asArray(item.related), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source", item.provenance || "I.C.E. generated study suggestion", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "suggestion uses current grounded semantic records only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingLayers, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Supporting Layers", "", { collapsed: true, summaryLabel: "Show supporting layers", list: asArray(item.supportingLayers), plainList: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderGuidedStudy(term) {
+    const container = document.getElementById("guidedStudyCards");
+    const count = document.getElementById("guidedStudyCount");
+    if (!container || !count) return;
+    const records = guidedStudyRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(guidedStudySearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} suggestion(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No grounded guided study suggestions are available yet.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Suggested Study Path",
+      [
+        `Suggestions: ${records.length}`,
+        "Purpose: give grounded next study paths from existing semantic records.",
+        "Boundary: no devotional advice, no invented doctrine, and no instruction about what to believe."
+      ].join("\n"),
+      "guided study"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No guided study suggestions match current filter.");
+      return;
+    }
+    filtered.forEach((item, index) => container.appendChild(createGuidedStudyCard(item, index)));
+  }
   function renderSemanticCoverage(term) {
     const container = document.getElementById("semanticCoverageCards");
     const count = document.getElementById("semanticCoverageCount");
@@ -9084,6 +9295,7 @@ createRevelationPartsSection(item.subEvents)
         .toLowerCase();
 
       renderVolumeContext(term);
+      renderGuidedStudy(term);
       renderSemanticCoverage(term);
       renderResolutionExplanations(term);
       renderSessionContinuityReview(term);

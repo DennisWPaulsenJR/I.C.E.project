@@ -21,6 +21,36 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-30 00:00 - pcdx - Refine guided study UI
+Summary:
+- Added Guided Study section with readable Suggested Study Path cards.
+- Suggestions are grounded in existing semantic records and show why they appear, related items, evidence, source/provenance, evidence weight, and App accuracy.
+- Added compact Guided Study suggestions to GPT review reports.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `node --check qa/generate-session-continuity-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Refine guided study UI`
+
+Status:
+- Implemented and validated.
+
 ## 2026-05-30 00:00 - pcdx - Add semantic resolution explanations
 Summary:
 - Added derived `ICE_RESOLUTION_EXPLANATIONS` Study Panel layer.

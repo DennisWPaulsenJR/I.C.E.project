@@ -128,7 +128,25 @@ function provenanceLine(source, label, layer, key) {
 function evidenceWeightLine(type, strength, grounding, supportingCount = 0) {
   return `${type} | Strength: ${clean(strength)} | Source grounding: ${clean(grounding || "Not recorded")} | Supporting records: ${supportingCount}`;
 }
-function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
+function guidedStudyLines(samples, libraryAwareness, limit = 6) {
+  const teaching = asArray(samples.teachingSemantics);
+  const relationships = asArray(samples.principleRelationships);
+  const interactions = asArray(samples.characterInteractions);
+  const graph = asArray(samples.knowledgeGraph);
+  const lines = [];
+  if (teaching.some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || "")) || graph.some((item) => /\bJESUS\b/i.test(item.node || ""))) {
+    lines.push("Study JESUS as Teacher | Character Focus | Source: I.C.E. generated study suggestion from Teaching Semantics + Knowledge Graph | Evidence Weight: Derived Semantic Evidence / Relationship Inference");
+  }
+  const principle = relationships.find((item) => /mercy|merciful|peace|peacemak|reconcil/i.test([item.principle, asArray(item.relatedPrinciples).join(" "), item.derivedMeaning].join(" ")));
+  if (principle) lines.push(`Study ${clean(principle.principle || "Mercy")} with related principles | Principle Focus | Source: I.C.E. generated study suggestion from Principle Relationships | Evidence Weight: Relationship Inference`);
+  const block = teaching.find((item) => item.teachingBlock || item.teachingTopic || item.discourseType);
+  if (block) lines.push(`Study ${clean(block.teachingBlock || block.teachingTopic || "the teaching block")} | Teaching Focus | Source: I.C.E. generated study suggestion from Teaching Semantics | Evidence Weight: ${block.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence"}`);
+  const relation = interactions.find((item) => item.sourceCharacter || item.targetCharacter);
+  if (relation) lines.push(`Study ${clean(relation.sourceCharacter || "source")} and ${clean(relation.targetCharacter || "target")} | Relationship Focus | Source: I.C.E. generated study suggestion from Character Interactions | Evidence Weight: Relationship Inference`);
+  const family = asArray(libraryAwareness)[0];
+  if (family) lines.push(`Study the ${clean(family.principleFamily || "principle")} family in this source | Library Awareness Focus | Source: I.C.E. generated study suggestion from Library Awareness | Evidence Weight: Library Awareness Classification`);
+  return lines.slice(0, limit);
+}function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
   const teaching = asArray(samples.teachingSemantics).slice(0, 3).map((item) => `${clean(item.teachingTopic || item.blessing || item.commandment || "Teaching")} | Direct Source Evidence | source phrase -> speaker/audience context -> teaching category -> final teaching resolution`);
   const relationships = asArray(samples.principleRelationships).slice(0, 3).map((item) => `${clean(item.principle || "Principle")} ${clean(item.relationshipType || "related")} ${clean(asArray(item.relatedPrinciples).slice(0, 2).join(", "))} | Relationship Inference | source teaching evidence -> shared discourse context -> relationship type -> final principle relationship`);
   const interactions = asArray(samples.characterInteractions).slice(0, 2).map((item) => `${clean(item.sourceCharacter || "Source")} -> ${clean(item.targetCharacter || "Target")} | Relationship Inference | source character -> target character -> interaction type -> final interaction resolution`);
@@ -215,6 +233,7 @@ function reportFromBundle(bundle) {
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
+    `Guided Study: ${guidedStudyLines(samples, libraryAwareness).length}`,
     `Semantic Resolution Explanations: ${resolutionExplanationLines(samples, libraryAwareness).length}`,
     "",
     "## Provenance Labels",
@@ -240,6 +259,9 @@ function reportFromBundle(bundle) {
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(samples, libraryAwareness), "no resolution explanations available"),
+    "",
+    "## Guided Study",
+    ...list(guidedStudyLines(samples, libraryAwareness), "no guided study suggestions available"),
     "",
     "## Semantic Coverage",
     ...list([

@@ -2,6 +2,38 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-30 - Phase 9.0a Guided Study UI Refinement
+
+Instruction summary:
+- Refine Guided Study so it reads like a clear study companion rather than another technical layer.
+- Reduce jargon, improve ordering, make suggestions actionable, and explain why each suggestion appears.
+- Preserve provenance labels, evidence weights, source phrase vs derived meaning, JESUS / JESUS CHRIST distinction, Class I / Class i distinction, and grounded-only behavior.
+
+Codex action summary:
+- Added `Guided Study` section to the Study Panel with numbered Suggested Study Path cards.
+- Built grounded suggestions from existing Teaching Semantics, Principle Relationships, Character Interactions, Session Continuity Review, Library Awareness, and Knowledge Graph records.
+- Added readable fields: Why, Related, Evidence, Source Phrase, Derived Meaning, Source/provenance, Evidence Weight, App accuracy, and Supporting Layers.
+- Added compact Guided Study summaries to GPT Review Reports.
+- Kept the feature non-devotional and non-doctrinal: suggestions identify grounded study paths only.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-05-30 - Phase 8.8 Semantic Resolution Explanation Layer
 
 Instruction summary:
