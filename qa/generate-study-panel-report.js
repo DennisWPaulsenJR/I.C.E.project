@@ -142,6 +142,7 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   const relationships = asArray(samples.principleRelationships);
   const interactions = asArray(samples.characterInteractions);
   const graph = asArray(samples.knowledgeGraph);
+  const semanticQuestions = asArray(samples.semanticQuestions);
   const lines = [];
   if (teaching.some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || "")) || graph.some((item) => /\bJESUS\b/i.test(item.node || ""))) {
     lines.push("Study JESUS as Teacher | Character Focus | Source: I.C.E. generated study suggestion from Teaching Semantics + Knowledge Graph | Evidence Weight: Derived Semantic Evidence / Relationship Inference");
@@ -160,6 +161,7 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   const relationships = asArray(samples.principleRelationships);
   const interactions = asArray(samples.characterInteractions);
   const graph = asArray(samples.knowledgeGraph);
+  const semanticQuestions = asArray(samples.semanticQuestions);
   const library = asArray(libraryAwareness);
   const explored = [];
   const related = [];
@@ -255,6 +257,7 @@ function reportFromBundle(bundle) {
   const characterInteractions = asArray(samples.characterInteractions);
   const sessionContinuityReview = asArray(samples.sessionContinuityReview);
   const knowledgeGraph = asArray(samples.knowledgeGraph);
+  const semanticQuestions = asArray(samples.semanticQuestions);
   const source = teaching[0]?.sourceContext || {};
   const activeTitle = source.sourceTitle || bundle.pageTitle || "Matthew 5";
   const activeUrl = source.sourceUrl || bundle.url || "Not recorded";
@@ -305,6 +308,7 @@ function reportFromBundle(bundle) {
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
+    `Semantic Questions: ${counts.semanticQuestions || semanticQuestions.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
     `Guided Study: ${guidedStudyLines(samples, libraryAwareness).length}`,
     `Study Progression: ${studyProgressionLines(samples, libraryAwareness).length}`,
@@ -318,6 +322,7 @@ function reportFromBundle(bundle) {
       ...characterInteractions.slice(0, 3).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS")),
       ...sessionContinuityReview.slice(0, 2).map((item) => provenanceLine("I.C.E. Continuity", item.sessionRange || "Session Continuity Review", "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW")),
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
+      ...semanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
       ...libraryAwareness.slice(0, 4).map((item) => provenanceLine("I.C.E. Library Awareness", item.principleFamily || "Library Awareness", "Library Awareness", "ICE_LIBRARY_AWARENESS_FOUNDATION"))
     ], "no generated semantic labels available"),
     "",
@@ -328,6 +333,7 @@ function reportFromBundle(bundle) {
       ...characterInteractions.slice(0, 3).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
       ...sessionContinuityReview.slice(0, 2).map((item) => evidenceWeightLine("Continuity Inference", "derived from analyzed session records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.teachingProgression).length)),
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
+      ...semanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
       ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
     ], "no semantic evidence weights available"),
     "",
@@ -350,6 +356,7 @@ function reportFromBundle(bundle) {
       counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
       (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
+      (counts.semanticQuestions || semanticQuestions.length) ? "Semantic Questions: Question framework; grounded answers found" : "Semantic Questions: Question framework; awaiting grounded semantic records",
       libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
@@ -357,6 +364,9 @@ function reportFromBundle(bundle) {
     "",
     "## Scripture Knowledge Graph",
     ...list(knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 3).join("; ") || "relationships awaiting grounding"}`), "no knowledge graph records available"),
+    "",
+    "## Semantic Questions",
+    ...list(semanticQuestions.slice(0, 6).map((item) => `${item.question || "Question"} => ${item.answer || "answer awaiting grounding"} | ${asArray(item.groundingLayers).slice(0, 3).join(", ") || "grounding awaiting records"}`), "no semantic question records available"),
     "",
     "## Session Continuity Review",
     ...list(sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 5).join("; ") || "progression awaiting session records"}`), "no session continuity review records available"),
@@ -391,6 +401,7 @@ function reportFromBundle(bundle) {
     `characterInteractions: ${counts.characterInteractions || 0}`,
     `sessionContinuityReview: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `knowledgeGraph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
+    `semanticQuestions: ${counts.semanticQuestions || semanticQuestions.length || 0}`,
     `libraryAwareness: ${libraryAwareness.length}`,
     "",
     "## Excluded From This Report",

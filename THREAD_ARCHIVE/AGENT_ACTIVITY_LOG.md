@@ -3227,3 +3227,49 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-31 - Add Semantic Question Framework
+
+Instruction summary:
+- Begin Phase 9.2 Semantic Question Framework as a question-oriented review layer for current page/current session semantic records.
+
+Codex action summary:
+- Added persisted derived `ICE_SEMANTIC_QUESTIONS` records in the background analysis pipeline.
+- Built grounded Who/What/When/Where/Why/How answers from existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, Movement Semantics, and Authority Path records.
+- Added Study Panel rendering for Semantic Questions with provenance, source phrase, derived meaning, evidence weighting, App accuracy, grounding layers, answer construction, and related semantic records.
+- Added Semantic Questions counts/samples to Matthew QA bundles and GPT/session review reports.
+- Preserved no-crawling, no full-library querying, no Strong's/POS, and no freeform AI answer boundaries.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

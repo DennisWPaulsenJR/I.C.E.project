@@ -46,7 +46,8 @@ const STORAGE_KEYS = [
   "ICE_PRINCIPLE_RELATIONSHIPS",
   "ICE_CHARACTER_INTERACTIONS",
   "ICE_SESSION_CONTINUITY_REVIEW",
-  "ICE_KNOWLEDGE_GRAPH"
+  "ICE_KNOWLEDGE_GRAPH",
+  "ICE_SEMANTIC_QUESTIONS"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -111,7 +112,8 @@ function emptyCounts() {
     principleRelationships: 0,
     characterInteractions: 0,
     sessionContinuityReview: 0,
-    knowledgeGraph: 0
+    knowledgeGraph: 0,
+    semanticQuestions: 0
   };
 }
 
@@ -142,7 +144,8 @@ function buildCounts(storageData) {
     principleRelationships: count(storageData.ICE_PRINCIPLE_RELATIONSHIPS),
     characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
-    knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH)
+    knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
+    semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS)
   };
 }
 
@@ -175,6 +178,7 @@ function buildSamples(storageData) {
     characterInteractions: sample(storageData.ICE_CHARACTER_INTERACTIONS, 20),
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
+    semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -418,6 +422,19 @@ function isGroundedPassageFunction(item) {
     item.sourceGrounding
   );
 }
+function hasSemanticQuestion(data, family, questionPattern, answerPattern, groundingPattern) {
+  return (data.ICE_SEMANTIC_QUESTIONS || []).some((item) =>
+    item.questionFamily === family &&
+    questionPattern.test(item.question || "") &&
+    answerPattern.test(item.answer || "") &&
+    (item.groundingLayers || []).some((layer) => groundingPattern.test(layer || "")) &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning !== undefined &&
+    item.evidenceWeight &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
 function evaluateFailures(data) {
   const failures = [];
   const adapterName = data.ICE_ACTIVE_ADAPTER?.adapterName || "";
@@ -431,6 +448,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_TEACHING_SEMANTICS) <= 0) failures.push("Expected Matthew 5 teaching / discourse semantic records count > 0.");
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
+  if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -476,6 +494,10 @@ function evaluateFailures(data) {
   if (!hasPrincipleRelationship(data, /Righteousness/i, "expands", /Law Fulfillment/i)) failures.push("Expected Righteousness expands Law Fulfillment principle relationship.");
   if (!hasPrincipleRelationship(data, /Reconciliation/i, "supports", /Peace/i)) failures.push("Expected Reconciliation supports Peace principle relationship.");
   if (!hasPrincipleRelationship(data, /Commandment expansion/i, "illustrates", /Reconciliation/i)) failures.push("Expected Commandment expansion illustrates Reconciliation principle relationship.");
+
+  if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
+  if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");
+  if (!hasSemanticQuestion(data, "How", /righteousness/i, /righteousness|fulfillment|commandment/i, /Teaching Semantics|Principle/i)) failures.push("Expected semantic question answer for how righteousness is developed grounded by Teaching/Principle layers.");
 
   return failures;
 }async function getServiceWorker(context) {

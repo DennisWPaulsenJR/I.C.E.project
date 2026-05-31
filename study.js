@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     characterInteractions: "ICE_CHARACTER_INTERACTIONS",
     sessionContinuityReview: "ICE_SESSION_CONTINUITY_REVIEW",
     knowledgeGraph: "ICE_KNOWLEDGE_GRAPH",
+    semanticQuestions: "ICE_SEMANTIC_QUESTIONS",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -2661,6 +2662,85 @@ document.addEventListener("DOMContentLoaded", async () => {
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createKnowledgeGraphCard(item)));
   }
 
+  function semanticQuestionSearchText(item = {}) {
+    return [
+      item.questionFamily,
+      item.question,
+      item.answer,
+      item.answerItems,
+      item.answerConstruction,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.evidence,
+      item.groundingLayers,
+      item.relatedSemanticRecords,
+      item.evidenceWeight,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createSemanticQuestionCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card semantic-question-card";
+    assignSemanticCardTarget(card, "semanticQuestion", item, item.question || item.id || "semantic-question");
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = item.question || "Semantic Question";
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.questionFamily || "Question", item.verseRange || item.scopePath, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.question, item.answer, item.answerItems, item.sourcePhrase, item.derivedMeaning, item.evidence]);
+    header.append(heading, range);
+    [
+      createWordingProvenanceSection({ source: "I.C.E. Semantic Question", label: item.question || "Semantic Question", layer: "Semantic Questions", storageKey: "ICE_SEMANTIC_QUESTIONS", scopePath: item.scopePath || item.verseRange, rule: "Question answers are constructed from existing semantic records for the current page/session only; source phrase and derived meaning remain separately displayed." }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "answer uses current grounded semantic records only", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.evidence), ...asArray(item.groundingLayers), ...asArray(item.relatedSemanticRecords)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Answer", item.answer || "No grounded answer available yet.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Answer Items", "", { list: asArray(item.answerItems), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Answer Construction", item.answerConstruction || "constructed from existing semantic records only", { preserveExact: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence).slice(0, 6), hiddenCount: Math.max(0, asArray(item.evidence).length - 6), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Grounding", "", { list: asArray(item.groundingLayers), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Semantic Records", "", { collapsed: true, summaryLabel: "Show related semantic records", list: asArray(item.relatedSemanticRecords), plainList: true }),
+      createPassageFunctionSection("Scope", item.scopePath || item.verseRange || "Current source/session", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderSemanticQuestions(term) {
+    const container = document.getElementById("semanticQuestionsCards");
+    const count = document.getElementById("semanticQuestionsCount");
+    if (!container || !count) return;
+    const records = asArray(studyData.semanticQuestions);
+    const filtered = records.filter((item) => matchesSearchQuery(semanticQuestionSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} question(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No semantic question answers are available yet.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Semantic Questions",
+      [
+        `Questions: ${records.length}`,
+        "Layer: ICE_SEMANTIC_QUESTIONS",
+        "Purpose: answer Who/What/When/Where/Why/How from current page/session semantic records.",
+        "Boundary: derived review layer only; no freeform AI answers, no crawling, and no full-library querying."
+      ].join("\n"),
+      "semantic question framework"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No semantic questions match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+  }
   function renderSessionContinuityReview(term) {
     const container = document.getElementById("sessionContinuityReviewCards");
     const count = document.getElementById("sessionContinuityReviewCount");
@@ -6557,6 +6637,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       studyProgression: "studyProgressionSection",
       libraryAwareness: "libraryAwarenessSection",
       knowledgeGraph: "knowledgeGraphSection",
+      semanticQuestion: "semanticQuestionsSection",
       sessionContinuityReview: "sessionContinuityReviewSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -9665,6 +9746,7 @@ createRevelationPartsSection(item.subEvents)
       renderResolutionExplanations(term);
       renderSessionContinuityReview(term);
       renderKnowledgeGraph(term);
+      renderSemanticQuestions(term);
       renderLibraryAwareness(term);
       renderTeachingSemantics(term);
       renderPrincipleRelationships(term);
@@ -9800,13 +9882,14 @@ createRevelationPartsSection(item.subEvents)
     const principleRelationshipsCount = countItems(studyData.principleRelationships);
     const characterInteractionsCount = countItems(studyData.characterInteractions);
     const knowledgeGraphCount = countItems(knowledgeGraphRecords());
+    const semanticQuestionsCount = countItems(studyData.semanticQuestions);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -9840,6 +9923,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticSemanticCausality").textContent = semanticCausalityCount;
     document.getElementById("diagnosticTeachingSemantics").textContent = teachingSemanticsCount;
     document.getElementById("diagnosticPrincipleRelationships").textContent = principleRelationshipsCount;
+    document.getElementById("diagnosticSemanticQuestions").textContent = semanticQuestionsCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
     document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
@@ -9865,7 +9949,8 @@ createRevelationPartsSection(item.subEvents)
         `semanticCausality: ${semanticCausalityCount}`,
         `teachingSemantics: ${teachingSemanticsCount}`,
         `principleRelationships: ${principleRelationshipsCount}`,
-        `knowledgeGraph: ${knowledgeGraphCount}`
+        `knowledgeGraph: ${knowledgeGraphCount}`,
+        `semanticQuestions: ${semanticQuestionsCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

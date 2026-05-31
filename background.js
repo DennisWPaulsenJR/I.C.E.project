@@ -40,6 +40,7 @@ const PRINCIPLE_RELATIONSHIPS_KEY = "ICE_PRINCIPLE_RELATIONSHIPS";
 const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
+const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -2668,6 +2669,257 @@ function createKnowledgeGraph(captures = [], ontologyRoles = [], entityRelationR
   }
 
   return records.slice(0, 80);
+}
+function semanticQuestionRecord(record = {}) {
+  const key = [
+    "semantic-question",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.questionFamily || "",
+    record.question || "",
+    record.answer || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    questionFamily: record.questionFamily || "What",
+    question: record.question || "What is shown in the current semantic records?",
+    answer: record.answer || "Answer awaiting grounded semantic records.",
+    answerItems: record.answerItems || [],
+    answerConstruction: record.answerConstruction || "constructed from existing semantic records only",
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    groundingLayers: record.groundingLayers || [],
+    relatedSemanticRecords: record.relatedSemanticRecords || [],
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "question answer constructed from current source/session semantic records"
+  };
+}
+
+function createSemanticQuestions(captures = [], teachingSemantics = [], principleRelationships = [], characterInteractions = [], knowledgeGraph = [], sessionContinuityReview = [], movementSemantics = [], originAuthorityPaths = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const sourceScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const records = [];
+  const add = (record) => records.push(semanticQuestionRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    verseRange: record.verseRange || sourceScope,
+    ...record
+  }));
+  const ids = (items = [], fallback = "id") => (items || []).map((item) => item.id || item[fallback] || "").filter(Boolean).slice(0, 12);
+  const firstSource = (items = []) => (items || []).map((item) => item.sourcePhrase).find(Boolean) || "";
+  const evidenceFrom = (items = [], limit = 6) => uniqueStrings((items || []).flatMap((item) => [item.sourcePhrase, item.derivedMeaning, ...(item.evidence || [])])).slice(0, limit);
+  const teachingRecords = teachingSemantics || [];
+  const principleRecords = principleRelationships || [];
+  const interactionRecords = characterInteractions || [];
+  const graphRecords = knowledgeGraph || [];
+  const sessionRecords = sessionContinuityReview || [];
+  const movementRecords = movementSemantics || [];
+  const authorityRecords = originAuthorityPaths || [];
+  const uniqueStrings = (values = []) => values
+    .flat(Infinity)
+    .map((value) => normalizeWhitespace(value || ""))
+    .filter(Boolean)
+    .filter((value, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index);
+  const teachingInteractions = interactionRecords.filter((item) => /teach/i.test(`${item.interactionType || ""} ${item.derivedMeaning || ""}`));
+  const teachers = uniqueStrings([
+    ...teachingRecords.map((item) => item.speaker),
+    ...teachingInteractions.map((item) => item.sourceCharacter),
+    ...graphRecords.filter((item) => (item.relationships || []).some((relationship) => /teach/i.test(relationship))).map((item) => item.node)
+  ]).filter(Boolean);
+  if (teachers.length) {
+    const supporting = [...teachingRecords.filter((item) => teachers.includes(item.speaker)), ...teachingInteractions].slice(0, 8);
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|who|teaches`)}`,
+      questionFamily: "Who",
+      question: "Who teaches?",
+      answer: teachers.join(", "),
+      answerItems: teachers,
+      answerConstruction: "speaker and teaching-interaction fields copied from Teaching Semantics and Character Interactions",
+      sourcePhrase: firstSource(supporting),
+      derivedMeaning: "Current semantic records identify the grounded teaching source without merging JESUS and JESUS CHRIST labels.",
+      evidence: evidenceFrom(supporting),
+      groundingLayers: ["Teaching Semantics", "Character Interactions", "Knowledge Graph"],
+      relatedSemanticRecords: ids(supporting, "teachingTopic"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: supporting.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Uses existing speaker, interactionType, and graph relationship fields from the current page/session only."
+    });
+  }
+
+  const characterNames = uniqueStrings([
+    ...interactionRecords.flatMap((item) => [item.sourceCharacter, item.targetCharacter]),
+    ...graphRecords.filter((item) => /character|authority|group/i.test(item.type || "")).map((item) => item.node)
+  ]).slice(0, 12);
+  if (characterNames.length) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|who|appears`)}`,
+      questionFamily: "Who",
+      question: "Who appears in the current semantic records?",
+      answer: characterNames.join(", "),
+      answerItems: characterNames,
+      answerConstruction: "character/group/authority names copied from Character Interactions and Knowledge Graph nodes",
+      sourcePhrase: firstSource(interactionRecords),
+      derivedMeaning: "Characters, groups, and authorities are listed only when already present in grounded semantic records.",
+      evidence: evidenceFrom(interactionRecords, 6),
+      groundingLayers: ["Character Interactions", "Knowledge Graph"],
+      relatedSemanticRecords: ids(interactionRecords, "interactionType"),
+      evidenceWeight: "Relationship Inference",
+      confidence: interactionRecords.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Uses current source/session character interaction records; no full-library lookup is performed."
+    });
+  }
+
+  const teachingItems = uniqueStrings(teachingRecords.flatMap((item) => [item.teachingTopic, item.principle, item.commandment, item.blessing, item.promise]).filter(Boolean)).slice(0, 12);
+  if (teachingItems.length) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|what|teaching`)}`,
+      questionFamily: "What",
+      question: "What is taught?",
+      answer: teachingItems.join("; "),
+      answerItems: teachingItems,
+      answerConstruction: "teaching topic, principle, commandment, blessing, and promise fields copied from Teaching Semantics",
+      sourcePhrase: firstSource(teachingRecords),
+      derivedMeaning: "The answer summarizes grounded teaching records while keeping source phrase and derived meaning separate.",
+      evidence: evidenceFrom(teachingRecords, 8),
+      groundingLayers: ["Teaching Semantics", "Principle Hierarchy"],
+      relatedSemanticRecords: ids(teachingRecords, "teachingTopic"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: teachingRecords.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Constructed from existing teaching semantic records for the current source."
+    });
+  }
+
+  const sequenceItems = uniqueStrings([
+    ...teachingRecords.map((item) => [item.verseRange || item.scopePath, item.teachingTopic || item.principle || item.commandment || item.blessing].filter(Boolean).join(" - ")),
+    ...sessionRecords.flatMap((item) => item.teachingProgression || [])
+  ]).slice(0, 10);
+  if (sequenceItems.length) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|when|sequence`)}`,
+      questionFamily: "When",
+      question: "When does this teaching sequence appear?",
+      answer: sequenceItems.join("; "),
+      answerItems: sequenceItems,
+      answerConstruction: "verse ranges and teaching progression copied from Teaching Semantics and Session Continuity Review",
+      sourcePhrase: firstSource(teachingRecords) || firstSource(sessionRecords),
+      derivedMeaning: "Narrative or teaching order is represented from scoped semantic records, not inferred from unvisited library pages.",
+      evidence: [...evidenceFrom(teachingRecords, 4), ...evidenceFrom(sessionRecords, 4)].slice(0, 8),
+      groundingLayers: ["Teaching Semantics", "Session Continuity"],
+      relatedSemanticRecords: [...ids(teachingRecords, "teachingTopic"), ...ids(sessionRecords, "reviewType")].slice(0, 12),
+      evidenceWeight: "Derived Semantic Evidence / Continuity Inference",
+      confidence: teachingRecords.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Uses scoped verse ranges and analyzed-session continuity records."
+    });
+  }
+
+  const locationItems = uniqueStrings(movementRecords.flatMap((item) => [item.originLocation, item.destinationLocation]).filter(Boolean)).slice(0, 10);
+  if (locationItems.length) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|where|locations`)}`,
+      questionFamily: "Where",
+      question: "Where does movement or location appear?",
+      answer: locationItems.join(", "),
+      answerItems: locationItems,
+      answerConstruction: "origin and destination fields copied from Movement / Location Semantics",
+      sourcePhrase: firstSource(movementRecords),
+      derivedMeaning: "Location answers are limited to current movement/location semantic records.",
+      evidence: evidenceFrom(movementRecords),
+      groundingLayers: ["Movement / Location Semantics", "Knowledge Graph"],
+      relatedSemanticRecords: ids(movementRecords, "movementType"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: movementRecords.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Uses current source movement records only; no crawling or library expansion is performed."
+    });
+  } else if (sourceScope) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|where|scope`)}`,
+      questionFamily: "Where",
+      question: "Where is the current source scope?",
+      answer: sourceScope,
+      answerItems: [sourceScope],
+      answerConstruction: "source scope copied from the active capture context",
+      sourcePhrase: capture.title || sourceScope,
+      derivedMeaning: "Current question scope is the active analyzed page/source.",
+      evidence: [capture.title || sourceScope, capture.url || ""].filter(Boolean),
+      groundingLayers: ["Current Source Scope"],
+      relatedSemanticRecords: [],
+      evidenceWeight: "Direct Source Evidence",
+      confidence: "explicit",
+      sourceGrounding: "Uses the active source capture context only."
+    });
+  }
+
+  const mercy = principleRecords.find((item) => /mercy|merciful/i.test([item.principle, item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")));
+  if (mercy) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|why|mercy`)}`,
+      questionFamily: "Why",
+      question: "Why is mercy important?",
+      answer: `${mercy.principle || "Mercy"} ${mercy.relationshipType || "relates to"} ${uniqueStrings(mercy.relatedPrinciples || []).join(", ")}.`,
+      answerItems: [mercy.principle, ...(mercy.relatedPrinciples || [])].filter(Boolean),
+      answerConstruction: "principle, relationshipType, and relatedPrinciples copied from Principle Relationships",
+      sourcePhrase: mercy.sourcePhrase,
+      derivedMeaning: mercy.derivedMeaning,
+      evidence: evidenceFrom([mercy]),
+      groundingLayers: ["Principle Relationships"],
+      relatedSemanticRecords: ids([mercy], "principle"),
+      evidenceWeight: "Relationship Inference",
+      confidence: mercy.confidence || "probable",
+      sourceGrounding: mercy.sourceGrounding || "Constructed from an existing principle relationship record."
+    });
+  }
+
+  const righteousness = principleRecords.find((item) => /righteousness/i.test([item.principle, item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")));
+  if (righteousness) {
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|how|righteousness`)}`,
+      questionFamily: "How",
+      question: "How is righteousness developed?",
+      answer: righteousness.derivedMeaning || `${righteousness.principle || "Righteousness"} ${righteousness.relationshipType || "relates to"} ${(righteousness.relatedPrinciples || []).join(", ")}.`,
+      answerItems: [righteousness.principle, ...(righteousness.relatedPrinciples || [])].filter(Boolean),
+      answerConstruction: "derivedMeaning copied from Principle Relationships with related Teaching Semantics identifiers retained",
+      sourcePhrase: righteousness.sourcePhrase,
+      derivedMeaning: righteousness.derivedMeaning,
+      evidence: evidenceFrom([righteousness]),
+      groundingLayers: ["Teaching Semantics", "Principle Hierarchy", "Principle Relationships"],
+      relatedSemanticRecords: ids([righteousness], "principle"),
+      evidenceWeight: "Relationship Inference / Derived Semantic Evidence",
+      confidence: righteousness.confidence || "probable",
+      sourceGrounding: righteousness.sourceGrounding || "Constructed from an existing righteousness principle relationship record."
+    });
+  }
+
+  const authority = authorityRecords.find((item) => item.origin || item.authoritySource || item.messenger || item.recipient) || interactionRecords.find((item) => /authority|commands|teaches|warns/i.test(`${item.authorityClass || ""} ${item.interactionType || ""}`));
+  if (authority) {
+    const answerParts = [authority.origin || authority.authoritySource || authority.sourceCharacter, authority.messenger, authority.recipient || authority.target || authority.targetCharacter].filter(Boolean);
+    add({
+      scopePath: `semantic.questions.${textHash(`${sourceScope}|how|authority`)}`,
+      questionFamily: "How",
+      question: "How does authority move through the record?",
+      answer: answerParts.length ? answerParts.join(" -> ") : authority.derivedMeaning || authority.sourceGrounding || "Authority path available in current semantic records.",
+      answerItems: answerParts,
+      answerConstruction: "authority path or character interaction fields copied from existing semantic records",
+      sourcePhrase: authority.sourcePhrase,
+      derivedMeaning: authority.derivedMeaning,
+      evidence: evidenceFrom([authority]),
+      groundingLayers: ["Authority Paths", "Character Interactions"],
+      relatedSemanticRecords: ids([authority], "pathType"),
+      evidenceWeight: "Relationship Inference / Derived Semantic Evidence",
+      confidence: authority.confidence || "probable",
+      sourceGrounding: authority.sourceGrounding || "Constructed from current authority path or character interaction records."
+    });
+  }
+
+  return records.slice(0, 24);
 }
 function principleRelationshipRecord(record = {}) {
   const key = [
@@ -7039,6 +7291,16 @@ async function runFullAnalysisPipeline(reason = "manual") {
       semanticContinuity,
       sessionContinuityReview
     );
+    const semanticQuestions = createSemanticQuestions(
+      captures,
+      teachingSemantics,
+      principleRelationships,
+      characterInteractions,
+      knowledgeGraph,
+      sessionContinuityReview,
+      movementSemantics,
+      originAuthorityPaths
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -7063,7 +7325,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleRelationships,
       characterInteractions,
       sessionContinuityReview,
-      knowledgeGraph
+      knowledgeGraph,
+      semanticQuestions
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -7089,7 +7352,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleRelationships,
       characterInteractions,
       sessionContinuityReview,
-      knowledgeGraph
+      knowledgeGraph,
+      semanticQuestions
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -7119,7 +7383,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleRelationships: principleRelationships.length,
       characterInteractions: characterInteractions.length,
       sessionContinuityReview: sessionContinuityReview.length,
-      knowledgeGraph: knowledgeGraph.length
+      knowledgeGraph: knowledgeGraph.length,
+      semanticQuestions: semanticQuestions.length
     };
     const status = {
       reason,
@@ -7150,7 +7415,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-8.6-knowledge-graph-foundation",
+      analysisBuildMarker: "phase-9.2-semantic-question-framework",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -7170,6 +7435,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractionCount: characterInteractions.length,
       sessionContinuityReviewCount: sessionContinuityReview.length,
       knowledgeGraphCount: knowledgeGraph.length,
+      semanticQuestionCount: semanticQuestions.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -7240,6 +7506,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
       [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
       [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
+      [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

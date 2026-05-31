@@ -179,7 +179,8 @@ function reportFromBundles(bundles) {
       ...asArray(bundleSamples.characterInteractions).map((item) => `Interaction: ${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
       ...asArray(bundleSamples.teachingSemantics).map((item) => `Teaching: ${item.teachingTopic || item.blessing || item.commandment || "teaching"} | ${item.sourcePhrase || entry.label}`),
       ...asArray(bundleSamples.principleRelationships).map((item) => `Principle: ${item.principle || "principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")}`),
-      ...asArray(bundleSamples.knowledgeGraph).map((item) => `Knowledge Graph: ${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ")}`)
+      ...asArray(bundleSamples.knowledgeGraph).map((item) => `Knowledge Graph: ${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ")}`),
+      ...asArray(bundleSamples.semanticQuestions).map((item) => `Semantic Question: ${item.question || "Question"} => ${item.answer || "answer awaiting grounding"}`)
     ];
   });
   const continuingCharacters = unique([
@@ -234,6 +235,7 @@ function reportFromBundles(bundles) {
     "",
     "## Scripture Knowledge Graph",
     `Graph foundation nodes: ${counts.knowledgeGraph || 0}`,
+    `Semantic Questions: ${counts.semanticQuestions || 0}`,
     "Purpose: connect existing semantic layers into reviewable graph node summaries; no visual graph rendering yet.",
     "",
     "## Session Continuity Review",
@@ -252,6 +254,7 @@ function reportFromBundles(bundles) {
     `Principle Hierarchy Items: ${principleHierarchyLines(sorted).length}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
+    `Semantic Questions: ${counts.semanticQuestions || 0}`,
     "Session Continuity Review: 1",
     `Guided Study: ${guidedStudyLines(sorted).length}`,
     `Study Progression: ${studyProgressionLines(sorted).length}`,
@@ -264,7 +267,8 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.principleRelationships).slice(0, 2).map((item) => provenanceLine("I.C.E. Principle Relationship", `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")}`, "Principle Relationships", "ICE_PRINCIPLE_RELATIONSHIPS"))),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS"))),
       provenanceLine("I.C.E. Continuity", range, "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW"),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH"))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")))
     ], "no generated semantic labels available"),
     "",
     "## Evidence Weights",
@@ -273,7 +277,8 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.principleRelationships).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "relationship supported by grounded principle/teaching evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length))),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length))),
       evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)))
     ], "no semantic evidence weights available"),
     "",
     "## Principle Hierarchy",
@@ -290,6 +295,7 @@ function reportFromBundles(bundles) {
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",
+    "- Semantic Questions: Question framework; uses current page/session semantic records only",
     "- Session Continuity Review: Pilot layer; grounded review generated from analyzed QA bundles",
     "- Cross-Chapter Continuity: Available from Matthew 2 and session range metadata",
     "- Teaching / Discourse Structure: Primary semantic layer for Matthew 5",

@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.2 Semantic Question Framework implemented.
+- Added persisted derived `ICE_SEMANTIC_QUESTIONS` records for Who/What/When/Where/Why/How review questions.
+- Answers are constructed only from existing current-page/session semantic records: Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, Movement Semantics, and Authority Paths.
+- Study Panel now includes a Semantic Questions section with answer construction, source phrase, derived meaning, evidence weight, App accuracy, grounding layers, and related semantic record references.
+- Matthew QA bundles and GPT/session review reports now include Semantic Questions counts/samples.
+- No crawling, Strong's/POS, full-library querying, or freeform AI answer behavior was added.
+Latest pcdx update:
 - Phase 9.1a Principle Hierarchy Refinement implemented.
 - Principles / Teachings now derives grouped hierarchy cards from existing Teaching / Discourse Structure and Principle Relationships records.
 - Groups include Core Principles, Supporting Principles, Teaching Themes, Commandments, Applications, Promises, Warnings / Consequences, Contrasts, Examples, and Audience Conditions.
