@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.3 roadmap: Comprehensive Study Journey / Hyperlinked Semantic Navigation documented.
+- Future architecture names reserved: `ICE_STUDY_JOURNEYS`, `ICE_SEMANTIC_LINKS`, `ICE_FOCUS_PATHS`, `ICE_SCOPE_EXPANSION`, and `ICE_RECENT_SOURCE_CONTEXT`.
+- Roadmap goal: let users begin with a factual focal point, choose a range, traverse grounded related records, then expand or narrow scope through semantic links.
+- Future controls may include expand scope, narrow scope, follow this theme, follow this character, follow this authority path, show all related appearances, and show fulfillment timeline.
+- Future LDS source context may support Church talks/new material with visible provenance: source title, speaker, date, topic, scripture references, historical context, and related semantic themes.
+- Roadmap only: no live talk ingestion, crawling, external fetching, near-real-time ingestion, unsupported doctrine, or automatic source expansion was implemented.
+Latest pcdx update:
 - Phase 9.2 refinement: Contextual Inquiry Suggestions implemented.
 - `ICE_SEMANTIC_QUESTIONS` now distinguishes answered questions from suggested next questions with `questionKind`.
 - Suggestions are grounded in existing current-page/session semantic records and include question, reason suggested, supporting layer, source grounding, evidence weight, provenance, and App accuracy.

@@ -3312,3 +3312,30 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-31 - Document Study Journey Roadmap
+
+Instruction summary:
+- Add Phase 9.3 roadmap for Comprehensive Study Journey / Hyperlinked Semantic Navigation.
+
+Codex action summary:
+- Documented a roadmap-only architecture for factual, grounded, user-directed study journeys.
+- Defined future architecture names: `ICE_STUDY_JOURNEYS`, `ICE_SEMANTIC_LINKS`, `ICE_FOCUS_PATHS`, `ICE_SCOPE_EXPANSION`, and `ICE_RECENT_SOURCE_CONTEXT`.
+- Captured intended journey flow: Big Picture View -> choose focus -> choose range -> traverse related records -> expand/narrow -> follow semantic links.
+- Captured future controls such as Expand scope, Narrow scope, Follow this theme, Follow this character, Follow this authority path, Show all related appearances, and Show fulfillment timeline.
+- Captured future LDS content provenance expectations for Church talks/new material without implementing ingestion.
+- Preserved explicit boundaries: no crawling, no automatic external fetches, no live talk ingestion, no near-real-time ingestion, no unsupported doctrine, source provenance always visible, and scripture text distinct from headings/talks/I.C.E. derivations.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Status:
+- Roadmap documented; no runtime implementation added
