@@ -3714,3 +3714,50 @@ Commit:
 
 Status:
 - Roadmap documented; no runtime implementation added
+
+## 2026-05-31 - Add Trust Verification Architecture
+
+Instruction summary:
+- Begin Phase 9.3 Trust & Verification Architecture so I.C.E. demonstrates trustworthiness through visible source basis, provenance, evidence weight, reasoning path, supporting records, conflicts, and unresolved areas.
+
+Codex action summary:
+- Added persisted derived `ICE_TRUST_VERIFICATION` records in the background analysis pipeline.
+- Built trust verification records from existing source-grounded semantic layers, including canonical identity/name records, Principle Relationships, Teaching Semantics, Knowledge Graph, Session Continuity, and Semantic Questions.
+- Added descriptive Trust Signals: Direct Source Grounding, Multiple Supporting Records, Consistent Session Continuity, Consistent Knowledge Graph, Derived Only, and Awaiting Additional Evidence.
+- Added Study Panel Trust & Verification section with Source Basis, Provenance, Evidence Weight, Reasoning Path, Supporting Records, Conflicting Records, Unresolved Areas, Trust Signals, source phrase, derived meaning, App accuracy, related semantic records, and scope.
+- Added QA bundle/report support for `ICE_TRUST_VERIFICATION`, including Matthew 5 assertions for Mercy supports Peacemaking and grounded teaching/review prompt trust records.
+- Preserved boundaries: no truth scoring, no doctrinal ranking, no belief scoring, no speculative confidence metrics, no unsupported doctrine, no crawling, and no new ingestion behavior.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

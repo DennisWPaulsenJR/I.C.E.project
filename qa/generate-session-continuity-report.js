@@ -180,7 +180,8 @@ function reportFromBundles(bundles) {
       ...asArray(bundleSamples.teachingSemantics).map((item) => `Teaching: ${item.teachingTopic || item.blessing || item.commandment || "teaching"} | ${item.sourcePhrase || entry.label}`),
       ...asArray(bundleSamples.principleRelationships).map((item) => `Principle: ${item.principle || "principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")}`),
       ...asArray(bundleSamples.knowledgeGraph).map((item) => `Knowledge Graph: ${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ")}`),
-      ...asArray(bundleSamples.semanticQuestions).map((item) => item.questionKind === "suggested" ? `Semantic Question Suggestion: ${item.question || "Question"} | Why: ${item.reasonSuggested || "suggested from current semantic records"}` : `Semantic Question Answer: ${item.question || "Question"} => ${item.answer || "answer awaiting grounding"}`)
+      ...asArray(bundleSamples.semanticQuestions).map((item) => item.questionKind === "suggested" ? `Semantic Question Suggestion: ${item.question || "Question"} | Why: ${item.reasonSuggested || "suggested from current semantic records"}` : `Semantic Question Answer: ${item.question || "Question"} => ${item.answer || "answer awaiting grounding"}`),
+      ...asArray(bundleSamples.trustVerification).map((item) => `Trust Verification: ${item.result || "Trust result"} | ${item.evidenceWeight || "Derived Semantic Evidence"}`)
     ];
   });
   const continuingCharacters = unique([
@@ -236,6 +237,7 @@ function reportFromBundles(bundles) {
     "## Scripture Knowledge Graph",
     `Graph foundation nodes: ${counts.knowledgeGraph || 0}`,
     `Semantic Questions: ${counts.semanticQuestions || 0}`,
+    `Trust & Verification: ${counts.trustVerification || 0}`,
     "Purpose: connect existing semantic layers into reviewable graph node summaries; no visual graph rendering yet.",
     "",
     "## Session Continuity Review",
@@ -255,6 +257,7 @@ function reportFromBundles(bundles) {
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || 0}`,
     `Semantic Questions: ${counts.semanticQuestions || 0}`,
+    `Trust & Verification: ${counts.trustVerification || 0}`,
     "Session Continuity Review: 1",
     `Guided Study: ${guidedStudyLines(sorted).length}`,
     `Study Progression: ${studyProgressionLines(sorted).length}`,
@@ -268,7 +271,8 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS"))),
       provenanceLine("I.C.E. Continuity", range, "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW"),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH"))),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => provenanceLine(item.questionKind === "suggested" ? "I.C.E. Contextual Inquiry Suggestion" : "I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => provenanceLine(item.questionKind === "suggested" ? "I.C.E. Contextual Inquiry Suggestion" : "I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS"))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.trustVerification).slice(0, 2).map((item) => provenanceLine(item.provenance || "I.C.E. Trust Verification", item.result || "Trust Verification", "Trust & Verification", "ICE_TRUST_VERIFICATION")))
     ], "no generated semantic labels available"),
     "",
     "## Evidence Weights",
@@ -278,11 +282,15 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length))),
       evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length))),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", item.questionKind === "suggested" ? "contextual inquiry suggestion from current semantic records" : "question answer constructed from current semantic records", item.sourceGrounding || item.reasonSuggested || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", item.questionKind === "suggested" ? "contextual inquiry suggestion from current semantic records" : "question answer constructed from current semantic records", item.sourceGrounding || item.reasonSuggested || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length))),
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.trustVerification).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "trust basis from visible provenance and supporting records", item.sourceGrounding || item.sourceBasis, asArray(item.supportingRecords).length + asArray(item.trustSignals).length)))
     ], "no semantic evidence weights available"),
     "",
     "## Principle Hierarchy",
     ...list(principleHierarchyLines(sorted), "no principle hierarchy records available"),
+    "",
+    "## Trust & Verification",
+    ...list(sorted.flatMap((entry) => asArray(entry.bundle.samples?.trustVerification).slice(0, 3).map((item) => `${item.result || "Trust result"} | Source: ${clean(item.sourceBasis || "source basis not recorded")} | Signals: ${asArray(item.trustSignals).slice(0, 3).join(", ") || "signals awaiting records"}`)), "no trust verification records available"),
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(sorted, range), "no resolution explanations available"),
@@ -296,6 +304,7 @@ function reportFromBundles(bundles) {
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",
     "- Semantic Questions: Answered Questions plus Suggested Next Questions; uses current page/session semantic records only",
+    "- Trust & Verification: Trust basis records; no truth score, doctrinal ranking, or belief score",
     "- Session Continuity Review: Pilot layer; grounded review generated from analyzed QA bundles",
     "- Cross-Chapter Continuity: Available from Matthew 2 and session range metadata",
     "- Teaching / Discourse Structure: Primary semantic layer for Matthew 5",

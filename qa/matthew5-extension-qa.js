@@ -47,7 +47,8 @@ const STORAGE_KEYS = [
   "ICE_CHARACTER_INTERACTIONS",
   "ICE_SESSION_CONTINUITY_REVIEW",
   "ICE_KNOWLEDGE_GRAPH",
-  "ICE_SEMANTIC_QUESTIONS"
+  "ICE_SEMANTIC_QUESTIONS",
+  "ICE_TRUST_VERIFICATION"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -113,7 +114,8 @@ function emptyCounts() {
     characterInteractions: 0,
     sessionContinuityReview: 0,
     knowledgeGraph: 0,
-    semanticQuestions: 0
+    semanticQuestions: 0,
+    trustVerification: 0
   };
 }
 
@@ -145,7 +147,8 @@ function buildCounts(storageData) {
     characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
-    semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS)
+    semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
+    trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
 }
 
@@ -179,6 +182,7 @@ function buildSamples(storageData) {
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
+    trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
@@ -422,6 +426,23 @@ function isGroundedPassageFunction(item) {
     item.sourceGrounding
   );
 }
+function hasTrustVerification(data, resultPattern, evidencePattern, provenancePattern, signalPattern) {
+  return (data.ICE_TRUST_VERIFICATION || []).some((item) =>
+    resultPattern.test(item.result || "") &&
+    evidencePattern.test(item.evidenceWeight || "") &&
+    provenancePattern.test(item.provenance || "") &&
+    (item.trustSignals || []).some((signal) => signalPattern.test(signal || "")) &&
+    Array.isArray(item.reasoningPath) &&
+    item.reasoningPath.length > 0 &&
+    Array.isArray(item.supportingRecords) &&
+    item.supportingRecords.length > 0 &&
+    Array.isArray(item.conflictingRecords) &&
+    Array.isArray(item.unresolvedAreas) &&
+    item.sourceBasis &&
+    item.sourceGrounding &&
+    !/trust score|truth score|doctrinal ranking|belief score|\b\d+\/100\b/i.test(JSON.stringify(item))
+  );
+}
 function hasSemanticQuestion(data, family, questionPattern, answerPattern, groundingPattern) {
   return (data.ICE_SEMANTIC_QUESTIONS || []).some((item) =>
     item.questionKind !== "suggested" &&
@@ -464,6 +485,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
   if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
+  if (count(data.ICE_TRUST_VERIFICATION) <= 0) failures.push("Expected Matthew 5 trust verification records count > 0.");
 
   const scopeIntegrity = data.ICE_SCOPE_INTEGRITY || {};
   if (Number(scopeIntegrity.missingScopeCount || 0) !== 0) failures.push(`Expected missing scope count 0, got ${scopeIntegrity.missingScopeCount}.`);
@@ -520,6 +542,9 @@ function evaluateFailures(data) {
   if (!hasSemanticSuggestion(data, /What commands are expanded by But I say unto you/i, /Commandment interpretation|But I say unto you/i, /Teaching Semantics/i)) failures.push("Expected contextual inquiry suggestion for But I say unto you command expansions.");
   if (!hasSemanticSuggestion(data, /Who is the audience of the Sermon on the Mount/i, /audience|speaker/i, /Teaching Semantics|Character Interactions/i)) failures.push("Expected contextual inquiry suggestion for Sermon on the Mount audience.");
   if (!hasSemanticSuggestion(data, /Which principles are core, and which are applications/i, /Principle hierarchy|principle/i, /Principle Hierarchy/i)) failures.push("Expected contextual inquiry suggestion for core principles and applications.");
+
+  if (!hasTrustVerification(data, /Mercy supports Peacemaking/i, /Relationship Inference/i, /I\.C\.E\. Principle Relationship/i, /Direct Source Grounding|Multiple Supporting Records|Consistent Knowledge Graph/i)) failures.push("Expected trust verification for Mercy supports Peacemaking without numeric truth scoring.");
+  if (!hasTrustVerification(data, /Grounded Teaching Record|Grounded Review Prompt/i, /Direct Source Evidence|Derived Semantic Evidence/i, /I\.C\.E\./i, /Direct Source Grounding|Derived Only|Consistent Knowledge Graph/i)) failures.push("Expected trust verification for a grounded teaching or review prompt.");
 
   return failures;
 }async function getServiceWorker(context) {

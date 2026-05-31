@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.3 Trust & Verification Architecture implemented.
+- Added persisted derived `ICE_TRUST_VERIFICATION` records that explain why a semantic conclusion is trustable without using numeric truth scores.
+- Trust records display Source Basis, Provenance, Evidence Weight, Reasoning Path, Supporting Records, Conflicting Records, Unresolved Areas, Trust Signals, source phrase, derived meaning, and App accuracy.
+- Study Panel now includes a Trust & Verification section with visible provenance and evidence weighting.
+- Trust Signals are descriptive only: Direct Source Grounding, Multiple Supporting Records, Consistent Session Continuity, Consistent Knowledge Graph, Derived Only, and Awaiting Additional Evidence.
+- No truth scoring, doctrinal ranking, belief scoring, speculative confidence metrics, crawling, or external ingestion behavior was added.
+Latest pcdx update:
 - Phase 9.3 roadmap: Comprehensive Study Journey / Hyperlinked Semantic Navigation documented.
 - Future architecture names reserved: `ICE_STUDY_JOURNEYS`, `ICE_SEMANTIC_LINKS`, `ICE_FOCUS_PATHS`, `ICE_SCOPE_EXPANSION`, and `ICE_RECENT_SOURCE_CONTEXT`.
 - Roadmap goal: let users begin with a factual focal point, choose a range, traverse grounded related records, then expand or narrow scope through semantic links.

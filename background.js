@@ -41,6 +41,7 @@ const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
 const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
+const TRUST_VERIFICATION_KEY = "ICE_TRUST_VERIFICATION";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
 const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
@@ -3042,6 +3043,167 @@ function createSemanticQuestions(captures = [], teachingSemantics = [], principl
       evidenceWeight: "Relationship Inference / Derived Semantic Evidence",
       confidence: authority.confidence || "probable",
       sourceGrounding: authority.sourceGrounding || "Constructed from current authority path or character interaction records."
+    });
+  }
+
+  return records.slice(0, 24);
+}
+function trustVerificationRecord(record = {}) {
+  const key = [
+    "trust-verification",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.result || "",
+    record.provenance || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    result: record.result || "Trust basis awaiting grounded record.",
+    sourceBasis: record.sourceBasis || "Current semantic record",
+    provenance: record.provenance || "I.C.E. Derived",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    reasoningPath: record.reasoningPath || [],
+    supportingRecords: record.supportingRecords || [],
+    conflictingRecords: record.conflictingRecords || [],
+    unresolvedAreas: record.unresolvedAreas || [],
+    trustSignals: record.trustSignals || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    evidence: record.evidence || [],
+    relatedSemanticRecords: record.relatedSemanticRecords || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "trust verification derived from existing source-grounded semantic records"
+  };
+}
+
+function createTrustVerification(captures = [], canonicalIdentities = [], ontologyRoles = [], referenceRoles = [], principleRelationships = [], teachingSemantics = [], characterInteractions = [], knowledgeGraph = [], sessionContinuityReview = [], semanticQuestions = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const sourceScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const records = [];
+  const seen = new Set();
+  const uniqueStrings = (values = []) => values
+    .flat(Infinity)
+    .map((value) => normalizeWhitespace(value || ""))
+    .filter(Boolean)
+    .filter((value, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index);
+  const ids = (items = [], fallback = "id") => (items || []).map((item) => item.id || item[fallback] || "").filter(Boolean).slice(0, 12);
+  const evidenceFrom = (items = [], limit = 8) => uniqueStrings((items || []).flatMap((item) => [item.sourcePhrase, item.derivedMeaning, item.sourceGrounding, ...(item.evidence || [])])).slice(0, limit);
+  const add = (record = {}) => {
+    const item = trustVerificationRecord({
+      sourceCaptureId,
+      sourceContext: context,
+      verseRange: record.verseRange || sourceScope,
+      ...record
+    });
+    const key = [item.result, item.scopePath, item.provenance].map((value) => normalizeWhitespace(value).toLowerCase()).join("|");
+    if (!item.result || seen.has(key)) return;
+    seen.add(key);
+    records.push(item);
+  };
+  const directSignal = (item = {}) => item.sourcePhrase ? "Direct Source Grounding" : "Derived Only";
+  const supportSignal = (items = []) => items.length > 1 ? "Multiple Supporting Records" : "Awaiting Additional Evidence";
+  const continuitySignal = sessionContinuityReview?.length ? "Consistent Session Continuity" : "Awaiting Additional Evidence";
+  const graphSignal = knowledgeGraph?.length ? "Consistent Knowledge Graph" : "Awaiting Additional Evidence";
+
+  const jesusNameRefs = [
+    ...(referenceRoles || []).filter((item) => /call his name JESUS|name JESUS|JESUS/i.test(`${item.sourcePhrase || ""} ${item.sourceInput || ""} ${item.discoveredReference || ""} ${item.derivedMeaning || ""}`)),
+    ...(ontologyRoles || []).filter((item) => /\bJESUS\b/i.test(`${item.semanticItem || ""} ${item.sourcePhrase || ""}`)),
+    ...(canonicalIdentities || []).filter((item) => /\bJESUS\b/i.test(`${item.canonicalName || ""} ${(item.aliases || []).join(" ")}`))
+  ];
+  if (jesusNameRefs.length) {
+    const source = jesusNameRefs.find((item) => /call his name JESUS|name JESUS/i.test(`${item.sourcePhrase || ""} ${item.sourceInput || ""} ${item.discoveredReference || ""}`)) || jesusNameRefs[0];
+    add({
+      scopePath: `trust.verification.${textHash(`${sourceScope}|jesus|narrative-name`)}`,
+      result: "JESUS = Narrative NAME",
+      sourceBasis: source.sourcePhrase || source.sourceInput || source.discoveredReference || "JESUS identity/name record",
+      provenance: source.sourcePhrase || source.sourceInput || source.discoveredReference ? "Scripture Text" : "I.C.E. Canonical Identity",
+      evidenceWeight: source.sourcePhrase || source.sourceInput || source.discoveredReference ? "Direct Source Evidence" : "Derived Semantic Evidence",
+      reasoningPath: ["Naming instruction", "Ontology role", "Canonical distinction", "Final resolution"],
+      supportingRecords: evidenceFrom(jesusNameRefs, 6),
+      conflictingRecords: [],
+      unresolvedAreas: jesusNameRefs.length > 1 ? [] : ["Awaiting additional name/identity support records in current scope"],
+      trustSignals: uniqueStrings([directSignal(source), supportSignal(jesusNameRefs), graphSignal]),
+      sourcePhrase: source.sourcePhrase || source.sourceInput || source.discoveredReference || "",
+      derivedMeaning: source.derivedMeaning || source.currentGrounding || "JESUS name/identity trust basis remains tied to the source wording and canonical distinction records.",
+      evidence: evidenceFrom(jesusNameRefs, 6),
+      relatedSemanticRecords: ids(jesusNameRefs, "canonicalName"),
+      confidence: source.confidence || "probable",
+      sourceGrounding: source.sourceGrounding || "Trust basis preserves source phrase, ontology/canonical distinction, and does not collapse JESUS display into a separate conclusion."
+    });
+  }
+
+  const mercy = (principleRelationships || []).find((item) => /mercy|merciful/i.test([item.principle, item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")) && /peace|peacemak|reconcil/i.test([item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")));
+  if (mercy) {
+    const supporting = [mercy, ...(teachingSemantics || []).filter((item) => /mercy|merciful|peacemak|reconcil/i.test(`${item.principle || ""} ${item.blessing || ""} ${item.promise || ""} ${item.application || ""} ${item.derivedMeaning || ""}`)), ...(knowledgeGraph || []).filter((item) => /mercy|peacemak|peace|reconcil/i.test(`${item.node || ""} ${(item.relatedPrinciples || []).join(" ")} ${(item.relationships || []).join(" ")}`))].slice(0, 12);
+    add({
+      scopePath: `trust.verification.${textHash(`${sourceScope}|mercy|peacemaking`)}`,
+      result: "Mercy supports Peacemaking",
+      sourceBasis: mercy.sourcePhrase || "Matthew 5 Beatitudes",
+      provenance: "I.C.E. Principle Relationship",
+      evidenceWeight: "Relationship Inference",
+      reasoningPath: ["Shared discourse context", "Principle relationship", "Supporting semantic graph"],
+      supportingRecords: evidenceFrom(supporting, 8),
+      conflictingRecords: [],
+      unresolvedAreas: supporting.length > 1 ? [] : ["Awaiting additional supporting teaching or graph records in current scope"],
+      trustSignals: uniqueStrings([directSignal(mercy), supportSignal(supporting), graphSignal, continuitySignal]),
+      sourcePhrase: mercy.sourcePhrase || "",
+      derivedMeaning: mercy.derivedMeaning || "Mercy and peacemaking are connected through an existing principle relationship record.",
+      evidence: evidenceFrom([mercy], 6),
+      relatedSemanticRecords: [...ids([mercy], "principle"), ...ids(supporting, "teachingTopic")].slice(0, 12),
+      confidence: mercy.confidence || "probable",
+      sourceGrounding: mercy.sourceGrounding || "Trust basis uses the current principle relationship and supporting teaching/graph records only."
+    });
+  }
+
+  const teaching = (teachingSemantics || []).find((item) => item.sourcePhrase && (item.teachingTopic || item.principle || item.commandment || item.blessing));
+  if (teaching) {
+    const label = teaching.teachingTopic || teaching.principle || teaching.commandment || teaching.blessing || "Teaching record";
+    add({
+      scopePath: `trust.verification.${textHash(`${sourceScope}|teaching|${label}`)}`,
+      result: `${label} = Grounded Teaching Record`,
+      sourceBasis: teaching.sourcePhrase,
+      provenance: "I.C.E. Teaching Classification",
+      evidenceWeight: teaching.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
+      reasoningPath: ["Source phrase", "Teaching semantic record", "Current scope display"],
+      supportingRecords: evidenceFrom([teaching], 6),
+      conflictingRecords: [],
+      unresolvedAreas: [],
+      trustSignals: uniqueStrings([directSignal(teaching), graphSignal]),
+      sourcePhrase: teaching.sourcePhrase || "",
+      derivedMeaning: teaching.derivedMeaning || "Teaching trust basis derives from the current teaching semantic record.",
+      evidence: evidenceFrom([teaching], 6),
+      relatedSemanticRecords: ids([teaching], "teachingTopic"),
+      confidence: teaching.confidence || "probable",
+      sourceGrounding: teaching.sourceGrounding || "Trust basis uses source phrase and teaching semantic classification."
+    });
+  }
+
+  const questionSuggestion = (semanticQuestions || []).find((item) => item.questionKind === "suggested") || (semanticQuestions || [])[0];
+  if (questionSuggestion) {
+    add({
+      scopePath: `trust.verification.${textHash(`${sourceScope}|semantic-question|${questionSuggestion.question || "question"}`)}`,
+      result: `${questionSuggestion.question || "Semantic question"} = Grounded Review Prompt`,
+      sourceBasis: questionSuggestion.sourcePhrase || questionSuggestion.sourceGrounding || "Current semantic question record",
+      provenance: questionSuggestion.questionKind === "suggested" ? "I.C.E. Contextual Inquiry Suggestion" : "I.C.E. Semantic Question",
+      evidenceWeight: questionSuggestion.evidenceWeight || "Derived Semantic Evidence",
+      reasoningPath: questionSuggestion.questionKind === "suggested" ? ["Existing semantic records", "Reason suggested", "Suggested next question"] : ["Existing semantic records", "Answer construction", "Displayed answer"],
+      supportingRecords: evidenceFrom([questionSuggestion], 6),
+      conflictingRecords: [],
+      unresolvedAreas: questionSuggestion.questionKind === "suggested" ? ["Answer remains separate until a grounded answer record is constructed"] : [],
+      trustSignals: uniqueStrings([directSignal(questionSuggestion), "Derived Only", graphSignal]),
+      sourcePhrase: questionSuggestion.sourcePhrase || "",
+      derivedMeaning: questionSuggestion.derivedMeaning || questionSuggestion.reasonSuggested || questionSuggestion.answer || "Semantic question trust basis derived from current records.",
+      evidence: evidenceFrom([questionSuggestion], 6),
+      relatedSemanticRecords: ids([questionSuggestion], "question"),
+      confidence: questionSuggestion.confidence || "probable",
+      sourceGrounding: questionSuggestion.sourceGrounding || "Trust basis uses the question record and its existing grounding only."
     });
   }
 
@@ -7427,6 +7589,18 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       originAuthorityPaths
     );
+    const trustVerification = createTrustVerification(
+      captures,
+      canonicalIdentities,
+      ontologyRoles,
+      referenceRoles,
+      principleRelationships,
+      teachingSemantics,
+      characterInteractions,
+      knowledgeGraph,
+      sessionContinuityReview,
+      semanticQuestions
+    );
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
@@ -7452,7 +7626,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions,
       sessionContinuityReview,
       knowledgeGraph,
-      semanticQuestions
+      semanticQuestions,
+      trustVerification
     }, activeAdapter);
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
@@ -7479,7 +7654,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions,
       sessionContinuityReview,
       knowledgeGraph,
-      semanticQuestions
+      semanticQuestions,
+      trustVerification
     }, activeAdapter);
     const latestCapture = captures.find((capture) => capture?.text) || {};
     const latestCaptureContext = buildSourceContext(latestCapture);
@@ -7510,7 +7686,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       characterInteractions: characterInteractions.length,
       sessionContinuityReview: sessionContinuityReview.length,
       knowledgeGraph: knowledgeGraph.length,
-      semanticQuestions: semanticQuestions.length
+      semanticQuestions: semanticQuestions.length,
+      trustVerification: trustVerification.length
     };
     const status = {
       reason,
@@ -7541,7 +7718,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.2-semantic-question-framework",
+      analysisBuildMarker: "phase-9.3-trust-verification-architecture",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -7562,6 +7739,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReviewCount: sessionContinuityReview.length,
       knowledgeGraphCount: knowledgeGraph.length,
       semanticQuestionCount: semanticQuestions.length,
+      trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
       analyzedAt: new Date().toISOString()
@@ -7633,6 +7811,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
       [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
       [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
+      [TRUST_VERIFICATION_KEY]: trustVerification,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,

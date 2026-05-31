@@ -143,6 +143,7 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   const interactions = asArray(samples.characterInteractions);
   const graph = asArray(samples.knowledgeGraph);
   const semanticQuestions = asArray(samples.semanticQuestions);
+  const trustVerification = asArray(samples.trustVerification);
   const lines = [];
   if (teaching.some((item) => /\bJESUS\b/i.test(item.speaker || item.derivedMeaning || "")) || graph.some((item) => /\bJESUS\b/i.test(item.node || ""))) {
     lines.push("Study JESUS as Teacher | Character Focus | Source: I.C.E. generated study suggestion from Teaching Semantics + Knowledge Graph | Evidence Weight: Derived Semantic Evidence / Relationship Inference");
@@ -162,6 +163,7 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   const interactions = asArray(samples.characterInteractions);
   const graph = asArray(samples.knowledgeGraph);
   const semanticQuestions = asArray(samples.semanticQuestions);
+  const trustVerification = asArray(samples.trustVerification);
   const library = asArray(libraryAwareness);
   const explored = [];
   const related = [];
@@ -258,6 +260,7 @@ function reportFromBundle(bundle) {
   const sessionContinuityReview = asArray(samples.sessionContinuityReview);
   const knowledgeGraph = asArray(samples.knowledgeGraph);
   const semanticQuestions = asArray(samples.semanticQuestions);
+  const trustVerification = asArray(samples.trustVerification);
   const answeredSemanticQuestions = semanticQuestions.filter((item) => item.questionKind !== "suggested");
   const suggestedSemanticQuestions = semanticQuestions.filter((item) => item.questionKind === "suggested");
   const source = teaching[0]?.sourceContext || {};
@@ -311,6 +314,7 @@ function reportFromBundle(bundle) {
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `Scripture Knowledge Graph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `Semantic Questions: ${counts.semanticQuestions || semanticQuestions.length || 0}`,
+    `Trust & Verification: ${counts.trustVerification || trustVerification.length || 0}`,
     `Library Awareness: ${libraryAwareness.length}`,
     `Guided Study: ${guidedStudyLines(samples, libraryAwareness).length}`,
     `Study Progression: ${studyProgressionLines(samples, libraryAwareness).length}`,
@@ -326,6 +330,7 @@ function reportFromBundle(bundle) {
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
       ...answeredSemanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
       ...suggestedSemanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Contextual Inquiry Suggestion", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
+      ...trustVerification.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Trust Verification", item.result || "Trust Verification", "Trust & Verification", "ICE_TRUST_VERIFICATION")),
       ...libraryAwareness.slice(0, 4).map((item) => provenanceLine("I.C.E. Library Awareness", item.principleFamily || "Library Awareness", "Library Awareness", "ICE_LIBRARY_AWARENESS_FOUNDATION"))
     ], "no generated semantic labels available"),
     "",
@@ -338,11 +343,15 @@ function reportFromBundle(bundle) {
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
       ...answeredSemanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
       ...suggestedSemanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "contextual inquiry suggestion from current semantic records", item.sourceGrounding || item.reasonSuggested || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
+      ...trustVerification.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "trust basis from visible provenance and supporting records", item.sourceGrounding || item.sourceBasis, asArray(item.supportingRecords).length + asArray(item.trustSignals).length)),
       ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
     ], "no semantic evidence weights available"),
     "",
     "## Principle Hierarchy",
     ...list(principleHierarchyLines(samples), "no principle hierarchy records available"),
+    "",
+    "## Trust & Verification",
+    ...list(trustVerification.slice(0, 6).map((item) => `${item.result || "Trust result"} | Source: ${clean(item.sourceBasis || "source basis not recorded")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")} | Signals: ${asArray(item.trustSignals).slice(0, 3).join(", ") || "signals awaiting records"}`), "no trust verification records available"),
     "",
     "## Semantic Resolution Explanations",
     ...list(resolutionExplanationLines(samples, libraryAwareness), "no resolution explanations available"),
@@ -361,6 +370,7 @@ function reportFromBundle(bundle) {
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
       (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
       (counts.semanticQuestions || semanticQuestions.length) ? "Semantic Questions: Question framework; grounded answers/suggestions found" : "Semantic Questions: Question framework; awaiting grounded semantic records",
+      (counts.trustVerification || trustVerification.length) ? "Trust & Verification: Trust basis records found" : "Trust & Verification: Awaiting grounded records",
       libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
@@ -410,6 +420,7 @@ function reportFromBundle(bundle) {
     `sessionContinuityReview: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `knowledgeGraph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `semanticQuestions: ${counts.semanticQuestions || semanticQuestions.length || 0}`,
+    `trustVerification: ${counts.trustVerification || trustVerification.length || 0}`,
     `libraryAwareness: ${libraryAwareness.length}`,
     "",
     "## Excluded From This Report",

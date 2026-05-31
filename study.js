@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     sessionContinuityReview: "ICE_SESSION_CONTINUITY_REVIEW",
     knowledgeGraph: "ICE_KNOWLEDGE_GRAPH",
     semanticQuestions: "ICE_SEMANTIC_QUESTIONS",
+    trustVerification: "ICE_TRUST_VERIFICATION",
     entityRoleItems: "ICE_ENTITY_ROLE_ITEMS",
     principleItems: "ICE_PRINCIPLE_ITEMS",
     prophecyLinks: "ICE_PROPHECY_LINKS",
@@ -2662,6 +2663,90 @@ document.addEventListener("DOMContentLoaded", async () => {
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createKnowledgeGraphCard(item)));
   }
 
+  function trustVerificationSearchText(item = {}) {
+    return [
+      item.result,
+      item.sourceBasis,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.supportingRecords,
+      item.conflictingRecords,
+      item.unresolvedAreas,
+      item.trustSignals,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.evidence,
+      item.relatedSemanticRecords,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createTrustVerificationCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card trust-verification-card";
+    assignSemanticCardTarget(card, "trustVerification", item, item.result || item.id || "trust-verification");
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = item.result || "Trust Verification";
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_TRUST_VERIFICATION", item.verseRange || item.scopePath, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.result, item.sourceBasis, item.sourcePhrase, item.derivedMeaning, item.supportingRecords, item.reasoningPath]);
+    header.append(heading, range);
+    [
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Derived", label: item.result || "Trust verification", layer: "Trust & Verification", storageKey: "ICE_TRUST_VERIFICATION", scopePath: item.scopePath || item.verseRange, rule: "Trust verification records demonstrate the basis for a conclusion from existing source-grounded semantic records; no truth score, doctrine ranking, or belief score is generated." }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "trust basis uses visible provenance, reasoning path, and supporting records only", sourceGrounding: item.sourceGrounding || item.sourceBasis, supportingRecords: [...asArray(item.supportingRecords), ...asArray(item.relatedSemanticRecords), ...asArray(item.trustSignals)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Source Basis", item.sourceBasis || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Derived", { preserveExact: true }),
+      createPassageFunctionSection("Evidence Weight", item.evidenceWeight || "Derived Semantic Evidence", { preserveExact: true }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Trust Signals", "", { list: asArray(item.trustSignals), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Records", "", { list: asArray(item.supportingRecords).slice(0, 8), hiddenCount: Math.max(0, asArray(item.supportingRecords).length - 8), divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Conflicting Records", "", { list: asArray(item.conflictingRecords), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Unresolved Areas", "", { list: asArray(item.unresolvedAreas), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Related Semantic Records", "", { collapsed: true, summaryLabel: "Show related semantic records", list: asArray(item.relatedSemanticRecords), plainList: true }),
+      createPassageFunctionSection("Scope", item.scopePath || item.verseRange || "Current source/session", { collapsed: true })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderTrustVerification(term) {
+    const container = document.getElementById("trustVerificationCards");
+    const count = document.getElementById("trustVerificationCount");
+    if (!container || !count) return;
+    const records = asArray(studyData.trustVerification);
+    const filtered = records.filter((item) => matchesSearchQuery(trustVerificationSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} trust record(s)`;
+    if (records.length === 0) {
+      appendEmpty(container, "No trust verification records are available yet.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Trust & Verification",
+      [
+        `Trust records: ${records.length}`,
+        "Layer: ICE_TRUST_VERIFICATION",
+        "Purpose: show why a conclusion is trustable through visible source basis, provenance, evidence weight, reasoning path, supporting records, and unresolved areas.",
+        "Boundary: no truth scoring, doctrinal ranking, belief scoring, or speculative confidence metrics."
+      ].join("\n"),
+      "trust verification architecture"
+    ));
+    if (filtered.length === 0) {
+      appendEmpty(container, "No trust verification records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createTrustVerificationCard(item)));
+  }
   function semanticQuestionSearchText(item = {}) {
     return [
       item.questionKind,
@@ -6654,6 +6739,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       libraryAwareness: "libraryAwarenessSection",
       knowledgeGraph: "knowledgeGraphSection",
       semanticQuestion: "semanticQuestionsSection",
+      trustVerification: "trustVerificationSection",
       sessionContinuityReview: "sessionContinuityReviewSection",
       event: "semanticEventsSection",
       flow: "semanticFlowChainsSection",
@@ -9762,6 +9848,7 @@ createRevelationPartsSection(item.subEvents)
       renderResolutionExplanations(term);
       renderSessionContinuityReview(term);
       renderKnowledgeGraph(term);
+      renderTrustVerification(term);
       renderSemanticQuestions(term);
       renderLibraryAwareness(term);
       renderTeachingSemantics(term);
@@ -9899,13 +9986,14 @@ createRevelationPartsSection(item.subEvents)
     const characterInteractionsCount = countItems(studyData.characterInteractions);
     const knowledgeGraphCount = countItems(knowledgeGraphRecords());
     const semanticQuestionsCount = countItems(studyData.semanticQuestions);
+    const trustVerificationCount = countItems(studyData.trustVerification);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
     const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
     const message = document.getElementById("diagnosticMessage");
 
     document.getElementById("diagnosticCaptures").textContent = captureCount;
@@ -9940,6 +10028,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("diagnosticTeachingSemantics").textContent = teachingSemanticsCount;
     document.getElementById("diagnosticPrincipleRelationships").textContent = principleRelationshipsCount;
     document.getElementById("diagnosticSemanticQuestions").textContent = semanticQuestionsCount;
+    document.getElementById("diagnosticTrustVerification").textContent = trustVerificationCount;
     document.getElementById("diagnosticAdapter").textContent = activeAdapterName;
     document.getElementById("diagnosticAnalysisReason").textContent = studyData.analysisStatus?.reason || "None";
     document.getElementById("diagnosticAnalysisBuild").textContent = studyData.analysisStatus?.analysisBuildMarker || "None";
@@ -9966,7 +10055,8 @@ createRevelationPartsSection(item.subEvents)
         `teachingSemantics: ${teachingSemanticsCount}`,
         `principleRelationships: ${principleRelationshipsCount}`,
         `knowledgeGraph: ${knowledgeGraphCount}`,
-        `semanticQuestions: ${semanticQuestionsCount}`
+        `semanticQuestions: ${semanticQuestionsCount}`,
+        `trustVerification: ${trustVerificationCount}`
       ].join(" | ");
     document.getElementById("diagnosticPrinciples").textContent = principleCount;
     document.getElementById("diagnosticProphecyLinks").textContent =

@@ -45,7 +45,8 @@ const STORAGE_KEYS = [
   "ICE_CHARACTER_INTERACTIONS",
   "ICE_SESSION_CONTINUITY_REVIEW",
   "ICE_KNOWLEDGE_GRAPH",
-  "ICE_SEMANTIC_QUESTIONS"
+  "ICE_SEMANTIC_QUESTIONS",
+  "ICE_TRUST_VERIFICATION"
 ];
 const CLEAR_KEYS = [
   ...STORAGE_KEYS,
@@ -109,7 +110,8 @@ function emptyCounts() {
     characterInteractions: 0,
     sessionContinuityReview: 0,
     knowledgeGraph: 0,
-    semanticQuestions: 0
+    semanticQuestions: 0,
+    trustVerification: 0
   };
 }
 
@@ -139,7 +141,8 @@ function buildCounts(storageData) {
     characterInteractions: count(storageData.ICE_CHARACTER_INTERACTIONS),
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
-    semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS)
+    semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
+    trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
 }
 
@@ -171,6 +174,7 @@ function buildSamples(storageData) {
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
+    trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
   };
 }
