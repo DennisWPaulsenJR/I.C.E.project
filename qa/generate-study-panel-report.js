@@ -30,6 +30,15 @@ function list(lines, fallback = "none recorded") {
 }
 
 
+function unique(values = []) {
+  const seen = new Set();
+  return asArray(values).map(clean).filter(Boolean).filter((value) => {
+    const key = value.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 function currentGitAnchor() {
   try {
     return execSync("git log --oneline -1", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();

@@ -38,6 +38,11 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Critical Study Scope bug fixed: Suggested Next is now display-only and cannot become analyzed or selected range state.
+- `analyzedPageHistory()` now ignores stale `analysisStatus` records when they do not match the active source target.
+- Stored selected ranges are honored only when both start and end pages already exist in analyzed pages; otherwise the range falls back to analyzed pages only.
+- Single-page analysis now presents the current range as that page only, while the next chapter remains suggestion-only.
+Latest pcdx update:
 - Phase 9.1 Study Progression Engine implemented.
 - Added Study Progression section to the Study Panel as a study-navigation layer.
 - Study progression derives Current Focus, Explored Topics, Related Topics, Not Yet Explored, Suggested Next Topic, and Reason for Suggestion from existing semantic records only.

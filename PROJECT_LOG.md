@@ -2,6 +2,37 @@
 
 Chronological implementation and decision log. Entries are reverse chronological. Keep this summarized; do not paste raw chat transcripts here.
 
+## 2026-05-31 - Critical Study Scope Suggested Next Fix
+
+Instruction summary:
+- Fix Study Scope behavior so Suggested Next never counts as analyzed, selected, or processed.
+- Keep analyzed pages, selected range, suggested next page, and future range controls separate.
+- Preserve active source target when session analysis is cleared.
+
+Codex action summary:
+- Hardened analyzed page history so stale `ICE_ANALYSIS_STATUS` does not appear as analyzed when it differs from the active source target.
+- Added selected-range validation so `ICE_SELECTED_RANGE` is only used when both endpoints are present in analyzed pages.
+- Updated Study Scope/report range consumers to use validated selected range over analyzed pages only.
+- Fixed `qa/generate-study-panel-report.js` missing `unique()` helper exposed by `review:matthew5`.
+
+Files changed:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Manual smoke note:
+- Browser manual smoke was not run in this headless turn; the Study Scope logic now guards stale analysis and invalid selected-range endpoints directly.
 ## 2026-05-31 - Phase 9.1 Study Progression Engine
 
 Instruction summary:

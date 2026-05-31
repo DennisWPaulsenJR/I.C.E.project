@@ -21,6 +21,34 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-05-31 00:00 - pcdx - Fix suggested next page processing
+Summary:
+- Fixed Study Scope so Suggested Next remains display-only and cannot become analyzed/selected range state.
+- Analyzed page history now excludes stale analysis status records that do not match the active source target.
+- Selected range display now validates that both endpoints are already analyzed before using stored range state.
+- Fixed missing report-generator `unique()` helper found during `review:matthew5`.
+
+Files touched:
+- `study.js`
+- `qa/generate-study-panel-report.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md`
+
+Checks:
+- `node --check study.js` passed
+- `node --check qa/generate-study-panel-report.js` passed
+- `git diff --check` passed
+- `npm.cmd run qa:matthew-pages` passed
+- `npm.cmd run review:matthew5` passed
+- `npm.cmd run review:matthew-session` passed
+
+Commit:
+- `pcdx: Fix suggested next page processing`
+
+Status:
+- Implemented and validated; manual browser smoke not run in this headless turn.
 ## 2026-05-31 00:00 - pcdx - Add study progression engine
 Summary:
 - Added Study Progression section for current focus, explored topics, related topics, not-yet-explored topics, and suggested next topic.

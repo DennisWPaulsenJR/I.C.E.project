@@ -863,6 +863,31 @@ document.addEventListener("DOMContentLoaded", async () => {
       null;
   }
 
+  function currentAnalyzedStatusRecord() {
+    const statusEntry = pageRecordFromStatus(studyData.analysisStatus || {});
+    if (!statusEntry?.analyzedAt) return null;
+    const activeCandidate = pageRecordFromCapture(studyData.latestCapture) || studyData.activeSourcePage || null;
+    const activeKey = pageRecordKey(activeCandidate || {});
+    const statusKey = pageRecordKey(statusEntry || {});
+    if (activeKey && statusKey && activeKey !== statusKey) return null;
+    return statusEntry;
+  }
+
+  function selectedRangeFromAnalyzedPages(analyzedPages = []) {
+    const selected = studyData.selectedRange || null;
+    if (!selected?.start || !selected?.end) return rangeFromAnalyzedPages(analyzedPages);
+    const pagesByKey = new Map(analyzedPages.map((page) => [pageRecordKey(page), page]));
+    const start = pagesByKey.get(pageRecordKey(selected.start));
+    const end = pagesByKey.get(pageRecordKey(selected.end));
+    if (!start || !end) return rangeFromAnalyzedPages(analyzedPages);
+    const startChapter = Number(start.sourceCaptureChapter || start.chapter || 0);
+    const endChapter = Number(end.sourceCaptureChapter || end.chapter || 0);
+    const count = analyzedPages.filter((page) => {
+      const chapter = Number(page.sourceCaptureChapter || page.chapter || 0);
+      return chapter && chapter >= Math.min(startChapter, endChapter) && chapter <= Math.max(startChapter, endChapter);
+    }).length;
+    return { start, end, count: count || analyzedPages.length };
+  }
   function volumePageLabel(page = {}) {
     const book = normalizeText(page.sourceCaptureBook || page.book || "");
     const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
@@ -872,10 +897,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function analyzedPageHistory() {
     const history = asArray(studyData.analysisHistory);
-    const statusEntry = pageRecordFromStatus(studyData.analysisStatus || {});
+    const statusEntry = currentAnalyzedStatusRecord();
     const seen = new Set();
     return [statusEntry, ...history]
       .filter(Boolean)
+      .filter((item) => item?.analyzedAt || item?.sourceCaptureId)
       .filter((item) => item?.sourceTitle || item?.sourceCaptureBook || item?.activeUrl)
       .filter((item) => {
         const key = pageRecordKey(item);
@@ -885,7 +911,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       })
       .sort((left, right) => Number(left.sourceCaptureChapter || 0) - Number(right.sourceCaptureChapter || 0) || String(left.analyzedAt || left.updatedAt || "").localeCompare(String(right.analyzedAt || right.updatedAt || "")));
   }
-
   function analysisStatusLabel(activePage = activeSourcePageRecord()) {
     const status = studyData.analysisStatus || {};
     if (!status.analyzedAt) return activePage ? "session data cleared" : "not analyzed";
@@ -1230,7 +1255,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function studyScopeExportLines() {
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
-    const range = rangeFromAnalyzedPages(analyzedPages);
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
     return [
       exportLine("Active source page", activePage ? volumePageLabel(activePage) : "No active source page selected"),
       exportLine("Active URL", activePage?.activeUrl || studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "Not recorded"),
@@ -1450,7 +1475,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function buildGptReviewReport() {
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
-    const range = rangeFromAnalyzedPages(analyzedPages);
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
     const reportTime = new Date().toISOString();
     return exportPlainText([
       "# I.C.E. GPT Review Report",
@@ -1585,7 +1610,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function buildGptHandoffSummary() {
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
-    const range = rangeFromAnalyzedPages(analyzedPages);
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
     const warnings = topWarningLines(activePage);
     const relevantSection = relevantHandoffSection();
     const evidence = topEvidenceLines(3);
@@ -2379,7 +2404,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const notYetExplored = related.filter((item) => !exploredKeys.has(item.key));
     const preferredNext = notYetExplored.find((item) => /reconciliation|righteousness|law fulfillment|peacemak|mercy|kingdom/i.test(item.label)) || notYetExplored[0];
     const analyzedPages = analyzedPageHistory();
-    const range = rangeFromAnalyzedPages(analyzedPages);
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
     const currentFocus = studyProgressionCurrentFocus();
     const supportingLayers = uniqueStudyList([
       teachings.length ? "Teaching / Discourse Structure" : "",
@@ -2852,7 +2877,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const activePage = activeSourcePageRecord();
     const analyzedPages = analyzedPageHistory();
-    const range = rangeFromAnalyzedPages(analyzedPages);
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
     const activeLabel = activePage ? volumePageLabel(activePage) : "No active source page selected";
     const targetLooksLikePanel = /chrome-extension:.*study\.html|\/study\.html(?:$|[?#])/i.test(activePage?.activeUrl || "");
     const rows = [
