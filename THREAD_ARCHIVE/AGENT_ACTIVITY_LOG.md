@@ -3386,3 +3386,37 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-31 - Harden Study Scope Page Validation
+
+Instruction summary:
+- Fix the Critical Study Scope contamination bug where non-scripture pages and suggestion-only pages could pollute analyzed pages, current session, selected range, and continuity.
+
+Codex action summary:
+- Added strict source-page validators in `study.js` and `background.js` for approved adapter, valid source URL, source title/book/chapter agreement, analyzed status, panel UI exclusion, and ChatGPT/unrelated browser page exclusion.
+- Hardened `analyzedPageHistory()` so only confirmed analyzed source records enter Study Scope analyzed pages.
+- Hardened background persistence so `ICE_ANALYSIS_HISTORY`, `ICE_ACTIVE_SOURCE_PAGE`, and session continuity only use valid source page records.
+- Changed Add active page to session to require the current analyzed status record instead of adding an unconfirmed active tab target.
+- Kept Suggested Next display-only by deriving range/continuity from analyzed pages only.
+- Expanded Clear session analysis cleanup for stale analyzed/session/range entries, semantic question/trust review data, and GPT review report state.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

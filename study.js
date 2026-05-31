@@ -825,27 +825,71 @@ document.addEventListener("DOMContentLoaded", async () => {
       .map((value) => normalizeText(value || "").toLowerCase())
       .join("|");
   }
+  const approvedStudySourceAdapters = new Set(["lds_scripture_adapter"]);
+
+  function isPanelUiUrl(url = "") {
+    return /chrome-extension:.*study\.html|\/study\.html(?:$|[?#])/i.test(normalizeText(url));
+  }
+
+  function isExcludedBrowserPage(page = {}) {
+    const text = normalizeText([page.sourceTitle, page.title, page.activeUrl, page.url].filter(Boolean).join(" "));
+    return /\bchatgpt\b|chat\.openai\.com|chatgpt\.com|openai\.com\/chat/i.test(text);
+  }
+
+  function sourceMatchFromTitle(title = "") {
+    const match = normalizeText(title).match(/\b(Matthew|Mark|Luke|John)\s+(\d+)\b/i);
+    return match ? { book: match[1], chapter: match[2] } : null;
+  }
+
+  function sourceMatchFromUrl(url = "") {
+    const match = normalizeText(url).match(/\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(matt|mark|luke|john)\/(\d+)\b/i);
+    const urlBooks = { matt: "Matthew", mark: "Mark", luke: "Luke", john: "John" };
+    return match ? { book: urlBooks[match[1].toLowerCase()] || "", chapter: match[2] } : null;
+  }
+
+  function validStudySourceUrl(url = "") {
+    const normalized = normalizeText(url);
+    return /^https?:\/\/(?:www\.)?churchofjesuschrist\.org\/study\/scriptures\//i.test(normalized) ||
+      /^https?:\/\/(?:www\.)?churchofjesuschrist\.org\/scriptures\//i.test(normalized) ||
+      /\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(?:matt|mark|luke|john)\/\d+\b/i.test(normalized);
+  }
+
+  function validSourcePageRecord(page = {}, { requireAnalyzed = false } = {}) {
+    if (!page) return false;
+    const url = normalizeText(page.activeUrl || page.url || "");
+    if (!url || isPanelUiUrl(url) || isExcludedBrowserPage(page) || !validStudySourceUrl(url)) return false;
+    const adapterName = normalizeText(page.activeAdapterName || page.adapterName || page.sourceAdapter?.adapterName || "");
+    if (!approvedStudySourceAdapters.has(adapterName)) return false;
+    const book = normalizeText(page.sourceCaptureBook || page.book || "");
+    const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
+    if (!book || !chapter) return false;
+    const titleMatch = sourceMatchFromTitle(page.sourceTitle || page.title || "");
+    const urlMatch = sourceMatchFromUrl(url);
+    if (!urlMatch || urlMatch.book !== book || String(urlMatch.chapter) !== String(chapter)) return false;
+    if (titleMatch && (titleMatch.book !== book || String(titleMatch.chapter) !== String(chapter))) return false;
+    if (requireAnalyzed && !page.analyzedAt) return false;
+    return true;
+  }
 
   function pageRecordFromCapture(capture = {}) {
     if (!capture?.text && !capture?.url && !capture?.title) return null;
     const inferred = inferDisplaySourceContext(capture) || {};
-    const url = normalizeText(capture.url || "");
-    if (/chrome-extension:.*study\.html|\/study\.html(?:$|[?#])/i.test(url)) return null;
-    return {
+    const record = {
       sourceCaptureId: capture.id || "",
       sourceTitle: capture.title || inferred.sourceTitle || "Current source",
       sourceCaptureBook: inferred.book || "",
       sourceCaptureChapter: inferred.chapter || "",
-      activeUrl: url,
+      activeUrl: normalizeText(capture.url || ""),
       activeAdapterName: capture.sourceAdapter?.adapterName || studyData.activeAdapter?.adapterName || "",
       capturedAt: capture.capturedAt || "",
       updatedAt: capture.capturedAt || ""
     };
+    return validSourcePageRecord(record) ? record : null;
   }
 
   function pageRecordFromStatus(status = {}) {
     if (!status?.sourceCaptureTitle && !status?.activeUrl && !status?.sourceCaptureBook) return null;
-    return {
+    const record = {
       sourceCaptureId: status.sourceCaptureId || "",
       sourceTitle: status.sourceCaptureTitle || "Current source",
       sourceCaptureBook: status.sourceCaptureBook || "",
@@ -855,11 +899,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       analyzedAt: status.analyzedAt || "",
       updatedAt: status.analyzedAt || ""
     };
+    return validSourcePageRecord(record, { requireAnalyzed: Boolean(status.analyzedAt) }) ? record : null;
   }
 
   function activeSourcePageRecord() {
+    const storedActive = validSourcePageRecord(studyData.activeSourcePage) ? studyData.activeSourcePage : null;
     return pageRecordFromCapture(studyData.latestCapture) ||
-      studyData.activeSourcePage ||
+      storedActive ||
       pageRecordFromStatus(studyData.analysisStatus || {}) ||
       analyzedPageHistory()[0] ||
       null;
@@ -868,10 +914,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function currentAnalyzedStatusRecord() {
     const statusEntry = pageRecordFromStatus(studyData.analysisStatus || {});
     if (!statusEntry?.analyzedAt) return null;
-    const activeCandidate = pageRecordFromCapture(studyData.latestCapture) || studyData.activeSourcePage || null;
+    const activeCandidate = pageRecordFromCapture(studyData.latestCapture) || (validSourcePageRecord(studyData.activeSourcePage) ? studyData.activeSourcePage : null);
     const activeKey = pageRecordKey(activeCandidate || {});
     const statusKey = pageRecordKey(statusEntry || {});
-    if (activeKey && statusKey && activeKey !== statusKey) return null;
+    if (activeCandidate && activeKey && statusKey && activeKey !== statusKey) return null;
     return statusEntry;
   }
 
@@ -903,8 +949,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const seen = new Set();
     return [statusEntry, ...history]
       .filter(Boolean)
-      .filter((item) => item?.analyzedAt || item?.sourceCaptureId)
-      .filter((item) => item?.sourceTitle || item?.sourceCaptureBook || item?.activeUrl)
+      .filter((item) => validSourcePageRecord(item, { requireAnalyzed: true }))
       .filter((item) => {
         const key = pageRecordKey(item);
         if (!key || seen.has(key)) return false;
@@ -918,7 +963,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!status.analyzedAt) return activePage ? "session data cleared" : "not analyzed";
     const statusKey = pageRecordKey(pageRecordFromStatus(status) || {});
     const activeKey = pageRecordKey(activePage || {});
-    if (activeKey && statusKey && activeKey !== statusKey) return "stale / different active source";
+    if (activePage && activeKey && statusKey && activeKey !== statusKey) return "stale / different active source";
     return "current";
   }
 
@@ -3160,12 +3205,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function addActivePageToSession() {
-    const activePage = await persistActiveSourcePage();
+    const activePage = currentAnalyzedStatusRecord();
     if (!activePage) {
-      showDiagnosticMessage("No active source page selected. Open a scripture/source page first.");
+      showDiagnosticMessage("Only a confirmed analyzed scripture/source page can be added to the study session.");
       return;
     }
+    await persistActiveSourcePage(activePage);
     const nextHistory = [activePage, ...analyzedPageHistory()]
+      .filter((item) => validSourcePageRecord(item, { requireAnalyzed: true }))
       .filter((item, index, items) => items.findIndex((candidate) => pageRecordKey(candidate) === pageRecordKey(item)) === index)
       .slice(0, 24);
     await chrome.storage.local.set({
@@ -3235,6 +3282,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.characterInteractions,
       STORAGE_KEYS.sessionContinuityReview,
       STORAGE_KEYS.knowledgeGraph,
+      STORAGE_KEYS.semanticQuestions,
+      STORAGE_KEYS.trustVerification,
+      STORAGE_KEYS.gptReviewReport,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
@@ -3251,7 +3301,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function clearSessionAnalysis() {
-    const activePage = activeSourcePageRecord();
     await chrome.storage.local.remove([
       STORAGE_KEYS.timelineItems,
       STORAGE_KEYS.eventItems,
@@ -3287,19 +3336,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.characterInteractions,
       STORAGE_KEYS.sessionContinuityReview,
       STORAGE_KEYS.knowledgeGraph,
+      STORAGE_KEYS.semanticQuestions,
+      STORAGE_KEYS.trustVerification,
+      STORAGE_KEYS.gptReviewReport,
       STORAGE_KEYS.entityRoleItems,
       STORAGE_KEYS.principleItems,
       STORAGE_KEYS.prophecyLinks,
       STORAGE_KEYS.analysisStatus,
       STORAGE_KEYS.analysisHistory,
+      STORAGE_KEYS.activeSourcePage,
       STORAGE_KEYS.selectedRange
     ]);
-    if (activePage) await chrome.storage.local.set({
-      [STORAGE_KEYS.activeSourcePage]: activePage,
+    await chrome.storage.local.set({
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_session_analysis", updatedAt: new Date().toISOString() }
     });
     await refreshStudyData();
-    showDiagnosticMessage(activePage ? `Session data cleared. Analysis target remains ${volumePageLabel(activePage)}.` : "Session data cleared. No active source page selected.");
+    showDiagnosticMessage("Session data cleared. No analyzed pages, active source target, or selected range remain.");
   }
 
   async function clearAllSessionData() {

@@ -2227,6 +2227,51 @@ function createCharacterInteractions(captures = [], ontologyRoles = [], entityRe
 
   return records;
 }
+const APPROVED_STUDY_SCOPE_ADAPTERS = new Set(["lds_scripture_adapter"]);
+
+function isPanelUiSourceUrl(url = "") {
+  return /chrome-extension:.*study\.html|\/study\.html(?:$|[?#])/i.test(normalizeWhitespace(url || ""));
+}
+
+function isExcludedStudyScopePage(page = {}) {
+  const text = normalizeWhitespace([page.sourceTitle, page.title, page.activeUrl, page.url].filter(Boolean).join(" "));
+  return /\bchatgpt\b|chat\.openai\.com|chatgpt\.com|openai\.com\/chat/i.test(text);
+}
+
+function studyScopeSourceMatchFromTitle(title = "") {
+  const match = normalizeWhitespace(title).match(/\b(Matthew|Mark|Luke|John)\s+(\d+)\b/i);
+  return match ? { book: match[1], chapter: match[2] } : null;
+}
+
+function studyScopeSourceMatchFromUrl(url = "") {
+  const match = normalizeWhitespace(url).match(/\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(matt|mark|luke|john)\/(\d+)\b/i);
+  const urlBooks = { matt: "Matthew", mark: "Mark", luke: "Luke", john: "John" };
+  return match ? { book: urlBooks[match[1].toLowerCase()] || "", chapter: match[2] } : null;
+}
+
+function validStudyScopeSourceUrl(url = "") {
+  const normalized = normalizeWhitespace(url || "");
+  return /^https?:\/\/(?:www\.)?churchofjesuschrist\.org\/study\/scriptures\//i.test(normalized) ||
+    /^https?:\/\/(?:www\.)?churchofjesuschrist\.org\/scriptures\//i.test(normalized) ||
+    /\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(?:matt|mark|luke|john)\/\d+\b/i.test(normalized);
+}
+
+function validStudyScopePageRecord(page = {}, { requireAnalyzed = false } = {}) {
+  if (!page) return false;
+  const url = normalizeWhitespace(page.activeUrl || page.url || "");
+  if (!url || isPanelUiSourceUrl(url) || isExcludedStudyScopePage(page) || !validStudyScopeSourceUrl(url)) return false;
+  const adapterName = normalizeWhitespace(page.activeAdapterName || page.adapterName || page.sourceAdapter?.adapterName || "");
+  if (!APPROVED_STUDY_SCOPE_ADAPTERS.has(adapterName)) return false;
+  const book = normalizeWhitespace(page.sourceCaptureBook || page.book || "");
+  const chapter = normalizeWhitespace(page.sourceCaptureChapter || page.chapter || "");
+  if (!book || !chapter) return false;
+  const urlMatch = studyScopeSourceMatchFromUrl(url);
+  const titleMatch = studyScopeSourceMatchFromTitle(page.sourceTitle || page.title || "");
+  if (!urlMatch || urlMatch.book !== book || String(urlMatch.chapter) !== String(chapter)) return false;
+  if (titleMatch && (titleMatch.book !== book || String(titleMatch.chapter) !== String(chapter))) return false;
+  if (requireAnalyzed && !page.analyzedAt) return false;
+  return true;
+}
 function sessionContinuityReviewRecord(record = {}) {
   const key = [
     "session-continuity-review",
@@ -2272,7 +2317,9 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     sourceCaptureBook: context.book || "",
     sourceCaptureChapter: context.chapter || "",
     sourceTitle: context.sourceTitle || capture.title || "",
-    activeUrl: context.sourceUrl || capture.url || ""
+    activeUrl: context.sourceUrl || capture.url || "",
+    activeAdapterName: capture.sourceAdapter?.adapterName || "",
+    analyzedAt: capture.capturedAt || new Date().toISOString()
   };
   const pageKey = (page = {}) => [page.sourceCaptureBook || page.book || "", page.sourceCaptureChapter || page.chapter || "", page.sourceTitle || "", page.activeUrl || page.url || ""].map((value) => normalizeWhitespace(value || "").toLowerCase()).join("|");
   const pageLabel = (page = {}) => {
@@ -2282,7 +2329,7 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     return page.sourceTitle || page.title || page.activeUrl || page.url || "Unknown page";
   };
   const pages = [currentPage, ...(analysisHistory || [])]
-    .filter((page) => page?.sourceCaptureBook || page?.book || page?.sourceTitle || page?.activeUrl || page?.url)
+    .filter((page) => validStudyScopePageRecord(page, { requireAnalyzed: true }))
     .filter((page, index, list) => list.findIndex((candidate) => pageKey(candidate) === pageKey(page)) === index)
     .sort((left, right) => Number(left.sourceCaptureChapter || left.chapter || 0) - Number(right.sourceCaptureChapter || right.chapter || 0));
   const matthewPages = pages.filter((page) => (page.sourceCaptureBook || page.book) === "Matthew" && Number(page.sourceCaptureChapter || page.chapter || 0) > 0);
@@ -7765,7 +7812,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       reason: status.reason
     };
     const analysisHistory = [analysisHistoryEntry, ...previousAnalysisHistory]
-      .filter((item) => item?.sourceTitle || item?.sourceCaptureBook || item?.activeUrl)
+      .filter((item) => validStudyScopePageRecord(item, { requireAnalyzed: true }))
       .filter((item, index, items) => {
         const key = [item.sourceCaptureBook, item.sourceCaptureChapter, item.sourceTitle, item.activeUrl]
           .map((value) => normalizeWhitespace(value || "").toLowerCase())
@@ -7817,7 +7864,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status,
       [ANALYSIS_HISTORY_KEY]: analysisHistory,
-      [ACTIVE_SOURCE_PAGE_KEY]: activeSourcePage
+      [ACTIVE_SOURCE_PAGE_KEY]: validStudyScopePageRecord(activeSourcePage) ? activeSourcePage : null
     });
 
     return status;

@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Critical Study Scope contamination hardening implemented.
+- `ICE_ANALYSIS_HISTORY` and Study Scope analyzed pages now accept only confirmed analyzed source pages from approved scripture adapters.
+- Non-source/browser pages such as ChatGPT, panel UI URLs, invalid source URLs, and records with mismatched title/book/chapter metadata are rejected from analyzed pages.
+- Suggested Next remains display-only and cannot enter analyzed pages, selected range, or continuity review state.
+- Selected range and session continuity now derive only from validated analyzed pages; stale selected/session/range entries are cleared by Clear session analysis.
+- Clear session analysis now removes stale analysis history, active source page, selected range, semantic question/trust review data, and GPT review report state while leaving Clear all I.C.E. data available for full local storage removal.
+
+Latest pcdx update:
 - Phase 9.3 Trust & Verification Architecture implemented.
 - Added persisted derived `ICE_TRUST_VERIFICATION` records that explain why a semantic conclusion is trustable without using numeric truth scores.
 - Trust records display Source Basis, Provenance, Evidence Weight, Reasoning Path, Supporting Records, Conflicting Records, Unresolved Areas, Trust Signals, source phrase, derived meaning, and App accuracy.
