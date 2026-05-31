@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     prophecyLinks: "ICE_PROPHECY_LINKS",
     analysisStatus: "ICE_ANALYSIS_STATUS",
     analysisHistory: "ICE_ANALYSIS_HISTORY",
+    canonicalAnalyzedPages: "ICE_CANONICAL_ANALYZED_PAGES",
     activeSourcePage: "ICE_ACTIVE_SOURCE_PAGE",
     selectedRange: "ICE_SELECTED_RANGE",
     panelUiState: "ICE_PANEL_UI_STATE",
@@ -870,11 +871,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (requireAnalyzed && !page.analyzedAt) return false;
     return true;
   }
+  function sourcePageValidationReason(page = {}, { requireAnalyzed = false, requireMarker = false } = {}) {
+    if (!page) return "empty page record";
+    const url = normalizeText(page.activeUrl || page.url || "");
+    if (!url) return "missing source URL";
+    if (isPanelUiUrl(url)) return "panel UI URL is not source content";
+    if (isExcludedBrowserPage(page)) return "non-scripture/browser page excluded";
+    if (!validStudySourceUrl(url)) return "URL is not an approved scripture/source URL";
+    const adapterName = normalizeText(page.activeAdapterName || page.adapterName || page.sourceAdapter?.adapterName || "");
+    if (!approvedStudySourceAdapters.has(adapterName)) return "adapter is not an approved source adapter";
+    const book = normalizeText(page.sourceCaptureBook || page.book || "");
+    const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
+    if (!book || !chapter) return "missing source book/chapter";
+    const urlMatch = sourceMatchFromUrl(url);
+    const titleMatch = sourceMatchFromTitle(page.sourceTitle || page.title || "");
+    if (!urlMatch) return "URL does not identify a supported scripture chapter";
+    if (urlMatch.book !== book || String(urlMatch.chapter) !== String(chapter)) return "URL book/chapter does not match capture metadata";
+    if (titleMatch && (titleMatch.book !== book || String(titleMatch.chapter) !== String(chapter))) return "title book/chapter does not match capture metadata";
+    if (requireAnalyzed && !page.analyzedAt) return "missing analysis timestamp";
+    if (requireMarker && (!page.pageKey || !page.analysisTimestamp && !page.analyzedAt || !page.buildMarker)) return "missing canonical confirmed analysis marker";
+    return "accepted";
+  }
 
-  function pageRecordFromCapture(capture = {}) {
+  function pageRecordFromCanonicalMarker(marker = {}) {
+    const page = {
+      sourceCaptureId: marker.captureId || marker.sourceCaptureId || "",
+      sourceTitle: marker.sourceTitle || "Current source",
+      sourceCaptureBook: marker.sourceCaptureBook || "",
+      sourceCaptureChapter: marker.sourceCaptureChapter || "",
+      activeUrl: marker.url || marker.activeUrl || "",
+      activeAdapterName: marker.adapter || marker.activeAdapterName || "",
+      analyzedAt: marker.analysisTimestamp || marker.analyzedAt || "",
+      updatedAt: marker.analysisTimestamp || marker.updatedAt || "",
+      pageKey: marker.pageKey || "",
+      buildMarker: marker.buildMarker || ""
+    };
+    return sourcePageValidationReason(page, { requireAnalyzed: true, requireMarker: true }) === "accepted" && page.pageKey === pageRecordKey(page) ? page : null;
+  }
+
+  function rawPageRecordFromCapture(capture = {}) {
     if (!capture?.text && !capture?.url && !capture?.title) return null;
     const inferred = inferDisplaySourceContext(capture) || {};
-    const record = {
+    return {
       sourceCaptureId: capture.id || "",
       sourceTitle: capture.title || inferred.sourceTitle || "Current source",
       sourceCaptureBook: inferred.book || "",
@@ -884,6 +922,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       capturedAt: capture.capturedAt || "",
       updatedAt: capture.capturedAt || ""
     };
+  }
+
+  function pageRecordFromCapture(capture = {}) {
+    const record = rawPageRecordFromCapture(capture);
     return validSourcePageRecord(record) ? record : null;
   }
 
@@ -944,14 +986,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function analyzedPageHistory() {
-    const history = asArray(studyData.analysisHistory);
-    const statusEntry = currentAnalyzedStatusRecord();
     const seen = new Set();
-    return [statusEntry, ...history]
+    return asArray(studyData.canonicalAnalyzedPages)
+      .map(pageRecordFromCanonicalMarker)
       .filter(Boolean)
-      .filter((item) => validSourcePageRecord(item, { requireAnalyzed: true }))
       .filter((item) => {
-        const key = pageRecordKey(item);
+        const key = item.pageKey || pageRecordKey(item);
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -3095,6 +3135,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.appendChild(createLibraryAwarenessCard(item));
     });
   }
+  function pageLabelForDiagnostics(page = {}) {
+    return `${volumePageLabel(page)} | ${page.activeUrl || page.url || "no URL"}`;
+  }
+
+  function selectedRangeDiagnosticPages() {
+    const selected = studyData.selectedRange || {};
+    return [selected.start, selected.end].filter(Boolean);
+  }
+
+  function sessionContinuityDiagnosticPages() {
+    return asArray(studyData.sessionContinuityReview).flatMap((item) => asArray(item.analyzedPages).map((label) => ({
+      sourceTitle: label,
+      sourceCaptureBook: normalizeText(label).split(/\s+/)[0] || "",
+      sourceCaptureChapter: normalizeText(label).match(/\b(\d+)\b/)?.[1] || ""
+    })));
+  }
+
+  function studyScopeSourceDiagnostics() {
+    const acceptedKeys = new Set(analyzedPageHistory().map((page) => page.pageKey || pageRecordKey(page)));
+    const groups = [
+      ["canonicalAnalyzedPages", asArray(studyData.canonicalAnalyzedPages).map((item) => pageRecordFromCanonicalMarker(item) || {
+        sourceTitle: item.sourceTitle || "Canonical marker",
+        sourceCaptureBook: item.sourceCaptureBook || "",
+        sourceCaptureChapter: item.sourceCaptureChapter || "",
+        activeUrl: item.url || "",
+        activeAdapterName: item.adapter || "",
+        analyzedAt: item.analysisTimestamp || "",
+        pageKey: item.pageKey || "",
+        buildMarker: item.buildMarker || ""
+      }), { requireAnalyzed: true, requireMarker: true }],
+      ["analysisHistory pages", asArray(studyData.analysisHistory), { requireAnalyzed: true, requireMarker: true }],
+      ["selectedRange", selectedRangeDiagnosticPages(), { requireAnalyzed: true, requireMarker: true }],
+      ["latestCapture", [rawPageRecordFromCapture(studyData.latestCapture)].filter(Boolean), { requireAnalyzed: true, requireMarker: true }],
+      ["activeSourcePage", [studyData.activeSourcePage].filter(Boolean), { requireAnalyzed: true, requireMarker: true }],
+      ["captureHistory pages", asArray(studyData.captureHistory).map(rawPageRecordFromCapture).filter(Boolean), { requireAnalyzed: true, requireMarker: true }],
+      ["sessionContinuityReview records", sessionContinuityDiagnosticPages(), { requireAnalyzed: true, requireMarker: true }],
+      ["GPT review report", studyData.gptReviewReport ? [{ sourceTitle: "GPT review report", activeUrl: "", note: "Review reports are never analyzed page state" }] : [], { requireAnalyzed: true, requireMarker: true }]
+    ];
+    return groups.map(([label, pages, options]) => {
+      const lines = asArray(pages).map((page) => {
+        const key = page.pageKey || pageRecordKey(page);
+        const reason = acceptedKeys.has(key) ? "accepted canonical marker" : sourcePageValidationReason(page, options);
+        return `${pageLabelForDiagnostics(page)} -> ${reason}`;
+      });
+      return { label, lines };
+    });
+  }
+
+  function createStudyScopeDiagnosticsDetails() {
+    const details = document.createElement("details");
+    details.className = "study-scope-source-diagnostics";
+    const summary = document.createElement("summary");
+    summary.textContent = "Study Scope Sources";
+    details.appendChild(summary);
+    studyScopeSourceDiagnostics().forEach(({ label, lines }) => {
+      const section = document.createElement("div");
+      section.className = "study-scope-source-group";
+      const title = document.createElement("strong");
+      title.textContent = `${label}:`;
+      const pre = document.createElement("pre");
+      pre.textContent = lines.length ? lines.join("\n") : "none";
+      section.append(title, pre);
+      details.appendChild(section);
+    });
+    return details;
+  }
   function createStudyScopeCard() {
     const card = document.createElement("article");
     card.className = "study-card volume-context-card";
@@ -3152,7 +3258,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       actions.appendChild(button);
     });
 
-    card.append(heading, list, actions);
+    card.append(heading, list, createStudyScopeDiagnosticsDetails(), actions);
     return card;
   }
 
@@ -3206,8 +3312,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function addActivePageToSession() {
     const activePage = currentAnalyzedStatusRecord();
-    if (!activePage) {
-      showDiagnosticMessage("Only a confirmed analyzed scripture/source page can be added to the study session.");
+    const activeKey = pageRecordKey(activePage || {});
+    const hasCanonicalMarker = analyzedPageHistory().some((page) => (page.pageKey || pageRecordKey(page)) === activeKey);
+    if (!activePage || !hasCanonicalMarker) {
+      showDiagnosticMessage("Only a canonical confirmed analyzed scripture/source page can be added to the study session.");
       return;
     }
     await persistActiveSourcePage(activePage);
@@ -3246,6 +3354,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const activePage = activeSourcePageRecord();
     const currentKey = pageRecordKey(activePage || pageRecordFromStatus(studyData.analysisStatus || {}) || {});
     const remainingHistory = analyzedPageHistory().filter((item) => pageRecordKey(item) !== currentKey);
+    const remainingCanonical = asArray(studyData.canonicalAnalyzedPages).filter((item) => item.pageKey !== currentKey);
 
     await chrome.storage.local.remove([
       STORAGE_KEYS.timelineItems,
@@ -3292,6 +3401,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ]);
     await chrome.storage.local.set({
       [STORAGE_KEYS.analysisHistory]: remainingHistory,
+      [STORAGE_KEYS.canonicalAnalyzedPages]: remainingCanonical,
       [STORAGE_KEYS.activeSourcePage]: activePage,
       [STORAGE_KEYS.selectedRange]: rangeFromAnalyzedPages(remainingHistory),
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_active_page_analysis", updatedAt: new Date().toISOString() }
@@ -3344,6 +3454,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.prophecyLinks,
       STORAGE_KEYS.analysisStatus,
       STORAGE_KEYS.analysisHistory,
+      STORAGE_KEYS.canonicalAnalyzedPages,
       STORAGE_KEYS.activeSourcePage,
       STORAGE_KEYS.selectedRange
     ]);

@@ -48,6 +48,7 @@ const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
+const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
 const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
 const PIPELINE_THROTTLE_MS = 3500;
 
@@ -2271,6 +2272,33 @@ function validStudyScopePageRecord(page = {}, { requireAnalyzed = false } = {}) 
   if (titleMatch && (titleMatch.book !== book || String(titleMatch.chapter) !== String(chapter))) return false;
   if (requireAnalyzed && !page.analyzedAt) return false;
   return true;
+}
+
+function canonicalAnalyzedPageMarker(page = {}, { analysisTimestamp = "", buildMarker = "" } = {}) {
+  const normalized = {
+    sourceCaptureId: page.sourceCaptureId || "",
+    sourceTitle: page.sourceTitle || "Current source",
+    sourceCaptureBook: page.sourceCaptureBook || "",
+    sourceCaptureChapter: page.sourceCaptureChapter || "",
+    activeUrl: page.activeUrl || "",
+    activeAdapterName: page.activeAdapterName || "",
+    analyzedAt: analysisTimestamp || page.analyzedAt || ""
+  };
+  if (!validStudyScopePageRecord(normalized, { requireAnalyzed: true })) return null;
+  const pageKey = [normalized.sourceCaptureBook, normalized.sourceCaptureChapter, normalized.sourceTitle, normalized.activeUrl]
+    .map((value) => normalizeWhitespace(value || "").toLowerCase())
+    .join("|");
+  return {
+    pageKey,
+    url: normalized.activeUrl,
+    adapter: normalized.activeAdapterName,
+    captureId: normalized.sourceCaptureId,
+    sourceTitle: normalized.sourceTitle,
+    sourceCaptureBook: normalized.sourceCaptureBook,
+    sourceCaptureChapter: normalized.sourceCaptureChapter,
+    analysisTimestamp: normalized.analyzedAt,
+    buildMarker
+  };
 }
 function sessionContinuityReviewRecord(record = {}) {
   const key = [
@@ -7600,13 +7628,24 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       semanticCausality
     );
-    const storedAnalysisHistory = await chrome.storage.local.get(ANALYSIS_HISTORY_KEY);
-    const previousAnalysisHistory = Array.isArray(storedAnalysisHistory[ANALYSIS_HISTORY_KEY])
-      ? storedAnalysisHistory[ANALYSIS_HISTORY_KEY]
+    const storedScopeState = await chrome.storage.local.get([ANALYSIS_HISTORY_KEY, CANONICAL_ANALYZED_PAGES_KEY]);
+    const previousCanonicalAnalyzedPages = Array.isArray(storedScopeState[CANONICAL_ANALYZED_PAGES_KEY])
+      ? storedScopeState[CANONICAL_ANALYZED_PAGES_KEY]
       : [];
+    const previousConfirmedAnalysisHistory = previousCanonicalAnalyzedPages.map((item) => ({
+      sourceCaptureId: item.captureId || "",
+      sourceTitle: item.sourceTitle || "Current source",
+      sourceCaptureBook: item.sourceCaptureBook || "",
+      sourceCaptureChapter: item.sourceCaptureChapter || "",
+      activeUrl: item.url || "",
+      activeAdapterName: item.adapter || "",
+      analyzedAt: item.analysisTimestamp || "",
+      pageKey: item.pageKey,
+      buildMarker: item.buildMarker || ""
+    }));
     const sessionContinuityReview = createSessionContinuityReview(
       captures,
-      previousAnalysisHistory,
+      previousConfirmedAnalysisHistory,
       semanticContinuity,
       ontologyRoles,
       principleRelationships,
@@ -7765,7 +7804,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.3-trust-verification-architecture",
+      analysisBuildMarker: "phase-9.4-canonical-analyzed-page-state",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -7811,17 +7850,26 @@ async function runFullAnalysisPipeline(reason = "manual") {
       analyzedAt: status.analyzedAt,
       reason: status.reason
     };
-    const analysisHistory = [analysisHistoryEntry, ...previousAnalysisHistory]
-      .filter((item) => validStudyScopePageRecord(item, { requireAnalyzed: true }))
-      .filter((item, index, items) => {
-        const key = [item.sourceCaptureBook, item.sourceCaptureChapter, item.sourceTitle, item.activeUrl]
-          .map((value) => normalizeWhitespace(value || "").toLowerCase())
-          .join("|");
-        return key && items.findIndex((candidate) => [candidate.sourceCaptureBook, candidate.sourceCaptureChapter, candidate.sourceTitle, candidate.activeUrl]
-          .map((value) => normalizeWhitespace(value || "").toLowerCase())
-          .join("|") === key) === index;
-      })
-      .slice(0, 12);
+    const currentCanonicalMarker = canonicalAnalyzedPageMarker(analysisHistoryEntry, {
+      analysisTimestamp: status.analyzedAt,
+      buildMarker: status.analysisBuildMarker
+    });
+    const canonicalAnalyzedPages = [currentCanonicalMarker, ...previousCanonicalAnalyzedPages]
+      .filter(Boolean)
+      .filter((item, index, items) => item.pageKey && items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
+      .slice(0, 24);
+    const analysisHistory = canonicalAnalyzedPages.map((item) => ({
+      sourceCaptureId: item.captureId || "",
+      sourceTitle: item.sourceTitle || "Current source",
+      sourceCaptureBook: item.sourceCaptureBook || "",
+      sourceCaptureChapter: item.sourceCaptureChapter || "",
+      activeUrl: item.url || "",
+      activeAdapterName: item.adapter || "",
+      analyzedAt: item.analysisTimestamp || "",
+      reason: status.reason,
+      pageKey: item.pageKey,
+      buildMarker: item.buildMarker || ""
+    }));
     await chrome.storage.local.set({
       [TIMELINE_STORAGE_KEY]: timelineItems,
       [EVENT_STORAGE_KEY]: eventItems,
@@ -7864,7 +7912,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status,
       [ANALYSIS_HISTORY_KEY]: analysisHistory,
-      [ACTIVE_SOURCE_PAGE_KEY]: validStudyScopePageRecord(activeSourcePage) ? activeSourcePage : null
+      [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
+      [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null
     });
 
     return status;

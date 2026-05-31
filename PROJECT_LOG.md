@@ -3795,3 +3795,37 @@ Commit:
 
 Status:
 - Implemented and validated
+## 2026-05-31 - Add Canonical Analyzed Page State
+
+Instruction summary:
+- Fix persistent Study Scope contamination after reload by introducing canonical confirmed analyzed page state and deeper diagnostics.
+
+Codex action summary:
+- Added `ICE_CANONICAL_ANALYZED_PAGES` as the canonical source for Study Scope analyzed pages.
+- Added per-page confirmed analysis markers with pageKey, URL, adapter, captureId, analysis timestamp, and build marker.
+- Updated background persistence so analysis history is regenerated from canonical markers and session continuity uses only prior canonical markers.
+- Updated Study Scope rendering so analyzed pages, current range, and continuity come only from canonical confirmed markers.
+- Added collapsed Study Scope Sources diagnostics with accepted/rejected source buckets and rejection reasons for analysis history, selected range, latest/active captures, capture history, session continuity records, and GPT review report state.
+- Ensured clear current page/session/all data paths clear or rewrite canonical analyzed page state.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

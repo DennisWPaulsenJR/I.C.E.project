@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Canonical analyzed page state added for Study Scope reload safety.
+- New `ICE_CANONICAL_ANALYZED_PAGES` markers store pageKey, URL, adapter, captureId, analysis timestamp, and analysis build marker for each confirmed analyzed page.
+- Study Scope analyzed pages, selected range, and continuity now render from canonical confirmed markers only, not capture history, saved capture library, review reports, continuity records, stale selected ranges, or suggestion-only pages.
+- Background session continuity now uses only prior canonical analyzed markers, preventing stale `ICE_ANALYSIS_HISTORY` records from reintroducing Matthew 6 after reload.
+- Study Scope includes collapsed source diagnostics showing canonical pages, analysis history, selected range, latest/active captures, capture history, session continuity records, GPT review report state, and rejection reasons.
+- Clear page/session/all cleanup now includes canonical analyzed page state.
+
+Latest pcdx update:
 - Critical Study Scope contamination hardening implemented.
 - `ICE_ANALYSIS_HISTORY` and Study Scope analyzed pages now accept only confirmed analyzed source pages from approved scripture adapters.
 - Non-source/browser pages such as ChatGPT, panel UI URLs, invalid source URLs, and records with mismatched title/book/chapter metadata are rejected from analyzed pages.
@@ -531,10 +539,10 @@ Future capabilities:
 - `III` = Human
 - `IIII` = Living organism / creature / natural life
 - `IIIII` = Non-living item/object
-- `Ã°Ââ€˜â€“` = adversary / wicked / evil / anti-GOD
+- `ð‘–` = adversary / wicked / evil / anti-GOD
 - `AI_Actor` = artificial/tool actor category
 
-Class I is Divine Origin Authority. Class Ã°Ââ€˜â€“ is adversarial / anti-origin opposition. Class Ã°Ââ€˜â€“ uses an italicized lowercase i and must NEVER visually collapse with Class I.
+Class I is Divine Origin Authority. Class ð‘– is adversarial / anti-origin opposition. Class ð‘– uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 
@@ -708,7 +716,7 @@ Process model:
 Matthew 1 pilot:
 - THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
 - HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
-- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class Ã°Ââ€˜â€“ remains adversarial/opposition and visually distinct.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class ð‘– remains adversarial/opposition and visually distinct.
 
 Preserve:
 - App accuracy wording
@@ -716,7 +724,7 @@ Preserve:
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
-- Class I / Class Ã°Ââ€˜â€“ distinction
+- Class I / Class ð‘– distinction
 - no unsupported doctrine
 
 ## Phase 8.3b Semantic Contrast Wording Refinement
