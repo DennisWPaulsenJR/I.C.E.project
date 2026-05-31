@@ -3454,3 +3454,38 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-31 - Refine Study Panel Action Controls
+
+Instruction summary:
+- Reduce visual noise in the Study Panel top controls while preserving GPT review and export functionality.
+
+Codex action summary:
+- Grouped top actions into Primary, GPT Review, and collapsed Export / Advanced sections.
+- Added GPT-safe helper text directing users to run a snapshot, then copy the GPT Review Report.
+- Kept Refresh Study Data and Run GPT Review Snapshot visible as primary controls.
+- Kept GPT review report copy/save/open controls visible as their own group.
+- Moved compact, current section, diagnostic, and legacy handoff exports under Export / Advanced.
+- Renamed Copy GPT Handoff Summary to Copy Legacy GPT Handoff Summary and updated its copy label while preserving the existing export function.
+- Updated Study Panel action styling for normal and mobile layouts.
+
+Files changed:
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- Browser visual check not run because the in-app browser execution tool was unavailable in this session.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

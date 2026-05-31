@@ -50,10 +50,50 @@ body {
 }
 
 .header-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  max-width: 520px;
+}
+
+.action-group {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.action-group-label {
+  align-self: center;
+  color: #5f6b7a;
+  font-size: .76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.action-helper {
+  margin: 0;
+  max-width: 480px;
+  color: #445064;
+  font-size: .82rem;
+  text-align: right;
+}
+
+.advanced-actions {
+  justify-self: end;
+  max-width: 520px;
+}
+
+.advanced-actions summary {
+  color: #25364d;
+  cursor: pointer;
+  font-size: .84rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.advanced-action-buttons {
+  margin-top: 8px;
 }
 
 .refresh-button {
@@ -65,9 +105,20 @@ body {
   cursor: pointer;
 }
 
+.refresh-button.secondary-action {
+  border-color: #9aa7b8;
+  background: #ffffff;
+  color: #25364d;
+}
+
+.refresh-button.primary-action {
+  border-color: #1f4f7a;
+  background: #1f4f7a;
+}
+
 .header-actions .refresh-button {
   font-size: .86rem;
-  max-width: 190px;
+  max-width: 210px;
   min-height: 40px;
   white-space: normal;
 }
@@ -367,8 +418,20 @@ body {
 }
 
 @media (max-width: 720px) {
-  .header-actions {
+  .header-actions,
+  .advanced-actions {
+    justify-items: stretch;
+    max-width: none;
+    width: 100%;
+  }
+
+  .action-group {
     justify-content: stretch;
+  }
+
+  .action-helper,
+  .advanced-actions summary {
+    text-align: left;
   }
 
   .header-actions .refresh-button {

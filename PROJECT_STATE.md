@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Study Panel top action controls refined for normal study use.
+- Primary actions now show Refresh Study Data and Run GPT Review Snapshot first.
+- GPT Review actions are grouped together with helper text: For GPT review, use Run GPT Review Snapshot, then Copy GPT Review Report.
+- Export/debug actions are collapsed under Export / Advanced.
+- Copy GPT Handoff Summary was renamed to Copy Legacy GPT Handoff Summary while preserving the existing export function.
+- UI-only refinement; semantic records and export behavior were not changed.
+Latest pcdx update:
 - Canonical analyzed page state added for Study Scope reload safety.
 - New `ICE_CANONICAL_ANALYZED_PAGES` markers store pageKey, URL, adapter, captureId, analysis timestamp, and analysis build marker for each confirmed analyzed page.
 - Study Scope analyzed pages, selected range, and continuity now render from canonical confirmed markers only, not capture history, saved capture library, review reports, continuity records, stale selected ranges, or suggestion-only pages.

@@ -1793,7 +1793,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       compact: ["Compact Panel Summary", buildCompactPanelSummary],
       section: ["Current Section", buildCurrentSectionExport],
       diagnostic: ["Diagnostic Snapshot", buildDiagnosticSnapshot],
-      handoff: ["GPT Handoff Summary", buildGptHandoffSummary]
+      handoff: ["Legacy GPT Handoff Summary", buildGptHandoffSummary]
     };
     const [label, builder] = reports[action] || [];
     if (!builder) return;
