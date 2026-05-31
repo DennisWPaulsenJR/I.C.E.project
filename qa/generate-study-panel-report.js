@@ -258,6 +258,8 @@ function reportFromBundle(bundle) {
   const sessionContinuityReview = asArray(samples.sessionContinuityReview);
   const knowledgeGraph = asArray(samples.knowledgeGraph);
   const semanticQuestions = asArray(samples.semanticQuestions);
+  const answeredSemanticQuestions = semanticQuestions.filter((item) => item.questionKind !== "suggested");
+  const suggestedSemanticQuestions = semanticQuestions.filter((item) => item.questionKind === "suggested");
   const source = teaching[0]?.sourceContext || {};
   const activeTitle = source.sourceTitle || bundle.pageTitle || "Matthew 5";
   const activeUrl = source.sourceUrl || bundle.url || "Not recorded";
@@ -322,7 +324,8 @@ function reportFromBundle(bundle) {
       ...characterInteractions.slice(0, 3).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS")),
       ...sessionContinuityReview.slice(0, 2).map((item) => provenanceLine("I.C.E. Continuity", item.sessionRange || "Session Continuity Review", "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW")),
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
-      ...semanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
+      ...answeredSemanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
+      ...suggestedSemanticQuestions.slice(0, 4).map((item) => provenanceLine("I.C.E. Contextual Inquiry Suggestion", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")),
       ...libraryAwareness.slice(0, 4).map((item) => provenanceLine("I.C.E. Library Awareness", item.principleFamily || "Library Awareness", "Library Awareness", "ICE_LIBRARY_AWARENESS_FOUNDATION"))
     ], "no generated semantic labels available"),
     "",
@@ -333,7 +336,8 @@ function reportFromBundle(bundle) {
       ...characterInteractions.slice(0, 3).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
       ...sessionContinuityReview.slice(0, 2).map((item) => evidenceWeightLine("Continuity Inference", "derived from analyzed session records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.teachingProgression).length)),
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
-      ...semanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
+      ...answeredSemanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
+      ...suggestedSemanticQuestions.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "contextual inquiry suggestion from current semantic records", item.sourceGrounding || item.reasonSuggested || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)),
       ...libraryAwareness.slice(0, 4).map((item) => evidenceWeightLine("Library Awareness Classification", "classification from current analyzed source only", item.currentGrounding, asArray(item.knownRelatedCategories).length))
     ], "no semantic evidence weights available"),
     "",
@@ -356,7 +360,7 @@ function reportFromBundle(bundle) {
       counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
       (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
-      (counts.semanticQuestions || semanticQuestions.length) ? "Semantic Questions: Question framework; grounded answers found" : "Semantic Questions: Question framework; awaiting grounded semantic records",
+      (counts.semanticQuestions || semanticQuestions.length) ? "Semantic Questions: Question framework; grounded answers/suggestions found" : "Semantic Questions: Question framework; awaiting grounded semantic records",
       libraryAwareness.length ? "Library Awareness: Framework only; current-source grounded records found" : "Library Awareness: Framework only; awaiting analyzed teaching/principle grounding",
       "Movement / Location Semantics: Not applicable to current chapter",
       "Cross-Chapter Continuity: Available when session scope spans multiple pages"
@@ -366,7 +370,11 @@ function reportFromBundle(bundle) {
     ...list(knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 3).join("; ") || "relationships awaiting grounding"}`), "no knowledge graph records available"),
     "",
     "## Semantic Questions",
-    ...list(semanticQuestions.slice(0, 6).map((item) => `${item.question || "Question"} => ${item.answer || "answer awaiting grounding"} | ${asArray(item.groundingLayers).slice(0, 3).join(", ") || "grounding awaiting records"}`), "no semantic question records available"),
+    "Answered Questions",
+    ...list(answeredSemanticQuestions.slice(0, 6).map((item) => `${item.question || "Question"} => ${item.answer || "answer awaiting grounding"} | ${asArray(item.groundingLayers).slice(0, 3).join(", ") || "grounding awaiting records"}`), "no answered semantic question records available"),
+    "",
+    "Suggested Next Questions",
+    ...list(suggestedSemanticQuestions.slice(0, 6).map((item) => `${item.question || "Question"} | Why: ${item.reasonSuggested || "suggested from current semantic records"} | Layer: ${item.supportingLayer || asArray(item.groundingLayers)[0] || "grounding awaiting records"}`), "no contextual inquiry suggestions available"),
     "",
     "## Session Continuity Review",
     ...list(sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 5).join("; ") || "progression awaiting session records"}`), "no session continuity review records available"),

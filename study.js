@@ -2664,8 +2664,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function semanticQuestionSearchText(item = {}) {
     return [
+      item.questionKind,
       item.questionFamily,
       item.question,
+      item.reasonSuggested,
       item.answer,
       item.answerItems,
       item.answerConstruction,
@@ -2673,6 +2675,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.derivedMeaning,
       item.evidence,
       item.groundingLayers,
+      item.supportingLayer,
       item.relatedSemanticRecords,
       item.evidenceWeight,
       item.sourceGrounding,
@@ -2690,17 +2693,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     heading.textContent = item.question || "Semantic Question";
     const range = document.createElement("div");
     range.className = "semantic-card-range";
-    range.textContent = [item.questionFamily || "Question", item.verseRange || item.scopePath, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    range.textContent = [item.questionKind === "suggested" ? "Suggested" : "Answered", item.questionFamily || "Question", item.verseRange || item.scopePath, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
     const body = document.createElement("div");
     body.className = "semantic-card-body";
-    const divineContext = hasDivineDisplayContext([item.question, item.answer, item.answerItems, item.sourcePhrase, item.derivedMeaning, item.evidence]);
+    const isSuggestion = item.questionKind === "suggested";
+    const divineContext = hasDivineDisplayContext([item.question, item.answer, item.answerItems, item.reasonSuggested, item.sourcePhrase, item.derivedMeaning, item.evidence]);
     header.append(heading, range);
     [
-      createWordingProvenanceSection({ source: "I.C.E. Semantic Question", label: item.question || "Semantic Question", layer: "Semantic Questions", storageKey: "ICE_SEMANTIC_QUESTIONS", scopePath: item.scopePath || item.verseRange, rule: "Question answers are constructed from existing semantic records for the current page/session only; source phrase and derived meaning remain separately displayed." }),
-      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "answer uses current grounded semantic records only", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.evidence), ...asArray(item.groundingLayers), ...asArray(item.relatedSemanticRecords)], sourcePhrase: item.sourcePhrase }),
-      createPassageFunctionSection("Answer", item.answer || "No grounded answer available yet.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Answer Items", "", { list: asArray(item.answerItems), plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Answer Construction", item.answerConstruction || "constructed from existing semantic records only", { preserveExact: true }),
+      createWordingProvenanceSection({ source: isSuggestion ? "I.C.E. Contextual Inquiry Suggestion" : "I.C.E. Semantic Question", label: item.question || "Semantic Question", layer: "Semantic Questions", storageKey: "ICE_SEMANTIC_QUESTIONS", scopePath: item.scopePath || item.verseRange, rule: isSuggestion ? "Suggested questions are derived from existing current page/session semantic records; answers are intentionally kept separate." : "Question answers are constructed from existing semantic records for the current page/session only; source phrase and derived meaning remain separately displayed." }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: isSuggestion ? "suggestion uses current grounded semantic records only" : "answer uses current grounded semantic records only", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.evidence), ...asArray(item.groundingLayers), item.supportingLayer, ...asArray(item.relatedSemanticRecords)], sourcePhrase: item.sourcePhrase }),
+      isSuggestion ? createPassageFunctionSection("Reason Suggested", item.reasonSuggested || "Suggested from current semantic records.", { divineContext, preferHolySpirit: true }) : createPassageFunctionSection("Answer", item.answer || "No grounded answer available yet.", { divineContext, preferHolySpirit: true }),
+      isSuggestion ? createPassageFunctionSection("Supporting Layer", item.supportingLayer || asArray(item.groundingLayers)[0] || "Not recorded.", { preserveExact: true }) : createPassageFunctionSection("Answer Items", "", { list: asArray(item.answerItems), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection(isSuggestion ? "Suggestion Boundary" : "Answer Construction", item.answerConstruction || (isSuggestion ? "suggested question only; answer remains separate" : "constructed from existing semantic records only"), { preserveExact: true }),
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
@@ -2718,20 +2722,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     const count = document.getElementById("semanticQuestionsCount");
     if (!container || !count) return;
     const records = asArray(studyData.semanticQuestions);
-    const filtered = records.filter((item) => matchesSearchQuery(semanticQuestionSearchText(item), term));
+    const answered = records.filter((item) => item.questionKind !== "suggested");
+    const suggested = records.filter((item) => item.questionKind === "suggested");
+    const filteredAnswered = answered.filter((item) => matchesSearchQuery(semanticQuestionSearchText(item), term));
+    const filteredSuggested = suggested.filter((item) => matchesSearchQuery(semanticQuestionSearchText(item), term));
+    const filtered = [...filteredAnswered, ...filteredSuggested];
     clearElement(container);
     count.textContent = `${filtered.length} question(s)`;
     if (records.length === 0) {
-      appendEmpty(container, "No semantic question answers are available yet.");
+      appendEmpty(container, "No semantic question answers or suggestions are available yet.");
       return;
     }
     container.appendChild(createCard(
       "Semantic Questions",
       [
-        `Questions: ${records.length}`,
+        `Answered Questions: ${answered.length}`,
+        `Suggested Next Questions: ${suggested.length}`,
         "Layer: ICE_SEMANTIC_QUESTIONS",
-        "Purpose: answer Who/What/When/Where/Why/How from current page/session semantic records.",
-        "Boundary: derived review layer only; no freeform AI answers, no crawling, and no full-library querying."
+        "Purpose: answer and suggest Who/What/When/Where/Why/How inquiries from current page/session semantic records.",
+        "Boundary: derived review layer only; no speculative devotional questions, no freeform AI answers, no crawling, and no full-library querying."
       ].join("\n"),
       "semantic question framework"
     ));
@@ -2739,7 +2748,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       appendEmpty(container, "No semantic questions match current filter.");
       return;
     }
-    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+    if (filteredAnswered.length) {
+      container.appendChild(createCard("Answered Questions", `${filteredAnswered.length} grounded answer(s)`, "semantic question answers"));
+      filteredAnswered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+    }
+    if (filteredSuggested.length) {
+      container.appendChild(createCard("Suggested Next Questions", `${filteredSuggested.length} grounded suggestion(s)`, "contextual inquiry suggestions"));
+      filteredSuggested.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+    }
   }
   function renderSessionContinuityReview(term) {
     const container = document.getElementById("sessionContinuityReviewCards");

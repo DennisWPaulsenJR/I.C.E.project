@@ -424,10 +424,25 @@ function isGroundedPassageFunction(item) {
 }
 function hasSemanticQuestion(data, family, questionPattern, answerPattern, groundingPattern) {
   return (data.ICE_SEMANTIC_QUESTIONS || []).some((item) =>
+    item.questionKind !== "suggested" &&
     item.questionFamily === family &&
     questionPattern.test(item.question || "") &&
     answerPattern.test(item.answer || "") &&
     (item.groundingLayers || []).some((layer) => groundingPattern.test(layer || "")) &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning !== undefined &&
+    item.evidenceWeight &&
+    item.confidence &&
+    item.sourceGrounding
+  );
+}
+function hasSemanticSuggestion(data, questionPattern, reasonPattern, layerPattern) {
+  return (data.ICE_SEMANTIC_QUESTIONS || []).some((item) =>
+    item.questionKind === "suggested" &&
+    questionPattern.test(item.question || "") &&
+    reasonPattern.test(item.reasonSuggested || "") &&
+    layerPattern.test(`${item.supportingLayer || ""} ${(item.groundingLayers || []).join(" ")}`) &&
+    item.answer === "" &&
     item.sourcePhrase !== undefined &&
     item.derivedMeaning !== undefined &&
     item.evidenceWeight &&
@@ -498,6 +513,13 @@ function evaluateFailures(data) {
   if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
   if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");
   if (!hasSemanticQuestion(data, "How", /righteousness/i, /righteousness|fulfillment|commandment/i, /Teaching Semantics|Principle/i)) failures.push("Expected semantic question answer for how righteousness is developed grounded by Teaching/Principle layers.");
+
+  if (!hasSemanticSuggestion(data, /What does JESUS teach about righteousness/i, /righteousness/i, /Teaching Semantics/i)) failures.push("Expected contextual inquiry suggestion for JESUS teaching about righteousness.");
+  if (!hasSemanticSuggestion(data, /How does mercy relate to peacemaking/i, /Mercy|peacemaking/i, /Principle Relationships/i)) failures.push("Expected contextual inquiry suggestion for mercy and peacemaking.");
+  if (!hasSemanticSuggestion(data, /What promises are attached to the Beatitudes/i, /promise/i, /Teaching Semantics/i)) failures.push("Expected contextual inquiry suggestion for Beatitude promises.");
+  if (!hasSemanticSuggestion(data, /What commands are expanded by But I say unto you/i, /Commandment interpretation|But I say unto you/i, /Teaching Semantics/i)) failures.push("Expected contextual inquiry suggestion for But I say unto you command expansions.");
+  if (!hasSemanticSuggestion(data, /Who is the audience of the Sermon on the Mount/i, /audience|speaker/i, /Teaching Semantics|Character Interactions/i)) failures.push("Expected contextual inquiry suggestion for Sermon on the Mount audience.");
+  if (!hasSemanticSuggestion(data, /Which principles are core, and which are applications/i, /Principle hierarchy|principle/i, /Principle Hierarchy/i)) failures.push("Expected contextual inquiry suggestion for core principles and applications.");
 
   return failures;
 }async function getServiceWorker(context) {

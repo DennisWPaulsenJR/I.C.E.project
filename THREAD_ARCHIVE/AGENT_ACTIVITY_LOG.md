@@ -3273,3 +3273,42 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-05-31 - Refine Semantic Question Suggestions
+
+Instruction summary:
+- Refine Phase 9.2 so Semantic Questions also derive contextual inquiry suggestions from passage context, semantic graph, teaching structure, principles, character interactions, and expandable relationships.
+
+Codex action summary:
+- Added contextual inquiry suggestions to `ICE_SEMANTIC_QUESTIONS` using `questionKind: suggested` while preserving answered question records separately.
+- Suggestions include question, reason suggested, supporting layer, source grounding, evidence weight, provenance, App accuracy, and related semantic record references.
+- Added Matthew 5 grounded suggestions for righteousness teaching, mercy and peacemaking, Beatitude promises, But I say unto you command expansions, Sermon audience, and core/application principle review.
+- Updated Study Panel rendering to split Semantic Questions into Answered Questions and Suggested Next Questions.
+- Updated QA and report generators so suggestions remain separate from answers and are not presented as freeform answers.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated

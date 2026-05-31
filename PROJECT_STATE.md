@@ -38,6 +38,12 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.2 refinement: Contextual Inquiry Suggestions implemented.
+- `ICE_SEMANTIC_QUESTIONS` now distinguishes answered questions from suggested next questions with `questionKind`.
+- Suggestions are grounded in existing current-page/session semantic records and include question, reason suggested, supporting layer, source grounding, evidence weight, provenance, and App accuracy.
+- Study Panel Semantic Questions now displays Answered Questions and Suggested Next Questions separately so suggested questions do not masquerade as answers.
+- Matthew 5 QA now asserts contextual suggestions for righteousness, mercy/peacemaking, Beatitude promises, But I say unto you command expansions, Sermon audience, and core/application principles.
+Latest pcdx update:
 - Phase 9.2 Semantic Question Framework implemented.
 - Added persisted derived `ICE_SEMANTIC_QUESTIONS` records for Who/What/When/Where/Why/How review questions.
 - Answers are constructed only from existing current-page/session semantic records: Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, Movement Semantics, and Authority Paths.

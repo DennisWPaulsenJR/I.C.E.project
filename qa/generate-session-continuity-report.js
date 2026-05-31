@@ -180,7 +180,7 @@ function reportFromBundles(bundles) {
       ...asArray(bundleSamples.teachingSemantics).map((item) => `Teaching: ${item.teachingTopic || item.blessing || item.commandment || "teaching"} | ${item.sourcePhrase || entry.label}`),
       ...asArray(bundleSamples.principleRelationships).map((item) => `Principle: ${item.principle || "principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")}`),
       ...asArray(bundleSamples.knowledgeGraph).map((item) => `Knowledge Graph: ${item.node || "Node"} | ${item.type || "Semantic Node"} | ${asArray(item.relationships).slice(0, 2).join("; ")}`),
-      ...asArray(bundleSamples.semanticQuestions).map((item) => `Semantic Question: ${item.question || "Question"} => ${item.answer || "answer awaiting grounding"}`)
+      ...asArray(bundleSamples.semanticQuestions).map((item) => item.questionKind === "suggested" ? `Semantic Question Suggestion: ${item.question || "Question"} | Why: ${item.reasonSuggested || "suggested from current semantic records"}` : `Semantic Question Answer: ${item.question || "Question"} => ${item.answer || "answer awaiting grounding"}`)
     ];
   });
   const continuingCharacters = unique([
@@ -268,7 +268,7 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS"))),
       provenanceLine("I.C.E. Continuity", range, "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW"),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH"))),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => provenanceLine("I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => provenanceLine(item.questionKind === "suggested" ? "I.C.E. Contextual Inquiry Suggestion" : "I.C.E. Semantic Question", item.question || "Semantic Question", "Semantic Questions", "ICE_SEMANTIC_QUESTIONS")))
     ], "no generated semantic labels available"),
     "",
     "## Evidence Weights",
@@ -278,7 +278,7 @@ function reportFromBundles(bundles) {
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.characterInteractions).slice(0, 2).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length))),
       evidenceWeightLine("Continuity Inference", "session range derived from analyzed QA bundles", range, labels.length),
       ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.knowledgeGraph).slice(0, 2).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length))),
-      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "question answer constructed from current semantic records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)))
+      ...sorted.flatMap((entry) => asArray(entry.bundle.samples?.semanticQuestions).slice(0, 2).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", item.questionKind === "suggested" ? "contextual inquiry suggestion from current semantic records" : "question answer constructed from current semantic records", item.sourceGrounding || item.reasonSuggested || item.derivedMeaning, asArray(item.evidence).length + asArray(item.groundingLayers).length)))
     ], "no semantic evidence weights available"),
     "",
     "## Principle Hierarchy",
@@ -295,7 +295,7 @@ function reportFromBundles(bundles) {
     "",
     "## Semantic Coverage",
     "- Scripture Knowledge Graph: Graph foundation; uses grounded semantic layers when available",
-    "- Semantic Questions: Question framework; uses current page/session semantic records only",
+    "- Semantic Questions: Answered Questions plus Suggested Next Questions; uses current page/session semantic records only",
     "- Session Continuity Review: Pilot layer; grounded review generated from analyzed QA bundles",
     "- Cross-Chapter Continuity: Available from Matthew 2 and session range metadata",
     "- Teaching / Discourse Structure: Primary semantic layer for Matthew 5",

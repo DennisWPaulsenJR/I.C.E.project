@@ -2686,15 +2686,18 @@ function semanticQuestionRecord(record = {}) {
     sourceContext: record.sourceContext || {},
     scopePath: record.scopePath || "",
     verseRange: record.verseRange || "Current scope",
+    questionKind: record.questionKind || "answered",
     questionFamily: record.questionFamily || "What",
     question: record.question || "What is shown in the current semantic records?",
-    answer: record.answer || "Answer awaiting grounded semantic records.",
+    answer: record.answer || "",
+    reasonSuggested: record.reasonSuggested || "",
     answerItems: record.answerItems || [],
     answerConstruction: record.answerConstruction || "constructed from existing semantic records only",
     sourcePhrase: record.sourcePhrase || "",
     derivedMeaning: record.derivedMeaning || "",
     evidence: record.evidence || [],
     groundingLayers: record.groundingLayers || [],
+    supportingLayer: record.supportingLayer || (record.groundingLayers || [])[0] || "",
     relatedSemanticRecords: record.relatedSemanticRecords || [],
     evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
     confidence: record.confidence || "probable",
@@ -2895,6 +2898,129 @@ function createSemanticQuestions(captures = [], teachingSemantics = [], principl
       evidenceWeight: "Relationship Inference / Derived Semantic Evidence",
       confidence: righteousness.confidence || "probable",
       sourceGrounding: righteousness.sourceGrounding || "Constructed from an existing righteousness principle relationship record."
+    });
+  }
+
+  const addSuggestion = (record) => add({
+    questionKind: "suggested",
+    answer: "",
+    answerItems: [],
+    answerConstruction: "suggested question only; answer remains separate until grounded answer record is selected",
+    confidence: record.confidence || "probable",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    ...record
+  });
+
+  if (teachingRecords.some((item) => /righteousness/i.test(`${item.principle || ""} ${item.teachingTopic || ""} ${item.derivedMeaning || ""}`))) {
+    const supporting = teachingRecords.filter((item) => /righteousness/i.test(`${item.principle || ""} ${item.teachingTopic || ""} ${item.derivedMeaning || ""}`));
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|what|jesus|righteousness`)}`,
+      questionFamily: "What",
+      question: "What does JESUS teach about righteousness?",
+      reasonSuggested: "Righteousness appears as a grounded teaching principle and requirement in the current teaching records.",
+      sourcePhrase: firstSource(supporting),
+      derivedMeaning: "Suggested because the current teaching structure contains righteousness records that can be reviewed without adding new doctrine.",
+      evidence: evidenceFrom(supporting, 6),
+      groundingLayers: ["Teaching Semantics", "Principle Hierarchy"],
+      supportingLayer: "Teaching Semantics",
+      relatedSemanticRecords: ids(supporting, "teachingTopic"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: supporting.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Suggested from existing Matthew 5 teaching records containing righteousness language."
+    });
+  }
+
+  if (mercy) {
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|how|mercy|peacemaking`)}`,
+      questionFamily: "How",
+      question: "How does mercy relate to peacemaking?",
+      reasonSuggested: "Mercy and peacemaking are already connected by a grounded principle relationship record.",
+      sourcePhrase: mercy.sourcePhrase,
+      derivedMeaning: mercy.derivedMeaning,
+      evidence: evidenceFrom([mercy]),
+      groundingLayers: ["Principle Relationships"],
+      supportingLayer: "Principle Relationships",
+      relatedSemanticRecords: ids([mercy], "principle"),
+      evidenceWeight: "Relationship Inference",
+      confidence: mercy.confidence || "probable",
+      sourceGrounding: mercy.sourceGrounding || "Suggested from an existing mercy principle relationship record."
+    });
+  }
+
+  const beatitudePromises = teachingRecords.filter((item) => /blessing/i.test(item.discourseType || "") && item.promise);
+  if (beatitudePromises.length) {
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|what|beatitude|promises`)}`,
+      questionFamily: "What",
+      question: "What promises are attached to the Beatitudes?",
+      reasonSuggested: "Beatitude teaching records contain explicit promise fields that are reviewable as a group.",
+      sourcePhrase: firstSource(beatitudePromises),
+      derivedMeaning: "Suggested because multiple grounded blessing records include promises.",
+      evidence: evidenceFrom(beatitudePromises, 8),
+      groundingLayers: ["Teaching Semantics", "Principle Hierarchy"],
+      supportingLayer: "Teaching Semantics",
+      relatedSemanticRecords: ids(beatitudePromises, "teachingTopic"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: beatitudePromises.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Suggested from existing Beatitude blessing records with promise fields."
+    });
+  }
+
+  const expandedCommands = teachingRecords.filter((item) => item.commandment && /But I say unto you/i.test(`${item.interpretation || ""} ${item.sourcePhrase || ""}`));
+  if (expandedCommands.length) {
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|what|but-i-say|commands`)}`,
+      questionFamily: "What",
+      question: "What commands are expanded by But I say unto you?",
+      reasonSuggested: "Commandment interpretation records include the grounded interpretive phrase But I say unto you.",
+      sourcePhrase: firstSource(expandedCommands),
+      derivedMeaning: "Suggested because current teaching records identify commandment expansion structures.",
+      evidence: evidenceFrom(expandedCommands, 8),
+      groundingLayers: ["Teaching Semantics", "Principle Hierarchy"],
+      supportingLayer: "Teaching Semantics",
+      relatedSemanticRecords: ids(expandedCommands, "commandment"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: expandedCommands.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Suggested from existing commandment interpretation records; no new command list is invented."
+    });
+  }
+
+  const audienceTeaching = teachingRecords.find((item) => item.audience && /Sermon on the Mount|teaching context|teaching_block/i.test(`${item.teachingTopic || ""} ${item.discourseType || ""}`));
+  if (audienceTeaching) {
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|who|sermon|audience`)}`,
+      questionFamily: "Who",
+      question: "Who is the audience of the Sermon on the Mount?",
+      reasonSuggested: "The teaching block records a grounded speaker/audience structure for the Sermon on the Mount.",
+      sourcePhrase: audienceTeaching.sourcePhrase,
+      derivedMeaning: audienceTeaching.derivedMeaning,
+      evidence: evidenceFrom([audienceTeaching]),
+      groundingLayers: ["Teaching Semantics", "Character Interactions"],
+      supportingLayer: "Teaching Semantics",
+      relatedSemanticRecords: ids([audienceTeaching], "teachingTopic"),
+      evidenceWeight: "Direct Source Evidence / Derived Semantic Evidence",
+      confidence: audienceTeaching.confidence || "probable",
+      sourceGrounding: audienceTeaching.sourceGrounding || "Suggested from an existing teaching block audience record."
+    });
+  }
+
+  if (teachingRecords.length || principleRecords.length) {
+    const supporting = [...teachingRecords.filter((item) => item.principle || item.application || item.commandment || item.promise), ...principleRecords].slice(0, 12);
+    addSuggestion({
+      scopePath: `semantic.questions.suggested.${textHash(`${sourceScope}|which|principles|core|applications`)}`,
+      questionFamily: "Which",
+      question: "Which principles are core, and which are applications?",
+      reasonSuggested: "Principle hierarchy records can be derived from existing teaching and relationship fields such as principle, commandment, application, promise, and related principles.",
+      sourcePhrase: firstSource(supporting),
+      derivedMeaning: "Suggested because the current semantic records include both principle labels and application/relationship fields.",
+      evidence: evidenceFrom(supporting, 8),
+      groundingLayers: ["Principle Hierarchy", "Teaching Semantics", "Principle Relationships"],
+      supportingLayer: "Principle Hierarchy",
+      relatedSemanticRecords: [...ids(teachingRecords, "teachingTopic"), ...ids(principleRecords, "principle")].slice(0, 12),
+      evidenceWeight: "Derived Semantic Evidence / Relationship Inference",
+      confidence: supporting.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: "Suggested from existing teaching/principle records; classification remains review-layer only."
     });
   }
 
