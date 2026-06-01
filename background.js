@@ -41,6 +41,7 @@ const CHARACTER_INTERACTIONS_KEY = "ICE_CHARACTER_INTERACTIONS";
 const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
 const PRINCIPLE_NETWORKS_KEY = "ICE_PRINCIPLE_NETWORKS";
+const FOCUS_LENS_KEY = "ICE_FOCUS_LENS";
 const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
 const TRUST_VERIFICATION_KEY = "ICE_TRUST_VERIFICATION";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
@@ -2908,6 +2909,166 @@ function createPrincipleNetworks(captures = [], teachingSemantics = [], principl
   }
 
   return records.slice(0, 32);
+}
+function focusLensRecord(record = {}) {
+  const key = [
+    "focus-lens",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.currentFocus || "",
+    record.focusType || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    currentFocus: record.currentFocus || "",
+    focusType: record.focusType || "Theme",
+    relatedPrinciples: record.relatedPrinciples || [],
+    relatedCharacters: record.relatedCharacters || [],
+    relatedTeachings: record.relatedTeachings || [],
+    relatedInteractions: record.relatedInteractions || [],
+    relatedEvidence: record.relatedEvidence || [],
+    suggestedNextFocus: record.suggestedNextFocus || "",
+    provenance: record.provenance || "I.C.E. Focus Lens",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    reasoningPath: record.reasoningPath || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    relatedTeachingSemantics: record.relatedTeachingSemantics || [],
+    relatedPrincipleRelationships: record.relatedPrincipleRelationships || [],
+    relatedPrincipleNetworks: record.relatedPrincipleNetworks || [],
+    relatedCharacterInteractions: record.relatedCharacterInteractions || [],
+    relatedKnowledgeGraph: record.relatedKnowledgeGraph || [],
+    relatedSessionContinuityReview: record.relatedSessionContinuityReview || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "focus lens derived from current page/session semantic records"
+  };
+}
+
+function createFocusLens(captures = [], teachingSemantics = [], principleRelationships = [], characterInteractions = [], knowledgeGraph = [], principleNetworks = [], sessionContinuityReview = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const sourceScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const records = [];
+  const seen = new Set();
+  const unique = (values = []) => Array.from(new Set(values.flat(Infinity).map((value) => normalizeWhitespace(value == null ? "" : String(value))).filter(Boolean)));
+  const ids = (items = [], fallback = "id") => unique((items || []).map((item) => item.id || item[fallback] || "")).slice(0, 12);
+  const evidenceFrom = (items = [], limit = 8) => unique((items || []).flatMap((item) => [item.sourcePhrase, item.derivedMeaning, item.sourceGrounding, ...(item.evidence || []), ...(item.relatedEvidence || [])])).slice(0, limit);
+  const matchesFocus = (item = {}, focus = "") => {
+    const pattern = normalizeWhitespace(focus).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return pattern ? new RegExp(pattern, "i").test([
+      item.currentFocus,
+      item.corePrinciple,
+      item.focusType,
+      item.node,
+      item.type,
+      item.principle,
+      item.relatedPrinciples,
+      item.relatedCharacters,
+      item.relatedTeachings,
+      item.teachingTopic,
+      item.teachingBlock,
+      item.blessing,
+      item.commandment,
+      item.promise,
+      item.application,
+      item.speaker,
+      item.audience,
+      item.sourceCharacter,
+      item.targetCharacter,
+      item.interactionType,
+      item.derivedMeaning,
+      item.sourcePhrase
+    ].flat(Infinity).join(" ")) : false;
+  };
+  const firstSource = (items = []) => (items || []).map((item) => item.sourcePhrase).find(Boolean) || "";
+  const add = (record = {}) => {
+    const item = focusLensRecord({
+      sourceCaptureId,
+      sourceContext: context,
+      verseRange: record.verseRange || sourceScope,
+      currentScope: sourceScope,
+      ...record
+    });
+    const key = `${item.focusType}|${item.currentFocus}`.toLowerCase();
+    if (!item.currentFocus || seen.has(key)) return;
+    seen.add(key);
+    records.push(item);
+  };
+  const focusBundle = (focus, type) => {
+    const teachings = (teachingSemantics || []).filter((item) => matchesFocus(item, focus));
+    const relationships = (principleRelationships || []).filter((item) => matchesFocus(item, focus));
+    const networks = (principleNetworks || []).filter((item) => matchesFocus(item, focus));
+    const interactions = (characterInteractions || []).filter((item) => matchesFocus(item, focus));
+    const graph = (knowledgeGraph || []).filter((item) => matchesFocus(item, focus));
+    const session = (sessionContinuityReview || []).filter((item) => matchesFocus(item, focus));
+    const supporting = [...teachings, ...relationships, ...networks, ...interactions, ...graph, ...session];
+    if (!supporting.length) return null;
+    return { focus, type, teachings, relationships, networks, interactions, graph, session, supporting };
+  };
+  const suggestedNextFrom = (bundle) => unique([
+    ...bundle.networks.flatMap((item) => item.relatedPrinciples || []),
+    ...bundle.relationships.flatMap((item) => item.relatedPrinciples || []),
+    ...bundle.teachings.flatMap((item) => [item.principle, item.teachingTopic, item.commandment, item.promise]),
+    ...bundle.graph.flatMap((item) => [item.node, ...(item.relatedPrinciples || []), ...(item.relatedNodes || [])])
+  ]).find((item) => !new RegExp(`^${bundle.focus}$`, "i").test(item)) || "Review another grounded focus in this source";
+  const build = (focus, type, reason) => {
+    const bundle = focusBundle(focus, type);
+    if (!bundle) return;
+    add({
+      scopePath: `focus.lens.${textHash(`${sourceScope}|${type}|${focus}`)}`,
+      currentFocus: focus,
+      focusType: type,
+      relatedPrinciples: unique([
+        ...bundle.networks.flatMap((item) => [item.corePrinciple, ...(item.relatedPrinciples || [])]),
+        ...bundle.relationships.flatMap((item) => [item.principle, ...(item.relatedPrinciples || [])]),
+        ...bundle.teachings.flatMap((item) => [item.principle, item.promise, item.commandment, item.application])
+      ]).filter((item) => !/^JESUS CHRIST$/i.test(item)).slice(0, 12),
+      relatedCharacters: unique([
+        ...bundle.interactions.flatMap((item) => [item.sourceCharacter, item.targetCharacter]),
+        ...bundle.teachings.flatMap((item) => [item.speaker, item.audience]),
+        ...bundle.graph.filter((item) => /character|authority|group/i.test(item.type || "")).map((item) => item.node)
+      ]).slice(0, 12),
+      relatedTeachings: unique(bundle.teachings.flatMap((item) => [item.teachingBlock, item.teachingTopic, item.blessing, item.commandment]).concat(bundle.networks.flatMap((item) => item.themes || []))).slice(0, 12),
+      relatedInteractions: unique(bundle.interactions.map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`)).slice(0, 10),
+      relatedEvidence: evidenceFrom(bundle.supporting, 10),
+      suggestedNextFocus: suggestedNextFrom(bundle),
+      provenance: "I.C.E. Focus Lens",
+      evidenceWeight: bundle.relationships.length || bundle.networks.length ? "Derived Semantic Evidence / Relationship Inference" : "Derived Semantic Evidence",
+      reasoningPath: ["Default focus inferred", "Existing semantic records matched", "Related records collected", "Suggested next focus selected from grounded related fields"],
+      sourcePhrase: firstSource(bundle.supporting),
+      derivedMeaning: `${focus} is an inferred default ${type} focus for ${sourceScope}; related items are copied or summarized from existing semantic records only.`,
+      relatedTeachingSemantics: ids(bundle.teachings, "teachingTopic"),
+      relatedPrincipleRelationships: ids(bundle.relationships, "principle"),
+      relatedPrincipleNetworks: ids(bundle.networks, "corePrinciple"),
+      relatedCharacterInteractions: ids(bundle.interactions, "interactionType"),
+      relatedKnowledgeGraph: ids(bundle.graph, "node"),
+      relatedSessionContinuityReview: ids(bundle.session, "reviewType"),
+      confidence: bundle.supporting.some((item) => item.confidence === "explicit") ? "explicit" : "probable",
+      sourceGrounding: reason || `Default focus derived from current ${sourceScope} semantic records; no selector, visual graph, crawling, or full-library query is implemented.`
+    });
+  };
+
+  if ((teachingSemantics || []).some((item) => /\bJESUS\b/i.test(item.speaker || "") || /\bJESUS\b/i.test(item.derivedMeaning || ""))) {
+    build("JESUS", "Character", "Default character focus derived from Teaching Semantics and Character Interactions identifying JESUS as teacher in the current source.");
+    build("JESUS as Teacher", "Teaching", "Default teaching focus derived from records where JESUS is the grounded speaker/teacher.");
+  }
+  const sermon = (teachingSemantics || []).find((item) => /Sermon on the Mount/i.test(`${item.teachingBlock || ""} ${item.teachingTopic || ""}`));
+  if (sermon) build("Sermon on the Mount", "Teaching", "Default teaching focus derived from the current teaching block record.");
+  for (const focus of ["Mercy", "Righteousness", "Peacemaking", "Reconciliation"]) {
+    if ((principleNetworks || []).some((item) => matchesFocus(item, focus)) || (principleRelationships || []).some((item) => matchesFocus(item, focus))) {
+      build(focus, "Principle", `Default principle focus derived from existing Principle Networks and Principle Relationships for ${focus}.`);
+    }
+  }
+  const relationship = (principleRelationships || [])[0];
+  if (relationship?.principle) build(`${relationship.principle} ${relationship.relationshipType || "relates to"}`, "Relationship", "Default relationship focus derived from the first grounded principle relationship in current scope.");
+
+  return records.slice(0, 16);
 }
 function semanticQuestionRecord(record = {}) {
   const key = [
@@ -7837,6 +7998,15 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReview,
       []
     );
+    const focusLens = createFocusLens(
+      captures,
+      teachingSemantics,
+      principleRelationships,
+      characterInteractions,
+      knowledgeGraph,
+      principleNetworks,
+      sessionContinuityReview
+    );
     const semanticQuestions = createSemanticQuestions(
       captures,
       teachingSemantics,
@@ -7885,6 +8055,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReview,
       knowledgeGraph,
       principleNetworks,
+      focusLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -7914,6 +8085,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReview,
       knowledgeGraph,
       principleNetworks,
+      focusLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -7947,6 +8119,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReview: sessionContinuityReview.length,
       knowledgeGraph: knowledgeGraph.length,
       principleNetworks: principleNetworks.length,
+      focusLens: focusLens.length,
       semanticQuestions: semanticQuestions.length,
       trustVerification: trustVerification.length
     };
@@ -7979,7 +8152,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.1b-principle-network-architecture",
+      analysisBuildMarker: "phase-9.1c-focus-lens-foundation",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -8000,6 +8173,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sessionContinuityReviewCount: sessionContinuityReview.length,
       knowledgeGraphCount: knowledgeGraph.length,
       principleNetworkCount: principleNetworks.length,
+      focusLensCount: focusLens.length,
       semanticQuestionCount: semanticQuestions.length,
       trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
@@ -8082,6 +8256,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
       [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
       [PRINCIPLE_NETWORKS_KEY]: principleNetworks,
+      [FOCUS_LENS_KEY]: focusLens,
       [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
       [TRUST_VERIFICATION_KEY]: trustVerification,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,

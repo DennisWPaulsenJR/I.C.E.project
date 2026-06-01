@@ -48,6 +48,7 @@ const STORAGE_KEYS = [
   "ICE_SESSION_CONTINUITY_REVIEW",
   "ICE_KNOWLEDGE_GRAPH",
   "ICE_PRINCIPLE_NETWORKS",
+  "ICE_FOCUS_LENS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -116,6 +117,7 @@ function emptyCounts() {
     sessionContinuityReview: 0,
     knowledgeGraph: 0,
     principleNetworks: 0,
+    focusLens: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -150,6 +152,7 @@ function buildCounts(storageData) {
     sessionContinuityReview: count(storageData.ICE_SESSION_CONTINUITY_REVIEW),
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
     principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
+    focusLens: count(storageData.ICE_FOCUS_LENS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -185,6 +188,7 @@ function buildSamples(storageData) {
     sessionContinuityReview: sample(storageData.ICE_SESSION_CONTINUITY_REVIEW, 20),
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
     principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
+    focusLens: sample(storageData.ICE_FOCUS_LENS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
@@ -419,7 +423,30 @@ function hasPrincipleRelationship(data, principlePattern, relationshipType, rela
     item.evidence.length > 0
   );
 }
-function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
+function hasFocusLens(data, focusPattern, typePattern, relatedPattern) {
+  return (data.ICE_FOCUS_LENS || []).some((item) =>
+    focusPattern.test(item.currentFocus || "") &&
+    typePattern.test(item.focusType || "") &&
+    relatedPattern.test(JSON.stringify({
+      relatedPrinciples: item.relatedPrinciples || [],
+      relatedCharacters: item.relatedCharacters || [],
+      relatedTeachings: item.relatedTeachings || [],
+      relatedInteractions: item.relatedInteractions || [],
+      suggestedNextFocus: item.suggestedNextFocus || ""
+    })) &&
+    item.provenance === "I.C.E. Focus Lens" &&
+    /Derived Semantic Evidence|Relationship Inference/i.test(item.evidenceWeight || "") &&
+    Array.isArray(item.reasoningPath) &&
+    item.reasoningPath.length > 0 &&
+    Array.isArray(item.relatedEvidence) &&
+    item.relatedEvidence.length > 0 &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding &&
+    !/visual graph|full selector implemented|crawl|Strong's\/POS implementation/i.test(`${item.derivedMeaning || ""}`)
+  );
+}function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
   return (data.ICE_PRINCIPLE_NETWORKS || []).some((item) =>
     corePattern.test(item.corePrinciple || "") &&
     (item.relatedPrinciples || []).some((principle) => relatedPattern.test(principle || "")) &&
@@ -521,6 +548,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_TEACHING_SEMANTICS) <= 0) failures.push("Expected Matthew 5 teaching / discourse semantic records count > 0.");
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
   if (count(data.ICE_PRINCIPLE_NETWORKS) <= 0) failures.push("Expected Matthew 5 principle network records count > 0.");
+  if (count(data.ICE_FOCUS_LENS) <= 0) failures.push("Expected Matthew 5 focus lens records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
   if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
   if (count(data.ICE_TRUST_VERIFICATION) <= 0) failures.push("Expected Matthew 5 trust verification records count > 0.");
@@ -572,6 +600,10 @@ function evaluateFailures(data) {
 
   if (!hasPrincipleNetwork(data, /Mercy/i, /Peacemaking|forgiveness|reconciliation/i, /obtain mercy|be reconciled|Beatitude|Sermon on the Mount|JESUS/)) failures.push("Expected Mercy principle network with related principles, promise/application, theme, speaker, provenance, and evidence weighting.");
   if (!hasPrincipleNetwork(data, /righteousness/i, /Law Fulfillment|commandment expansion/i, /filled|fulfil|But I say unto you|Sermon on the Mount|JESUS/)) failures.push("Expected righteousness principle network grounded by teaching progression and principle relationships.");
+
+  if (!hasFocusLens(data, /JESUS/i, /Character/i, /Teacher|Sermon on the Mount|disciples|multitudes|righteousness|mercy/i)) failures.push("Expected Focus Lens default character focus for JESUS with related teaching/audience/principle records.");
+  if (!hasFocusLens(data, /Mercy/i, /Principle/i, /Peacemaking|Reconciliation|forgiveness|obtain mercy/i)) failures.push("Expected Focus Lens default principle focus for Mercy with related principles and evidence.");
+  if (!hasFocusLens(data, /Righteousness/i, /Principle/i, /Law Fulfillment|commandment|filled|Sermon on the Mount/i)) failures.push("Expected Focus Lens default principle focus for Righteousness with teaching progression links.");
 
   if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
   if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");

@@ -508,7 +508,7 @@ Status:
 - Implemented
 ## 2026-05-20 21:22 - pcdx - Add semantic visual ontology styling
 Summary:
-- Added restrained visual ontology styling for source phrases, derived meanings, Divine Class I, Class II messenger, Class III Human, adversarial Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ, and authority transfer paths.
+- Added restrained visual ontology styling for source phrases, derived meanings, Divine Class I, Class II messenger, Class III Human, adversarial Class ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“, and authority transfer paths.
 - Kept styling accessible and low-contrast enough to support review without overwhelming semantic cards.
 
 Files touched:
@@ -528,9 +528,9 @@ Commit:
 
 Status:
 - Implemented
-## 2026-05-20 20:24 - pcdx - Correct Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ hierarchy display
+## 2026-05-20 20:24 - pcdx - Correct Class ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ hierarchy display
 Summary:
-- Corrected adversarial hierarchy display to italic lowercase `Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ` so it cannot visually collapse with Divine `Class I`.
+- Corrected adversarial hierarchy display to italic lowercase `Class ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“` so it cannot visually collapse with Divine `Class I`.
 - Updated class-transfer CSS hooks to use `ice-class-i-divine` and added `ice-class-i-adversary` for future visual hierarchy styling.
 - Updated project state hierarchy notes.
 
@@ -2622,7 +2622,7 @@ Status:
 ## 2026-05-26 - pcdx - Add HOLY action process display consistency
 - Refined Phase 8.3 derived semantic displays so Class I / HOLY-origin processes show HOLY ontology emphasis.
 - Added process-path display for THE LORD -> AngEL Of THE LORD -> Joseph -> Instruction -> CHILD protection / fulfillment.
-- Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ distinction.
+- Preserved source phrases, source truth distinction, app confidence wording, HOLY SPIRIT preference, JESUS / JESUS CHRIST distinction, CHILD display, and Class I / Class ÃƒÆ’Ã‚Â°Ãƒâ€šÃ‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ distinction.
 ## 2026-05-27 - pcdx - Refine Matthew 2 adversarial semantics
 Summary:
 - Implemented Phase 8.3a Matthew 2 adversarial/protective semantic refinement.
@@ -3532,3 +3532,46 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Add principle network architecture`
+## 2026-05-31 - pcdx - Add Focus Lens Foundation
+
+Task:
+- Begin Phase 9.1c: Focus Lens Foundation.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added derived `ICE_FOCUS_LENS` records for inferred current-page/session focus review.
+- Derived default focus records from existing Teaching Semantics, Principle Relationships, Principle Networks, Character Interactions, Knowledge Graph, and Session Continuity Review records.
+- Added Study Panel Focus Lens display with current focus, focus type, related principles, characters, teachings, interactions, evidence, suggested next focus, provenance, evidence weight, App accuracy, source phrase, derived meaning, and reasoning path.
+- Added QA/report support and Matthew 5 assertions for JESUS, Mercy, and Righteousness focus records.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit: `pcdx: Add focus lens foundation`

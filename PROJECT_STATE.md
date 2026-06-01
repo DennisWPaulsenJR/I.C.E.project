@@ -38,6 +38,14 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1c Focus Lens Foundation implemented.
+- Added persisted derived `ICE_FOCUS_LENS` records that infer default current-page/session study focuses from existing semantic records.
+- Initial focus types include Character, Principle, Teaching, and Relationship where grounded by current records; the foundation is shaped for future Authority Path, Location, Event, and Theme focus expansion.
+- Matthew 5 default focuses include JESUS, Mercy, Righteousness, Peacemaking/Reconciliation-related principle focuses, and Sermon on the Mount where supported by current records.
+- Focus Lens records display current focus, focus type, related principles, related characters, related teachings, related interactions, related evidence, suggested next focus, provenance, evidence weight, source phrase, derived meaning, App accuracy, and reasoning path.
+- Study Panel now includes a Focus Lens section, and Matthew QA/review reports include Focus Lens counts and summaries.
+- Foundation only: no visual graph, full user selector, crawling, Strong's/POS, full-library querying, or invented doctrine was added.
+Latest pcdx update:
 - Phase 9.1b Principle Network Architecture implemented.
 - Added persisted derived `ICE_PRINCIPLE_NETWORKS` records that summarize each principle's semantic neighborhood from existing Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Session Continuity, and Resolution Explanation inputs.
 - Principle Network records include Core Principle, Related Principles, Commands, Applications, Promises, Warnings, Consequences, Themes, Speaker, Audience, Authority Context, Character Examples, Current Scope, future-library status, provenance, evidence weight, source phrase, derived meaning, App accuracy, and reasoning path.
@@ -553,10 +561,10 @@ Future capabilities:
 - `III` = Human
 - `IIII` = Living organism / creature / natural life
 - `IIIII` = Non-living item/object
-- `Ã°Ââ€˜â€“` = adversary / wicked / evil / anti-GOD
+- `ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ` = adversary / wicked / evil / anti-GOD
 - `AI_Actor` = artificial/tool actor category
 
-Class I is Divine Origin Authority. Class Ã°Ââ€˜â€“ is adversarial / anti-origin opposition. Class Ã°Ââ€˜â€“ uses an italicized lowercase i and must NEVER visually collapse with Class I.
+Class I is Divine Origin Authority. Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ is adversarial / anti-origin opposition. Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ uses an italicized lowercase i and must NEVER visually collapse with Class I.
 
 Do not classify by word alone. Use entity resolution, context, relationship, confidence, and scope.
 
@@ -730,7 +738,7 @@ Process model:
 Matthew 1 pilot:
 - THE LORD -> AngEL Of THE LORD -> Joseph -> receives Instruction -> protects the CHILD.
 - HOLY CONCEPTION / Conceived Of THE HOLY SPIRIT is derived display; Holy Ghost remains preserved as source phrase where quoted.
-- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class Ã°Ââ€˜â€“ remains adversarial/opposition and visually distinct.
+- Class I / HOLY Origin remains strongest; Class II messenger/transfer remains medium; Class III Human actor/response remains readable; Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ remains adversarial/opposition and visually distinct.
 
 Preserve:
 - App accuracy wording
@@ -738,7 +746,7 @@ Preserve:
 - JESUS / JESUS CHRIST distinction
 - HOLY SPIRIT preference
 - CHILD display
-- Class I / Class Ã°Ââ€˜â€“ distinction
+- Class I / Class ÃƒÂ°Ã‚ÂÃ¢â‚¬ËœÃ¢â‚¬â€œ distinction
 - no unsupported doctrine
 
 ## Phase 8.3b Semantic Contrast Wording Refinement
