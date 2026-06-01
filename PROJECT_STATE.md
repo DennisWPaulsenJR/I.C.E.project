@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1d Scope Lens Foundation implemented.
+- Added persisted derived `ICE_SCOPE_LENS` records that bind each active Focus Lens focus to the current Study Scope boundary.
+- Initial Scope Lens support is intentionally limited to current page and current session using confirmed analyzed Study Scope data.
+- Scope Lens records display Active Focus, Active Scope, Scope Type, Included Pages, Excluded / Future Pages, Scope Boundary, Why this scope matters, Provenance, Evidence Weight, source phrase, derived meaning, App accuracy, and reasoning path.
+- Matthew 5 Scope Lens examples include JESUS as teaching speaker in Matthew 5 and Mercy within Sermon on the Mount / Beatitudes teaching context.
+- The layer remains derived only: no book, volume, testament, library analysis, crawling, unselected-page analysis, or invented doctrine was added.
+Latest pcdx update:
 - Phase 9.1c Focus Lens Foundation implemented.
 - Added persisted derived `ICE_FOCUS_LENS` records that infer default current-page/session study focuses from existing semantic records.
 - Initial focus types include Character, Principle, Teaching, and Relationship where grounded by current records; the foundation is shaped for future Authority Path, Location, Event, and Theme focus expansion.

@@ -1,3 +1,54 @@
+## 2026-06-01 - Phase 9.1d Scope Lens Foundation
+
+Instruction summary:
+- Add a derived Scope Lens foundation so the app can represent what range of material the current focus is being considered within.
+- Potential layer: `ICE_SCOPE_LENS`.
+- Initial implementation supports current page and current session only using existing Study Scope data.
+- Display Active Focus, Active Scope, Scope Type, Included Pages, Excluded / Future Pages, Scope Boundary, Why this scope matters, Provenance, Evidence Weight, and App accuracy.
+- Do not implement full book, volume, testament, or library analysis; do not crawl or analyze unselected pages.
+
+Codex action summary:
+- Added `ICE_SCOPE_LENS` storage and builder support in the background analysis pipeline.
+- Derived scope records from Study Scope, Focus Lens, Session Continuity Review, Knowledge Graph, and current analyzed page/session state only.
+- Added Study Panel `Scope Lens` cards with provenance, evidence weighting, scope boundary, included/excluded pages, source phrase, derived meaning, scope meaning, and related semantic layer links.
+- Added Scope Lens counts/samples to Matthew QA bundles, Matthew 5 assertions for JESUS and Mercy scope boundaries, and GPT/session review report summaries.
+- Preserved source phrase vs derived meaning, JESUS / JESUS CHRIST distinction, HOLY SPIRIT display preference, and Class I / Class i behavior by deriving from existing records only.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-05-31 - Phase 9.1c Focus Lens Foundation
 
 Instruction summary:

@@ -3575,3 +3575,47 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Add focus lens foundation`
+
+## 2026-06-01 - pcdx - Add Scope Lens Foundation
+
+Task:
+- Begin Phase 9.1d: Scope Lens Foundation.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added derived `ICE_SCOPE_LENS` records for current page/current session scope-aware focus review.
+- Derived scope boundaries from existing Study Scope, Focus Lens, Session Continuity Review, Knowledge Graph, and current analyzed page/session state only.
+- Added Study Panel Scope Lens display with Active Focus, Active Scope, Scope Type, Included Pages, Excluded / Future Pages, Scope Boundary, Why this scope matters, Provenance, Evidence Weight, App accuracy, source phrase, derived meaning, and reasoning path.
+- Added QA/report support and Matthew 5 assertions for JESUS and Mercy scope records.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit: `pcdx: Add scope lens foundation`

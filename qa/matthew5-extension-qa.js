@@ -49,6 +49,7 @@ const STORAGE_KEYS = [
   "ICE_KNOWLEDGE_GRAPH",
   "ICE_PRINCIPLE_NETWORKS",
   "ICE_FOCUS_LENS",
+  "ICE_SCOPE_LENS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -118,6 +119,7 @@ function emptyCounts() {
     knowledgeGraph: 0,
     principleNetworks: 0,
     focusLens: 0,
+    scopeLens: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -153,6 +155,7 @@ function buildCounts(storageData) {
     knowledgeGraph: count(storageData.ICE_KNOWLEDGE_GRAPH),
     principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
     focusLens: count(storageData.ICE_FOCUS_LENS),
+    scopeLens: count(storageData.ICE_SCOPE_LENS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -189,6 +192,7 @@ function buildSamples(storageData) {
     knowledgeGraph: sample(storageData.ICE_KNOWLEDGE_GRAPH, 20),
     principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
     focusLens: sample(storageData.ICE_FOCUS_LENS, 20),
+    scopeLens: sample(storageData.ICE_SCOPE_LENS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
@@ -446,6 +450,35 @@ function hasFocusLens(data, focusPattern, typePattern, relatedPattern) {
     item.sourceGrounding &&
     !/visual graph|full selector implemented|crawl|Strong's\/POS implementation/i.test(`${item.derivedMeaning || ""}`)
   );
+}function hasScopeLens(data, focusPattern, scopePattern, typePattern, meaningPattern) {
+  return (data.ICE_SCOPE_LENS || []).some((item) =>
+    focusPattern.test(item.activeFocus || "") &&
+    scopePattern.test(item.activeScope || "") &&
+    typePattern.test(item.scopeType || "") &&
+    meaningPattern.test(JSON.stringify({
+      scopeMeaning: item.scopeMeaning || "",
+      includedPages: item.includedPages || [],
+      excludedFuturePages: item.excludedFuturePages || [],
+      scopeBoundary: item.scopeBoundary || "",
+      whyThisScopeMatters: item.whyThisScopeMatters || "",
+      derivedMeaning: item.derivedMeaning || ""
+    })) &&
+    item.provenance === "I.C.E. Scope Lens" &&
+    /Derived Semantic Evidence|Continuity Inference/i.test(item.evidenceWeight || "") &&
+    Array.isArray(item.reasoningPath) &&
+    item.reasoningPath.length > 0 &&
+    Array.isArray(item.includedPages) &&
+    item.includedPages.some((page) => /Matthew 5/i.test(page || "")) &&
+    Array.isArray(item.excludedFuturePages) &&
+    /Book|Volume|Library|Matthew 6|Future selected pages/i.test((item.excludedFuturePages || []).join(" ")) &&
+    Array.isArray(item.relatedFocusLens) &&
+    item.relatedFocusLens.length > 0 &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding &&
+    !/auto-crawl|analyz(e|ed) unselected|full book analysis|full library analysis/i.test(JSON.stringify(item))
+  );
 }function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
   return (data.ICE_PRINCIPLE_NETWORKS || []).some((item) =>
     corePattern.test(item.corePrinciple || "") &&
@@ -549,6 +582,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_PRINCIPLE_RELATIONSHIPS) <= 0) failures.push("Expected Matthew 5 principle relationship records count > 0.");
   if (count(data.ICE_PRINCIPLE_NETWORKS) <= 0) failures.push("Expected Matthew 5 principle network records count > 0.");
   if (count(data.ICE_FOCUS_LENS) <= 0) failures.push("Expected Matthew 5 focus lens records count > 0.");
+  if (count(data.ICE_SCOPE_LENS) <= 0) failures.push("Expected Matthew 5 scope lens records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
   if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
   if (count(data.ICE_TRUST_VERIFICATION) <= 0) failures.push("Expected Matthew 5 trust verification records count > 0.");
@@ -604,6 +638,9 @@ function evaluateFailures(data) {
   if (!hasFocusLens(data, /JESUS/i, /Character/i, /Teacher|Sermon on the Mount|disciples|multitudes|righteousness|mercy/i)) failures.push("Expected Focus Lens default character focus for JESUS with related teaching/audience/principle records.");
   if (!hasFocusLens(data, /Mercy/i, /Principle/i, /Peacemaking|Reconciliation|forgiveness|obtain mercy/i)) failures.push("Expected Focus Lens default principle focus for Mercy with related principles and evidence.");
   if (!hasFocusLens(data, /Righteousness/i, /Principle/i, /Law Fulfillment|commandment|filled|Sermon on the Mount/i)) failures.push("Expected Focus Lens default principle focus for Righteousness with teaching progression links.");
+
+  if (!hasScopeLens(data, /JESUS/i, /Matthew 5/i, /Current chapter|Current session/i, /teaching speaker|within Matthew 5|current Study Scope|Book|Volume|Library/i)) failures.push("Expected Scope Lens for JESUS bounded to Matthew 5/current Study Scope.");
+  if (!hasScopeLens(data, /Mercy/i, /Matthew 5/i, /Current chapter|Current session/i, /Sermon on the Mount|Beatitudes|within Matthew 5|current Study Scope|Book|Volume|Library/i)) failures.push("Expected Scope Lens for Mercy bounded to Matthew 5/Sermon context without future page analysis.");
 
   if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
   if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");

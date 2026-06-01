@@ -42,6 +42,7 @@ const SESSION_CONTINUITY_REVIEW_KEY = "ICE_SESSION_CONTINUITY_REVIEW";
 const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
 const PRINCIPLE_NETWORKS_KEY = "ICE_PRINCIPLE_NETWORKS";
 const FOCUS_LENS_KEY = "ICE_FOCUS_LENS";
+const SCOPE_LENS_KEY = "ICE_SCOPE_LENS";
 const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
 const TRUST_VERIFICATION_KEY = "ICE_TRUST_VERIFICATION";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
@@ -3068,6 +3069,116 @@ function createFocusLens(captures = [], teachingSemantics = [], principleRelatio
   const relationship = (principleRelationships || [])[0];
   if (relationship?.principle) build(`${relationship.principle} ${relationship.relationshipType || "relates to"}`, "Relationship", "Default relationship focus derived from the first grounded principle relationship in current scope.");
 
+  return records.slice(0, 16);
+}
+function scopeLensRecord(record = {}) {
+  const key = [
+    "scope-lens",
+    record.sourceCaptureId || "",
+    record.scopePath || "",
+    record.activeFocus || "",
+    record.activeScope || "",
+    record.scopeType || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    activeFocus: record.activeFocus || "",
+    activeScope: record.activeScope || "Current source",
+    scopeType: record.scopeType || "Current chapter",
+    scopeMeaning: record.scopeMeaning || "",
+    includedPages: record.includedPages || [],
+    excludedFuturePages: record.excludedFuturePages || [],
+    scopeBoundary: record.scopeBoundary || "",
+    whyThisScopeMatters: record.whyThisScopeMatters || "",
+    provenance: record.provenance || "I.C.E. Scope Lens",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    reasoningPath: record.reasoningPath || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    relatedFocusLens: record.relatedFocusLens || [],
+    relatedSessionContinuityReview: record.relatedSessionContinuityReview || [],
+    relatedKnowledgeGraph: record.relatedKnowledgeGraph || [],
+    relatedLibraryAwareness: record.relatedLibraryAwareness || [],
+    relatedEvidence: record.relatedEvidence || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "scope lens derived from Study Scope and current semantic records"
+  };
+}
+
+function createScopeLens(captures = [], focusLens = [], sessionContinuityReview = [], knowledgeGraph = [], analysisHistory = []) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const currentLabel = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const currentPage = {
+    sourceCaptureBook: context.book || "",
+    sourceCaptureChapter: context.chapter || "",
+    sourceTitle: context.sourceTitle || capture.title || currentLabel,
+    activeUrl: context.sourceUrl || capture.url || "",
+    activeAdapterName: capture.sourceAdapter?.adapterName || "",
+    analyzedAt: capture.capturedAt || new Date().toISOString()
+  };
+  const pageLabel = (page = {}) => {
+    const book = page.sourceCaptureBook || page.book || "";
+    const chapter = page.sourceCaptureChapter || page.chapter || "";
+    return book && chapter ? `${book} ${chapter}` : page.sourceTitle || page.title || page.activeUrl || page.url || "Unknown page";
+  };
+  const unique = (values = []) => Array.from(new Set(values.flat(Infinity).map((value) => normalizeWhitespace(value == null ? "" : String(value))).filter(Boolean)));
+  const ids = (items = [], fallback = "id") => unique((items || []).map((item) => item.id || item[fallback] || "")).slice(0, 12);
+  const evidenceFrom = (items = [], limit = 8) => unique((items || []).flatMap((item) => [item.sourcePhrase, item.derivedMeaning, item.sourceGrounding, ...(item.relatedEvidence || []), ...(item.evidence || [])])).slice(0, limit);
+  const validHistory = [currentPage, ...(analysisHistory || [])]
+    .filter((page) => validStudyScopePageRecord(page, { requireAnalyzed: true }))
+    .filter((page, index, list) => list.findIndex((candidate) => pageLabel(candidate).toLowerCase() === pageLabel(page).toLowerCase()) === index)
+    .sort((left, right) => Number(left.sourceCaptureChapter || left.chapter || 0) - Number(right.sourceCaptureChapter || right.chapter || 0));
+  const includedPages = validHistory.length ? validHistory.map(pageLabel) : [currentLabel];
+  const activeScope = includedPages.length > 1 ? `${includedPages[0]} -> ${includedPages[includedPages.length - 1]}` : currentLabel;
+  const scopeType = includedPages.length > 1 ? "Current session" : "Current chapter";
+  const nextChapter = context.book === "Matthew" && Number(context.chapter || 0) ? `${context.book} ${Number(context.chapter) + 1}` : "Future selected pages";
+  const graphForFocus = (focus = "") => (knowledgeGraph || []).filter((item) => new RegExp(normalizeWhitespace(focus).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test([item.node, item.type, item.relationships, item.relatedNodes, item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")));
+  const scopeMeaningForFocus = (focus = "") => {
+    if (/^JESUS$/i.test(normalizeWhitespace(focus))) return `JESUS as teaching speaker in ${currentLabel}.`;
+    if (/mercy|merciful/i.test(focus)) return `Mercy within Sermon on the Mount / Beatitudes teaching context in ${currentLabel}.`;
+    return `${focus || "Current focus"} considered within ${activeScope}.`;
+  };
+  const records = [];
+  const add = (focus = {}) => {
+    const relatedGraph = graphForFocus(focus.currentFocus || "").slice(0, 8);
+    const supporting = [focus, ...relatedGraph, ...(sessionContinuityReview || [])].filter(Boolean);
+    records.push(scopeLensRecord({
+      sourceCaptureId,
+      sourceContext: context,
+      scopePath: `scope.lens.${textHash(`${activeScope}|${focus.currentFocus || "focus"}`)}`,
+      verseRange: activeScope,
+      activeFocus: focus.currentFocus || "Current focus",
+      activeScope,
+      scopeType,
+      scopeMeaning: scopeMeaningForFocus(focus.currentFocus || "Current focus"),
+      includedPages,
+      excludedFuturePages: [nextChapter, "Book", "Volume / Testament", "Library"],
+      scopeBoundary: `Includes only confirmed analyzed current page/session records: ${includedPages.join(", ")}. Suggested or future pages are not analyzed or included.`,
+      whyThisScopeMatters: focus.currentFocus ? `${focus.currentFocus} is interpreted only within the selected/current Study Scope so related evidence does not imply full-book, testament, or library coverage.` : "Scope Lens prevents current records from implying broader analysis than selected/current Study Scope.",
+      provenance: "I.C.E. Scope Lens",
+      evidenceWeight: includedPages.length > 1 ? "Continuity Inference / Derived Semantic Evidence" : "Derived Semantic Evidence",
+      reasoningPath: ["Study Scope confirmed", "Focus Lens record selected", "Included pages listed", "Future/unselected pages excluded", "Scope meaning summarized"],
+      sourcePhrase: focus.sourcePhrase || "",
+      derivedMeaning: `${focus.currentFocus || "Current focus"} remains bounded to ${activeScope}; no unselected page, book, volume, or library scope is inferred.`,
+      relatedFocusLens: ids([focus], "currentFocus"),
+      relatedSessionContinuityReview: ids(sessionContinuityReview, "reviewType"),
+      relatedKnowledgeGraph: ids(relatedGraph, "node"),
+      relatedLibraryAwareness: [],
+      relatedEvidence: evidenceFrom(supporting, 10),
+      confidence: focus.confidence || "probable",
+      sourceGrounding: `Derived from current Study Scope, Focus Lens, Session Continuity, and Knowledge Graph records. Initial implementation supports only current page and current session.`
+    }));
+  };
+
+  const focuses = (focusLens || []).length ? focusLens : [{ currentFocus: currentLabel, focusType: "Theme", confidence: "probable" }];
+  focuses.slice(0, 12).forEach(add);
   return records.slice(0, 16);
 }
 function semanticQuestionRecord(record = {}) {
@@ -8007,6 +8118,13 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleNetworks,
       sessionContinuityReview
     );
+    const scopeLens = createScopeLens(
+      captures,
+      focusLens,
+      sessionContinuityReview,
+      knowledgeGraph,
+      previousConfirmedAnalysisHistory
+    );
     const semanticQuestions = createSemanticQuestions(
       captures,
       teachingSemantics,
@@ -8056,6 +8174,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       knowledgeGraph,
       principleNetworks,
       focusLens,
+      scopeLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -8086,6 +8205,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       knowledgeGraph,
       principleNetworks,
       focusLens,
+      scopeLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -8120,6 +8240,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       knowledgeGraph: knowledgeGraph.length,
       principleNetworks: principleNetworks.length,
       focusLens: focusLens.length,
+      scopeLens: scopeLens.length,
       semanticQuestions: semanticQuestions.length,
       trustVerification: trustVerification.length
     };
@@ -8152,7 +8273,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.1c-focus-lens-foundation",
+      analysisBuildMarker: "phase-9.1d-scope-lens-foundation",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -8174,6 +8295,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       knowledgeGraphCount: knowledgeGraph.length,
       principleNetworkCount: principleNetworks.length,
       focusLensCount: focusLens.length,
+      scopeLensCount: scopeLens.length,
       semanticQuestionCount: semanticQuestions.length,
       trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
@@ -8257,6 +8379,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
       [PRINCIPLE_NETWORKS_KEY]: principleNetworks,
       [FOCUS_LENS_KEY]: focusLens,
+      [SCOPE_LENS_KEY]: scopeLens,
       [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
       [TRUST_VERIFICATION_KEY]: trustVerification,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
