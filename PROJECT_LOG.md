@@ -1,3 +1,36 @@
+## 2026-06-01 - Phase 9.1f Progressive Disclosure UI
+
+Instruction summary:
+- Refine the Study Panel presentation so rich semantic cards are study-first instead of dense by default.
+- Show Main Conclusion, Why it matters, and Related study paths first.
+- Collapse Source Phrase, Derived Meaning, Provenance, Evidence Weight, Supporting Layers, Reasoning Path, and technical detail by default.
+- Preserve all semantic data, provenance, evidence weighting, trust architecture, and GPT Review outputs.
+
+Codex action summary:
+- Added centralized progressive disclosure helpers in `study.js` so technical/grounding sections render as collapsed `details` controls by default.
+- Added Show Evidence, Show Reasoning, and Show Provenance disclosure labels for dense technical fields.
+- Reordered Study Progression, Focus Lens, Scope Lens, and Depth Lens cards to lead with Main Conclusion, Why, and Related Study Paths.
+- Kept semantic records, storage keys, builders, QA bundle data, evidence weighting, provenance fields, and GPT Review report generation intact.
+- Regenerated the Matthew 5 Study Panel review report after the presentation-only UI change.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Fix Study Panel Runtime Failure
 
 Instruction summary:

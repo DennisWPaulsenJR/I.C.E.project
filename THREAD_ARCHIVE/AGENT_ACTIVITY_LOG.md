@@ -3693,3 +3693,30 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Fix study panel runtime failure`
+
+## 2026-06-01 - pcdx - Add Progressive Disclosure UI
+
+Task:
+- Begin Phase 9.1f: Progressive Disclosure UI.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added presentation-only progressive disclosure helpers for Study Panel semantic sections.
+- Collapsed Source Phrase, Derived Meaning, Provenance, Evidence Weight, Supporting Layers, Reasoning Path, grounding, and technical semantic layer detail by default.
+- Reordered Study Progression, Focus Lens, Scope Lens, and Depth Lens cards around Main Conclusion, Why, and Related Study Paths.
+- Preserved semantic data, provenance, evidence weighting, trust architecture, and GPT Review report structure.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run review:matthew5` passed.
+
+Commit:
+- This commit: `pcdx: Add progressive disclosure UI`

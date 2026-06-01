@@ -37,6 +37,11 @@ Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
 Latest pcdx update:
+- Phase 9.1f Progressive Disclosure UI implemented.
+- Study Panel cards now prioritize study-first reading: Main Conclusion, Why, and Related Study Paths appear before technical grounding details.
+- Source Phrase, Derived Meaning, Provenance, Evidence Weight, Supporting Layers, Reasoning Path, grounding, and related semantic layer details now collapse behind Show Evidence, Show Reasoning, or Show Provenance controls by default.
+- Focus Lens, Scope Lens, Depth Lens, and Study Progression cards were reordered for progressive disclosure without changing semantic records, provenance, evidence weighting, trust architecture, or GPT Review output structure.
+- Example Focus Lens presentation now supports study-facing headings such as Study JESUS as Teacher while preserving the original Focus Lens data behind disclosure controls.Latest pcdx update:
 - Critical Study Panel runtime failure hardening implemented.
 - Study Panel rendering now isolates each section behind a safe wrapper so Scope Lens, Depth Lens, diagnostics, or any other malformed section cannot stop the entire panel.
 - Study data loaded from extension storage is normalized so missing semantic record keys default to safe empty arrays.
