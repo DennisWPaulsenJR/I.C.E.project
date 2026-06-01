@@ -3663,3 +3663,33 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Add depth lens foundation`
+
+## 2026-06-01 - pcdx - Fix Study Panel Runtime Failure
+
+Task:
+- Diagnose and harden the Study Panel after a runtime failure left only section headers/count stubs visible and made top action buttons appear inactive.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added per-section safe render wrappers so Scope Lens, Depth Lens, diagnostics, or any malformed section cannot stop the entire panel render.
+- Normalized loaded Study Panel storage aliases to safe empty arrays when missing or malformed.
+- Bound Study Panel search, action, export, and GPT review buttons before the initial refresh/render path runs.
+- Made diagnostic counter/message writes null-safe.
+- Ran a local Playwright extension Study Panel smoke. The fresh profile produced no page-level console error/stack to capture, and the fixed panel captured zero errors with top buttons enabled and GPT Review Snapshot click intact.
+
+Validation:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+
+Commit:
+- This commit: `pcdx: Fix study panel runtime failure`

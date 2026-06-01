@@ -36,7 +36,13 @@ Recently completed foundations:
 Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
-
+Latest pcdx update:
+- Critical Study Panel runtime failure hardening implemented.
+- Study Panel rendering now isolates each section behind a safe wrapper so Scope Lens, Depth Lens, diagnostics, or any other malformed section cannot stop the entire panel.
+- Study data loaded from extension storage is normalized so missing semantic record keys default to safe empty arrays.
+- Top Study Panel action buttons now bind before the initial refresh/render path runs, preserving Refresh Study Data, GPT Review Snapshot, copy/save/open report actions even if data is empty or malformed.
+- Diagnostics writes are null-safe so missing optional counter elements do not abort render/action binding.
+- Local Playwright smoke on the extension Study Panel captured zero page errors after the fix, confirmed top action buttons enabled, confirmed Scope Lens and Depth Lens rendered without breaking the panel, and confirmed GPT Review Snapshot click did not break the panel.
 Latest pcdx update:
 - Phase 9.1e Depth Lens Foundation implemented.
 - Added persisted derived `ICE_DEPTH_LENS` records that summarize the active semantic expansion depth as Strict, Grounded, or Elaborate.

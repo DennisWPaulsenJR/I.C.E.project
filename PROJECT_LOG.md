@@ -1,3 +1,37 @@
+## 2026-06-01 - Fix Study Panel Runtime Failure
+
+Instruction summary:
+- Diagnose a critical Study Panel runtime failure where QA/browser capture appeared to work but panel sections showed only count/header stubs and top action buttons appeared inactive.
+- Check recent Scope Lens, Depth Lens, top action grouping, section render helpers, and event listener binding changes.
+- Ensure one broken section cannot stop the whole panel, buttons bind with empty/malformed records, and missing storage keys use safe defaults.
+
+Codex action summary:
+- Added section-level safe rendering in `study.js` so a broken Scope Lens, Depth Lens, diagnostics, or other section logs a section-specific console error without aborting the rest of the Study Panel.
+- Normalized loaded storage data so expected semantic record arrays default to `[]` when storage keys are missing or malformed.
+- Moved initial Study Panel refresh until after top action and panel event listeners are registered.
+- Made diagnostics DOM writes and diagnostic message handling null-safe.
+- Ran a Playwright extension smoke against the Study Panel. The fresh profile did not reproduce a page-level stack trace, but after the fix it captured zero panel errors, enabled top action buttons, populated Scope Lens and Depth Lens counts, and allowed GPT Review Snapshot to run without breaking the panel.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Phase 9.1e Depth Lens Foundation
 
 Instruction summary:
