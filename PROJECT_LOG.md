@@ -1,3 +1,54 @@
+## 2026-06-01 - Phase 9.1e Depth Lens Foundation
+
+Instruction summary:
+- Add a derived Depth Lens foundation so I.C.E. can explain how much semantic expansion is currently active.
+- Potential layer: `ICE_DEPTH_LENS`.
+- Distinguish Strict, Grounded, and Elaborate using existing semantic records only.
+- Display Current Depth, Enabled Semantic Layers, Expansion Level, Why This Depth Matters, Provenance, Evidence Weight, and App accuracy.
+- Do not change semantic records, add user controls, crawl, or implement Strong's/POS.
+
+Codex action summary:
+- Added `ICE_DEPTH_LENS` storage and builder support in the background analysis pipeline.
+- Derived one active depth snapshot from existing layer availability: Strict for direct/source-minimal layers, Grounded for supported relationship/continuity layers, and Elaborate for graph/network/study/library-awareness display layers.
+- Added Study Panel `Depth Lens` cards with provenance, evidence weight, current depth, enabled layers, expansion level, why depth matters, strict/grounded/elaborate layer families, source phrase, derived meaning, App accuracy, and reasoning path.
+- Added Depth Lens counts/samples to Matthew QA bundles, Matthew 5 assertions for active expansion depth, and GPT/session review report summaries.
+- Preserved source phrase vs derived meaning, JESUS / JESUS CHRIST distinction, HOLY SPIRIT display preference, and Class I / Class i behavior by deriving from existing records only.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Phase 9.1d Scope Lens Foundation
 
 Instruction summary:

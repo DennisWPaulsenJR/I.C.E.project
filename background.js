@@ -43,6 +43,7 @@ const KNOWLEDGE_GRAPH_KEY = "ICE_KNOWLEDGE_GRAPH";
 const PRINCIPLE_NETWORKS_KEY = "ICE_PRINCIPLE_NETWORKS";
 const FOCUS_LENS_KEY = "ICE_FOCUS_LENS";
 const SCOPE_LENS_KEY = "ICE_SCOPE_LENS";
+const DEPTH_LENS_KEY = "ICE_DEPTH_LENS";
 const SEMANTIC_QUESTIONS_KEY = "ICE_SEMANTIC_QUESTIONS";
 const TRUST_VERIFICATION_KEY = "ICE_TRUST_VERIFICATION";
 const PASSAGE_FUNCTIONS_KEY = "ICE_PASSAGE_FUNCTIONS";
@@ -3180,6 +3181,94 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
   const focuses = (focusLens || []).length ? focusLens : [{ currentFocus: currentLabel, focusType: "Theme", confidence: "probable" }];
   focuses.slice(0, 12).forEach(add);
   return records.slice(0, 16);
+}
+function depthLensRecord(record = {}) {
+  const key = [
+    "depth-lens",
+    record.sourceCaptureId || "",
+    record.activeScope || "",
+    record.currentDepth || "",
+    record.expansionLevel || ""
+  ].join("|");
+
+  return {
+    id: `${Date.now()}-${textHash(key)}`,
+    sourceCaptureId: record.sourceCaptureId || "",
+    sourceContext: record.sourceContext || {},
+    scopePath: record.scopePath || "",
+    verseRange: record.verseRange || "Current scope",
+    currentDepth: record.currentDepth || "Strict",
+    activeScope: record.activeScope || "Current source",
+    enabledSemanticLayers: record.enabledSemanticLayers || [],
+    strictLayers: record.strictLayers || [],
+    groundedLayers: record.groundedLayers || [],
+    elaborateLayers: record.elaborateLayers || [],
+    expansionLevel: record.expansionLevel || "Minimal semantic expansion",
+    whyThisDepthMatters: record.whyThisDepthMatters || "Depth Lens shows how far the current display expands beyond direct source wording.",
+    provenance: record.provenance || "I.C.E. Depth Lens",
+    evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
+    reasoningPath: record.reasoningPath || [],
+    sourcePhrase: record.sourcePhrase || "",
+    derivedMeaning: record.derivedMeaning || "",
+    relatedEvidence: record.relatedEvidence || [],
+    confidence: record.confidence || "probable",
+    sourceGrounding: record.sourceGrounding || "depth lens derived from current semantic layer availability"
+  };
+}
+
+function createDepthLens(captures = [], layers = {}) {
+  const capture = (captures || [])[0] || {};
+  const context = buildSourceContext(capture);
+  const sourceCaptureId = capture.id || context.sourceCaptureId || "";
+  const activeScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
+  const count = (items) => Array.isArray(items) ? items.length : items && typeof items === "object" ? 1 : 0;
+  const layerRows = [
+    { name: "Teaching Semantics", depth: "Strict", records: layers.teachingSemantics, evidence: "Direct Source Evidence" },
+    { name: "Reference Roles", depth: "Strict", records: layers.referenceRoles, evidence: "Direct Source Evidence" },
+    { name: "Ontology Roles", depth: "Strict", records: layers.ontologyRoles, evidence: "Derived Semantic Evidence" },
+    { name: "Principle Relationships", depth: "Grounded", records: layers.principleRelationships, evidence: "Relationship Inference" },
+    { name: "Character Interactions", depth: "Grounded", records: layers.characterInteractions, evidence: "Relationship Inference" },
+    { name: "Session Continuity", depth: "Grounded", records: layers.sessionContinuityReview, evidence: "Continuity Inference" },
+    { name: "Focus Lens", depth: "Grounded", records: layers.focusLens, evidence: "Derived Semantic Evidence" },
+    { name: "Scope Lens", depth: "Grounded", records: layers.scopeLens, evidence: "Derived Semantic Evidence" },
+    { name: "Knowledge Graph", depth: "Elaborate", records: layers.knowledgeGraph, evidence: "Derived Semantic Evidence" },
+    { name: "Principle Networks", depth: "Elaborate", records: layers.principleNetworks, evidence: "Derived Semantic Evidence / Relationship Inference" },
+    { name: "Semantic Questions", depth: "Elaborate", records: layers.semanticQuestions, evidence: "Derived Semantic Evidence" },
+    { name: "Trust & Verification", depth: "Elaborate", records: layers.trustVerification, evidence: "Derived Semantic Evidence" },
+    { name: "Guided Study", depth: "Elaborate", records: layers.focusLens, evidence: "Derived Semantic Evidence" },
+    { name: "Study Progression", depth: "Elaborate", records: layers.scopeLens, evidence: "Continuity Inference / Derived Semantic Evidence" },
+    { name: "Library Awareness", depth: "Elaborate", records: [...(layers.teachingSemantics || []), ...(layers.principleRelationships || [])], evidence: "Library Awareness Classification" }
+  ].map((layer) => ({ ...layer, count: count(layer.records) })).filter((layer) => layer.count > 0);
+  const strictLayers = layerRows.filter((layer) => layer.depth === "Strict").map((layer) => `${layer.name} (${layer.count})`);
+  const groundedLayers = layerRows.filter((layer) => layer.depth === "Grounded").map((layer) => `${layer.name} (${layer.count})`);
+  const elaborateLayers = layerRows.filter((layer) => layer.depth === "Elaborate").map((layer) => `${layer.name} (${layer.count})`);
+  const currentDepth = elaborateLayers.length ? "Elaborate" : groundedLayers.length ? "Grounded" : "Strict";
+  const expansionLevel = currentDepth === "Elaborate" ? "Broad semantic expansion" : currentDepth === "Grounded" ? "Moderate semantic expansion" : "Minimal semantic expansion";
+  const evidenceWeight = currentDepth === "Elaborate" ? "Derived Semantic Evidence / Relationship Inference" : currentDepth === "Grounded" ? "Direct Source Evidence / Relationship Inference" : "Direct Source Evidence";
+  const evidence = Array.from(new Set(layerRows.flatMap((layer) => [layer.evidence, layer.name]).filter(Boolean))).slice(0, 12);
+
+  return [depthLensRecord({
+    sourceCaptureId,
+    sourceContext: context,
+    scopePath: `depth.lens.${textHash(`${activeScope}|${currentDepth}|${layerRows.map((layer) => layer.name).join("|")}`)}`,
+    verseRange: activeScope,
+    currentDepth,
+    activeScope,
+    enabledSemanticLayers: layerRows.map((layer) => `${layer.name} (${layer.count})`),
+    strictLayers,
+    groundedLayers,
+    elaborateLayers,
+    expansionLevel,
+    whyThisDepthMatters: `${currentDepth} depth means the current Study Panel display is using ${expansionLevel.toLowerCase()} from existing records only; no crawling, Strong's/POS, user depth controls, or source-record rewrites are active.`,
+    provenance: "I.C.E. Depth Lens",
+    evidenceWeight,
+    reasoningPath: ["Existing semantic layer counts read", "Strict/Grounded/Elaborate layer families classified", "Highest active depth selected", "Display-only depth summary generated"],
+    sourcePhrase: "",
+    derivedMeaning: `Current depth is ${currentDepth} for ${activeScope}; enabled semantic layers determine expansion level without changing underlying records.`,
+    relatedEvidence: evidence,
+    confidence: layerRows.length ? "explicit" : "probable",
+    sourceGrounding: "Derived from current semantic layer availability and existing Study Panel records only. Depth Lens is display-only and does not alter semantic records."
+  })];
 }
 function semanticQuestionRecord(record = {}) {
   const key = [
@@ -8125,6 +8214,18 @@ async function runFullAnalysisPipeline(reason = "manual") {
       knowledgeGraph,
       previousConfirmedAnalysisHistory
     );
+    const depthLens = createDepthLens(captures, {
+      teachingSemantics,
+      referenceRoles,
+      ontologyRoles,
+      principleRelationships,
+      characterInteractions,
+      sessionContinuityReview,
+      knowledgeGraph,
+      principleNetworks,
+      focusLens,
+      scopeLens
+    });
     const semanticQuestions = createSemanticQuestions(
       captures,
       teachingSemantics,
@@ -8175,6 +8276,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleNetworks,
       focusLens,
       scopeLens,
+      depthLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -8206,6 +8308,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleNetworks,
       focusLens,
       scopeLens,
+      depthLens,
       semanticQuestions,
       trustVerification
     }, activeAdapter);
@@ -8241,6 +8344,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleNetworks: principleNetworks.length,
       focusLens: focusLens.length,
       scopeLens: scopeLens.length,
+      depthLens: depthLens.length,
       semanticQuestions: semanticQuestions.length,
       trustVerification: trustVerification.length
     };
@@ -8273,7 +8377,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.1d-scope-lens-foundation",
+      analysisBuildMarker: "phase-9.1e-depth-lens-foundation",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -8296,6 +8400,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       principleNetworkCount: principleNetworks.length,
       focusLensCount: focusLens.length,
       scopeLensCount: scopeLens.length,
+      depthLensCount: depthLens.length,
       semanticQuestionCount: semanticQuestions.length,
       trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
@@ -8380,6 +8485,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [PRINCIPLE_NETWORKS_KEY]: principleNetworks,
       [FOCUS_LENS_KEY]: focusLens,
       [SCOPE_LENS_KEY]: scopeLens,
+      [DEPTH_LENS_KEY]: depthLens,
       [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
       [TRUST_VERIFICATION_KEY]: trustVerification,
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,

@@ -226,6 +226,8 @@ function guidedStudyLines(samples, libraryAwareness, limit = 6) {
   return asArray(samples.focusLens).slice(0, limit).map((item) => `${clean(item.currentFocus || "Focus")} | Type: ${clean(item.focusType || "Theme")} | Related: ${asArray([...asArray(item.relatedPrinciples), ...asArray(item.relatedCharacters), ...asArray(item.relatedTeachings)]).slice(0, 4).map(clean).join(", ") || "related records awaiting grounding"} | Next: ${clean(item.suggestedNextFocus || "not recorded")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")}`);
 }function scopeLensLines(samples, limit = 8) {
   return asArray(samples.scopeLens).slice(0, limit).map((item) => `${clean(item.activeFocus || "Focus")} | Scope: ${clean(item.activeScope || "Current scope")} | Type: ${clean(item.scopeType || "Current page/session")} | Included: ${asArray(item.includedPages).slice(0, 4).map(clean).join(", ") || "current page"} | Future excluded: ${asArray(item.excludedFuturePages).slice(0, 3).map(clean).join(", ") || "book/volume/library"} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")}`);
+}function depthLensLines(samples, limit = 8) {
+  return asArray(samples.depthLens).slice(0, limit).map((item) => `${clean(item.currentDepth || "Depth")} | Expansion: ${clean(item.expansionLevel || "semantic expansion")} | Layers: ${asArray(item.enabledSemanticLayers).slice(0, 5).map(clean).join(", ") || "enabled layers awaiting records"} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")}`);
 }function principleNetworkLines(samples, limit = 8) {
   return asArray(samples.principleNetworks).slice(0, limit).map((item) => `${clean(item.corePrinciple || "Principle")} | Related: ${asArray(item.relatedPrinciples).slice(0, 3).map(clean).join(", ") || "related principles awaiting records"} | Promises: ${asArray(item.promises).slice(0, 2).map(clean).join(", ") || "none recorded"} | Authority: ${clean(item.authorityContext || "Current source")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference")}`);
 }function resolutionExplanationLines(samples, libraryAwareness, limit = 8) {
@@ -268,6 +270,7 @@ function reportFromBundle(bundle) {
   const principleNetworks = asArray(samples.principleNetworks);
   const focusLens = asArray(samples.focusLens);
   const scopeLens = asArray(samples.scopeLens);
+  const depthLens = asArray(samples.depthLens);
   const semanticQuestions = asArray(samples.semanticQuestions);
   const trustVerification = asArray(samples.trustVerification);
   const answeredSemanticQuestions = semanticQuestions.filter((item) => item.questionKind !== "suggested");
@@ -321,6 +324,7 @@ function reportFromBundle(bundle) {
     `Principle Networks: ${counts.principleNetworks || principleNetworks.length || 0}`,
     `Focus Lens: ${counts.focusLens || focusLens.length || 0}`,
     `Scope Lens: ${counts.scopeLens || scopeLens.length || 0}`,
+    `Depth Lens: ${counts.depthLens || depthLens.length || 0}`,
     `Principle Hierarchy Items: ${principleHierarchyLines(samples).length}`,
     `Character Interactions: ${counts.characterInteractions || 0}`,
     `Session Continuity Review: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
@@ -340,6 +344,7 @@ function reportFromBundle(bundle) {
       ...principleNetworks.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Principle Network", `${item.corePrinciple || "Principle"} network`, "Principle Networks", "ICE_PRINCIPLE_NETWORKS")),
       ...focusLens.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Focus Lens", `${item.currentFocus || "Focus"} lens`, "Focus Lens", "ICE_FOCUS_LENS")),
       ...scopeLens.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Scope Lens", `${item.activeFocus || "Focus"} in ${item.activeScope || "Current scope"}`, "Scope Lens", "ICE_SCOPE_LENS")),
+      ...depthLens.slice(0, 4).map((item) => provenanceLine(item.provenance || "I.C.E. Depth Lens", `${item.currentDepth || "Depth"} depth`, "Depth Lens", "ICE_DEPTH_LENS")),
       ...characterInteractions.slice(0, 3).map((item) => provenanceLine("I.C.E. Relationship", `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`, "Character Interactions", "ICE_CHARACTER_INTERACTIONS")),
       ...sessionContinuityReview.slice(0, 2).map((item) => provenanceLine("I.C.E. Continuity", item.sessionRange || "Session Continuity Review", "Session Continuity Review", "ICE_SESSION_CONTINUITY_REVIEW")),
       ...knowledgeGraph.slice(0, 4).map((item) => provenanceLine("I.C.E. Knowledge Graph", item.node || "Knowledge Graph Node", "Scripture Knowledge Graph", "ICE_KNOWLEDGE_GRAPH")),
@@ -356,6 +361,7 @@ function reportFromBundle(bundle) {
       ...principleNetworks.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference", "principle neighborhood derived from existing semantic records", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length + asArray(item.relatedPrinciples).length)),
       ...focusLens.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "default focus derived from existing semantic records", item.sourceGrounding || item.sourcePhrase, asArray(item.relatedEvidence).length + asArray(item.relatedPrinciples).length + asArray(item.relatedCharacters).length)),
       ...scopeLens.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "scope boundary derived from current analyzed page/session records only", item.sourceGrounding || item.scopeBoundary, asArray(item.relatedEvidence).length + asArray(item.includedPages).length)),
+      ...depthLens.slice(0, 4).map((item) => evidenceWeightLine(item.evidenceWeight || "Derived Semantic Evidence", "depth classification derived from enabled semantic layer families", item.sourceGrounding || item.derivedMeaning, asArray(item.enabledSemanticLayers).length)),
       ...characterInteractions.slice(0, 3).map((item) => evidenceWeightLine("Relationship Inference", "interaction supported by character/action evidence", item.sourceGrounding || item.sourcePhrase, asArray(item.evidence).length)),
       ...sessionContinuityReview.slice(0, 2).map((item) => evidenceWeightLine("Continuity Inference", "derived from analyzed session records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.teachingProgression).length)),
       ...knowledgeGraph.slice(0, 4).map((item) => evidenceWeightLine("Derived Semantic Evidence", "graph node derived from connected semantic layer records", item.sourceGrounding || item.derivedMeaning, asArray(item.evidence).length + asArray(item.relationships).length)),
@@ -377,6 +383,9 @@ function reportFromBundle(bundle) {
     "## Scope Lens",
     ...list(scopeLensLines(samples), "no scope lens records available"),
     "",
+    "## Depth Lens",
+    ...list(depthLensLines(samples), "no depth lens records available"),
+    "",
     "## Trust & Verification",
     ...list(trustVerification.slice(0, 6).map((item) => `${item.result || "Trust result"} | Source: ${clean(item.sourceBasis || "source basis not recorded")} | Evidence: ${clean(item.evidenceWeight || "Derived Semantic Evidence")} | Signals: ${asArray(item.trustSignals).slice(0, 3).join(", ") || "signals awaiting records"}`), "no trust verification records available"),
     "",
@@ -396,6 +405,7 @@ function reportFromBundle(bundle) {
       (counts.principleNetworks || principleNetworks.length) ? "Principle Networks: Derived principle-neighborhood records found" : "Principle Networks: Awaiting grounded principle records",
       (counts.focusLens || focusLens.length) ? "Focus Lens: Default focus records found" : "Focus Lens: Awaiting grounded semantic focus records",
       (counts.scopeLens || scopeLens.length) ? "Scope Lens: Current page/session scope boundary records found" : "Scope Lens: Awaiting current scope records",
+      (counts.depthLens || depthLens.length) ? "Depth Lens: Strict/Grounded/Elaborate display record found" : "Depth Lens: Awaiting semantic layer depth summary",
       counts.characterInteractions ? "Character Interactions: Pilot layer; grounded records found" : "Character Interactions: Pilot layer; awaiting grounding",
       (counts.sessionContinuityReview || sessionContinuityReview.length) ? "Session Continuity Review: Pilot layer; grounded review records found" : "Session Continuity Review: Available when session scope spans multiple pages",
       (counts.knowledgeGraph || knowledgeGraph.length) ? "Scripture Knowledge Graph: Graph foundation; grounded node records found" : "Scripture Knowledge Graph: Graph foundation; awaiting grounded semantic layers",
@@ -435,6 +445,7 @@ function reportFromBundle(bundle) {
       ...principleNetworks.slice(0, 5).map((item) => `${item.corePrinciple || "Principle"} network | ${asArray(item.relatedPrinciples).slice(0, 3).join(", ")} | App accuracy: ${item.confidence || "probable"}`),
       ...focusLens.slice(0, 5).map((item) => `${item.currentFocus || "Focus"} lens | ${item.focusType || "Theme"} | Next: ${item.suggestedNextFocus || "not recorded"} | App accuracy: ${item.confidence || "probable"}`),
       ...scopeLens.slice(0, 5).map((item) => `${item.activeFocus || "Focus"} in ${item.activeScope || "Current scope"} | ${item.scopeType || "Current page/session"} | App accuracy: ${item.confidence || "probable"}`),
+      ...depthLens.slice(0, 5).map((item) => `${item.currentDepth || "Depth"} depth | ${item.expansionLevel || "semantic expansion"} | App accuracy: ${item.confidence || "probable"}`),
       ...characterInteractions.slice(0, 5).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"} | App accuracy: ${item.confidence || "probable"}`),
       ...sessionContinuityReview.slice(0, 5).map((item) => `${item.sessionRange || "Current session"} | ${asArray(item.teachingProgression).slice(0, 3).join("; ") || "session progression"} | App accuracy: ${item.confidence || "probable"}`),
       ...knowledgeGraph.slice(0, 6).map((item) => `${item.node || "Node"} | ${item.type || "Semantic Node"} | App accuracy: ${item.confidence || "probable"}`)
@@ -453,6 +464,7 @@ function reportFromBundle(bundle) {
     `sessionContinuityReview: ${counts.sessionContinuityReview || sessionContinuityReview.length || 0}`,
     `knowledgeGraph: ${counts.knowledgeGraph || knowledgeGraph.length || 0}`,
     `scopeLens: ${counts.scopeLens || scopeLens.length || 0}`,
+    `depthLens: ${counts.depthLens || depthLens.length || 0}`,
     `semanticQuestions: ${counts.semanticQuestions || semanticQuestions.length || 0}`,
     `trustVerification: ${counts.trustVerification || trustVerification.length || 0}`,
     `libraryAwareness: ${libraryAwareness.length}`,

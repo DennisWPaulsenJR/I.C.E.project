@@ -3619,3 +3619,47 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Add scope lens foundation`
+
+## 2026-06-01 - pcdx - Add Depth Lens Foundation
+
+Task:
+- Begin Phase 9.1e: Depth Lens Foundation.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `qa/generate-session-continuity-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added derived `ICE_DEPTH_LENS` records for current semantic expansion depth review.
+- Classified active display depth as Strict, Grounded, or Elaborate from existing semantic layer availability only.
+- Added Study Panel Depth Lens display with Current Depth, Enabled Semantic Layers, Expansion Level, Why This Depth Matters, Provenance, Evidence Weight, App accuracy, source phrase, derived meaning, and reasoning path.
+- Added QA/report support and Matthew 5 assertions for active Depth Lens expansion.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check qa/matthew2-extension-qa.js` passed.
+- `node --check qa/matthew3-extension-qa.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `node --check qa/generate-session-continuity-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- This commit: `pcdx: Add depth lens foundation`

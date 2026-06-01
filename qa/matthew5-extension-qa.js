@@ -50,6 +50,7 @@ const STORAGE_KEYS = [
   "ICE_PRINCIPLE_NETWORKS",
   "ICE_FOCUS_LENS",
   "ICE_SCOPE_LENS",
+  "ICE_DEPTH_LENS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -120,6 +121,7 @@ function emptyCounts() {
     principleNetworks: 0,
     focusLens: 0,
     scopeLens: 0,
+    depthLens: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -156,6 +158,7 @@ function buildCounts(storageData) {
     principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
     focusLens: count(storageData.ICE_FOCUS_LENS),
     scopeLens: count(storageData.ICE_SCOPE_LENS),
+    depthLens: count(storageData.ICE_DEPTH_LENS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -193,6 +196,7 @@ function buildSamples(storageData) {
     principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
     focusLens: sample(storageData.ICE_FOCUS_LENS, 20),
     scopeLens: sample(storageData.ICE_SCOPE_LENS, 20),
+    depthLens: sample(storageData.ICE_DEPTH_LENS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
@@ -540,7 +544,29 @@ function hasTrustVerification(data, resultPattern, evidencePattern, provenancePa
     !/trust score|truth score|doctrinal ranking|belief score|\b\d+\/100\b/i.test(JSON.stringify(item))
   );
 }
-function hasSemanticQuestion(data, family, questionPattern, answerPattern, groundingPattern) {
+function hasDepthLens(data, depthPattern, layerPattern, expansionPattern) {
+  return (data.ICE_DEPTH_LENS || []).some((item) =>
+    depthPattern.test(item.currentDepth || "") &&
+    layerPattern.test(JSON.stringify({
+      enabledSemanticLayers: item.enabledSemanticLayers || [],
+      strictLayers: item.strictLayers || [],
+      groundedLayers: item.groundedLayers || [],
+      elaborateLayers: item.elaborateLayers || []
+    })) &&
+    expansionPattern.test(item.expansionLevel || "") &&
+    item.provenance === "I.C.E. Depth Lens" &&
+    /Direct Source Evidence|Derived Semantic Evidence|Relationship Inference/i.test(item.evidenceWeight || "") &&
+    Array.isArray(item.reasoningPath) &&
+    item.reasoningPath.length > 0 &&
+    Array.isArray(item.enabledSemanticLayers) &&
+    item.enabledSemanticLayers.length > 0 &&
+    item.sourcePhrase !== undefined &&
+    item.derivedMeaning &&
+    item.confidence &&
+    item.sourceGrounding &&
+    !/user-selectable depth mode active|changed semantic records|auto-crawl active|Strong's\/POS records/i.test(JSON.stringify(item))
+  );
+}function hasSemanticQuestion(data, family, questionPattern, answerPattern, groundingPattern) {
   return (data.ICE_SEMANTIC_QUESTIONS || []).some((item) =>
     item.questionKind !== "suggested" &&
     item.questionFamily === family &&
@@ -583,6 +609,7 @@ function evaluateFailures(data) {
   if (count(data.ICE_PRINCIPLE_NETWORKS) <= 0) failures.push("Expected Matthew 5 principle network records count > 0.");
   if (count(data.ICE_FOCUS_LENS) <= 0) failures.push("Expected Matthew 5 focus lens records count > 0.");
   if (count(data.ICE_SCOPE_LENS) <= 0) failures.push("Expected Matthew 5 scope lens records count > 0.");
+  if (count(data.ICE_DEPTH_LENS) <= 0) failures.push("Expected Matthew 5 depth lens records count > 0.");
   if (count(data.ICE_CHARACTER_INTERACTIONS) <= 0) failures.push("Expected Matthew 5 character interaction records count > 0.");
   if (count(data.ICE_SEMANTIC_QUESTIONS) <= 0) failures.push("Expected Matthew 5 semantic question records count > 0.");
   if (count(data.ICE_TRUST_VERIFICATION) <= 0) failures.push("Expected Matthew 5 trust verification records count > 0.");
@@ -641,6 +668,9 @@ function evaluateFailures(data) {
 
   if (!hasScopeLens(data, /JESUS/i, /Matthew 5/i, /Current chapter|Current session/i, /teaching speaker|within Matthew 5|current Study Scope|Book|Volume|Library/i)) failures.push("Expected Scope Lens for JESUS bounded to Matthew 5/current Study Scope.");
   if (!hasScopeLens(data, /Mercy/i, /Matthew 5/i, /Current chapter|Current session/i, /Sermon on the Mount|Beatitudes|within Matthew 5|current Study Scope|Book|Volume|Library/i)) failures.push("Expected Scope Lens for Mercy bounded to Matthew 5/Sermon context without future page analysis.");
+
+  if (!hasDepthLens(data, /Elaborate|Grounded/i, /Teaching Semantics|Principle Relationships|Character Interactions/i, /semantic expansion/i)) failures.push("Expected Depth Lens to summarize active semantic expansion from existing Matthew 5 layers.");
+  if (!hasDepthLens(data, /Elaborate/i, /Knowledge Graph|Principle Networks|Guided Study|Study Progression|Library Awareness/i, /Broad semantic expansion/i)) failures.push("Expected Depth Lens to distinguish elaborate expansion when graph/network/study layers are active.");
 
   if (!hasSemanticQuestion(data, "Who", /Who teaches/i, /JESUS/i, /Teaching Semantics/i)) failures.push("Expected semantic question answer for Who teaches grounded by Teaching Semantics.");
   if (!hasSemanticQuestion(data, "Why", /mercy/i, /Peacemaking|reconciliation/i, /Principle Relationships/i)) failures.push("Expected semantic question answer for why mercy is important grounded by Principle Relationships.");

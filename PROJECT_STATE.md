@@ -38,6 +38,13 @@ Next planned phase:
 
 
 Latest pcdx update:
+- Phase 9.1e Depth Lens Foundation implemented.
+- Added persisted derived `ICE_DEPTH_LENS` records that summarize the active semantic expansion depth as Strict, Grounded, or Elaborate.
+- Depth Lens derives from existing semantic layer availability only and does not change underlying semantic records.
+- Strict covers direct source evidence/minimal inference layers; Grounded covers supported relationships and grounded continuity; Elaborate covers knowledge graph, principle networks, guided study, study progression, and library awareness display layers.
+- Study Panel now includes a Depth Lens section with Current Depth, Enabled Semantic Layers, Expansion Level, Why This Depth Matters, Provenance, Evidence Weight, source phrase, derived meaning, App accuracy, and reasoning path.
+- Foundation only: no user-selectable depth controls, crawling, Strong's/POS implementation, source-record rewrites, or invented doctrine was added.
+Latest pcdx update:
 - Phase 9.1d Scope Lens Foundation implemented.
 - Added persisted derived `ICE_SCOPE_LENS` records that bind each active Focus Lens focus to the current Study Scope boundary.
 - Initial Scope Lens support is intentionally limited to current page and current session using confirmed analyzed Study Scope data.

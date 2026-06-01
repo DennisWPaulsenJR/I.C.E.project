@@ -48,6 +48,7 @@ const STORAGE_KEYS = [
   "ICE_PRINCIPLE_NETWORKS",
   "ICE_FOCUS_LENS",
   "ICE_SCOPE_LENS",
+  "ICE_DEPTH_LENS",
   "ICE_SEMANTIC_QUESTIONS",
   "ICE_TRUST_VERIFICATION"
 ];
@@ -116,6 +117,7 @@ function emptyCounts() {
     principleNetworks: 0,
     focusLens: 0,
     scopeLens: 0,
+    depthLens: 0,
     semanticQuestions: 0,
     trustVerification: 0
   };
@@ -150,6 +152,7 @@ function buildCounts(storageData) {
     principleNetworks: count(storageData.ICE_PRINCIPLE_NETWORKS),
     focusLens: count(storageData.ICE_FOCUS_LENS),
     scopeLens: count(storageData.ICE_SCOPE_LENS),
+    depthLens: count(storageData.ICE_DEPTH_LENS),
     semanticQuestions: count(storageData.ICE_SEMANTIC_QUESTIONS),
     trustVerification: count(storageData.ICE_TRUST_VERIFICATION)
   };
@@ -185,6 +188,7 @@ function buildSamples(storageData) {
     principleNetworks: sample(storageData.ICE_PRINCIPLE_NETWORKS, 20),
     focusLens: sample(storageData.ICE_FOCUS_LENS, 20),
     scopeLens: sample(storageData.ICE_SCOPE_LENS, 20),
+    depthLens: sample(storageData.ICE_DEPTH_LENS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
     analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
