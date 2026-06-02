@@ -3720,3 +3720,35 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Add progressive disclosure UI`
+
+## 2026-06-01 - pcdx - Isolate Source Pages for Lenses
+
+Task:
+- Fix critical source contamination where Gmail could appear in derived study lens records.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added source isolation rejection for Gmail, ChatGPT, extension UI pages, and non-scripture URLs.
+- Changed capture selection to use only valid scripture/source captures for derived analysis, with rejected source diagnostics preserved.
+- Gated Focus Lens, Scope Lens, and Depth Lens builders so invalid/browser captures return no records.
+- Removed Scope Lens fallback that could manufacture `Current chapter | Gmail` from a browser title.
+- Updated Study Panel active source preference and warning display for ignored non-source browser pages.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- Targeted Playwright smoke passed with Gmail rejected and Matthew 5 retained as the only Scope Lens included page.
+
+Commit:
+- This commit: `pcdx: Isolate source pages for lenses`

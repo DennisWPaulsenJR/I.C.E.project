@@ -1,3 +1,42 @@
+## 2026-06-01 - Isolate Source Pages for Lenses
+
+Instruction summary:
+- Fix source contamination where Gmail could enter Scope Lens while Matthew 5 was the intended Study Scope.
+- Derived lenses must only use records whose source/capture/pageKey matches confirmed analyzed scripture/source pages.
+- Reject Gmail, ChatGPT, Study Panel UI, extension pages, and non-scripture URLs from derived lens builders in LDS scripture adapter mode.
+- Add rejection diagnostics and a Study Panel warning for ignored non-source browser pages.
+
+Codex action summary:
+- Hardened `captureSources()` so the analysis pipeline rejects non-source/browser captures and falls back only to valid scripture captures from history.
+- Added source isolation diagnostics with `rejectedSource` and `reason` fields on analysis status.
+- Added direct source gates to Focus Lens, Scope Lens, and Depth Lens builders.
+- Removed Scope Lens browser-title fallback when no confirmed analyzed source scope exists.
+- Updated Study Panel active source selection to prefer confirmed active/status/canonical pages over `ICE_LATEST_CAPTURE`.
+- Added Study Panel warning lines such as `Ignored non-source browser page: Gmail.`
+- Regenerated the Matthew 5 GPT review report after the source isolation fix.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- Targeted Playwright smoke passed: injected Gmail as latest capture, retained Matthew 5 in capture history, reran the pipeline, confirmed Gmail was rejected, Focus/Scope lenses contained no Gmail, and Scope Lens included pages were only Matthew 5.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Phase 9.1f Progressive Disclosure UI
 
 Instruction summary:

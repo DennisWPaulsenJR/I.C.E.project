@@ -37,11 +37,18 @@ Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
 Latest pcdx update:
+- Critical source isolation hardening implemented for derived study lenses.
+- Background capture selection now rejects Gmail, ChatGPT, extension UI pages, and non-scripture URLs before derived lens builders run.
+- Focus Lens, Scope Lens, and Depth Lens now require an approved scripture/source capture and Scope Lens no longer falls back to browser titles such as Gmail when confirmed analyzed scope is absent.
+- Source isolation diagnostics record rejectedSource and reason, including non-scripture/browser page not in confirmed analyzed scope.
+- Study Panel now prefers confirmed active/canonical analyzed source pages over latest browser capture and shows warnings such as Ignored non-source browser page: Gmail.
+- Targeted Playwright smoke confirmed Gmail was rejected, Matthew 5 remained active, Scope Lens included pages were only Matthew 5, and Gmail did not appear in Focus Lens or Scope Lens.Latest pcdx update:
 - Phase 9.1f Progressive Disclosure UI implemented.
 - Study Panel cards now prioritize study-first reading: Main Conclusion, Why, and Related Study Paths appear before technical grounding details.
 - Source Phrase, Derived Meaning, Provenance, Evidence Weight, Supporting Layers, Reasoning Path, grounding, and related semantic layer details now collapse behind Show Evidence, Show Reasoning, or Show Provenance controls by default.
 - Focus Lens, Scope Lens, Depth Lens, and Study Progression cards were reordered for progressive disclosure without changing semantic records, provenance, evidence weighting, trust architecture, or GPT Review output structure.
-- Example Focus Lens presentation now supports study-facing headings such as Study JESUS as Teacher while preserving the original Focus Lens data behind disclosure controls.Latest pcdx update:
+- Example Focus Lens presentation now supports study-facing headings such as Study JESUS as Teacher while preserving the original Focus Lens data behind disclosure controls.
+Latest pcdx update:
 - Critical Study Panel runtime failure hardening implemented.
 - Study Panel rendering now isolates each section behind a safe wrapper so Scope Lens, Depth Lens, diagnostics, or any other malformed section cannot stop the entire panel.
 - Study data loaded from extension storage is normalized so missing semantic record keys default to safe empty arrays.

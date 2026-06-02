@@ -193,15 +193,19 @@ async function captureSources() {
   const history = Array.isArray(data[CAPTURE_HISTORY_KEY])
     ? data[CAPTURE_HISTORY_KEY]
     : [];
+  const rejectedSources = [];
+  const candidates = [latest, ...history].filter((capture) => capture?.text || capture?.url || capture?.title);
 
-  // The full analysis pipeline powers the current Study Panel context, so it
-  // must not mix older saved captures into the latest page's timeline/events.
-  // Capture history remains preserved locally for future document-library and
-  // cross-document analysis flows.
-  if (latest?.text) return [latest];
+  for (const capture of candidates) {
+    const rejection = sourceIsolationRejection(capture);
+    if (rejection) {
+      rejectedSources.push(rejection);
+      continue;
+    }
+    if (capture?.text) return { captures: [capture], rejectedSources: uniqueSourceIsolationRejections(rejectedSources) };
+  }
 
-  const fallbackCapture = history.find((capture) => capture?.text);
-  return fallbackCapture ? [fallbackCapture] : [];
+  return { captures: [], rejectedSources: uniqueSourceIsolationRejections(rejectedSources) };
 }
 
 function parseScriptureBookAndChapter(capture) {
@@ -2278,6 +2282,48 @@ function validStudyScopePageRecord(page = {}, { requireAnalyzed = false } = {}) 
   return true;
 }
 
+function sourceIsolationPageRecordFromCapture(capture = {}) {
+  const context = buildSourceContext(capture || {});
+  return {
+    sourceCaptureId: capture.id || context.sourceCaptureId || "",
+    sourceTitle: capture.title || context.sourceTitle || "Current source",
+    sourceCaptureBook: context.book || "",
+    sourceCaptureChapter: context.chapter || "",
+    activeUrl: capture.url || context.sourceUrl || "",
+    activeAdapterName: capture.sourceAdapter?.adapterName || "",
+    analyzedAt: capture.capturedAt || ""
+  };
+}
+
+function sourceIsolationRejectedSourceLabel(capture = {}) {
+  return normalizeWhitespace(capture.title || capture.sourceTitle || capture.url || "unknown browser page");
+}
+
+function sourceIsolationRejection(capture = {}) {
+  if (!capture?.text && !capture?.url && !capture?.title) return null;
+  const page = sourceIsolationPageRecordFromCapture(capture);
+  if (validStudyScopePageRecord(page, { requireAnalyzed: false })) return null;
+  return {
+    rejectedSource: sourceIsolationRejectedSourceLabel(capture),
+    reason: "non-scripture/browser page not in confirmed analyzed scope",
+    activeUrl: capture.url || "",
+    sourceTitle: capture.title || ""
+  };
+}
+
+function sourceIsolationValidCapture(capture = {}) {
+  return Boolean(capture?.text) && !sourceIsolationRejection(capture);
+}
+
+function uniqueSourceIsolationRejections(rejections = []) {
+  const seen = new Set();
+  return rejections.filter((item) => {
+    const key = `${item.rejectedSource || ""}|${item.activeUrl || ""}|${item.reason || ""}`.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 function canonicalAnalyzedPageMarker(page = {}, { analysisTimestamp = "", buildMarker = "" } = {}) {
   const normalized = {
     sourceCaptureId: page.sourceCaptureId || "",
@@ -2953,6 +2999,7 @@ function focusLensRecord(record = {}) {
 
 function createFocusLens(captures = [], teachingSemantics = [], principleRelationships = [], characterInteractions = [], knowledgeGraph = [], principleNetworks = [], sessionContinuityReview = []) {
   const capture = (captures || [])[0] || {};
+  if (!sourceIsolationValidCapture(capture)) return [];
   const context = buildSourceContext(capture);
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const sourceScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
@@ -3113,6 +3160,7 @@ function scopeLensRecord(record = {}) {
 
 function createScopeLens(captures = [], focusLens = [], sessionContinuityReview = [], knowledgeGraph = [], analysisHistory = []) {
   const capture = (captures || [])[0] || {};
+  if (!sourceIsolationValidCapture(capture)) return [];
   const context = buildSourceContext(capture);
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const currentLabel = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
@@ -3136,8 +3184,9 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
     .filter((page) => validStudyScopePageRecord(page, { requireAnalyzed: true }))
     .filter((page, index, list) => list.findIndex((candidate) => pageLabel(candidate).toLowerCase() === pageLabel(page).toLowerCase()) === index)
     .sort((left, right) => Number(left.sourceCaptureChapter || left.chapter || 0) - Number(right.sourceCaptureChapter || right.chapter || 0));
-  const includedPages = validHistory.length ? validHistory.map(pageLabel) : [currentLabel];
-  const activeScope = includedPages.length > 1 ? `${includedPages[0]} -> ${includedPages[includedPages.length - 1]}` : currentLabel;
+  if (!validHistory.length) return [];
+  const includedPages = validHistory.map(pageLabel);
+  const activeScope = includedPages.length > 1 ? `${includedPages[0]} -> ${includedPages[includedPages.length - 1]}` : includedPages[0];
   const scopeType = includedPages.length > 1 ? "Current session" : "Current chapter";
   const nextChapter = context.book === "Matthew" && Number(context.chapter || 0) ? `${context.book} ${Number(context.chapter) + 1}` : "Future selected pages";
   const graphForFocus = (focus = "") => (knowledgeGraph || []).filter((item) => new RegExp(normalizeWhitespace(focus).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test([item.node, item.type, item.relationships, item.relatedNodes, item.relatedPrinciples, item.derivedMeaning].flat(Infinity).join(" ")));
@@ -3178,7 +3227,7 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
     }));
   };
 
-  const focuses = (focusLens || []).length ? focusLens : [{ currentFocus: currentLabel, focusType: "Theme", confidence: "probable" }];
+  const focuses = (focusLens || []).filter((focus) => normalizeWhitespace(focus.currentFocus || "") && !isExcludedStudyScopePage({ sourceTitle: focus.currentFocus }));
   focuses.slice(0, 12).forEach(add);
   return records.slice(0, 16);
 }
@@ -3218,6 +3267,7 @@ function depthLensRecord(record = {}) {
 
 function createDepthLens(captures = [], layers = {}) {
   const capture = (captures || [])[0] || {};
+  if (!sourceIsolationValidCapture(capture)) return [];
   const context = buildSourceContext(capture);
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const activeScope = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
@@ -7953,7 +8003,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
 
   lastPipelineStartedAt = now;
   pipelinePromise = (async () => {
-    const captures = await captureSources();
+    const { captures, rejectedSources: sourceIsolationRejections = [] } = await captureSources();
     const timelineItems = [];
     const eventItems = [];
     const principleItems = [];
@@ -8368,6 +8418,9 @@ async function runFullAnalysisPipeline(reason = "manual") {
       mentionCount: mentionIndex.length,
       domHintCount: domSemanticHints.length,
       activeAdapterName: activeAdapter?.adapterName || "",
+      sourceIsolationRejections,
+      rejectedSource: sourceIsolationRejections[0]?.rejectedSource || "",
+      rejectionReason: sourceIsolationRejections[0]?.reason || "",
       activeUrl: latestCapture.url || "",
       sourceCaptureId: latestCapture.id || "",
       sourceCaptureTitle: latestCapture.title || "",
@@ -8377,7 +8430,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.1e-depth-lens-foundation",
+      analysisBuildMarker: "phase-9.1-source-isolation-lenses",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
