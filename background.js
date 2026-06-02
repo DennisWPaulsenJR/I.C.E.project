@@ -3159,6 +3159,58 @@ function scopeLensRecord(record = {}) {
   };
 }
 
+function invalidSourceFocusReason(item = {}, acceptedCaptureIds = new Set(), acceptedPageKeys = new Set()) {
+  const values = [
+    item.currentFocus,
+    item.activeFocus,
+    item.label,
+    item.title,
+    item.name,
+    item.url,
+    item.activeUrl,
+    item.pageKey,
+    item.scopePath,
+    item.sourceTitle,
+    item.sourceUrl,
+    item.sourceContext?.sourceTitle,
+    item.sourceContext?.sourceUrl,
+    item.sourceContext?.pageKey
+  ].flat(Infinity).map((value) => normalizeWhitespace(value || "")).filter(Boolean);
+  const combined = values.join(" ");
+  if (!combined) return "missing focus label/source fields";
+  if (/gmail|\binbox\b|chatgpt|chrome-extension|mail\.google\.com|accounts\.google\.com|study panel|extension panel|ice study panel/i.test(combined)) return "invalid non-source focus candidate";
+  const captureId = normalizeWhitespace(item.sourceCaptureId || item.sourceContext?.sourceCaptureId || item.captureId || "");
+  if (captureId && acceptedCaptureIds.has(captureId)) return "";
+  const pageKey = normalizeWhitespace(item.pageKey || item.sourceContext?.pageKey || "").toLowerCase();
+  if (pageKey && acceptedPageKeys.has(pageKey)) return "";
+  const itemPage = {
+    sourceCaptureId: captureId,
+    sourceTitle: item.sourceTitle || item.sourceContext?.sourceTitle || item.title || item.currentFocus || "",
+    sourceCaptureBook: item.sourceCaptureBook || item.sourceContext?.book || "",
+    sourceCaptureChapter: item.sourceCaptureChapter || item.sourceContext?.chapter || "",
+    activeUrl: item.activeUrl || item.url || item.sourceUrl || item.sourceContext?.sourceUrl || "",
+    activeAdapterName: item.activeAdapterName || item.adapterName || item.sourceContext?.adapterName || "lds_scripture_adapter",
+    analyzedAt: item.analyzedAt || item.sourceContext?.analyzedAt || ""
+  };
+  const derivedPageKey = [itemPage.sourceCaptureBook, itemPage.sourceCaptureChapter, itemPage.sourceTitle, itemPage.activeUrl]
+    .map((value) => normalizeWhitespace(value || "").toLowerCase())
+    .join("|");
+  if (derivedPageKey && acceptedPageKeys.has(derivedPageKey)) return "";
+  if (validStudyScopePageRecord(itemPage, { requireAnalyzed: false }) && (!acceptedCaptureIds.size || acceptedCaptureIds.has(captureId))) return "";
+  return "focus source is not in confirmed analyzed scripture scope";
+}
+
+function isValidSourceFocus(item = {}, acceptedCaptureIds = new Set(), acceptedPageKeys = new Set()) {
+  return !invalidSourceFocusReason(item, acceptedCaptureIds, acceptedPageKeys);
+}
+
+function rejectedScopeLensCandidateRecord(item = {}, reason = "invalid non-source focus candidate") {
+  return {
+    rejectedScopeLensCandidate: normalizeWhitespace(item.currentFocus || item.activeFocus || item.label || item.title || item.sourceTitle || item.sourceContext?.sourceTitle || item.url || item.sourceContext?.sourceUrl || "unknown focus candidate"),
+    reason
+  };
+}
+
 function createScopeLens(captures = [], focusLens = [], sessionContinuityReview = [], knowledgeGraph = [], analysisHistory = []) {
   const capture = (captures || [])[0] || {};
   if (!sourceIsolationValidCapture(capture)) return [];
@@ -3166,6 +3218,7 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
   const sourceCaptureId = capture.id || context.sourceCaptureId || "";
   const currentLabel = context.book && context.chapter ? `${context.book} ${context.chapter}` : context.sourceTitle || capture.title || "Current source";
   const currentPage = {
+    sourceCaptureId,
     sourceCaptureBook: context.book || "",
     sourceCaptureChapter: context.chapter || "",
     sourceTitle: context.sourceTitle || capture.title || currentLabel,
@@ -3186,6 +3239,9 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
     .filter((page, index, list) => list.findIndex((candidate) => pageLabel(candidate).toLowerCase() === pageLabel(page).toLowerCase()) === index)
     .sort((left, right) => Number(left.sourceCaptureChapter || left.chapter || 0) - Number(right.sourceCaptureChapter || right.chapter || 0));
   if (!validHistory.length) return [];
+  const acceptedCaptureIds = new Set(validHistory.map((page) => normalizeWhitespace(page.sourceCaptureId || page.captureId || "")).filter(Boolean));
+  const acceptedPageKeys = new Set(validHistory.map((page) => [page.sourceCaptureBook || page.book || "", page.sourceCaptureChapter || page.chapter || "", page.sourceTitle || page.title || "", page.activeUrl || page.url || ""].map((value) => normalizeWhitespace(value || "").toLowerCase()).join("|")).filter(Boolean));
+  const rejectedScopeLensCandidates = [];
   const includedPages = validHistory.map(pageLabel);
   const activeScope = includedPages.length > 1 ? `${includedPages[0]} -> ${includedPages[includedPages.length - 1]}` : includedPages[0];
   const scopeType = includedPages.length > 1 ? "Current session" : "Current chapter";
@@ -3228,9 +3284,23 @@ function createScopeLens(captures = [], focusLens = [], sessionContinuityReview 
     }));
   };
 
-  const focuses = (focusLens || []).filter((focus) => normalizeWhitespace(focus.currentFocus || "") && !isExcludedStudyScopePage({ sourceTitle: focus.currentFocus }));
+  const focuses = [];
+  for (const focus of (focusLens || [])) {
+    if (!isValidSourceFocus(focus, acceptedCaptureIds, acceptedPageKeys)) {
+      const reason = invalidSourceFocusReason(focus, acceptedCaptureIds, acceptedPageKeys);
+      rejectedScopeLensCandidates.push(rejectedScopeLensCandidateRecord(focus, reason));
+      continue;
+    }
+    focuses.push(focus);
+  }
+  if (!focuses.length) {
+    records.rejectedScopeLensCandidates = rejectedScopeLensCandidates;
+    return records;
+  }
   focuses.slice(0, 12).forEach(add);
-  return records.slice(0, 16);
+  const scopedRecords = records.slice(0, 16);
+  scopedRecords.rejectedScopeLensCandidates = rejectedScopeLensCandidates;
+  return scopedRecords;
 }
 function depthLensRecord(record = {}) {
   const key = [
@@ -8422,6 +8492,9 @@ async function runFullAnalysisPipeline(reason = "manual") {
       sourceIsolationRejections,
       rejectedSource: sourceIsolationRejections[0]?.rejectedSource || "",
       rejectionReason: sourceIsolationRejections[0]?.reason || "",
+      rejectedScopeLensCandidates: scopeLens.rejectedScopeLensCandidates || [],
+      rejectedScopeLensCandidate: scopeLens.rejectedScopeLensCandidates?.[0]?.rejectedScopeLensCandidate || "",
+      scopeLensRejectionReason: scopeLens.rejectedScopeLensCandidates?.[0]?.reason || "",
       activeUrl: latestCapture.url || "",
       sourceCaptureId: latestCapture.id || "",
       sourceCaptureTitle: latestCapture.title || "",

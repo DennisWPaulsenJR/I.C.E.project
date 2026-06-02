@@ -485,7 +485,17 @@ function hasFocusLens(data, focusPattern, typePattern, relatedPattern) {
     item.sourceGrounding &&
     !/auto-crawl|analyz(e|ed) unselected|full book analysis|full library analysis/i.test(JSON.stringify(item))
   );
-}function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
+}
+function scopeLensContainsBrowserSource(records) {
+  return /gmail|\binbox\b|chatgpt|chrome-extension|mail\.google\.com|accounts\.google\.com/i.test(JSON.stringify(records || []));
+}
+function hasScopeLensRejection(rejections, candidatePattern, reasonPattern) {
+  return (rejections || []).some((item) =>
+    candidatePattern.test(item.rejectedScopeLensCandidate || "") &&
+    reasonPattern.test(item.reason || "")
+  );
+}
+function hasPrincipleNetwork(data, corePattern, relatedPattern, requiredPattern) {
   return (data.ICE_PRINCIPLE_NETWORKS || []).some((item) =>
     corePattern.test(item.corePrinciple || "") &&
     (item.relatedPrinciples || []).some((principle) => relatedPattern.test(principle || "")) &&
@@ -778,6 +788,54 @@ async function main() {
     storageData = await waitForAnalysis(worker);
     failures.push(...evaluateFailures(storageData));
 
+    const contaminationProbe = await worker.evaluate(async () => {
+      const data = await chrome.storage.local.get([
+        "ICE_LATEST_CAPTURE",
+        "ICE_FOCUS_LENS",
+        "ICE_CANONICAL_ANALYZED_PAGES"
+      ]);
+      const capture = data.ICE_LATEST_CAPTURE || {};
+      const validFocus = (data.ICE_FOCUS_LENS || [])[0] || {
+        currentFocus: "JESUS",
+        focusType: "Character",
+        sourceCaptureId: capture.id || "",
+        sourceContext: {
+          sourceTitle: "Matthew 5",
+          sourceUrl: capture.url || "https://www.churchofjesuschrist.org/study/scriptures/nt/matt/5",
+          book: "Matthew",
+          chapter: "5",
+          sourceCaptureId: capture.id || ""
+        }
+      };
+      const gmailFocus = {
+        currentFocus: "Inbox - dwpaulsen.jr@gmail.com - Gmail",
+        label: "Inbox - dwpaulsen.jr@gmail.com - Gmail",
+        title: "Inbox - dwpaulsen.jr@gmail.com - Gmail",
+        url: "https://mail.google.com/mail/u/0/#inbox",
+        sourceContext: {
+          sourceTitle: "Inbox - dwpaulsen.jr@gmail.com - Gmail",
+          sourceUrl: "https://mail.google.com/mail/u/0/#inbox"
+        }
+      };
+      const history = (data.ICE_CANONICAL_ANALYZED_PAGES || []).map((item) => ({
+        sourceCaptureId: item.captureId || "",
+        sourceTitle: item.sourceTitle || "",
+        sourceCaptureBook: item.sourceCaptureBook || "",
+        sourceCaptureChapter: item.sourceCaptureChapter || "",
+        activeUrl: item.url || "",
+        activeAdapterName: item.adapter || "",
+        analyzedAt: item.analysisTimestamp || "",
+        pageKey: item.pageKey || "",
+        buildMarker: item.buildMarker || ""
+      }));
+      const records = createScopeLens([capture], [validFocus, gmailFocus], [], [], history);
+      return {
+        records,
+        rejected: records.rejectedScopeLensCandidates || []
+      };
+    });
+    if (scopeLensContainsBrowserSource(contaminationProbe.records)) failures.push("Scope Lens contamination probe produced Gmail/Inbox record.");
+    if (!hasScopeLensRejection(contaminationProbe.rejected, /gmail|\binbox\b/i, /invalid non-source focus candidate/i)) failures.push("Expected Scope Lens contamination probe to reject Gmail/Inbox focus candidate.");
     const pageTitle = await page.title();
     const pageHtmlSample = await page.evaluate(() => document.documentElement.outerHTML.slice(0, 5000));
     const mainContentHtmlSample = await page.evaluate(() => {

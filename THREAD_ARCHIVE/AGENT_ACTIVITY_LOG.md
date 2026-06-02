@@ -3787,3 +3787,35 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Freeze analysis target during panel render`
+## 2026-06-01 - pcdx - Guard Scope Lens Source Candidates
+
+Task:
+- Patch Scope Lens builder so Gmail/Inbox/browser-page focus candidates cannot generate `ICE_SCOPE_LENS` records.
+
+Files changed:
+- `background.js`
+- `qa/matthew5-extension-qa.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added `isValidSourceFocus()` guard and invalid focus diagnostics for Scope Lens candidates.
+- Rejected candidate labels, titles, URLs, pageKeys, and source contexts containing Gmail, Inbox, ChatGPT, chrome-extension, mail.google.com, accounts.google.com, or extension panel titles.
+- Required accepted Scope Lens candidates to match confirmed analyzed scripture pages by captureId or pageKey/session context.
+- Ensured invalid candidates produce no Scope Lens records; if every candidate is invalid, the builder returns no records.
+- Added analysis status diagnostics for rejected Scope Lens candidates.
+- Added Matthew 5 QA contamination probe injecting `Inbox - dwpaulsen.jr@gmail.com - Gmail` and asserting zero Gmail/Inbox Scope Lens records.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run review:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit: `pcdx: Guard scope lens source candidates`

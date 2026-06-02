@@ -37,6 +37,12 @@ Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
 Latest pcdx update:
+- Scope Lens source-candidate guard implemented for the persistent Gmail/Inbox contamination case.
+- `createScopeLens()` now accepts focus inputs only when `isValidSourceFocus()` confirms the candidate belongs to the confirmed analyzed scripture page/session by captureId or pageKey.
+- Scope Lens rejects focus candidate labels, titles, URLs, pageKeys, and source contexts containing Gmail, Inbox, ChatGPT, chrome-extension, mail.google.com, accounts.google.com, or extension panel titles before any record can be generated.
+- Scope Lens no longer uses browser title, latest capture title, document title, or active tab title as fallback focus; if all focus candidates are invalid, no Scope Lens records are generated.
+- Analysis status now preserves `rejectedScopeLensCandidates`, `rejectedScopeLensCandidate`, and `scopeLensRejectionReason` diagnostics for rejected non-source candidates.
+- Matthew 5 QA now injects `Inbox - dwpaulsen.jr@gmail.com - Gmail` as a fake focus candidate and verifies `ICE_SCOPE_LENS` contains zero Gmail/Inbox records while recording the rejection reason.Latest pcdx update:
 - Frozen analysis target / render snapshot isolation implemented.
 - Background analysis now stores `ICE_CANONICAL_ANALYSIS_TARGET` with pageKey, title, book, chapter, URL, adapter, captureId, analysisTimestamp, and buildMarker when analysis completes.
 - Study Panel render and GPT review exports now prefer the frozen canonical target over active tab, latest capture, current tab title, browser app pages, and extension UI pages.

@@ -1,3 +1,40 @@
+## 2026-06-01 - Guard Scope Lens Source Candidates
+
+Instruction summary:
+- Fix persistent Scope Lens contamination where a Gmail focus candidate could generate an `ICE_SCOPE_LENS` record with Gmail as the active focus/scope.
+- Require Scope Lens to build only from validated Focus Lens/source candidates that belong to confirmed analyzed scripture pages.
+- Add QA coverage that injects a Gmail latest title/focus candidate and proves Scope Lens does not emit Gmail/Inbox records.
+
+Codex action summary:
+- Added `isValidSourceFocus()` and rejection diagnostics in `background.js` for Scope Lens focus candidates.
+- Hardened `createScopeLens()` so candidate labels, titles, URLs, pageKeys, and source contexts containing Gmail, Inbox, ChatGPT, extension UI, or Google account/mail URLs are rejected before records are created.
+- Removed any practical path for browser title/latest capture/document title/active tab title fallback to become Scope Lens active focus.
+- Preserved rejected candidate diagnostics on analysis status with `rejectedScopeLensCandidates`, `rejectedScopeLensCandidate`, and `scopeLensRejectionReason`.
+- Added a Matthew 5 QA contamination probe that calls `createScopeLens()` with a valid Matthew focus and injected Gmail focus, then asserts no Gmail/Inbox Scope Lens records are produced and the Gmail candidate is rejected.
+- Regenerated the Matthew 5 GPT review report after the guard change.
+
+Files changed:
+- `background.js`
+- `qa/matthew5-extension-qa.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/matthew5-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed, including the injected Gmail/Inbox contamination assertion.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- `npm.cmd run qa:matthew-pages` passed.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Freeze Analysis Target During Panel Render
 
 Instruction summary:
