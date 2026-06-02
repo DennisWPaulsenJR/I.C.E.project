@@ -275,9 +275,10 @@ function reportFromBundle(bundle) {
   const trustVerification = asArray(samples.trustVerification);
   const answeredSemanticQuestions = semanticQuestions.filter((item) => item.questionKind !== "suggested");
   const suggestedSemanticQuestions = semanticQuestions.filter((item) => item.questionKind === "suggested");
+  const frozenTarget = samples.canonicalAnalysisTarget || {};
   const source = teaching[0]?.sourceContext || {};
-  const activeTitle = source.sourceTitle || bundle.pageTitle || "Matthew 5";
-  const activeUrl = source.sourceUrl || bundle.url || "Not recorded";
+  const activeTitle = frozenTarget.sourceTitle || source.sourceTitle || bundle.pageTitle || "Matthew 5";
+  const activeUrl = frozenTarget.url || frozenTarget.activeUrl || source.sourceUrl || bundle.url || "Not recorded";
   const evidence = [
     ...teaching.slice(0, 4).map((item) => `${item.sourcePhrase || item.teachingTopic || "Teaching"} | ${item.derivedMeaning || "derived meaning not recorded"}`),
     ...relationships.slice(0, 3).map((item) => `${item.principle || "Principle"} ${item.relationshipType || "related"} ${asArray(item.relatedPrinciples).join(", ")} | ${item.sourcePhrase || "source phrase not recorded"}`),
@@ -305,7 +306,8 @@ function reportFromBundle(bundle) {
     `Active source page: ${clean(activeTitle)}`,
     `URL: ${clean(activeUrl)}`,
     `Adapter: ${adapterName}`,
-    `Analysis timestamp: ${clean(bundle.testedAt || "Not recorded")}`,
+    `Analysis timestamp: ${clean(frozenTarget.analysisTimestamp || bundle.testedAt || "Not recorded")}`,
+    `Frozen source target: ${clean(activeTitle)}`,
     "Current page/chapter type: Teaching / discourse heavy",
     "",
     "## Study Scope",

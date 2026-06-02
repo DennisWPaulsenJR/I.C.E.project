@@ -28,6 +28,7 @@ const STORAGE_KEYS = [
   "ICE_SEMANTIC_EVENTS",
   "ICE_SEMANTIC_FLOW_CHAINS",
   "ICE_ANALYSIS_STATUS",
+  "ICE_CANONICAL_ANALYSIS_TARGET",
   "ICE_SCOPE_INTEGRITY",
   "ICE_SOURCE_DISCOVERY_INDEX",
   "ICE_REFERENCE_GRAPH",
@@ -199,7 +200,8 @@ function buildSamples(storageData) {
     depthLens: sample(storageData.ICE_DEPTH_LENS, 20),
     semanticQuestions: sample(storageData.ICE_SEMANTIC_QUESTIONS, 20),
     trustVerification: sample(storageData.ICE_TRUST_VERIFICATION, 20),
-    analysisStatus: storageData.ICE_ANALYSIS_STATUS || null
+    analysisStatus: storageData.ICE_ANALYSIS_STATUS || null,
+    canonicalAnalysisTarget: storageData.ICE_CANONICAL_ANALYSIS_TARGET || null
   };
 }
 

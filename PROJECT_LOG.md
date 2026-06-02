@@ -1,3 +1,43 @@
+## 2026-06-01 - Freeze Analysis Target During Panel Render
+
+Instruction summary:
+- Fix remaining race where the user could analyze Matthew 5, switch/open Gmail while Study Panel was loading, and panel/report logic could still pick up Gmail.
+- Once analysis begins/completes, source context must be frozen and used for Study Panel render and GPT Review Snapshot/report output.
+- Add diagnostics for frozen source target and ignored current browser tab.
+
+Codex action summary:
+- Added `ICE_CANONICAL_ANALYSIS_TARGET` in `background.js` and store the canonical analyzed marker as the frozen render target.
+- Updated `study.js` to load `ICE_CANONICAL_ANALYSIS_TARGET` and resolve source context from the frozen target before active source page, analysis status, analyzed history, or latest capture.
+- Added Study Scope/export diagnostics for Frozen source target, Current browser tab ignored, and active-tab-changed-after-freeze reason.
+- Updated GPT review export path in the Study Panel and `qa/generate-study-panel-report.js` to use the frozen target.
+- Added `ICE_CANONICAL_ANALYSIS_TARGET` to the Matthew 5 QA bundle samples.
+- Regenerated the Matthew 5 GPT review report after the frozen-target change.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+- Storage-seeded Playwright render smoke passed: frozen target showed Matthew 5, latest capture was Gmail, panel showed current browser tab ignored with reason, and Focus/Scope lenses contained no Gmail.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Isolate Source Pages for Lenses
 
 Instruction summary:

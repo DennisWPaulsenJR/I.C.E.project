@@ -3752,3 +3752,38 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Isolate source pages for lenses`
+
+## 2026-06-01 - pcdx - Freeze Analysis Target During Panel Render
+
+Task:
+- Add frozen analysis target / render snapshot isolation so Study Panel and GPT reports cannot switch source context when the browser active tab changes during panel loading.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `qa/matthew5-extension-qa.js`
+- `qa/generate-study-panel-report.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Stored `ICE_CANONICAL_ANALYSIS_TARGET` from the canonical analyzed marker after analysis.
+- Made Study Panel source resolution prefer the frozen target before active source page, status, history, or latest capture.
+- Added diagnostics for Frozen source target, Current browser tab ignored, and active-tab-changed-after-freeze reason.
+- Updated GPT review report generation to use frozen target data.
+- Added frozen target to Matthew 5 QA bundle samples.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/generate-study-panel-report.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew5` passed.
+- Storage-seeded Playwright render smoke passed with Matthew 5 frozen and Gmail ignored.
+
+Commit:
+- This commit: `pcdx: Freeze analysis target during panel render`

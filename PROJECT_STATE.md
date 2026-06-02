@@ -37,12 +37,19 @@ Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
 Latest pcdx update:
+- Frozen analysis target / render snapshot isolation implemented.
+- Background analysis now stores `ICE_CANONICAL_ANALYSIS_TARGET` with pageKey, title, book, chapter, URL, adapter, captureId, analysisTimestamp, and buildMarker when analysis completes.
+- Study Panel render and GPT review exports now prefer the frozen canonical target over active tab, latest capture, current tab title, browser app pages, and extension UI pages.
+- Study Panel diagnostics now show Frozen source target and Current browser tab ignored with reason when latest/current browser capture changes after the analysis target was frozen.
+- Matthew 5 QA bundles and generated GPT review reports now include/use the frozen canonical analysis target.
+- Storage-seeded render smoke confirmed Matthew 5 remained the frozen target while Gmail was latest capture; Focus Lens and Scope Lens did not mention Gmail and the ignored-tab diagnostic appeared.Latest pcdx update:
 - Critical source isolation hardening implemented for derived study lenses.
 - Background capture selection now rejects Gmail, ChatGPT, extension UI pages, and non-scripture URLs before derived lens builders run.
 - Focus Lens, Scope Lens, and Depth Lens now require an approved scripture/source capture and Scope Lens no longer falls back to browser titles such as Gmail when confirmed analyzed scope is absent.
 - Source isolation diagnostics record rejectedSource and reason, including non-scripture/browser page not in confirmed analyzed scope.
 - Study Panel now prefers confirmed active/canonical analyzed source pages over latest browser capture and shows warnings such as Ignored non-source browser page: Gmail.
-- Targeted Playwright smoke confirmed Gmail was rejected, Matthew 5 remained active, Scope Lens included pages were only Matthew 5, and Gmail did not appear in Focus Lens or Scope Lens.Latest pcdx update:
+- Targeted Playwright smoke confirmed Gmail was rejected, Matthew 5 remained active, Scope Lens included pages were only Matthew 5, and Gmail did not appear in Focus Lens or Scope Lens.
+Latest pcdx update:
 - Phase 9.1f Progressive Disclosure UI implemented.
 - Study Panel cards now prioritize study-first reading: Main Conclusion, Why, and Related Study Paths appear before technical grounding details.
 - Source Phrase, Derived Meaning, Provenance, Evidence Weight, Supporting Layers, Reasoning Path, grounding, and related semantic layer details now collapse behind Show Evidence, Show Reasoning, or Show Provenance controls by default.

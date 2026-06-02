@@ -53,6 +53,7 @@ const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
 const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
 const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
+const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
 const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
 const PIPELINE_THROTTLE_MS = 3500;
 
@@ -8430,7 +8431,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       derivedBuildersScope: latestCaptureContext.book && latestCaptureContext.chapter ? `${latestCaptureContext.book} ${latestCaptureContext.chapter}` : latestCaptureContext.sourceTitle || "unknown",
       matthew2DerivedBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "2",
       matthew5TeachingBuildersRan: latestCaptureContext.book === "Matthew" && String(latestCaptureContext.chapter || "") === "5",
-      analysisBuildMarker: "phase-9.1-source-isolation-lenses",
+      analysisBuildMarker: "phase-9.1-freeze-analysis-target",
       derivedLayerCounts,
       sourceDiscoveryCount: sourceDiscoveryIndex.length,
       referenceGraphCount: referenceGraph.length,
@@ -8547,6 +8548,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ANALYSIS_STATUS_KEY]: status,
       [ANALYSIS_HISTORY_KEY]: analysisHistory,
       [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
+      [CANONICAL_ANALYSIS_TARGET_KEY]: currentCanonicalMarker,
       [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null
     });
 
