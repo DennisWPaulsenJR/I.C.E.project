@@ -175,7 +175,19 @@ function reportFromBundles(bundles) {
   const labels = unique(sorted.map((entry) => entry.label));
   const chapters = new Set(sorted.map((entry) => entry.chapter).filter(Boolean));
   const has = (chapter) => chapters.has(chapter);
-  const range = labels.length ? `${labels[0]} -> ${labels[labels.length - 1]}` : "No session range";
+  const chapterNumbers = sorted.map((entry) => entry.chapter).filter(Boolean);
+  const missingLabels = [];
+  if (chapterNumbers.length >= 2) {
+    const minChapter = Math.min(...chapterNumbers);
+    const maxChapter = Math.max(...chapterNumbers);
+    for (let chapter = minChapter; chapter <= maxChapter; chapter += 1) {
+      if (!chapters.has(chapter)) missingLabels.push("Matthew " + chapter);
+    }
+  }
+  const isContiguous = missingLabels.length === 0;
+  const range = labels.length ? (isContiguous ? labels[0] + " -> " + labels[labels.length - 1] : labels.join(" + ")) : "No session range";
+  const sessionType = isContiguous ? "contiguous analyzed range" : "non-contiguous selected pages";
+  const missingText = missingLabels.length ? missingLabels.join(", ") : "none";
   const counts = sorted.reduce((acc, entry) => {
     for (const [key, value] of Object.entries(entry.bundle.counts || {})) acc[key] = (acc[key] || 0) + Number(value || 0);
     return acc;
@@ -232,7 +244,9 @@ function reportFromBundles(bundles) {
     "QA command: npm.cmd run review:matthew-session",
     "",
     "## Review Prompt",
-    "Current Review Question: Does Matthew 1 -> Matthew 5 preserve grounded session continuity across narrative, protection, baptism/preaching, preparation, and teaching layers?",
+    isContiguous
+      ? "Current Review Question: Does " + range + " preserve grounded session continuity across analyzed narrative, protection, baptism/preaching, preparation, and teaching layers?"
+      : "Current Review Question: Do selected analyzed pages " + range + " preserve grounded continuity without including missing pages " + missingText + "?",
     "User Observed Issue: Not provided in QA bundle. Add the user's observed issue before requesting architectural review.",
     "",
     "## Source",
@@ -242,8 +256,10 @@ function reportFromBundles(bundles) {
     "Current page/chapter type: Session / range review",
     "",
     "## Study Scope",
-    `Range: ${range}`,
-    `Analyzed pages: ${labels.join(", ") || "none recorded"}`,
+    (isContiguous ? "Range: " : "Selected pages: ") + range,
+    "Session type: " + sessionType,
+    "Analyzed pages: " + (labels.join(", ") || "none recorded"),
+    "Missing pages: " + missingText,
     "Continuity: session continuity review generated from separate local QA bundles; no auto-crawling performed",
     "",
     "## Scripture Knowledge Graph",
@@ -253,7 +269,7 @@ function reportFromBundles(bundles) {
     "Purpose: connect existing semantic layers into reviewable graph node summaries; no visual graph rendering yet.",
     "",
     "## Session Continuity Review",
-    `Session Range: ${range}`,
+    `Session Scope: ${range}`,
     ...list(continuingCharacters.map((item) => `Continuing Character: ${item}`)),
     ...list(continuingThemes.map((item) => `Continuing Theme: ${item}`)),
     ...list(authorityPaths.map((item) => `Continuing Authority Path: ${item}`)),

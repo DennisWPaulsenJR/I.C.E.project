@@ -2367,6 +2367,8 @@ function sessionContinuityReviewRecord(record = {}) {
     scopePath: record.scopePath || "session.scope.current_range",
     reviewType: record.reviewType || "session_continuity_review",
     sessionRange: record.sessionRange || "Current session",
+    sessionType: record.sessionType || "Contiguous analyzed range",
+    missingPages: record.missingPages || [],
     analyzedPages: record.analyzedPages || [],
     continuingCharacters: record.continuingCharacters || [],
     continuingThemes: record.continuingThemes || [],
@@ -2417,7 +2419,18 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
   const chapters = new Set(matthewPages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean));
   const hasChapter = (chapter) => chapters.has(chapter);
   const analyzedPages = matthewPages.map(pageLabel);
-  const sessionRange = analyzedPages.length ? `${analyzedPages[0]} -> ${analyzedPages[analyzedPages.length - 1]}` : "Current session";
+  const chapterNumbers = matthewPages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean);
+  const minChapter = Math.min(...chapterNumbers);
+  const maxChapter = Math.max(...chapterNumbers);
+  const missingPages = [];
+  for (let chapter = minChapter; chapter <= maxChapter; chapter += 1) {
+    if (!chapters.has(chapter)) missingPages.push("Matthew " + chapter);
+  }
+  const isContiguous = missingPages.length === 0;
+  const sessionRange = isContiguous ? (analyzedPages.length ? analyzedPages[0] + " -> " + analyzedPages[analyzedPages.length - 1] : "Current session") : analyzedPages.join(" + ");
+  const sessionType = isContiguous ? "Contiguous analyzed range" : "Non-contiguous selected pages";
+  const selectedPagesText = analyzedPages.join(", ");
+  const missingPagesText = missingPages.length ? missingPages.join(", ") : "none";
   const ids = (items = [], fallback) => (items || []).map((item) => item.id || item[fallback] || "").filter(Boolean);
   const ontologyIds = ids(ontologyRoles, "semanticItem");
   const principleIds = ids(principleRelationships, "principle");
@@ -2490,6 +2503,8 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     sourceContext: context,
     scopePath: "session.scope.matthew.current_range",
     sessionRange,
+    sessionType,
+    missingPages,
     analyzedPages,
     continuingCharacters,
     continuingThemes,
@@ -2498,7 +2513,9 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     continuingPrincipleFamilies,
     continuingCharacterInteractions,
     sourcePhrase: sourceText ? "Current source text plus analyzed session metadata" : "Analyzed session metadata",
-    derivedMeaning: `The current study session can be reviewed as ${sessionRange}; continuity is summarized from analyzed page history and current source-grounded semantic layers without crawling or whole-book indexing.`,
+    derivedMeaning: isContiguous
+      ? "The current study session can be reviewed as " + sessionRange + "; continuity is summarized from analyzed page history and current source-grounded semantic layers without crawling or whole-book indexing."
+      : "The current study session can be reviewed across selected analyzed pages only: " + selectedPagesText + ". " + missingPagesText + " are not analyzed and are not included in the continuity review.",
     evidence,
     relatedSemanticContinuity: ids(semanticContinuity, "continuityType"),
     relatedOntologyRoles: ontologyIds,
@@ -2508,7 +2525,9 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     relatedTeachingSemantics: teachingIds,
     relatedEntityRelationRoles: relationIds,
     confidence: hasChapter(5) && teachingSemantics.length ? "probable" : "possible",
-    sourceGrounding: "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages."
+    sourceGrounding: isContiguous
+      ? "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages."
+      : "Review layer uses selected analyzed pages only. Missing intermediate pages are not analyzed and are not included in the continuity review."
   })];
 
   return records;
