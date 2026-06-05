@@ -8,6 +8,32 @@ Active source of truth:
 
 Do not assume the old C: project path is current.
 
+## I.C.E. Session Starting Protocol
+
+Every `gpt`, `mgpt`, `pcdx`, and `mcdx` session must begin by reading, in order:
+
+1. `PROJECT_STATE.md`
+2. `PROJECT_LOG.md`
+3. `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+4. `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Then verify:
+
+```powershell
+git status --short --untracked-files=no
+git branch -vv
+git diff --check
+```
+
+Rules:
+- Treat `PROJECT_STATE.md` as current operational truth.
+- Treat `THREAD_ARCHIVE/AGENT_OUTBOX.md` as the active actor-to-actor handoff lane.
+- Resume only from the recorded next task unless the user overrides it.
+- Do not infer current tasks from stale ChatGPT/CDX/MGPT/MCDX thread context if repo memory disagrees.
+- Ignore known user-owned untracked local files unless explicitly instructed otherwise.
+- At session end, update `PROJECT_STATE.md` with current state, latest commit, validation, and next task.
+- Update `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable completed-task summaries.
+- Update `THREAD_ARCHIVE/AGENT_OUTBOX.md` only when a short handoff to another actor is needed.
 ## Project Identity
 
 I.C.E. is a Manifest V3 browser extension and semantic religious intelligence / comprehension framework.

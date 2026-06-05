@@ -1,3 +1,22 @@
+## 2026-06-04 - Document Multi-Agent Session Starting Protocol
+
+Instruction summary:
+- Document the required starting protocol for every `gpt`, `mgpt`, `pcdx`, and `mcdx` session so work starts from repo memory instead of stale thread context.
+
+Codex action summary:
+- Added an `I.C.E. Session Starting Protocol` section near the top of `PROJECT_STATE.md`.
+- Clarified that `THREAD_ARCHIVE/AGENT_OUTBOX.md` is the concise current direct-message handoff lane, not full project history.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `PROJECT_LOG.md`
+
+Validation run:
+- Pending in this entry.
+
+Status:
+- Documentation-only protocol update.
 ## 2026-06-01 - Guard Scope Lens Source Candidates
 
 Instruction summary:

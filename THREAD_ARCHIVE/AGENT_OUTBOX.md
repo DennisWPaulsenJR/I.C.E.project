@@ -1,5 +1,8 @@
 # Agent Outbox
 
+This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
+It should stay concise and current.
+It is not the full project history.
 ## 2026-05-16 - pcdx -> gpt/mgpt/mcdx - Revelation pattern layer ready
 Status: ready for review
 Task:
