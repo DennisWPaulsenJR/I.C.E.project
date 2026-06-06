@@ -21,6 +21,30 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Record Study Panel smoke and logging rule
+Summary:
+- Recorded Dennis confirmation that the Study Panel loads faster and the collapsible summary/dropdown deferred-section UX works well enough to proceed.
+- Manual two-page workflow smoke covered Matthew 1 and Matthew 5; data looked okay for current review purposes.
+- Confirmed GPT buttons remain removed and Dennis is continuing the manual GPT posting workflow.
+- Added coordination rule that meaningful `cdx` task results should log QA results, entity/page findings, manual smoke results, handoff notes, commit hashes, tested entities/pages, next task, and blockers into repo memory.
+- Important tested pages/entities from current smoke context: Matthew 1, Matthew 5, JESUS, Joseph, Herod, and Egypt remain examples of page/entity result summaries to preserve in future coordination notes when relevant.
+
+Files touched:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- Documentation-only task; QA was intentionally not run.
+- `git diff --check` passed.
+- `git status --short --untracked-files=no` showed only intended coordination docs before commit.
+
+Commit:
+- This commit: `pcdx: Record Study Panel smoke and logging rule`
+
+Status:
+- Coordination-memory rule recorded.
+- Next QA step remains broader Matthew page QA unless Dennis redirects.
 ## 2026-06-06 - pcdx - Use collapsible Study Panel summaries
 Summary:
 - Replaced visible deferred-section Load button cards with compact native details/summary cards.

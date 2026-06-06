@@ -3,6 +3,17 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Study Panel smoke good; run broader Matthew QA next
+Status: ready for next QA
+Task:
+- Continue from fast-load and collapsible-summary Study Panel work.
+Message:
+- Dennis confirmed extension load speed is nice, Matthew 1 and Matthew 5 two-page manual smoke looked okay, and presentation polish can continue iteratively.
+- GPT buttons remain removed; manual GPT posting workflow remains active.
+- Future `cdx` completions should log meaningful QA/entity/page results into repo coordination files so GPT/mgpt/mcdx can review current state from repo memory.
+Needed action:
+- Next task: run broader Matthew page QA unless Dennis redirects.
+- Continue logging tested pages/entities, validation results, manual smoke results, commit hashes, next task, and blockers into coordination files.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Collapsible Study Panel summaries
 Status: done locally and validated
 Task:

@@ -82,6 +82,12 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- User manual smoke confirmed the Study Panel fast-load patch feels faster and the collapsible summary/dropdown UX works well enough to proceed.
+- Matthew 1 and Matthew 5 two-page workflow was manually tested; data looked okay for current review purposes.
+- Presentation/display polish remains iterative as the app progresses.
+- GPT action buttons remain removed; Dennis continues using the manual GPT posting workflow.
+- Coordination logging rule: when `cdx` completes meaningful tasks, log important QA results, entity findings, manual smoke results, handoff notes, commit hashes, tested pages/entities, next task, and known blocked items into repo coordination files so `gpt`, `mgpt`, and `mcdx` can review repo memory without relying on transient chat context.
+Latest pcdx update:
 - Study Panel deferred-section UX refined from visible Load buttons to compact collapsible summaries.
 - Deferred sections now show a section title, status line, and purpose text immediately, then load full records when expanded.
 - Expanded sections remain in open dropdown details with full rendered cards inside, preserving fast Study Scope-first startup without a wall of buttons.
