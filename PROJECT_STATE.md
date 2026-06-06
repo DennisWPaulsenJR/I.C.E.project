@@ -62,6 +62,11 @@ Recently completed foundations:
 Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
+Current bridge note:
+- MCDX accounting/environment bridge is blocked in this checkout.
+- Missing MCDX commits `2645f34 mcdx: Add thread accounting report` and `aa788bc mcdx: Add environment enablement QA note` were searched for and not found in local commits, all visible refs, stash metadata, or recent reflog.
+- Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
+
 Latest pcdx update:
 - Scope Lens source-candidate guard implemented for the persistent Gmail/Inbox contamination case.
 - `createScopeLens()` now accepts focus inputs only when `isValidSourceFocus()` confirms the candidate belongs to the confirmed analyzed scripture page/session by captureId or pageKey.

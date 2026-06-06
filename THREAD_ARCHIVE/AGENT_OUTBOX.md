@@ -3,6 +3,15 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - MCDX bridge blocked
+Status: blocked pending external patch / checkout
+Task:
+- Resolve missing MCDX accounting/environment bridge before feature work.
+Message:
+- Reported MCDX commits `2645f34 mcdx: Add thread accounting report` and `aa788bc mcdx: Add environment enablement QA note` are not present in this desktop checkout, visible refs, stash metadata, recent reflog, or repo Markdown memory.
+- This checkout cannot bridge those commits without the external MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
+Needed action:
+- Resume repo-recorded QA stabilization: install/run Playwright QA and run Matthew QA unless the user provides the missing MCDX patch/checkout first.
 ## 2026-05-16 - pcdx -> gpt/mgpt/mcdx - Revelation pattern layer ready
 Status: ready for review
 Task:

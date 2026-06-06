@@ -21,6 +21,27 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Record blocked MCDX bridge
+Summary:
+- Resolved the repo-memory conflict before feature work by checking whether reported MCDX local-only commits were present in this desktop checkout.
+- Searched commit history, visible refs, stash metadata, recent reflog, and Markdown repo memory for `2645f34`, `aa788bc`, thread accounting, and environment enablement bridge references.
+- Confirmed missing MCDX commits are not available from this checkout, so the bridge requires an external MCDX checkout, exported patch/diff, or a later recreate/dismiss decision.
+- Restored the next actionable repo task to QA stabilization: install/run Playwright QA and run Matthew QA when ready.
+
+Files touched:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- `git diff --check` passed
+- `git status --short --untracked-files=no` showed only these documentation files modified before commit
+
+Commit:
+- This commit: `pcdx: Record blocked MCDX bridge`
+
+Status:
+- Documentation-only memory update completed.
 ## 2026-05-31 00:00 - pcdx - Refine principle hierarchy
 Summary:
 - Added grouped Principle Hierarchy display inside Principles / Teachings.
