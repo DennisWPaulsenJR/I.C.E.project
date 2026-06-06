@@ -68,6 +68,12 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- First-phase Study Panel performance patch implemented for fast startup.
+- Initial panel open now loads a lightweight startup storage set and renders Study Scope first.
+- Heavy semantic/debug sections are deferred behind Load buttons and fetch full storage only when requested or when manual export tools are clicked.
+- Search, focus, pageshow, and storage-change refresh paths now use lightweight debounce/guard behavior to avoid duplicate full rerenders.
+
+Latest pcdx update:
 - Study Panel GPT action buttons were removed because Dennis manually posts material to GPT.
 - Visible panel actions now keep Refresh Study Data plus plain manual exports: Compact Panel Summary, Current Section Only, and Diagnostic Snapshot.
 - No automatic GPT integration, external GPT call, or background GPT workflow is exposed from the Study Panel.

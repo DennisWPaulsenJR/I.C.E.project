@@ -21,6 +21,32 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Defer heavy Study Panel sections
+Summary:
+- Implemented first-phase Study Panel startup performance patch.
+- Startup now loads only lightweight status/source/session storage keys and renders Study Scope first.
+- Heavy semantic/debug renderers now show lightweight Load buttons and load full storage/render on demand.
+- Study Scope source diagnostics are deferred until requested.
+- Manual export tools remain available and load full storage only when clicked.
+- Search and focus/pageshow/storage refresh paths now use simple debounce/guard behavior.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Focused Playwright Study Panel smoke passed: Study Scope rendered first, Guided Study and Study Progression deferred then loaded on click, manual copy buttons remained, and GPT buttons were absent.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit: `pcdx: Defer heavy Study Panel sections`
+
+Status:
+- Performance patch completed.
 ## 2026-06-06 - pcdx - Remove GPT study panel actions
 Summary:
 - Removed visible GPT action buttons from the Study Panel because Dennis manually posts material to GPT.

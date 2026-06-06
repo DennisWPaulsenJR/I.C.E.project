@@ -3,6 +3,16 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Study Panel fast startup patch
+Status: done locally and validated
+Task:
+- Improve Study Panel startup speed without removing features.
+Message:
+- Study Scope renders first from lightweight storage keys.
+- Heavy sections load on demand through Load buttons; manual copy/export tools remain available.
+- GPT buttons remain removed.
+Needed action:
+- Validate startup behavior in the Study Panel, then continue performance refinement if needed.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - GPT panel actions removed
 Status: done locally and validated
 Task:
