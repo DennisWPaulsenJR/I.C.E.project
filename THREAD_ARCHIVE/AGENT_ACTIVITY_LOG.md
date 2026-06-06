@@ -21,6 +21,36 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Add manual page workflow controls
+Summary:
+- Added Page Workflow controls near Study Scope for manual page-by-page navigation and selected-page cross-reference workflow.
+- Added buttons: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
+- Previous/Next/Open suggested next navigate only; they do not analyze, crawl, or ingest missing/intermediate pages.
+- Cross-reference set currently uses the existing stored analyzed session model, not a separate storage key, so non-contiguous selected pages remain supported without being called a range.
+- Important smoke pages/entities/results: Matthew 1 -> Next page opened Matthew 2 without changing Matthew 1 analysis state; Matthew 1 + Matthew 5 displayed as non-contiguous with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed; relevant review entities remain JESUS, Joseph, Herod, and Egypt where surfaced by Matthew QA/session reports.
+- GPT buttons remain absent and collapsible Study Panel summaries remain active.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `QA_REPORTS/latest-study-panel-report.md` (carried current generated session-review anchor/timestamp from the prior approved review run)
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed: Matthew 1, Matthew 2, and Matthew 3 passed.
+- Focused Playwright smoke passed for Page Workflow buttons, no-analysis navigation, non-contiguous Matthew 1 + Matthew 5 cross-reference display, GPT button absence, and collapsible summaries.
+
+Commit:
+- This commit: `pcdx: Add manual page workflow controls`
+
+Status:
+- Manual page workflow controls completed.
+- Recommended next task: review/push commit, then continue UX polish or run targeted Matthew 5/session review if requested.
 ## 2026-06-06 - pcdx - Record Study Panel smoke and logging rule
 Summary:
 - Recorded Dennis confirmation that the Study Panel loads faster and the collapsible summary/dropdown deferred-section UX works well enough to proceed.

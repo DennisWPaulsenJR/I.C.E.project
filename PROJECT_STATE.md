@@ -82,6 +82,13 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Manual Page Workflow controls were added to the Study Panel near Study Scope.
+- Buttons added: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
+- Previous/Next/Suggested navigation updates the browser target only and does not run analysis.
+- Cross-reference set currently reuses the existing stored analyzed session model rather than adding a new storage key; this preserves non-contiguous selected pages and does not imply a complete range when missing pages are not analyzed.
+- Focused smoke confirmed Matthew 1 -> Next page opens Matthew 2 without changing Matthew 1 analysis state, and Matthew 1 + Matthew 5 displays as a non-contiguous cross-reference set with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed.
+- GPT buttons remain absent, collapsible summaries remain active, and no crawling or automatic missing-page analysis was added.
+Latest pcdx update:
 - User manual smoke confirmed the Study Panel fast-load patch feels faster and the collapsible summary/dropdown UX works well enough to proceed.
 - Matthew 1 and Matthew 5 two-page workflow was manually tested; data looked okay for current review purposes.
 - Presentation/display polish remains iterative as the app progresses.

@@ -3,6 +3,20 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Manual Page Workflow controls added
+Status: done locally and validated
+Task:
+- Add manual page-by-page navigation and selected-page cross-reference controls without crawling.
+Message:
+- Page Workflow now exposes Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
+- Navigation-only buttons do not run analysis.
+- Cross-reference set currently uses the stored analyzed session model; Matthew 1 + Matthew 5 remains non-contiguous and does not mark Matthew 2, Matthew 3, or Matthew 4 as analyzed.
+- GPT buttons remain removed; collapsible summaries remain active; no automatic crawling was added.
+Validation:
+- `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, and `npm.cmd run qa:matthew-pages` passed.
+- Focused smoke passed for Matthew 1 -> Matthew 2 navigation and Matthew 1 + Matthew 5 non-contiguous set display.
+Needed action:
+- Review/push the commit, then continue targeted UX polish or run Matthew 5/session review if requested.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Study Panel smoke good; run broader Matthew QA next
 Status: ready for next QA
 Task:
