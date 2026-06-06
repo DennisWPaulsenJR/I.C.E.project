@@ -21,6 +21,32 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Use collapsible Study Panel summaries
+Summary:
+- Replaced visible deferred-section Load button cards with compact native details/summary cards.
+- Closed deferred sections now show title, status, and purpose text without loading full heavy records on panel open.
+- Opening a section loads full Study Panel storage on demand and renders the section content inside an open dropdown wrapper.
+- Study Scope remains the startup section; Study Scope source diagnostics also use expand-to-load instead of a Load button.
+- Manual copy/export tools remain available, GPT action buttons remain absent, and no automatic crawling/report generation was added.
+
+Files touched:
+- `study.js`
+- `study.css`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- Focused Study Panel smoke passed: Study Scope rendered, no Load buttons were visible, Guided Study/Semantic Coverage/Study Progression expanded and rendered, Semantic Coverage showed 15 rows, manual copy buttons remained, and GPT buttons were absent.
+
+Commit:
+- This commit: `pcdx: Use collapsible Study Panel summaries`
+
+Status:
+- UX refinement completed.
 ## 2026-06-06 - pcdx - Defer heavy Study Panel sections
 Summary:
 - Implemented first-phase Study Panel startup performance patch.

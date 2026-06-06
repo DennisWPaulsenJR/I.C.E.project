@@ -3,6 +3,16 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Collapsible Study Panel summaries
+Status: done locally and validated
+Task:
+- Improve deferred-section readability after the fast startup patch.
+Message:
+- Study Panel no longer shows a wall of Load buttons for deferred sections.
+- Deferred sections render as compact collapsible summaries and load full records when expanded.
+- Study Scope remains visible first; manual copy tools remain; GPT buttons remain absent; no automatic crawling was added.
+Needed action:
+- Review perceived panel readability/speed in normal use, then continue targeted UX/performance refinement if needed.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Large-volume architecture requirement recorded
 Status: future architecture requirement
 Task:

@@ -82,6 +82,12 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Study Panel deferred-section UX refined from visible Load buttons to compact collapsible summaries.
+- Deferred sections now show a section title, status line, and purpose text immediately, then load full records when expanded.
+- Expanded sections remain in open dropdown details with full rendered cards inside, preserving fast Study Scope-first startup without a wall of buttons.
+- Guided Study, Semantic Coverage, Study Progression, semantic/debug layers, and lower diagnostic sections all keep lazy full rendering.
+- GPT buttons remain absent, manual copy/export tools remain available, and no automatic crawling or background report generation was added.
+Latest pcdx update:
 - First-phase Study Panel performance patch implemented for fast startup.
 - Initial panel open now loads a lightweight startup storage set and renders Study Scope first.
 - Heavy semantic/debug sections are deferred behind Load buttons and fetch full storage only when requested or when manual export tools are clicked.
