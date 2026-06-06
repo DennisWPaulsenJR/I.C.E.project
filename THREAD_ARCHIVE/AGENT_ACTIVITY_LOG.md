@@ -21,6 +21,32 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-06 - pcdx - Remove GPT study panel actions
+Summary:
+- Removed visible GPT action buttons from the Study Panel because Dennis manually posts material to GPT.
+- Preserved Refresh Study Data and plain manual export controls: Compact Panel Summary, Current Section Only, and Diagnostic Snapshot.
+- Removed Study Panel click bindings for GPT snapshot/copy/save/open and legacy GPT handoff actions.
+- Preserved semantic records, QA scripts, generated repo report scripts, and normal Study Panel content.
+- Recorded manual actor-label convention: `gpt:` for GPT-originated prompts and `cdx:` for Codex/CDX responses.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- `git status --short --untracked-files=no` showed only the intended documentation/UI files modified before commit.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+
+Commit:
+- This commit: `pcdx: Remove GPT study panel actions`
+
+Status:
+- Documentation and Study Panel UI update completed.
 ## 2026-06-06 - pcdx - Record blocked MCDX bridge
 Summary:
 - Resolved the repo-memory conflict before feature work by checking whether reported MCDX local-only commits were present in this desktop checkout.
@@ -702,7 +728,10 @@ Files touched:
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 
 Checks:
-- Pending `git diff --check`
+- `git status --short --untracked-files=no` showed only the intended documentation/UI files modified before commit.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed. `git diff --check`
 
 Commit:
 - Not committed yet

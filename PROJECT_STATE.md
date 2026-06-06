@@ -68,6 +68,11 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Study Panel GPT action buttons were removed because Dennis manually posts material to GPT.
+- Visible panel actions now keep Refresh Study Data plus plain manual exports: Compact Panel Summary, Current Section Only, and Diagnostic Snapshot.
+- No automatic GPT integration, external GPT call, or background GPT workflow is exposed from the Study Panel.
+- Actor-label convention for manual handoff: GPT-originated prompts should start with `gpt:`, Codex/CDX responses should start with `cdx:`, and GPT-originated text should not be labeled as `cdx:`.
+Latest pcdx update:
 - Scope Lens source-candidate guard implemented for the persistent Gmail/Inbox contamination case.
 - `createScopeLens()` now accepts focus inputs only when `isValidSourceFocus()` confirms the candidate belongs to the confirmed analyzed scripture page/session by captureId or pageKey.
 - Scope Lens rejects focus candidate labels, titles, URLs, pageKeys, and source contexts containing Gmail, Inbox, ChatGPT, chrome-extension, mail.google.com, accounts.google.com, or extension panel titles before any record can be generated.

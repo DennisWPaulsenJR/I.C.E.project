@@ -3,6 +3,16 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - GPT panel actions removed
+Status: done locally and validated
+Task:
+- Remove GPT action buttons from the Study Panel and preserve manual posting workflow.
+Message:
+- Study Panel no longer exposes GPT snapshot/copy/save/open or legacy GPT handoff buttons.
+- Manual workflow remains through normal reading/selection plus plain exports: Compact Panel Summary, Current Section Only, and Diagnostic Snapshot.
+- Manual actor labels: GPT-originated prompts should start with `gpt:`, and Codex/CDX responses should start with `cdx:`.
+Needed action:
+- Use manual copy/post workflow; do not rely on extension-side GPT actions.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - MCDX bridge blocked
 Status: blocked pending external patch / checkout
 Task:
