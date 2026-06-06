@@ -1032,3 +1032,12 @@ Preserved:
 - Class I / Class i distinction
 - ontology hierarchy
 - conservative, source-grounded causality only
+
+Latest pcdx update:
+- Popup/dropdown Page Workflow controls were added to the extension popup so manual page-by-page work is available outside the Study Panel.
+- Popup buttons added: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
+- Popup navigation is LDS scripture-site aligned (`churchofjesuschrist.org/study/scriptures/...`) and does not run analysis automatically.
+- Cross-reference selection continues to reuse the existing stored analyzed session model; no separate cross-reference storage key was added.
+- LDS-only focused popup smoke confirmed Matthew 1 -> Next page opens Matthew 2, keeps Matthew 1 as the analyzed page, keeps analyzed page count unchanged, and reports Matthew 1 + Matthew 5 as non-contiguous with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed.
+- Validation passed: `node --check popup.js`, `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, and `npm.cmd run qa:matthew-pages`.
+- GPT buttons remain absent, Study Panel fast startup/collapsible summaries remain active, and no crawling or automatic missing-page analysis was added.

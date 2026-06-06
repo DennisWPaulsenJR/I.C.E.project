@@ -3975,3 +3975,36 @@ Validation:
 
 Commit:
 - This commit: `pcdx: Guard scope lens source candidates`
+## 2026-06-06 - pcdx - Add Popup Page Workflow Controls
+
+Task:
+- Add manual Page Workflow controls to the extension popup/dropdown interface, matching the Study Panel workflow without adding automatic crawling or automatic analysis.
+
+Files changed:
+- `popup.html`
+- `popup.js`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation:
+- Added popup buttons for Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
+- Reused existing LDS scripture page parsing and stored analyzed session/canonical analyzed pages model for the cross-reference set.
+- Did not add a new cross-reference storage key.
+- Did not change `background.js`.
+- Kept navigation manual-only: Previous/Next/Open suggested next update/open the page target but do not analyze.
+
+Validation:
+- `node --check popup.js` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed on LDS Matthew 1.
+- `npm.cmd run qa:matthew-pages` passed on LDS Matthew 1, Matthew 2, and Matthew 3.
+- LDS-only focused popup smoke passed: Matthew 1 Next page opened LDS Matthew 2, did not change Matthew 1 analysis status, kept analyzed page count at 1, and Matthew 1 + Matthew 5 showed as a non-contiguous cross-reference set with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed.
+
+Coordination notes:
+- GPT buttons remain absent.
+- Study Panel fast startup and collapsible summaries remain active.
+- No crawling, book capture, volume capture, or automatic missing/intermediate page analysis was added.
+- Commit: this commit, `pcdx: Add popup page workflow controls`.

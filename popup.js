@@ -11,6 +11,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
+  const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
+  const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
+  const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
+  const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
+  const SELECTED_RANGE_KEY = "ICE_SELECTED_RANGE";
+  const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
+  const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
   const ACTION_INDICATORS = [
     "born",
     "died",
@@ -263,6 +270,220 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function pageRecordKey(page = {}) {
+    return [page.sourceCaptureBook || page.book, page.sourceCaptureChapter || page.chapter, page.sourceTitle || page.title, page.activeUrl || page.url]
+      .map((value) => normalizeWhitespace(value || "").toLowerCase())
+      .join("|");
+  }
+
+  function sourceMatchFromUrl(url = "") {
+    const match = normalizeWhitespace(url).match(/\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(matt|mark|luke|john)\/(\d+)\b/i);
+    const books = { matt: "Matthew", mark: "Mark", luke: "Luke", john: "John" };
+    return match ? { book: books[match[1].toLowerCase()], chapter: match[2] } : null;
+  }
+
+  function sourceMatchFromTitle(title = "") {
+    const match = normalizeWhitespace(title).match(/\b(Matthew|Mark|Luke|John)\s+(\d+)\b/i);
+    return match ? { book: match[1], chapter: match[2] } : null;
+  }
+
+  function pageRecordFromTab(tab = {}) {
+    const urlMatch = sourceMatchFromUrl(tab.url || "");
+    const titleMatch = sourceMatchFromTitle(tab.title || "");
+    const book = urlMatch?.book || titleMatch?.book || "";
+    const chapter = urlMatch?.chapter || titleMatch?.chapter || "";
+    if (!book || !chapter || !tab.url) return null;
+    return {
+      sourceCaptureId: "",
+      sourceTitle: `${book} ${chapter}`,
+      sourceCaptureBook: book,
+      sourceCaptureChapter: String(chapter),
+      activeUrl: tab.url,
+      activeAdapterName: "lds_scripture_adapter",
+      pageKey: [book, chapter, `${book} ${chapter}`, tab.url].map((value) => normalizeWhitespace(value).toLowerCase()).join("|"),
+      analyzedAt: ""
+    };
+  }
+
+  function pageRecordFromStatus(status = {}) {
+    if (!status?.sourceCaptureTitle && !status?.sourceCaptureBook && !status?.sourceCaptureUrl && !status?.activeUrl) return null;
+    return {
+      sourceCaptureId: status.sourceCaptureId || "",
+      sourceTitle: status.sourceCaptureTitle || "Current source",
+      sourceCaptureBook: status.sourceCaptureBook || "",
+      sourceCaptureChapter: status.sourceCaptureChapter || "",
+      activeUrl: status.sourceCaptureUrl || status.activeUrl || "",
+      activeAdapterName: status.activeAdapterName || "",
+      analyzedAt: status.analyzedAt || "",
+      pageKey: ""
+    };
+  }
+
+  function pageRecordFromCanonicalMarker(marker = {}) {
+    if (!marker?.pageKey) return null;
+    return {
+      sourceCaptureId: marker.captureId || marker.sourceCaptureId || "",
+      sourceTitle: marker.sourceTitle || "Current source",
+      sourceCaptureBook: marker.sourceCaptureBook || "",
+      sourceCaptureChapter: marker.sourceCaptureChapter || "",
+      activeUrl: marker.url || marker.activeUrl || "",
+      activeAdapterName: marker.adapter || marker.activeAdapterName || "",
+      analyzedAt: marker.analysisTimestamp || marker.analyzedAt || "",
+      pageKey: marker.pageKey || "",
+      buildMarker: marker.buildMarker || ""
+    };
+  }
+
+  function canonicalMarkerFromPage(page = {}, buildMarker = "popup-manual-page-workflow") {
+    const analyzedAt = page.analyzedAt || new Date().toISOString();
+    const normalized = {
+      sourceCaptureId: page.sourceCaptureId || "",
+      sourceTitle: page.sourceTitle || "Current source",
+      sourceCaptureBook: page.sourceCaptureBook || "",
+      sourceCaptureChapter: page.sourceCaptureChapter || "",
+      activeUrl: page.activeUrl || "",
+      activeAdapterName: page.activeAdapterName || "",
+      analyzedAt,
+      pageKey: page.pageKey || pageRecordKey(page)
+    };
+    if (!normalized.sourceCaptureBook || !normalized.sourceCaptureChapter || !normalized.activeUrl || !normalized.analyzedAt) return null;
+    return {
+      pageKey: normalized.pageKey,
+      url: normalized.activeUrl,
+      adapter: normalized.activeAdapterName,
+      captureId: normalized.sourceCaptureId,
+      sourceTitle: normalized.sourceTitle,
+      sourceCaptureBook: normalized.sourceCaptureBook,
+      sourceCaptureChapter: normalized.sourceCaptureChapter,
+      analysisTimestamp: normalized.analyzedAt,
+      buildMarker
+    };
+  }
+
+  function pageChapterNumber(page = {}) {
+    const value = Number(page.sourceCaptureChapter || page.chapter || 0);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function pageBookName(page = {}) {
+    return normalizeWhitespace(page.sourceCaptureBook || page.book || "");
+  }
+
+  function volumePageLabel(page = {}) {
+    const book = pageBookName(page);
+    const chapter = normalizeWhitespace(page.sourceCaptureChapter || page.chapter || "");
+    if (book && chapter) return `${book} ${chapter}`;
+    return normalizeWhitespace(page.sourceTitle || page.title || page.activeUrl || page.url || "Unknown page");
+  }
+
+  function sortedAnalyzedPages(pages = []) {
+    return (Array.isArray(pages) ? pages : [])
+      .filter(Boolean)
+      .slice()
+      .sort((left, right) => pageBookName(left).localeCompare(pageBookName(right)) || pageChapterNumber(left) - pageChapterNumber(right));
+  }
+
+  function missingPageLabelsForPages(pages = []) {
+    const sorted = sortedAnalyzedPages(pages);
+    if (sorted.length < 2) return [];
+    const books = [...new Set(sorted.map(pageBookName).filter(Boolean).map((book) => book.toLowerCase()))];
+    if (books.length !== 1) return [];
+    const book = pageBookName(sorted[0]);
+    const chapters = sorted.map(pageChapterNumber).filter(Boolean);
+    if (chapters.length !== sorted.length) return [];
+    const present = new Set(chapters);
+    const missing = [];
+    for (let chapter = Math.min(...chapters); chapter <= Math.max(...chapters); chapter += 1) {
+      if (!present.has(chapter)) missing.push(`${book} ${chapter}`);
+    }
+    return missing;
+  }
+
+  function selectedSessionScopeFromPages(pages = []) {
+    const sorted = sortedAnalyzedPages(pages);
+    if (!sorted.length) return null;
+    const labels = sorted.map(volumePageLabel).filter(Boolean);
+    const missingLabels = missingPageLabelsForPages(sorted);
+    const isContiguous = missingLabels.length === 0;
+    const start = sorted[0];
+    const end = sorted[sorted.length - 1];
+    const rangeLabel = volumePageLabel(start) === volumePageLabel(end) ? volumePageLabel(start) : `${volumePageLabel(start)} -> ${volumePageLabel(end)}`;
+    return {
+      start,
+      end,
+      pages: sorted,
+      labels,
+      isContiguous,
+      missingLabels,
+      sessionType: sorted.length < 2 ? "Single analyzed page" : (isContiguous ? "Contiguous analyzed range" : "Non-contiguous selected pages"),
+      sessionLabel: sorted.length < 2 ? labels[0] : (isContiguous ? rangeLabel : labels.join(" + "))
+    };
+  }
+
+  function pageNavigationTarget(page = {}, delta = 0) {
+    const url = normalizeWhitespace(page.activeUrl || page.url || "");
+    if (!url) return null;
+    const urlMatch = sourceMatchFromUrl(url);
+    const chapter = Number(urlMatch?.chapter || pageChapterNumber(page));
+    const targetChapter = chapter + delta;
+    if (!chapter || targetChapter < 1) return null;
+    try {
+      const parsed = new URL(url);
+      const parts = parsed.pathname.split("/");
+      const chapterIndex = parts.findIndex((part) => part === String(chapter));
+      if (chapterIndex < 0) return null;
+      parts[chapterIndex] = String(targetChapter);
+      parsed.pathname = parts.join("/");
+      parsed.hash = "";
+      const book = urlMatch?.book || pageBookName(page) || "Page";
+      return {
+        label: `${book} ${targetChapter}`,
+        url: parsed.toString(),
+        page: {
+          ...page,
+          sourceCaptureId: "",
+          sourceTitle: `${book} ${targetChapter}`,
+          sourceCaptureChapter: String(targetChapter),
+          activeUrl: parsed.toString(),
+          url: parsed.toString(),
+          pageKey: [book, targetChapter, `${book} ${targetChapter}`, parsed.toString()].map((value) => normalizeWhitespace(value).toLowerCase()).join("|"),
+          analyzedAt: ""
+        }
+      };
+    } catch (_error) {
+      return null;
+    }
+  }
+  function fallbackNavigationTarget(page = {}, delta = 0) {
+    const url = page.activeUrl || page.url || "";
+    const match = String(url).match(/^(.*\/)(\d+)([/?#].*)?$/);
+    const chapter = Number(match?.[2] || page.sourceCaptureChapter || page.chapter || 0);
+    const targetChapter = chapter + delta;
+    if (!match || !chapter || targetChapter < 1) return null;
+    const book = pageBookName(page) || sourceMatchFromUrl(url)?.book || "Page";
+    const targetUrl = `${match[1]}${targetChapter}${match[3] || ""}`;
+    return {
+      label: `${book} ${targetChapter}`,
+      url: targetUrl,
+      page: {
+        ...page,
+        sourceCaptureId: "",
+        sourceTitle: `${book} ${targetChapter}`,
+        sourceCaptureChapter: String(targetChapter),
+        activeUrl: targetUrl,
+        url: targetUrl,
+        pageKey: [book, targetChapter, `${book} ${targetChapter}`, targetUrl].map((value) => normalizeWhitespace(value).toLowerCase()).join("|"),
+        analyzedAt: ""
+      }
+    };
+  }
+  function firstNavigationTarget(delta, ...pages) {
+    for (const page of pages) {
+      const target = pageNavigationTarget(page || {}, delta) || fallbackNavigationTarget(page || {}, delta);
+      if (target?.url) return target;
+    }
+    return null;
+  }
   async function rerunOnActiveTab(tabId) {
     try {
       await chrome.tabs.sendMessage(tabId, {
@@ -295,6 +516,137 @@ document.addEventListener("DOMContentLoaded", async () => {
     return response.status;
   }
 
+  async function activeTabPageRecord() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return { tab, page: pageRecordFromTab(tab || {}) };
+  }
+
+  async function storedPageWorkflowState() {
+    const data = await chrome.storage.local.get([
+      ACTIVE_SOURCE_PAGE_KEY,
+      ANALYSIS_STATUS_KEY,
+      CANONICAL_ANALYZED_PAGES_KEY,
+      CANONICAL_ANALYSIS_TARGET_KEY,
+      ACTIVE_ADAPTER_KEY
+    ]);
+    const { tab, page: tabPage } = await activeTabPageRecord();
+    const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
+    const activePage = data[ACTIVE_SOURCE_PAGE_KEY] || pageRecordFromCanonicalMarker(data[CANONICAL_ANALYSIS_TARGET_KEY]) || statusPage || tabPage;
+    const canonicalPages = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY])
+      ? data[CANONICAL_ANALYZED_PAGES_KEY].map(pageRecordFromCanonicalMarker).filter(Boolean)
+      : [];
+    return { tab, tabPage, activePage, statusPage, canonicalPages, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null };
+  }
+
+  async function navigatePopupPage(delta, actionName) {
+    const state = await storedPageWorkflowState();
+    const target = firstNavigationTarget(delta, state.tabPage, state.activePage, state.canonicalPages.at(-1));
+    if (!target?.url) {
+      setCaptureStatus(delta < 0 ? "No previous page is available." : "No next page is available.");
+      return;
+    }
+    if (state.tab?.id && !/^chrome-extension:/i.test(state.tab.url || "")) {
+      await chrome.tabs.update(state.tab.id, { url: target.url, active: true });
+    } else {
+      await chrome.tabs.create({ url: target.url, active: true });
+    }
+    await chrome.storage.local.set({
+      [ACTIVE_SOURCE_PAGE_KEY]: target.page,
+      [PANEL_UI_STATE_KEY]: { lastAction: actionName, updatedAt: new Date().toISOString() }
+    });
+    setCaptureStatus(`Opened ${target.label}. Analyze manually when ready; navigation did not run analysis.`);
+  }
+
+  async function openSuggestedNextFromPopup() {
+    const state = await storedPageWorkflowState();
+    const scope = selectedSessionScopeFromPages(state.canonicalPages);
+    const target = firstNavigationTarget(1, state.tabPage, state.activePage, scope?.end);
+    if (!target?.url) {
+      setCaptureStatus("No suggested next page is available.");
+      return;
+    }
+    if (state.tab?.id && !/^chrome-extension:/i.test(state.tab.url || "")) {
+      await chrome.tabs.update(state.tab.id, { url: target.url, active: true });
+    } else {
+      await chrome.tabs.create({ url: target.url, active: true });
+    }
+    await chrome.storage.local.set({
+      [ACTIVE_SOURCE_PAGE_KEY]: target.page,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_open_suggested_next", updatedAt: new Date().toISOString() }
+    });
+    setCaptureStatus(`Opened ${target.label}. Analyze manually when ready; navigation did not run analysis.`);
+  }
+
+  async function addAnalyzedPageToStoredSessionFromPopup() {
+    const data = await chrome.storage.local.get([ANALYSIS_STATUS_KEY, CANONICAL_ANALYZED_PAGES_KEY]);
+    const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
+    if (!statusPage?.analyzedAt) {
+      setCaptureStatus("Analyze this page before adding it to the cross-reference set.");
+      return;
+    }
+    const marker = canonicalMarkerFromPage(statusPage, data[ANALYSIS_STATUS_KEY]?.analysisBuildMarker || "popup-manual-page-workflow");
+    if (!marker) {
+      setCaptureStatus("Current analyzed page is not a supported scripture/source page.");
+      return;
+    }
+    const existingMarkers = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY]) ? data[CANONICAL_ANALYZED_PAGES_KEY] : [];
+    const nextMarkers = [marker, ...existingMarkers]
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
+      .slice(0, 24);
+    const nextPages = nextMarkers.map(pageRecordFromCanonicalMarker).filter(Boolean);
+    const range = selectedSessionScopeFromPages(nextPages);
+    const history = nextMarkers.map((item) => ({
+      sourceCaptureId: item.captureId || "",
+      sourceTitle: item.sourceTitle || "Current source",
+      sourceCaptureBook: item.sourceCaptureBook || "",
+      sourceCaptureChapter: item.sourceCaptureChapter || "",
+      activeUrl: item.url || "",
+      activeAdapterName: item.adapter || "",
+      analyzedAt: item.analysisTimestamp || "",
+      pageKey: item.pageKey || ""
+    }));
+    await chrome.storage.local.set({
+      [CANONICAL_ANALYZED_PAGES_KEY]: nextMarkers,
+      [ANALYSIS_HISTORY_KEY]: history,
+      [ACTIVE_SOURCE_PAGE_KEY]: statusPage,
+      [SELECTED_RANGE_KEY]: range,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_add_page_to_cross_reference_set", updatedAt: new Date().toISOString() }
+    });
+    setCaptureStatus(`${volumePageLabel(statusPage)} added to cross-reference set. ${range?.isContiguous ? "Stored pages are contiguous." : "Stored pages are non-contiguous; missing pages are not analyzed."}`);
+    await loadAllSummaries();
+  }
+
+  async function analyzeThisPageFromPopup() {
+    await runFullAnalysisFromPopup();
+  }
+
+  async function analyzeAndAddPageFromPopup() {
+    await runFullAnalysisFromPopup();
+    await addAnalyzedPageToStoredSessionFromPopup();
+  }
+
+  async function showCrossReferenceSetFromPopup() {
+    const state = await storedPageWorkflowState();
+    const scope = selectedSessionScopeFromPages(state.canonicalPages);
+    if (!scope) {
+      setCaptureStatus("No cross-reference pages selected yet.");
+      return;
+    }
+    setCaptureStatus(scope.isContiguous
+      ? `Cross-reference range: ${scope.sessionLabel}`
+      : `Cross-reference set: ${scope.labels.join(" + ")} (non-contiguous; missing pages are not analyzed: ${scope.missingLabels.join(", ") || "none"})`);
+  }
+
+  async function clearCrossReferenceSetFromPopup() {
+    await chrome.storage.local.set({
+      [CANONICAL_ANALYZED_PAGES_KEY]: [],
+      [ANALYSIS_HISTORY_KEY]: [],
+      [SELECTED_RANGE_KEY]: null,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_clear_cross_reference_set", updatedAt: new Date().toISOString() }
+    });
+    setCaptureStatus("Cross-reference set cleared. Current page analysis data was not erased.");
+    await loadAllSummaries();
+  }
   async function runFullAnalysisFromPopup() {
     setCaptureStatus("Running full analysis...");
 
@@ -739,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function normalizeWhitespace(text) {
-    return (text || "").replace(/\s+/g, " ").trim();
+    return String(text ?? "").replace(/\s+/g, " ").trim();
   }
 
   function cleanCopiedText(text) {
@@ -1795,6 +2147,61 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("showPageOverlay")
     .addEventListener("change", () => saveSetting("showPageOverlay"));
 
+  document.getElementById("previousPage")
+    .addEventListener("click", () => {
+      navigatePopupPage(-1, "popup_previous_page_navigation").catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("nextPage")
+    .addEventListener("click", () => {
+      navigatePopupPage(1, "popup_next_page_navigation").catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("openSuggestedNext")
+    .addEventListener("click", () => {
+      openSuggestedNextFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("analyzeThisPage")
+    .addEventListener("click", () => {
+      analyzeThisPageFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("analyzeAndAddPage")
+    .addEventListener("click", () => {
+      analyzeAndAddPageFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("addPageToCrossReference")
+    .addEventListener("click", () => {
+      addAnalyzedPageToStoredSessionFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("showCrossReferenceSet")
+    .addEventListener("click", () => {
+      showCrossReferenceSetFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearCrossReferenceSet")
+    .addEventListener("click", () => {
+      clearCrossReferenceSetFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
   document.getElementById("runFullAnalysis")
     .addEventListener("click", () => {
       runFullAnalysisFromPopup().catch((error) => {

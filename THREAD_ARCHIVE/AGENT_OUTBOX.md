@@ -263,3 +263,11 @@ Status: Ready for review.
 Message: Matthew 1 naming/instruction semantics now preserve narrative-time `JESUS` for name revelation and Joseph naming, while canonical identity linking to `JESUS CHRIST` remains intact. The AngEL Of THE LORD instruction is now separated into marriage instruction, name revelation, and mission reason (`He shall save His people from their sins`).
 Validation: `node --check background.js`, `node --check study.js`, `node --check qa/matthew1-extension-qa.js`, `git diff --check`, and `npm.cmd run qa:matthew1` passed. QA now reports 50 semantic events, 64 relationship edges, and 788 scoped items with 0 missing scope.
 Related files/commits: `background.js`, `study.js`, `qa/matthew1-extension-qa.js`, `QA status.MD`, `PROJECT_LOG.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+
+### 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Popup Page Workflow controls ready
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Ready after commit.
+Message: Manual Page Workflow controls are now available in the extension popup/dropdown as well as the Study Panel. Controls: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set. Navigation stays manual-only and does not analyze. Cross-reference selection reuses the existing stored analyzed session model; no new storage key was added. LDS-only smoke confirmed Matthew 1 -> Matthew 2 navigation without auto-analysis and Matthew 1 + Matthew 5 remains non-contiguous with Matthew 2/3/4 missing/not analyzed.
+Validation: `node --check popup.js`, `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, and `npm.cmd run qa:matthew-pages` passed.
+Next action: push local commits when ready, then continue user-directed popup/Study Panel UX polish or broader review scripts.

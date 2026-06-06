@@ -29,6 +29,34 @@
       padding: 8px;
       cursor: pointer;
     }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    .page-workflow {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #d8dde6;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .page-workflow h4 {
+      margin: 0 0 6px;
+    }
+
+    .page-workflow p {
+      margin: 0 0 6px;
+      color: #5f6b7a;
+      font-size: .84rem;
+      line-height: 1.35;
+    }
+
+    .page-workflow button {
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -62,6 +90,19 @@
   <button id="runFullAnalysis">Run Full Analysis</button>
   <button id="openStudyPanel">Open Study Panel</button>
   <button id="clearPageData">Clear Page Data</button>
+
+  <section class="page-workflow" aria-label="Page Workflow">
+    <h4>Page Workflow</h4>
+    <p>Manual navigation and selected-page cross-reference controls. Navigation does not analyze pages.</p>
+    <button id="previousPage">Previous page</button>
+    <button id="nextPage">Next page</button>
+    <button id="openSuggestedNext">Open suggested next</button>
+    <button id="analyzeThisPage">Analyze this page</button>
+    <button id="analyzeAndAddPage">Analyze and add this page to stored session</button>
+    <button id="addPageToCrossReference">Add this page to cross-reference set</button>
+    <button id="showCrossReferenceSet">Show cross-reference set</button>
+    <button id="clearCrossReferenceSet">Clear cross-reference set</button>
+  </section>
 
   <hr>
 
