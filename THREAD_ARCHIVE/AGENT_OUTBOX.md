@@ -3,6 +3,18 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Large-volume architecture requirement recorded
+Status: future architecture requirement
+Task:
+- Preserve large-volume analysis goal without reintroducing slow panel startup or accidental crawling.
+Message:
+- I.C.E. should eventually support explicit selected-range, book, and volume analysis.
+- Future large-volume support must be queued, resumable, batched, storage-segmented, and lazy-rendered.
+- Do not implement hidden background crawling or full-volume analysis on Study Panel open.
+- Current fast startup direction remains correct: Study Scope first, deferred heavy sections, manual loading, no GPT buttons, and no automatic report generation.
+Needed action:
+- Treat large-volume capture as a future approved architecture task before changing `background.js` or capture/storage behavior.
+
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Study Panel fast startup patch
 Status: done locally and validated
 Task:

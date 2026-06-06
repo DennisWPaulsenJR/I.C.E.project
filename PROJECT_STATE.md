@@ -59,6 +59,20 @@ Recently completed foundations:
 - Phase 7.4 ScopePath + Verse Position Integrity
 - Dev QA Automation Harness
 
+## Future Large-Volume Analysis Architecture
+
+Long-term goal: I.C.E. should eventually support explicit analysis across large ranges, books, and volumes, not only one page or a few selected pages.
+
+Architecture principle:
+- Large-volume support must be explicit, queued, resumable, and lazy-rendered.
+- This must not become automatic crawling on Study Panel open.
+- User must explicitly start large capture through controls such as Analyze selected range, Analyze book, or Analyze volume.
+- Future capture should use a page queue with progress status, pause/resume/cancel, retry for failed pages, batching, and throttled navigation/fetch so the browser UI is not locked.
+- Future storage should be segmented into per-page records, per-book indexes, and summary/manifest records so the Study Panel never loads all records at once.
+- Future review should load current page/session summary first, book/volume summaries on demand, and full semantic details only when requested.
+- Safety boundary: no accidental crawling, no hidden background full-volume analysis, and clear scope/progress must be visible.
+- Current fast Study Panel direction remains correct: lightweight startup, Study Scope first, deferred heavy sections, manual section loading, no GPT buttons, and no automatic report generation on open.
+
 Next planned phase:
 - Install/run Playwright QA and stabilize results from `npm run qa:matthew1`.
 
