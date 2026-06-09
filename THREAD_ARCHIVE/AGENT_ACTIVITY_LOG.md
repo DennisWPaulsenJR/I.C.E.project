@@ -4041,3 +4041,29 @@ Coordination notes:
 - No `background.js` change was needed.
 - No GPT buttons, crawling, automatic range analysis, or automatic intermediate-page analysis was added.
 - Next action: push after commit, then perform/confirm browser manual smoke for popup and Study Panel cross-reference controls on LDS Matthew 1 and Matthew 5 if desired.
+
+## 2026-06-08 - pcdx - Cross-reference Set Browser Smoke
+
+Task:
+- Confirm the separate Cross-reference Set storage behavior in a browser with the extension loaded on LDS Matthew pages.
+
+Smoke result:
+- Passed in a temporary Chrome profile with LDS Matthew 1 and Matthew 5.
+- Popup added Matthew 1 and Matthew 5 to `ICE_CROSS_REFERENCE_SET`.
+- Popup showed Matthew 1 + Matthew 5 as non-contiguous selected pages.
+- Matthew 2, Matthew 3, and Matthew 4 remained missing/not analyzed.
+- Matthew 1 remained `Analyzed`; Matthew 5 remained `Not analyzed yet`.
+- Clear cross-reference set cleared only `ICE_CROSS_REFERENCE_SET`.
+- Analyzed/session data survived clear cross-reference: final `ICE_CROSS_REFERENCE_SET` count 0, final `ICE_CANONICAL_ANALYZED_PAGES` count 1, final `ICE_ANALYSIS_HISTORY` count 1.
+- Study Panel read the same separate cross-reference set and its Clear cross-reference control cleared only `ICE_CROSS_REFERENCE_SET`.
+- GPT action buttons remained absent.
+- Collapsible/deferred summaries remained active with 50 deferred summary details found.
+- Study Scope appeared quickly in about 352ms.
+
+Validation:
+- `git status --short --untracked-files=no` was clean before and after smoke.
+- `git diff --check` passed before smoke.
+- No tracked files changed during smoke.
+
+Next recommendation:
+- Choose between popup/Study Panel UX polish, large-volume queue design, or Study Panel modularization planning.

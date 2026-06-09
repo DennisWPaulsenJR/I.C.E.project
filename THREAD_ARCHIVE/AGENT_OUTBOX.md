@@ -279,3 +279,10 @@ Status: Ready after commit.
 Message: Cross-reference selection is now separate from confirmed analyzed pages. New storage key: `ICE_CROSS_REFERENCE_SET`. Popup/dropdown and Study Panel Add/Show/Clear cross-reference controls use this key and do not clear or create analyzed page records. Selected pages can be non-contiguous and can be marked Not analyzed yet until a real analysis record exists.
 Validation: `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed.
 Next action: push after commit, then continue user-directed manual smoke/UX polish. No crawling or GPT buttons were added.
+
+### 2026-06-08 - pcdx -> gpt/mgpt/mcdx - Cross-reference Set smoke confirmed
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Confirmed.
+Message: Browser smoke confirmed `ICE_CROSS_REFERENCE_SET` is separate from analyzed/session storage. Popup and Study Panel both used the same set. Matthew 1 + Matthew 5 were selected as non-contiguous; Matthew 2/3/4 stayed missing/not analyzed; Matthew 1 stayed Analyzed and Matthew 5 stayed Not analyzed yet. Clear cross-reference left final counts at `ICE_CROSS_REFERENCE_SET` 0, `ICE_CANONICAL_ANALYZED_PAGES` 1, and `ICE_ANALYSIS_HISTORY` 1. GPT buttons remained absent and collapsible summaries stayed active.
+Next likely task: choose between UX polish, large-volume queue design, or Study Panel modularization planning.
