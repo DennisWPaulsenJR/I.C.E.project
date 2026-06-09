@@ -271,3 +271,11 @@ Status: Ready after commit.
 Message: Manual Page Workflow controls are now available in the extension popup/dropdown as well as the Study Panel. Controls: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set. Navigation stays manual-only and does not analyze. Cross-reference selection reuses the existing stored analyzed session model; no new storage key was added. LDS-only smoke confirmed Matthew 1 -> Matthew 2 navigation without auto-analysis and Matthew 1 + Matthew 5 remains non-contiguous with Matthew 2/3/4 missing/not analyzed.
 Validation: `node --check popup.js`, `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, and `npm.cmd run qa:matthew-pages` passed.
 Next action: push local commits when ready, then continue user-directed popup/Study Panel UX polish or broader review scripts.
+
+### 2026-06-08 - pcdx -> gpt/mgpt/mcdx - Separate Cross-reference Set storage ready
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Ready after commit.
+Message: Cross-reference selection is now separate from confirmed analyzed pages. New storage key: `ICE_CROSS_REFERENCE_SET`. Popup/dropdown and Study Panel Add/Show/Clear cross-reference controls use this key and do not clear or create analyzed page records. Selected pages can be non-contiguous and can be marked Not analyzed yet until a real analysis record exists.
+Validation: `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed.
+Next action: push after commit, then continue user-directed manual smoke/UX polish. No crawling or GPT buttons were added.

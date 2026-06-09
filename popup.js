@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
   const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
   const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
+  const CROSS_REFERENCE_SET_KEY = "ICE_CROSS_REFERENCE_SET";
   const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
   const SELECTED_RANGE_KEY = "ICE_SELECTED_RANGE";
   const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
@@ -415,9 +416,70 @@ document.addEventListener("DOMContentLoaded", async () => {
       labels,
       isContiguous,
       missingLabels,
-      sessionType: sorted.length < 2 ? "Single analyzed page" : (isContiguous ? "Contiguous analyzed range" : "Non-contiguous selected pages"),
+      sessionType: sorted.length < 2 ? "Single analyzed page" : (isContiguous ? "Contiguous selected pages" : "Non-contiguous selected pages"),
       sessionLabel: sorted.length < 2 ? labels[0] : (isContiguous ? rangeLabel : labels.join(" + "))
     };
+  }
+
+  function analyzedPageKeys(pages = []) {
+    return new Set((Array.isArray(pages) ? pages : []).map((page) => page.pageKey || pageRecordKey(page)).filter(Boolean));
+  }
+
+  function crossReferenceRecordFromPage(page = {}, canonicalPages = []) {
+    const book = pageBookName(page);
+    const chapter = normalizeWhitespace(page.sourceCaptureChapter || page.chapter || "");
+    const url = normalizeWhitespace(page.activeUrl || page.url || "");
+    const label = volumePageLabel(page);
+    if (!book || !chapter || !url) return null;
+    const canonicalKey = page.pageKey || pageRecordKey(page);
+    const analyzedKeys = analyzedPageKeys(canonicalPages);
+    const analyzedPage = (Array.isArray(canonicalPages) ? canonicalPages : []).find((candidate) => (candidate.pageKey || pageRecordKey(candidate)) === canonicalKey) || null;
+    const analyzed = analyzedKeys.has(canonicalKey);
+    return {
+      id: canonicalKey,
+      label,
+      url,
+      book,
+      chapter: String(chapter),
+      canonicalKey,
+      addedAt: page.addedAt || new Date().toISOString(),
+      source: "manual",
+      analyzed,
+      analyzedAt: analyzedPage?.analyzedAt || page.analyzedAt || "",
+      analysisPageKey: analyzed ? canonicalKey : ""
+    };
+  }
+
+  function pageRecordFromCrossReferenceRecord(record = {}) {
+    if (!record?.canonicalKey && !record?.url) return null;
+    return {
+      sourceCaptureId: "",
+      sourceTitle: record.label || [record.book, record.chapter].filter(Boolean).join(" ") || "Selected page",
+      sourceCaptureBook: record.book || "",
+      sourceCaptureChapter: record.chapter || "",
+      activeUrl: record.url || "",
+      activeAdapterName: "lds_scripture_adapter",
+      pageKey: record.canonicalKey || record.id || "",
+      analyzedAt: record.analyzedAt || ""
+    };
+  }
+
+  function normalizedCrossReferenceSet(records = [], canonicalPages = []) {
+    return (Array.isArray(records) ? records : [])
+      .map(pageRecordFromCrossReferenceRecord)
+      .map((page) => page ? crossReferenceRecordFromPage(page, canonicalPages) : null)
+      .filter(Boolean)
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
+      .sort((left, right) => pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0));
+  }
+
+  function crossReferenceSetLine(records = []) {
+    const pages = records.map(pageRecordFromCrossReferenceRecord).filter(Boolean);
+    const scope = selectedSessionScopeFromPages(pages);
+    if (!scope) return "No cross-reference pages selected yet.";
+    const status = records.map((record) => `${record.label}: ${record.analyzed ? "Analyzed" : "Not analyzed yet"}`).join("; ");
+    if (scope.isContiguous) return `Cross-reference selected pages: ${scope.sessionLabel}. ${status}`;
+    return `Cross-reference set: ${scope.labels.join(" + ")} (non-contiguous selected pages; missing intermediate pages are not analyzed: ${scope.missingLabels.join(", ") || "none"}). ${status}`;
   }
 
   function pageNavigationTarget(page = {}, delta = 0) {
@@ -527,6 +589,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ANALYSIS_STATUS_KEY,
       CANONICAL_ANALYZED_PAGES_KEY,
       CANONICAL_ANALYSIS_TARGET_KEY,
+      CROSS_REFERENCE_SET_KEY,
       ACTIVE_ADAPTER_KEY
     ]);
     const { tab, page: tabPage } = await activeTabPageRecord();
@@ -535,7 +598,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const canonicalPages = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY])
       ? data[CANONICAL_ANALYZED_PAGES_KEY].map(pageRecordFromCanonicalMarker).filter(Boolean)
       : [];
-    return { tab, tabPage, activePage, statusPage, canonicalPages, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null };
+    const crossReferenceSet = normalizedCrossReferenceSet(data[CROSS_REFERENCE_SET_KEY], canonicalPages);
+    return { tab, tabPage, activePage, statusPage, canonicalPages, crossReferenceSet, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null };
   }
 
   async function navigatePopupPage(delta, actionName) {
@@ -581,7 +645,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await chrome.storage.local.get([ANALYSIS_STATUS_KEY, CANONICAL_ANALYZED_PAGES_KEY]);
     const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
     if (!statusPage?.analyzedAt) {
-      setCaptureStatus("Analyze this page before adding it to the cross-reference set.");
+      setCaptureStatus("Analyze this page before adding it to the stored analyzed session.");
       return;
     }
     const marker = canonicalMarkerFromPage(statusPage, data[ANALYSIS_STATUS_KEY]?.analysisBuildMarker || "popup-manual-page-workflow");
@@ -610,9 +674,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       [ANALYSIS_HISTORY_KEY]: history,
       [ACTIVE_SOURCE_PAGE_KEY]: statusPage,
       [SELECTED_RANGE_KEY]: range,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_add_page_to_stored_session", updatedAt: new Date().toISOString() }
+    });
+    setCaptureStatus(`${volumePageLabel(statusPage)} added to stored analyzed session. ${range?.isContiguous ? "Stored pages are contiguous." : "Stored pages are non-contiguous; missing pages are not analyzed."}`);
+    await loadAllSummaries();
+  }
+
+  async function addPageToCrossReferenceSetFromPopup() {
+    const state = await storedPageWorkflowState();
+    const page = state.tabPage || state.activePage || state.statusPage;
+    const record = crossReferenceRecordFromPage(page || {}, state.canonicalPages);
+    if (!record) {
+      setCaptureStatus("Open or select a supported scripture/source page before adding it to the cross-reference set.");
+      return;
+    }
+    const nextSet = [record, ...state.crossReferenceSet]
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
+      .slice(0, 48);
+    await chrome.storage.local.set({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [ACTIVE_SOURCE_PAGE_KEY]: page,
       [PANEL_UI_STATE_KEY]: { lastAction: "popup_add_page_to_cross_reference_set", updatedAt: new Date().toISOString() }
     });
-    setCaptureStatus(`${volumePageLabel(statusPage)} added to cross-reference set. ${range?.isContiguous ? "Stored pages are contiguous." : "Stored pages are non-contiguous; missing pages are not analyzed."}`);
+    setCaptureStatus(`${record.label} selected for cross-reference. ${record.analyzed ? "Analyzed" : "Not analyzed yet"}.`);
     await loadAllSummaries();
   }
 
@@ -627,24 +711,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function showCrossReferenceSetFromPopup() {
     const state = await storedPageWorkflowState();
-    const scope = selectedSessionScopeFromPages(state.canonicalPages);
-    if (!scope) {
-      setCaptureStatus("No cross-reference pages selected yet.");
-      return;
-    }
-    setCaptureStatus(scope.isContiguous
-      ? `Cross-reference range: ${scope.sessionLabel}`
-      : `Cross-reference set: ${scope.labels.join(" + ")} (non-contiguous; missing pages are not analyzed: ${scope.missingLabels.join(", ") || "none"})`);
+    setCaptureStatus(crossReferenceSetLine(state.crossReferenceSet));
   }
 
   async function clearCrossReferenceSetFromPopup() {
     await chrome.storage.local.set({
-      [CANONICAL_ANALYZED_PAGES_KEY]: [],
-      [ANALYSIS_HISTORY_KEY]: [],
-      [SELECTED_RANGE_KEY]: null,
+      [CROSS_REFERENCE_SET_KEY]: [],
       [PANEL_UI_STATE_KEY]: { lastAction: "popup_clear_cross_reference_set", updatedAt: new Date().toISOString() }
     });
-    setCaptureStatus("Cross-reference set cleared. Current page analysis data was not erased.");
+    setCaptureStatus("Cross-reference set cleared. Stored analyzed session data was not changed.");
     await loadAllSummaries();
   }
   async function runFullAnalysisFromPopup() {
@@ -2184,7 +2259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("addPageToCrossReference")
     .addEventListener("click", () => {
-      addAnalyzedPageToStoredSessionFromPopup().catch((error) => {
+      addPageToCrossReferenceSetFromPopup().catch((error) => {
         setCaptureStatus(error.message);
       });
     });

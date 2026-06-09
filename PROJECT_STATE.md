@@ -82,6 +82,13 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Separate Cross-reference Set storage has been implemented with `ICE_CROSS_REFERENCE_SET`.
+- Stored analyzed pages remain the source of truth for pages with extracted semantic records; cross-reference selection is now user-selected comparison/study scope and may include pages not analyzed yet.
+- Popup/dropdown and Study Panel Add/Show/Clear cross-reference controls now use the separate set; clearing cross-reference no longer clears `ICE_CANONICAL_ANALYZED_PAGES`, `ICE_ANALYSIS_HISTORY`, or selected analyzed-session state.
+- Matthew validation passed: `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` including Matthew 1, Matthew 2, Matthew 3, and Matthew 5.
+- GPT buttons remain absent, navigation remains manual-only, and no crawling or automatic missing/intermediate page analysis was added.
+
+Latest pcdx update:
 - Manual Page Workflow controls were added to the Study Panel near Study Scope.
 - Buttons added: Previous page, Next page, Open suggested next, Analyze this page, Analyze and add this page to stored session, Add this page to cross-reference set, Show cross-reference set, and Clear cross-reference set.
 - Previous/Next/Suggested navigation updates the browser target only and does not run analysis.

@@ -4008,3 +4008,36 @@ Coordination notes:
 - Study Panel fast startup and collapsible summaries remain active.
 - No crawling, book capture, volume capture, or automatic missing/intermediate page analysis was added.
 - Commit: this commit, `pcdx: Add popup page workflow controls`.
+
+## 2026-06-08 - pcdx - Separate Cross-reference Set Storage
+
+Task:
+- Separate user-selected Cross-reference Set pages from confirmed stored analyzed pages.
+
+Files changed:
+- `popup.js`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation:
+- Added `ICE_CROSS_REFERENCE_SET` for manual cross-reference selections.
+- Popup/dropdown and Study Panel Add/Show/Clear cross-reference controls now read/write the separate key.
+- Stored analyzed pages, analysis history, and selected analyzed-session state remain unchanged when cross-reference pages are selected or cleared.
+- Cross-reference records include selected page label, URL, book, chapter, canonical key, manual source, added timestamp, and analyzed/not analyzed status derived from confirmed analyzed pages only.
+
+Validation:
+- `node --check popup.js` passed.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed and refreshed `QA_REPORTS/latest-study-panel-report.md` for Matthew 1, Matthew 2, Matthew 3, and Matthew 5.
+
+Coordination notes:
+- No `background.js` change was needed.
+- No GPT buttons, crawling, automatic range analysis, or automatic intermediate-page analysis was added.
+- Next action: push after commit, then perform/confirm browser manual smoke for popup and Study Panel cross-reference controls on LDS Matthew 1 and Matthew 5 if desired.
