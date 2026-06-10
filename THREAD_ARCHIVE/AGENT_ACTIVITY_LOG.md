@@ -4107,3 +4107,30 @@ Manual smoke:
 
 Next recommendation:
 - Push after commit, then choose between queue UX polish, Phase 2 one-item processing design, or Study Panel modularization planning.
+
+## 2026-06-09 - pcdx - Document Active WIP Coordination
+
+Task:
+- Add the authorized documentation-only Active WIP coordination convention after the MCDX/WIP audit.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added `Active WIP Coordination` to `PROJECT_STATE.md`.
+- Defined repo memory roles for current truth, short handoffs, completed work, and historical project log.
+- Defined actor roles for `gpt...`, `pcdx`, `mgpt`, and `mcdx`.
+- Recorded that no dedicated `THREAD_ARCHIVE/AGENT_WIP.md` is currently used and should not be created unless parallel active work becomes confusing.
+- Recorded MCDX convention: MCDX can be a secondary implementation lane; if it cannot push, it should provide a repo-readable handoff or patch, with PCDX remaining bridge/push lane as needed.
+- Recorded current WIP: push/settle queue scaffold and GPT handoff merge state, then design Phase 2 queue execution architecture; do not implement queue execution until design is approved.
+
+Validation:
+- Pending final `git diff --check` and tracked status check before commit.
+
+Coordination notes:
+- Documentation-only update.
+- No code changed.
+- No queue execution implemented.
+- No `THREAD_ARCHIVE/AGENT_WIP.md` created.

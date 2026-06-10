@@ -8,6 +8,33 @@ Active source of truth:
 
 Do not assume the old C: project path is current.
 
+## Active WIP Coordination
+
+Active WIP source of truth:
+- `PROJECT_STATE.md` records current operational truth and the active WIP summary.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` is the short handoff lane for `gpt`, `mgpt`, `pcdx`, and `mcdx`.
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` is the completed durable work log.
+- `PROJECT_LOG.md` is historical project milestone and decision history.
+- No dedicated `THREAD_ARCHIVE/AGENT_WIP.md` is currently used; do not create one unless parallel active work becomes confusing.
+
+Actor roles:
+- `gpt...` = planning, review, task drafting, and repo-readable handoffs.
+- `pcdx` = primary local execution and push/bridge lane.
+- `mgpt` = mobile GPT planning/review context.
+- `mcdx` = mobile Codex / secondary execution context.
+
+MCDX convention:
+- `mcdx` may be used as a secondary implementation lane.
+- If `mcdx` cannot push directly, it should provide a repo-readable handoff or patch.
+- `pcdx` remains the bridge/push lane when `mcdx` cannot push.
+- `mcdx` active handoffs go in `THREAD_ARCHIVE/AGENT_OUTBOX.md`.
+- Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+
+Current Active WIP:
+- Push/settle the local queue scaffold and GPT handoff merge state.
+- Then proceed to Phase 2 queue execution architecture design.
+- Do not implement queue execution until design is approved.
+
 ## I.C.E. Session Starting Protocol
 
 Every `gpt`, `mgpt`, `pcdx`, and `mcdx` session must begin by reading, in order:
