@@ -109,6 +109,13 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Phase 2A hybrid manual-confirm-per-page queue runner implemented in the Study Panel.
+- Start queue selects the first pending item without navigation or analysis; Open current queue item navigates only that one page; Analyze current queue item runs explicit analysis and marks the item done only when fresh canonical analysis status/target matches the queue item canonical key.
+- Next queue item selects another pending item without opening or analyzing; Pause/Resume/Cancel remain status controls; Retry failed resets failed items to pending; Clear completed removes only done/skipped; Clear queue preserves analyzed/session/cross-reference data.
+- No automatic crawling, automatic next item, book/volume execution, temporary-tab orchestration, background long-run runner, GPT buttons, or cross-reference storage change was added.
+- Validation passed: `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Browser manual queue smoke remains the next recommended confirmation.
+Latest pcdx update:
 - Phase 1 large-volume analysis queue scaffold implemented in the Study Panel with storage keys `ICE_ANALYSIS_QUEUE`, `ICE_ANALYSIS_QUEUE_STATUS`, `ICE_ANALYSIS_QUEUE_HISTORY`, and `ICE_ANALYSIS_QUEUE_MANIFEST`.
 - Queue summary appears collapsed in Study Scope and exposes explicit controls: Build selected range queue, Show queue, Clear queue, Start queue, Pause queue, Resume queue, Cancel queue, Retry failed, and Clear completed.
 - Phase 1 does not crawl or process pages; Start/Pause/Resume/Cancel update queue status only, and queued pages remain `pending` until future processing is approved.

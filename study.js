@@ -1656,6 +1656,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         queuedAt: normalizeText(item.queuedAt || ""),
         startedAt: normalizeText(item.startedAt || ""),
         completedAt: normalizeText(item.completedAt || ""),
+        failedAt: normalizeText(item.failedAt || ""),
+        lastAttemptedUrl: normalizeText(item.lastAttemptedUrl || ""),
+        expectedCanonicalKey: normalizeText(item.expectedCanonicalKey || item.canonicalKey || ""),
+        actualAnalyzedCanonicalKey: normalizeText(item.actualAnalyzedCanonicalKey || ""),
         source: ["range", "book", "volume", "manual"].includes(item.source) ? item.source : "manual"
       }))
       .filter((item) => item.url && item.book && item.chapter && item.canonicalKey)
@@ -1677,6 +1681,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function queueItemPageRecord(item = {}) {
+    if (!item?.url || !item.book || !item.chapter) return null;
+    return {
+      sourceCaptureId: "",
+      sourceTitle: item.label || `${item.book} ${item.chapter}`,
+      sourceCaptureBook: item.book,
+      sourceCaptureChapter: String(item.chapter),
+      activeUrl: item.url,
+      activeAdapterName: "lds_scripture_adapter",
+      pageKey: item.canonicalKey || ""
+    };
+  }
+
+  function currentQueueItem(records = analysisQueueRecords(), status = analysisQueueStatus()) {
+    return records.find((item) => item.id === status.currentItemId || item.canonicalKey === status.currentItemId) ||
+      records.find((item) => item.status === "running") ||
+      records.find((item) => item.status === "pending") ||
+      null;
+  }
+
+  function firstPendingQueueItem(records = analysisQueueRecords()) {
+    return records.find((item) => item.status === "pending") || null;
+  }
+
+  function nextPendingQueueItem(records = analysisQueueRecords(), currentId = analysisQueueStatus().currentItemId) {
+    const pending = records.filter((item) => item.status === "pending");
+    if (!pending.length) return null;
+    const currentIndex = records.findIndex((item) => item.id === currentId || item.canonicalKey === currentId);
+    if (currentIndex < 0) return pending[0];
+    return pending.find((item) => records.indexOf(item) > currentIndex) || pending[0];
+  }
+
+  function updateQueueItem(records = analysisQueueRecords(), itemId = "", patch = {}) {
+    return records.map((item) => (item.id === itemId || item.canonicalKey === itemId)
+      ? { ...item, ...patch }
+      : item);
+  }
+
   function analysisQueueCounts(records = analysisQueueRecords()) {
     return records.reduce((counts, item) => {
       counts.total += 1;
@@ -1688,7 +1730,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function analysisQueueSummaryLine(records = analysisQueueRecords(), status = analysisQueueStatus()) {
     const counts = analysisQueueCounts(records);
     if (!counts.total) return "No analysis queue built. Nothing will run until a queue is built and Start queue is clicked.";
-    return `Queue ${status.state}: ${counts.total} item(s), ${counts.pending} pending, ${counts.done} done, ${counts.failed} failed, ${counts.skipped} skipped. Phase 1 scaffold only; no automatic crawling.`;
+    return `Queue ${status.state}: ${counts.total} item(s), ${counts.pending} pending, ${counts.done} done, ${counts.failed} failed, ${counts.skipped} skipped. Phase 2A manual runner; no automatic crawling.`;
   }
 
   function analysisQueueManifest(records = analysisQueueRecords(), source = "range") {
@@ -1732,6 +1774,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       queuedAt,
       startedAt: "",
       completedAt: "",
+      failedAt: "",
+      lastAttemptedUrl: "",
+      expectedCanonicalKey: canonicalKey,
+      actualAnalyzedCanonicalKey: "",
       source
     };
   }
@@ -3891,13 +3937,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body = document.createElement("div");
     body.className = "study-scope-source-diagnostics-body";
     const note = document.createElement("p");
+    const current = currentQueueItem(records, status);
     note.textContent = records.length
-      ? "Queue scaffold is explicit and paused by design. Start/Pause/Resume/Cancel update queue status only in Phase 1."
+      ? "Phase 2A queue runner is manual-confirm-per-page: Start selects an item; Open navigates one item; Analyze verifies the canonical result before marking done."
       : (candidate.reason || "Queue is empty. Build a selected range queue when ready.");
     const list = document.createElement("dl");
     list.className = "volume-context-list";
     [
       ["State", status.state],
+      ["Current item", current ? `${current.label} (${current.status})` : "None selected"],
       ["Items", String(counts.total)],
       ["Pending", String(counts.pending)],
       ["Done", String(counts.done)],
@@ -3915,11 +3963,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     buttons.className = "volume-context-actions";
     const hasFailed = counts.failed > 0;
     const hasCompleted = counts.done + counts.skipped > 0;
+    const hasCurrent = Boolean(current);
+    const hasRunnableCurrent = Boolean(current && ["pending", "running"].includes(current.status));
     [
       ["Build selected range queue", "buildSelectedRangeQueue", !candidate.items.length],
       ["Show queue", "showAnalysisQueue", !records.length],
       ["Clear queue", "clearAnalysisQueue", !records.length],
       ["Start queue", "startAnalysisQueue", !records.length || status.state === "running"],
+      ["Open current queue item", "openCurrentQueueItem", !hasRunnableCurrent || status.state !== "running"],
+      ["Analyze current queue item", "analyzeCurrentQueueItem", !hasRunnableCurrent || status.state !== "running"],
+      ["Next queue item", "selectNextQueueItem", !records.some((item) => item.status === "pending")],
       ["Pause queue", "pauseAnalysisQueue", !records.length || status.state !== "running"],
       ["Resume queue", "resumeAnalysisQueue", !records.length || status.state !== "paused"],
       ["Cancel queue", "cancelAnalysisQueue", !records.length || status.state === "canceled"],
@@ -4225,7 +4278,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await writeAnalysisQueue(candidate.items, {
       state: "idle",
       currentItemId: "",
-      message: "Queue built. Click Start queue when ready; Phase 1 does not process pages automatically.",
+      message: "Queue built. Click Start queue when ready; Phase 2A selects one item and still requires explicit open/analyze clicks.",
       startedAt: "",
       pausedAt: "",
       canceledAt: ""
@@ -4247,29 +4300,185 @@ document.addEventListener("DOMContentLoaded", async () => {
       showDiagnosticMessage("Build a queue before starting it.");
       return;
     }
-    await writeAnalysisQueue(records, { state: "running", message: "Start requested. Phase 1 scaffold does not process pages yet.", startedAt: new Date().toISOString(), pausedAt: "", canceledAt: "" }, "start_analysis_queue", "Queue start requested. Phase 1 scaffold updated status only; no pages were analyzed.");
+    const current = currentQueueItem(records, analysisQueueStatus());
+    const selected = current?.status === "pending" || current?.status === "running" ? current : firstPendingQueueItem(records);
+    if (!selected) {
+      await writeAnalysisQueue(records, { state: "complete", currentItemId: "", message: "No pending queue items remain.", pausedAt: "", canceledAt: "" }, "start_analysis_queue", "No pending queue items remain. Nothing was analyzed.");
+      return;
+    }
+    await writeAnalysisQueue(records, {
+      state: "running",
+      currentItemId: selected.id,
+      message: `Current queue item selected: ${selected.label}. Open it manually, then analyze current queue item.`,
+      startedAt: new Date().toISOString(),
+      pausedAt: "",
+      canceledAt: ""
+    }, "start_analysis_queue", `Queue running. Current item selected: ${selected.label}. No navigation or analysis occurred.`);
+  }
+
+  async function openCurrentQueueItem() {
+    const status = analysisQueueStatus();
+    if (status.state !== "running") {
+      showDiagnosticMessage("Start or resume the queue before opening the current queue item.");
+      return;
+    }
+    const item = currentQueueItem(analysisQueueRecords(), status);
+    if (!item) {
+      showDiagnosticMessage("No current queue item is selected.");
+      return;
+    }
+    if (!["pending", "running"].includes(item.status)) {
+      showDiagnosticMessage("Select a pending queue item before opening it.");
+      return;
+    }
+    const page = queueItemPageRecord(item);
+    await navigateToSourcePage({ url: item.url, label: item.label, page }, "open_current_queue_item");
+    await writeAnalysisQueue(analysisQueueRecords(), {
+      state: "running",
+      currentItemId: item.id,
+      message: `Opened ${item.label}. Analyze current queue item when ready.`
+    }, "open_current_queue_item", `Opened ${item.label}. Navigation only; no analysis occurred.`);
+  }
+
+  function analyzedCanonicalKeyFromStatus(status = {}) {
+    return pageRecordKey(pageRecordFromStatus(status) || {});
+  }
+
+  function canonicalMatchForQueueItem(item = {}, status = studyData.analysisStatus || {}) {
+    const statusKey = analyzedCanonicalKeyFromStatus(status);
+    const targetKey = pageRecordFromCanonicalMarker(studyData.canonicalAnalysisTarget || {})?.pageKey || "";
+    const actualKey = targetKey || statusKey || "";
+    return {
+      matched: Boolean(item.canonicalKey && (item.canonicalKey === statusKey || item.canonicalKey === targetKey)),
+      actualKey
+    };
+  }
+
+  async function analyzeCurrentQueueItem() {
+    const status = analysisQueueStatus();
+    if (status.state !== "running") {
+      showDiagnosticMessage("Queue must be running before analyzing the current queue item.");
+      return;
+    }
+    const item = currentQueueItem(analysisQueueRecords(), status);
+    if (!item) {
+      showDiagnosticMessage("No current queue item is selected.");
+      return;
+    }
+    if (!["pending", "running"].includes(item.status)) {
+      showDiagnosticMessage("Select a pending queue item before analyzing it.");
+      return;
+    }
+    const startedAt = new Date().toISOString();
+    await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
+      status: "running",
+      attempts: item.attempts + 1,
+      startedAt,
+      lastAttemptedUrl: item.url,
+      expectedCanonicalKey: item.canonicalKey,
+      error: "",
+      failedAt: "",
+      actualAnalyzedCanonicalKey: ""
+    }), {
+      state: "running",
+      currentItemId: item.id,
+      message: `Analyzing ${item.label}; waiting for canonical match.`
+    }, "analyze_current_queue_item_started", `Analyzing current queue item: ${item.label}.`);
+
+    try {
+      const pageUpdated = await rerunFormatterOnActiveContentTab();
+      const response = await chrome.runtime.sendMessage({
+        type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
+        reason: pageUpdated ? "queue-current-item" : "queue-current-item-stored-source"
+      });
+      if (!response?.ok) throw new Error(response?.error || "Analysis pipeline failed.");
+      await refreshStudyData();
+      const verified = canonicalMatchForQueueItem(item, response.status || studyData.analysisStatus || {});
+      if (!verified.matched) {
+        const message = `Canonical mismatch after analysis. Expected ${item.canonicalKey}; got ${verified.actualKey || "none"}.`;
+        await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
+          status: "failed",
+          error: message,
+          failedAt: new Date().toISOString(),
+          completedAt: "",
+          lastAttemptedUrl: item.url,
+          expectedCanonicalKey: item.canonicalKey,
+          actualAnalyzedCanonicalKey: verified.actualKey || ""
+        }), {
+          state: "running",
+          currentItemId: item.id,
+          message
+        }, "analyze_current_queue_item_failed", message);
+        return;
+      }
+      const remainingRecords = updateQueueItem(analysisQueueRecords(), item.id, {
+        status: "done",
+        error: "",
+        completedAt: new Date().toISOString(),
+        failedAt: "",
+        lastAttemptedUrl: item.url,
+        expectedCanonicalKey: item.canonicalKey,
+        actualAnalyzedCanonicalKey: verified.actualKey || item.canonicalKey
+      });
+      await writeAnalysisQueue(remainingRecords, {
+        state: "running",
+        currentItemId: item.id,
+        message: `${item.label} analyzed and verified. Click Next queue item to continue.`
+      }, "analyze_current_queue_item_done", `${item.label} marked done after canonical match. No next item was opened or analyzed automatically.`);
+    } catch (error) {
+      await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
+        status: "failed",
+        error: error.message,
+        failedAt: new Date().toISOString(),
+        completedAt: "",
+        lastAttemptedUrl: item.url,
+        expectedCanonicalKey: item.canonicalKey,
+        actualAnalyzedCanonicalKey: ""
+      }), {
+        state: "running",
+        currentItemId: item.id,
+        message: `Queue item failed: ${error.message}`
+      }, "analyze_current_queue_item_failed", `Queue item failed: ${error.message}`);
+    }
+  }
+
+  async function selectNextQueueItem() {
+    const records = analysisQueueRecords();
+    const next = nextPendingQueueItem(records, analysisQueueStatus().currentItemId);
+    if (!next) {
+      await writeAnalysisQueue(records, { state: "complete", currentItemId: "", message: "No pending queue items remain." }, "select_next_queue_item", "No pending queue items remain. Nothing opened or analyzed.");
+      return;
+    }
+    await writeAnalysisQueue(records, {
+      state: analysisQueueStatus().state === "paused" ? "paused" : "running",
+      currentItemId: next.id,
+      message: `Current queue item selected: ${next.label}. Open it manually, then analyze current queue item.`
+    }, "select_next_queue_item", `Selected next queue item: ${next.label}. No navigation or analysis occurred.`);
   }
 
   async function pauseAnalysisQueue() {
-    await writeAnalysisQueue(analysisQueueRecords(), { state: "paused", message: "Queue paused.", pausedAt: new Date().toISOString() }, "pause_analysis_queue", "Queue paused. No background processing is active in Phase 1.");
+    await writeAnalysisQueue(analysisQueueRecords(), { state: "paused", message: "Queue paused.", pausedAt: new Date().toISOString() }, "pause_analysis_queue", "Queue paused. No queue item will open or analyze until resumed.");
   }
 
   async function resumeAnalysisQueue() {
-    await writeAnalysisQueue(analysisQueueRecords(), { state: "running", message: "Queue resumed. Phase 1 scaffold does not process pages yet.", pausedAt: "" }, "resume_analysis_queue", "Queue resumed as status only. No pages were analyzed.");
+    const records = analysisQueueRecords();
+    const current = currentQueueItem(records, analysisQueueStatus()) || firstPendingQueueItem(records);
+    await writeAnalysisQueue(records, { state: "running", currentItemId: current?.id || "", message: current ? `Queue resumed at ${current.label}.` : "Queue resumed with no pending items.", pausedAt: "" }, "resume_analysis_queue", current ? `Queue resumed at ${current.label}. Open/analyze still requires explicit clicks.` : "Queue resumed with no pending items.");
   }
 
   async function cancelAnalysisQueue() {
-    await writeAnalysisQueue(analysisQueueRecords(), { state: "canceled", message: "Queue canceled.", canceledAt: new Date().toISOString() }, "cancel_analysis_queue", "Queue canceled. Pending items remain records only and were not analyzed.");
+    await writeAnalysisQueue(analysisQueueRecords(), { state: "canceled", message: "Queue canceled.", canceledAt: new Date().toISOString() }, "cancel_analysis_queue", "Queue canceled. Item statuses remain intact and no processing is active.");
   }
 
   async function retryFailedQueueItems() {
-    const records = analysisQueueRecords().map((item) => item.status === "failed" ? { ...item, status: "pending", error: "" } : item);
-    await writeAnalysisQueue(records, { state: "idle", message: "Failed queue items reset to pending." }, "retry_failed_queue_items", "Failed queue items reset to pending. Start queue remains manual.");
+    const records = analysisQueueRecords().map((item) => item.status === "failed" ? { ...item, status: "pending", error: "", failedAt: "", actualAnalyzedCanonicalKey: "" } : item);
+    await writeAnalysisQueue(records, { state: "idle", currentItemId: "", message: "Failed queue items reset to pending." }, "retry_failed_queue_items", "Failed queue items reset to pending. Start queue remains manual.");
   }
 
   async function clearCompletedQueueItems() {
     const records = analysisQueueRecords().filter((item) => !["done", "skipped"].includes(item.status));
-    await writeAnalysisQueue(records, { state: records.length ? analysisQueueStatus().state : "idle", message: "Completed/skipped queue items cleared." }, "clear_completed_queue_items", "Completed/skipped queue items cleared. Analyzed pages were not changed.");
+    const currentId = records.some((item) => item.id === analysisQueueStatus().currentItemId) ? analysisQueueStatus().currentItemId : "";
+    await writeAnalysisQueue(records, { state: records.length ? analysisQueueStatus().state : "idle", currentItemId: currentId, message: "Completed/skipped queue items cleared." }, "clear_completed_queue_items", "Completed/skipped queue items cleared. Analyzed pages were not changed.");
   }
 
   function handleVolumeContextAction(event) {
@@ -4301,6 +4510,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       clearAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue clear failed: ${error.message}`));
     } else if (action === "startAnalysisQueue") {
       startAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue start failed: ${error.message}`));
+    } else if (action === "openCurrentQueueItem") {
+      openCurrentQueueItem().catch((error) => showDiagnosticMessage(`Queue navigation failed: ${error.message}`));
+    } else if (action === "analyzeCurrentQueueItem") {
+      analyzeCurrentQueueItem().catch((error) => showDiagnosticMessage(`Queue analysis failed: ${error.message}`));
+    } else if (action === "selectNextQueueItem") {
+      selectNextQueueItem().catch((error) => showDiagnosticMessage(`Queue selection failed: ${error.message}`));
     } else if (action === "pauseAnalysisQueue") {
       pauseAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue pause failed: ${error.message}`));
     } else if (action === "resumeAnalysisQueue") {

@@ -21,6 +21,39 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-10 - pcdx - Add manual queue item runner
+Summary:
+- Implemented Phase 2A hybrid manual-confirm-per-page queue execution in the Study Panel.
+- Queue Start selects the first pending item but does not navigate or analyze.
+- Open current queue item navigates only to the selected item URL and does not analyze.
+- Analyze current queue item runs explicit analysis and marks the item done only after fresh canonical analysis status/target matches the queue item canonical key.
+- Mismatch/errors mark the item failed with error, failedAt, attempts, lastAttemptedUrl, expectedCanonicalKey, and actualAnalyzedCanonicalKey where available.
+- Next queue item selects another pending item only; Pause/Resume/Cancel, Retry failed, Clear completed, and Clear queue keep manual/safe semantics.
+- No automatic crawling, automatic next-item loop, book/volume execution, temporary-tab orchestration, background long-running runner, GPT buttons, or cross-reference storage change was added.
+
+Files touched:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- `node --check popup.js` passed.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+- Browser manual queue smoke was not run in this cdx session because the in-app browser control tool was unavailable.
+
+Commit:
+- This commit: `pcdx: Add manual queue item runner`
+
+Status:
+- Phase 2A implementation completed and validated.
+- Recommended next task: browser manual smoke for Matthew 1-5 queue runner, then push if confirmed.
 ## 2026-06-06 - pcdx - Add manual page workflow controls
 Summary:
 - Added Page Workflow controls near Study Scope for manual page-by-page navigation and selected-page cross-reference workflow.

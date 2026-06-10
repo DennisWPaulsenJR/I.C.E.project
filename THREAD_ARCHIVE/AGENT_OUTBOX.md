@@ -3,6 +3,19 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-10 - pcdx -> gpt/mgpt/mcdx - Phase 2A manual queue runner ready
+Status: ready after commit; browser smoke pending
+Task:
+- Implement Phase 2A hybrid manual-confirm-per-page queue runner without automatic crawling.
+Message:
+- Study Panel queue now supports Start queue selecting a current pending item, Open current queue item for one-page navigation, Analyze current queue item with canonical match verification, and Next queue item selection without automatic open/analyze.
+- Queue items are marked done only after fresh canonical analysis status/target matches the queue item canonical key; mismatches/errors become failed records with expected/actual canonical details.
+- Pause/Resume/Cancel, Retry failed, Clear completed, and Clear queue preserve manual safe semantics and do not clear analyzed/session/cross-reference data.
+- No background queue orchestrator, automatic next-item loop, book/volume execution, temporary tab runner, GPT buttons, or cross-reference storage change was added.
+Validation:
+- `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed.
+Needed action:
+- Commit locally, then run browser manual smoke for Matthew 1-5 queue runner when browser control is available; push after confirmation or user approval.
 ## 2026-06-06 - pcdx -> gpt/mgpt/mcdx - Manual Page Workflow controls added
 Status: done locally and validated
 Task:
