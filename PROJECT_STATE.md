@@ -82,6 +82,13 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Phase 1 large-volume analysis queue scaffold implemented in the Study Panel with storage keys `ICE_ANALYSIS_QUEUE`, `ICE_ANALYSIS_QUEUE_STATUS`, `ICE_ANALYSIS_QUEUE_HISTORY`, and `ICE_ANALYSIS_QUEUE_MANIFEST`.
+- Queue summary appears collapsed in Study Scope and exposes explicit controls: Build selected range queue, Show queue, Clear queue, Start queue, Pause queue, Resume queue, Cancel queue, Retry failed, and Clear completed.
+- Phase 1 does not crawl or process pages; Start/Pause/Resume/Cancel update queue status only, and queued pages remain `pending` until future processing is approved.
+- Browser smoke built a supported LDS Matthew 1-5 queue from Matthew 1 + Matthew 5 selected range; Matthew 2/3/4 were queued as pending and were not marked analyzed.
+- Clearing the queue preserved analyzed/session and cross-reference data: final queue 0, analyzed pages 2, analysis history 2, cross-reference set 1; GPT buttons remained absent and Study Scope loaded in about 328ms.
+
+Latest pcdx update:
 - Cross-reference Set separation is confirmed by browser manual smoke in a temporary Chrome profile with the extension loaded on LDS Matthew 1 and Matthew 5.
 - Popup selected Matthew 1 and Matthew 5 into `ICE_CROSS_REFERENCE_SET`; the set showed non-contiguous selected pages with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed.
 - Matthew 1 remained `Analyzed`; Matthew 5 remained `Not analyzed yet`; analyzed/session data survived clear cross-reference with final counts: `ICE_CROSS_REFERENCE_SET` 0, `ICE_CANONICAL_ANALYZED_PAGES` 1, `ICE_ANALYSIS_HISTORY` 1.

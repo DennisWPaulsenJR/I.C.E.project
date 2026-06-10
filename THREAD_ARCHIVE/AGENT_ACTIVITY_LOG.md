@@ -4067,3 +4067,43 @@ Validation:
 
 Next recommendation:
 - Choose between popup/Study Panel UX polish, large-volume queue design, or Study Panel modularization planning.
+
+## 2026-06-09 - pcdx - Phase 1 Analysis Queue Scaffold
+
+Task:
+- Add the safe foundation for explicit large-volume analysis queues without adding crawling or automatic analysis.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation:
+- Added Study Panel queue storage keys: `ICE_ANALYSIS_QUEUE`, `ICE_ANALYSIS_QUEUE_STATUS`, `ICE_ANALYSIS_QUEUE_HISTORY`, and `ICE_ANALYSIS_QUEUE_MANIFEST`.
+- Added collapsed Analysis Queue summary in Study Scope using the lightweight startup storage path.
+- Added explicit queue controls: Build selected range queue, Show queue, Clear queue, Start queue, Pause queue, Resume queue, Cancel queue, Retry failed, and Clear completed.
+- Phase 1 Start/Pause/Resume/Cancel update queue status only; no page processing, crawling, navigation automation, or semantic storage rewrite was added.
+- Queue records use pending/running/done/failed/skipped shape with id, label, url, book, chapter, canonicalKey, attempts, timestamps, error, and source.
+
+Validation:
+- `node --check popup.js` passed.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Manual smoke:
+- Study Scope loaded in about 328ms.
+- Queue Summary appeared collapsed with honest empty state.
+- Build selected range queue created pending Matthew 1, Matthew 2, Matthew 3, Matthew 4, and Matthew 5 queue items from a supported LDS Matthew 1 + Matthew 5 selected range.
+- Queued Matthew 2/3/4 remained pending and were not marked analyzed.
+- Start/Pause/Resume/Cancel changed queue status only; item statuses remained pending.
+- Clear queue emptied `ICE_ANALYSIS_QUEUE` and preserved final counts: analyzed pages 2, analysis history 2, cross-reference set 1.
+- GPT action buttons remained absent and collapsible/deferred summaries remained active.
+
+Next recommendation:
+- Push after commit, then choose between queue UX polish, Phase 2 one-item processing design, or Study Panel modularization planning.

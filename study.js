@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     crossReferenceSet: "ICE_CROSS_REFERENCE_SET",
     activeSourcePage: "ICE_ACTIVE_SOURCE_PAGE",
     selectedRange: "ICE_SELECTED_RANGE",
+    analysisQueue: "ICE_ANALYSIS_QUEUE",
+    analysisQueueStatus: "ICE_ANALYSIS_QUEUE_STATUS",
+    analysisQueueHistory: "ICE_ANALYSIS_QUEUE_HISTORY",
+    analysisQueueManifest: "ICE_ANALYSIS_QUEUE_MANIFEST",
     panelUiState: "ICE_PANEL_UI_STATE",
     gptReviewReport: "ICE_GPT_REVIEW_REPORT"
   };
@@ -65,6 +69,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     "crossReferenceSet",
     "activeSourcePage",
     "selectedRange",
+    "analysisQueue",
+    "analysisQueueStatus",
+    "analysisQueueHistory",
+    "analysisQueueManifest",
     "activeAdapter",
     "panelUiState"
   ];
@@ -1629,6 +1637,141 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? `Cross-reference selected pages: ${scope.sessionLabel}. ${status}.${missingAnalysisLine}`
       : `Cross-reference set: ${scope.labels.join(" + ")} (non-contiguous selected pages; missing intermediate pages are not selected/analyzed: ${scope.missingLabels.join(", ") || "none"}). ${status}.${missingAnalysisLine}`;
   }
+  function validQueueStatus(value = "pending") {
+    return ["pending", "running", "done", "failed", "skipped"].includes(value) ? value : "pending";
+  }
+
+  function analysisQueueRecords(records = studyData.analysisQueue) {
+    return asArray(records)
+      .map((item) => ({
+        id: normalizeText(item.id || item.canonicalKey || item.url || ""),
+        label: normalizeText(item.label || [item.book, item.chapter].filter(Boolean).join(" ") || item.url || "Queued page"),
+        url: normalizeText(item.url || ""),
+        book: normalizeText(item.book || ""),
+        chapter: normalizeText(item.chapter || ""),
+        canonicalKey: normalizeText(item.canonicalKey || item.id || ""),
+        status: validQueueStatus(item.status),
+        attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0,
+        error: normalizeText(item.error || ""),
+        queuedAt: normalizeText(item.queuedAt || ""),
+        startedAt: normalizeText(item.startedAt || ""),
+        completedAt: normalizeText(item.completedAt || ""),
+        source: ["range", "book", "volume", "manual"].includes(item.source) ? item.source : "manual"
+      }))
+      .filter((item) => item.url && item.book && item.chapter && item.canonicalKey)
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
+      .sort((left, right) => Number(left.chapter || 0) - Number(right.chapter || 0) || left.label.localeCompare(right.label));
+  }
+
+  function analysisQueueStatus() {
+    const status = studyData.analysisQueueStatus || {};
+    if (!status || typeof status !== "object" || Array.isArray(status)) return { state: "idle" };
+    return {
+      state: ["idle", "running", "paused", "canceled", "complete"].includes(status.state) ? status.state : "idle",
+      currentItemId: normalizeText(status.currentItemId || ""),
+      message: normalizeText(status.message || ""),
+      updatedAt: normalizeText(status.updatedAt || ""),
+      startedAt: normalizeText(status.startedAt || ""),
+      pausedAt: normalizeText(status.pausedAt || ""),
+      canceledAt: normalizeText(status.canceledAt || "")
+    };
+  }
+
+  function analysisQueueCounts(records = analysisQueueRecords()) {
+    return records.reduce((counts, item) => {
+      counts.total += 1;
+      counts[item.status] = (counts[item.status] || 0) + 1;
+      return counts;
+    }, { total: 0, pending: 0, running: 0, done: 0, failed: 0, skipped: 0 });
+  }
+
+  function analysisQueueSummaryLine(records = analysisQueueRecords(), status = analysisQueueStatus()) {
+    const counts = analysisQueueCounts(records);
+    if (!counts.total) return "No analysis queue built. Nothing will run until a queue is built and Start queue is clicked.";
+    return `Queue ${status.state}: ${counts.total} item(s), ${counts.pending} pending, ${counts.done} done, ${counts.failed} failed, ${counts.skipped} skipped. Phase 1 scaffold only; no automatic crawling.`;
+  }
+
+  function analysisQueueManifest(records = analysisQueueRecords(), source = "range") {
+    const counts = analysisQueueCounts(records);
+    const labels = records.map((item) => item.label);
+    return {
+      id: records.length ? `queue-${Date.now()}` : "",
+      source,
+      total: counts.total,
+      pending: counts.pending,
+      running: counts.running,
+      done: counts.done,
+      failed: counts.failed,
+      skipped: counts.skipped,
+      firstLabel: labels[0] || "",
+      lastLabel: labels[labels.length - 1] || "",
+      labels,
+      updatedAt: new Date().toISOString(),
+      phase: "scaffold"
+    };
+  }
+
+  function analysisQueueHistoryEvent(action, message) {
+    return { action, message, at: new Date().toISOString(), phase: "scaffold" };
+  }
+
+  function queueItemFromPage(page = {}, source = "range", queuedAt = new Date().toISOString()) {
+    if (!validSourcePageRecord(page)) return null;
+    const label = volumePageLabel(page);
+    const canonicalKey = page.pageKey || pageRecordKey(page);
+    return {
+      id: `${source}:${canonicalKey}`,
+      label,
+      url: sourcePageUrl(page),
+      book: pageBookName(page),
+      chapter: String(pageChapterNumber(page)),
+      canonicalKey,
+      status: "pending",
+      attempts: 0,
+      error: "",
+      queuedAt,
+      startedAt: "",
+      completedAt: "",
+      source
+    };
+  }
+
+  function queueCandidatePageForChapter(seedPage = {}, chapter) {
+    const seedChapter = pageChapterNumber(seedPage);
+    if (!seedChapter || !chapter) return null;
+    const target = pageNavigationTarget(seedPage, Number(chapter) - seedChapter);
+    return target?.page || null;
+  }
+
+  function selectedRangeQueueCandidate() {
+    const analyzedPages = analyzedPageHistory();
+    const scope = selectedRangeFromAnalyzedPages(analyzedPages);
+    const activePage = activeSourcePageRecord();
+    const seed = scope?.start || activePage;
+    if (!seed || !validSourcePageRecord(seed)) return { items: [], reason: "No supported LDS source page is available for queue building." };
+    const book = pageBookName(seed);
+    if (book !== "Matthew") return { items: [], reason: "Phase 1 queue building is limited to supported LDS Matthew pages." };
+    const startChapter = pageChapterNumber(scope?.start || seed);
+    const endChapter = pageChapterNumber(scope?.end || seed);
+    if (!startChapter || !endChapter) return { items: [], reason: "No selected range start/end chapter is available." };
+    const min = Math.min(startChapter, endChapter);
+    const max = Math.max(startChapter, endChapter);
+    const queuedAt = new Date().toISOString();
+    const items = [];
+    for (let chapter = min; chapter <= max; chapter += 1) {
+      const page = queueCandidatePageForChapter(seed, chapter);
+      const item = page ? queueItemFromPage(page, "range", queuedAt) : null;
+      if (item) items.push(item);
+    }
+    if (!items.length) return { items: [], reason: "No supported queue items could be built for the selected range." };
+    return { items, reason: "" };
+  }
+
+  function analysisQueueDetailsLine(records = analysisQueueRecords()) {
+    if (!records.length) return "Queue is empty.";
+    return records.map((item) => `${item.label}: ${item.status}${item.error ? ` (${item.error})` : ""}`).join("\n");
+  }
+
   function pageChipLines(pages = []) {
     return pages.map((page) => `[${volumePageLabel(page)}]`);
   }
@@ -3635,6 +3778,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Last analyzed time", studyData.analysisStatus?.analyzedAt || "Never"],
       ...sourceIsolationWarningLines().map((line) => ["Source Isolation", line]),
       ...currentBrowserTabIgnoredLines().map((line) => [line.startsWith("Reason:") ? "Source Isolation Reason" : "Current Browser Tab", line]),
+      ["Analysis Queue", analysisQueueSummaryLine()],
       ["Future range controls", "Select start page; Select end page; Analyze selected range; Analyze book; Analyze volume"],
       targetLooksLikePanel ? ["Target Warning", "Current target appears to be the Study Panel, not the source page. Analysis will use the stored active source target or require source selection; panel UI markup is not source content."] : null,
       !activePage ? ["Target Warning", "No active source page selected. Open a scripture/source page or choose from analyzed pages."] : null
@@ -3649,6 +3793,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       detail.textContent = renderIceBeingDisplayText(value || "Not recorded", { divineContext: hasDivineDisplayContext([value]), preferHolySpirit: true });
       list.append(term, detail);
     });
+
+    const queueDetails = createAnalysisQueueDetails();
 
     const pageWorkflow = document.createElement("div");
     pageWorkflow.className = "volume-context-action-group page-workflow-actions";
@@ -3699,7 +3845,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       actions.appendChild(button);
     });
 
-    card.append(heading, list, pageWorkflow, fullStudyDataLoaded ? createStudyScopeDiagnosticsDetails() : createDeferredStudyScopeDiagnosticsDetails(), actions);
+    card.append(heading, list, pageWorkflow, queueDetails, fullStudyDataLoaded ? createStudyScopeDiagnosticsDetails() : createDeferredStudyScopeDiagnosticsDetails(), actions);
     return card;
   }
 
@@ -3721,7 +3867,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       selectedRangeFromAnalyzedPages(analyzedPages)?.sessionLabel,
       selectedRangeFromAnalyzedPages(analyzedPages)?.sessionType,
       selectedRangeFromAnalyzedPages(analyzedPages)?.missingLabels?.join(" "),
-      continuitySummaryLines(activePage, analyzedPages).join(" ")
+      continuitySummaryLines(activePage, analyzedPages).join(" "),
+      analysisQueueSummaryLine(),
+      analysisQueueDetailsLine()
     ].join(" ");
     count.textContent = "scope";
     if (term && !includesTerm(contextText, term)) {
@@ -3729,6 +3877,65 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     container.appendChild(createStudyScopeCard());
+  }
+
+  function createAnalysisQueueDetails() {
+    const records = analysisQueueRecords();
+    const status = analysisQueueStatus();
+    const counts = analysisQueueCounts(records);
+    const candidate = selectedRangeQueueCandidate();
+    const details = document.createElement("details");
+    details.className = "study-scope-source-diagnostics analysis-queue-summary";
+    const summary = document.createElement("summary");
+    summary.textContent = `Analysis Queue - ${analysisQueueSummaryLine(records, status)}`;
+    const body = document.createElement("div");
+    body.className = "study-scope-source-diagnostics-body";
+    const note = document.createElement("p");
+    note.textContent = records.length
+      ? "Queue scaffold is explicit and paused by design. Start/Pause/Resume/Cancel update queue status only in Phase 1."
+      : (candidate.reason || "Queue is empty. Build a selected range queue when ready.");
+    const list = document.createElement("dl");
+    list.className = "volume-context-list";
+    [
+      ["State", status.state],
+      ["Items", String(counts.total)],
+      ["Pending", String(counts.pending)],
+      ["Done", String(counts.done)],
+      ["Failed", String(counts.failed)],
+      ["Skipped", String(counts.skipped)],
+      ["Queue contents", analysisQueueDetailsLine(records)]
+    ].forEach(([label, value]) => {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.textContent = value || "None";
+      list.append(term, detail);
+    });
+    const buttons = document.createElement("div");
+    buttons.className = "volume-context-actions";
+    const hasFailed = counts.failed > 0;
+    const hasCompleted = counts.done + counts.skipped > 0;
+    [
+      ["Build selected range queue", "buildSelectedRangeQueue", !candidate.items.length],
+      ["Show queue", "showAnalysisQueue", !records.length],
+      ["Clear queue", "clearAnalysisQueue", !records.length],
+      ["Start queue", "startAnalysisQueue", !records.length || status.state === "running"],
+      ["Pause queue", "pauseAnalysisQueue", !records.length || status.state !== "running"],
+      ["Resume queue", "resumeAnalysisQueue", !records.length || status.state !== "paused"],
+      ["Cancel queue", "cancelAnalysisQueue", !records.length || status.state === "canceled"],
+      ["Retry failed", "retryFailedQueueItems", !hasFailed],
+      ["Clear completed", "clearCompletedQueueItems", !hasCompleted]
+    ].forEach(([label, action, disabled]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.volumeAction = action;
+      button.textContent = label;
+      button.disabled = Boolean(disabled);
+      buttons.appendChild(button);
+    });
+    body.append(note, list, buttons);
+    details.append(summary, body);
+    return details;
   }
 
   async function rerunFormatterOnActiveContentTab() {
@@ -3993,6 +4200,78 @@ document.addEventListener("DOMContentLoaded", async () => {
     showDiagnosticMessage(crossReferenceSetLine());
     scrollToStudySection("volumeContextSection");
   }
+  async function writeAnalysisQueue(records, statusPatch = {}, action = "queue_update", message = "Queue updated.") {
+    const queue = analysisQueueRecords(records);
+    const previousStatus = analysisQueueStatus();
+    const status = { ...previousStatus, ...statusPatch, updatedAt: new Date().toISOString() };
+    const history = [analysisQueueHistoryEvent(action, message), ...asArray(studyData.analysisQueueHistory)].slice(0, 50);
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.analysisQueue]: queue,
+      [STORAGE_KEYS.analysisQueueStatus]: status,
+      [STORAGE_KEYS.analysisQueueHistory]: history,
+      [STORAGE_KEYS.analysisQueueManifest]: analysisQueueManifest(queue, queue[0]?.source || "range"),
+      [STORAGE_KEYS.panelUiState]: { lastAction: action, updatedAt: new Date().toISOString() }
+    });
+    await refreshStudyData();
+    showDiagnosticMessage(message);
+  }
+
+  async function buildSelectedRangeQueue() {
+    const candidate = selectedRangeQueueCandidate();
+    if (!candidate.items.length) {
+      showDiagnosticMessage(candidate.reason || "No supported selected range queue can be built yet.");
+      return;
+    }
+    await writeAnalysisQueue(candidate.items, {
+      state: "idle",
+      currentItemId: "",
+      message: "Queue built. Click Start queue when ready; Phase 1 does not process pages automatically.",
+      startedAt: "",
+      pausedAt: "",
+      canceledAt: ""
+    }, "build_selected_range_queue", `Built selected range queue with ${candidate.items.length} pending item(s). Start queue remains manual.`);
+  }
+
+  function showAnalysisQueue() {
+    showDiagnosticMessage(analysisQueueSummaryLine() + "\n" + analysisQueueDetailsLine());
+    scrollToStudySection("volumeContextSection");
+  }
+
+  async function clearAnalysisQueue() {
+    await writeAnalysisQueue([], { state: "idle", currentItemId: "", message: "Queue cleared.", startedAt: "", pausedAt: "", canceledAt: "" }, "clear_analysis_queue", "Analysis queue cleared. Analyzed pages and cross-reference set were not changed.");
+  }
+
+  async function startAnalysisQueue() {
+    const records = analysisQueueRecords();
+    if (!records.length) {
+      showDiagnosticMessage("Build a queue before starting it.");
+      return;
+    }
+    await writeAnalysisQueue(records, { state: "running", message: "Start requested. Phase 1 scaffold does not process pages yet.", startedAt: new Date().toISOString(), pausedAt: "", canceledAt: "" }, "start_analysis_queue", "Queue start requested. Phase 1 scaffold updated status only; no pages were analyzed.");
+  }
+
+  async function pauseAnalysisQueue() {
+    await writeAnalysisQueue(analysisQueueRecords(), { state: "paused", message: "Queue paused.", pausedAt: new Date().toISOString() }, "pause_analysis_queue", "Queue paused. No background processing is active in Phase 1.");
+  }
+
+  async function resumeAnalysisQueue() {
+    await writeAnalysisQueue(analysisQueueRecords(), { state: "running", message: "Queue resumed. Phase 1 scaffold does not process pages yet.", pausedAt: "" }, "resume_analysis_queue", "Queue resumed as status only. No pages were analyzed.");
+  }
+
+  async function cancelAnalysisQueue() {
+    await writeAnalysisQueue(analysisQueueRecords(), { state: "canceled", message: "Queue canceled.", canceledAt: new Date().toISOString() }, "cancel_analysis_queue", "Queue canceled. Pending items remain records only and were not analyzed.");
+  }
+
+  async function retryFailedQueueItems() {
+    const records = analysisQueueRecords().map((item) => item.status === "failed" ? { ...item, status: "pending", error: "" } : item);
+    await writeAnalysisQueue(records, { state: "idle", message: "Failed queue items reset to pending." }, "retry_failed_queue_items", "Failed queue items reset to pending. Start queue remains manual.");
+  }
+
+  async function clearCompletedQueueItems() {
+    const records = analysisQueueRecords().filter((item) => !["done", "skipped"].includes(item.status));
+    await writeAnalysisQueue(records, { state: records.length ? analysisQueueStatus().state : "idle", message: "Completed/skipped queue items cleared." }, "clear_completed_queue_items", "Completed/skipped queue items cleared. Analyzed pages were not changed.");
+  }
+
   function handleVolumeContextAction(event) {
     const button = event.target.closest("button[data-volume-action]");
     if (!button) return;
@@ -4014,8 +4293,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       addActivePageToSession().catch((error) => showDiagnosticMessage(`Add failed: ${error.message}`));
     } else if (action === "addActivePageToCrossReferenceSet") {
       addActivePageToCrossReferenceSet().catch((error) => showDiagnosticMessage(`Add failed: ${error.message}`));
+    } else if (action === "buildSelectedRangeQueue") {
+      buildSelectedRangeQueue().catch((error) => showDiagnosticMessage(`Queue build failed: ${error.message}`));
+    } else if (action === "showAnalysisQueue") {
+      showAnalysisQueue();
+    } else if (action === "clearAnalysisQueue") {
+      clearAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue clear failed: ${error.message}`));
+    } else if (action === "startAnalysisQueue") {
+      startAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue start failed: ${error.message}`));
+    } else if (action === "pauseAnalysisQueue") {
+      pauseAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue pause failed: ${error.message}`));
+    } else if (action === "resumeAnalysisQueue") {
+      resumeAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue resume failed: ${error.message}`));
+    } else if (action === "cancelAnalysisQueue") {
+      cancelAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue cancel failed: ${error.message}`));
+    } else if (action === "retryFailedQueueItems") {
+      retryFailedQueueItems().catch((error) => showDiagnosticMessage(`Queue retry failed: ${error.message}`));
+    } else if (action === "clearCompletedQueueItems") {
+      clearCompletedQueueItems().catch((error) => showDiagnosticMessage(`Queue cleanup failed: ${error.message}`));
     } else if (action === "reanalyzeCurrentRange") {
-      showDiagnosticMessage("Range re-analysis is ready as a controlled UI concept, but automatic range crawling is not enabled yet. Analyze or add pages one at a time.");
+      showDiagnosticMessage("Range re-analysis is ready as a controlled UI concept, but automatic range crawling is not enabled yet. Build a queue explicitly when ready; queued pages remain pending until future processing is approved.");
     } else if (action === "clearCurrentPageAnalysis") {
       clearCurrentPageAnalysis().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
     } else if (action === "clearSessionAnalysis") {
@@ -11039,11 +11336,15 @@ createRevelationPartsSection(item.subEvents)
       "prophecyLinks",
       "analysisHistory",
       "canonicalAnalyzedPages",
+      "analysisQueue",
+      "analysisQueueHistory",
       "canonicalAnalysisTarget"
     ];
     for (const alias of arrayAliases) {
       if (!Array.isArray(data[alias])) data[alias] = [];
     }
+    if (!data.analysisQueueStatus || typeof data.analysisQueueStatus !== "object" || Array.isArray(data.analysisQueueStatus)) data.analysisQueueStatus = { state: "idle" };
+    if (!data.analysisQueueManifest || typeof data.analysisQueueManifest !== "object" || Array.isArray(data.analysisQueueManifest)) data.analysisQueueManifest = {};
     return data;
   }
   function studySectionRenderers() {
