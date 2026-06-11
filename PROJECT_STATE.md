@@ -31,9 +31,9 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
-- Push/settle the local queue scaffold and GPT handoff merge state.
-- Then proceed to Phase 2 queue execution architecture design.
-- Do not implement queue execution until design is approved.
+- Phase 2A manual-confirm-per-page queue runner is implemented, validated, browser-smoked, pushed, and recorded.
+- Next recommended task is Phase 2B design for queue result persistence/per-page summaries or queue runner UX refinement.
+- Do not implement automatic execution, crawling, book/volume capture, background queue running, or automatic next-item loops without explicit approval.
 
 ## I.C.E. Session Starting Protocol
 
@@ -109,15 +109,17 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
-- Phase 2A hybrid manual-confirm-per-page queue runner implemented in the Study Panel.
-- Start queue selects the first pending item without navigation or analysis; Open current queue item navigates only that one page; Analyze current queue item runs explicit analysis and marks the item done only when fresh canonical analysis status/target matches the queue item canonical key.
-- Next queue item selects another pending item without opening or analyzing; Pause/Resume/Cancel remain status controls; Retry failed resets failed items to pending; Clear completed removes only done/skipped; Clear queue preserves analyzed/session/cross-reference data.
-- No automatic crawling, automatic next item, book/volume execution, temporary-tab orchestration, background long-run runner, GPT buttons, or cross-reference storage change was added.
+- Phase 2A hybrid manual-confirm-per-page queue runner is implemented, validated, browser-smoked, pushed, and confirmed in repo memory.
+- Pushed commits: `bc8e4e1 pcdx: Add manual queue item runner` and `962056f pcdx: Stabilize manual queue item verification`.
+- Browser smoke built a Matthew 1-5 queue; queued items stayed pending after build; Start selected Matthew 1 without navigation or analysis; Open current queue item opened only Matthew 1; Analyze current queue item marked Matthew 1 done only after canonical match; Next selected Matthew 2 without auto-open or auto-analysis.
+- Pause/Resume/Cancel did not process items automatically; Retry failed was exercised with a deliberate Matthew 2 vs Matthew 3 mismatch; Clear completed removed done items only; Clear queue preserved analyzed/session/cross-reference data.
+- GPT buttons remained absent, collapsible/deferred summaries remained active, and Study Scope appeared quickly in browser smoke at about 146ms.
 - Validation passed: `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
-- Browser manual queue smoke remains the next recommended confirmation.
+- `qa:matthew-pages` and `review:matthew-session` each had one transient LDS page-load timeout, then passed on rerun.
+- Safety boundary remains active: no automatic crawling, automatic next item, book/volume execution, temporary-tab orchestration, background long-run runner, GPT buttons, or cross-reference storage change was added.
+- Next recommended task: Phase 2B design for queue result persistence/per-page summaries or queue runner UX refinement; do not implement full automation/book-volume crawling yet.
 Latest pcdx update:
-- Phase 1 large-volume analysis queue scaffold implemented in the Study Panel with storage keys `ICE_ANALYSIS_QUEUE`, `ICE_ANALYSIS_QUEUE_STATUS`, `ICE_ANALYSIS_QUEUE_HISTORY`, and `ICE_ANALYSIS_QUEUE_MANIFEST`.
-- Queue summary appears collapsed in Study Scope and exposes explicit controls: Build selected range queue, Show queue, Clear queue, Start queue, Pause queue, Resume queue, Cancel queue, Retry failed, and Clear completed.
+- Phase 1 large-volume analysis queue scaffold implemented in the Study Panel with storage keys `ICE_ANALYSIS_QUEUE`, `ICE_ANALYSIS_QUEUE_STATUS`, `ICE_ANALYSIS_QUEUE_HISTORY`, and `ICE_ANALYSIS_QUEUE_MANIFEST`.- Queue summary appears collapsed in Study Scope and exposes explicit controls: Build selected range queue, Show queue, Clear queue, Start queue, Pause queue, Resume queue, Cancel queue, Retry failed, and Clear completed.
 - Phase 1 does not crawl or process pages; Start/Pause/Resume/Cancel update queue status only, and queued pages remain `pending` until future processing is approved.
 - Browser smoke built a supported LDS Matthew 1-5 queue from Matthew 1 + Matthew 5 selected range; Matthew 2/3/4 were queued as pending and were not marked analyzed.
 - Clearing the queue preserved analyzed/session and cross-reference data: final queue 0, analyzed pages 2, analysis history 2, cross-reference set 1; GPT buttons remained absent and Study Scope loaded in about 328ms.

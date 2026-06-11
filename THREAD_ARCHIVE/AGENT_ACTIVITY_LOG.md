@@ -4167,3 +4167,50 @@ Coordination notes:
 - No code changed.
 - No queue execution implemented.
 - No `THREAD_ARCHIVE/AGENT_WIP.md` created.
+## 2026-06-10 - pcdx - Phase 2A Manual Queue Runner Smoke
+
+Task:
+- Record the confirmed browser smoke and validation result for the Phase 2A manual-confirm-per-page queue runner.
+
+Files changed:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation / commits:
+- `bc8e4e1 pcdx: Add manual queue item runner`
+- `962056f pcdx: Stabilize manual queue item verification`
+- Phase 2A runs one manually selected/current queue item at a time from the Study Panel.
+- Start selects an item only; Open current queue item navigates one item only; Analyze current queue item marks done only after canonical match.
+- Pause, resume, cancel, retry failed, clear completed, and clear queue remain explicit controls.
+
+Browser smoke:
+- Passed in a temporary Chrome profile with the extension loaded.
+- Built Matthew 1-5 queue; all items stayed pending after build.
+- Start selected Matthew 1 only, with no navigation or analysis.
+- Open current queue item opened only Matthew 1.
+- Analyze current queue item marked Matthew 1 done only after canonical match.
+- Next selected Matthew 2 only, with no auto-open or auto-analyze.
+- Pause/resume/cancel did not process items automatically.
+- Retry failed was exercised with a deliberate Matthew 2 vs Matthew 3 mismatch.
+- Clear completed removed done items only.
+- Clear queue preserved analyzed/session/cross-reference data.
+- GPT buttons remained absent.
+- Collapsible/deferred summaries remained active.
+- Study Scope appeared quickly, about 146ms.
+
+Validation:
+- `node --check popup.js` passed.
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3 after one transient LDS Matthew 1 page-load timeout on the first broader run.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 after one transient LDS Matthew 2 page-load timeout on the first review run.
+
+Coordination notes:
+- `background.js` was not changed.
+- No automatic queue loop, crawling, book/volume execution, temporary-tab orchestration, background queue runner, GPT action buttons, or cross-reference storage expansion was added.
+- Next likely task: Phase 2B design for queue result persistence/per-page summaries, or queue runner UX refinement.

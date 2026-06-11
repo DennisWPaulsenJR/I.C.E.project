@@ -314,3 +314,10 @@ To: `gpt`, `mgpt`, `mcdx`
 Status: Ready after commit.
 Message: Active WIP coordination is documented in `PROJECT_STATE.md` after explicit authorization. No `THREAD_ARCHIVE/AGENT_WIP.md` was created. Current WIP source of truth remains `PROJECT_STATE.md`; short handoffs stay in `THREAD_ARCHIVE/AGENT_OUTBOX.md`; completed work stays in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 Next action: push/settle the local queue scaffold and GPT handoff merge state, then design Phase 2 queue execution architecture. Do not implement queue execution until design is approved.
+### 2026-06-10 - pcdx -> gpt/mgpt/mcdx - Phase 2A manual queue runner confirmed
+From: `pcdx`
+To: `gpt`, `mgpt`, `mcdx`
+Status: Confirmed and pushed.
+Message: Phase 2A manual-confirm-per-page queue runner is implemented and browser-smoked. Commits `bc8e4e1` and `962056f` are on `origin/master`. Browser smoke built a Matthew 1-5 queue, kept items pending after build, used Start/Open/Analyze/Next as manual-only controls, marked Matthew 1 done only after canonical match, exercised Retry failed with a Matthew 2 vs Matthew 3 mismatch, and confirmed Clear queue preserved analyzed/session/cross-reference data. GPT buttons remained absent and collapsible summaries stayed active.
+Validation: `node --check popup.js`, `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed. Note: broader QA and session review each had one transient LDS page-load timeout, then passed on rerun.
+Next likely task: Phase 2B design for queue result persistence/per-page summaries, or UX refinement for the queue runner. Do not implement full automation, book/volume crawling, automatic loops, or background queue execution yet.
