@@ -1044,7 +1044,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sourceCaptureBook: inferred.book || "",
       sourceCaptureChapter: inferred.chapter || "",
       activeUrl: normalizeText(capture.url || ""),
-      activeAdapterName: capture.sourceAdapter?.adapterName || studyData.activeAdapter?.adapterName || "",
+      activeAdapterName: capture.sourceAdapter?.adapterName || capture.activeAdapterName || capture.adapterName || studyData.activeAdapter?.adapterName || studyData.analysisStatus?.activeAdapterName || "",
       capturedAt: capture.capturedAt || "",
       updatedAt: capture.capturedAt || ""
     };
@@ -3991,21 +3991,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     return details;
   }
 
-  async function rerunFormatterOnActiveContentTab() {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs.find((item) => item?.id && !/^chrome-extension:/i.test(item.url || ""));
-    if (!tab?.id) return false;
+  function sourceContentTabCandidate(tab = {}) {
+    const url = normalizeText(tab.url || "");
+    return Boolean(tab?.id && /^https?:/i.test(url) && !isPanelUiUrl(url) && !/^chrome-extension:/i.test(url) && validStudySourceUrl(url));
+  }
+
+  async function rerunFormatterOnTab(tabId) {
+    if (!tabId) return false;
     try {
-      await chrome.tabs.sendMessage(tab.id, { type: "ICE_RERUN_FORMATTER" });
+      await chrome.tabs.sendMessage(tabId, { type: "ICE_RERUN_FORMATTER" });
       return true;
     } catch (_error) {
       try {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["engine.js", "content.js"] });
+        await chrome.scripting.executeScript({ target: { tabId }, files: ["engine.js", "content.js"] });
         return true;
       } catch (_scriptError) {
         return false;
       }
     }
+  }
+
+  async function rerunFormatterOnActiveContentTab() {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs.find(sourceContentTabCandidate);
+    return rerunFormatterOnTab(tab?.id);
+  }
+
+  function sameQueueItemUrl(left = "", right = "") {
+    return normalizeText(left).replace(/\/+$/, "") === normalizeText(right).replace(/\/+$/, "");
+  }
+
+  async function rerunFormatterOnQueueItemTab(item = {}) {
+    const itemUrl = normalizeText(item.url || "");
+    if (!itemUrl) return false;
+    const tabs = await chrome.tabs.query({});
+    const tab = tabs.find((candidate) => sourceContentTabCandidate(candidate) && sameQueueItemUrl(candidate.url || "", itemUrl));
+    return rerunFormatterOnTab(tab?.id);
   }
 
   async function persistActiveSourcePage(page = activeSourcePageRecord()) {
@@ -4198,7 +4219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const contentTab = tabs.find((item) => item?.id && !/^chrome-extension:/i.test(item.url || ""));
+    const contentTab = tabs.find(sourceContentTabCandidate);
     if (contentTab?.id) {
       await chrome.tabs.update(contentTab.id, { url: target.url, active: true });
     } else {
@@ -4341,7 +4362,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function analyzedCanonicalKeyFromStatus(status = {}) {
-    return pageRecordKey(pageRecordFromStatus(status) || {});
+    const page = pageRecordFromStatus(status);
+    return page ? pageRecordKey(page) : "";
   }
 
   function canonicalMatchForQueueItem(item = {}, status = studyData.analysisStatus || {}) {
@@ -4352,6 +4374,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       matched: Boolean(item.canonicalKey && (item.canonicalKey === statusKey || item.canonicalKey === targetKey)),
       actualKey
     };
+  }
+
+  function analysisPipelineStatus(responseStatus = {}) {
+    if (responseStatus?.sourceCaptureTitle || responseStatus?.activeUrl || responseStatus?.sourceCaptureBook) return responseStatus;
+    return responseStatus?.[STORAGE_KEYS.analysisStatus] || studyData.analysisStatus || {};
+  }
+
+  function latestCaptureCanonicalKey() {
+    const page = pageRecordFromCapture(studyData.latestCapture || {});
+    return page ? pageRecordKey(page) : "";
+  }
+
+  async function failCurrentQueueItem(item, message, actualKey = "") {
+    await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
+      status: "failed",
+      error: message,
+      failedAt: new Date().toISOString(),
+      completedAt: "",
+      lastAttemptedUrl: item.url,
+      expectedCanonicalKey: item.canonicalKey,
+      actualAnalyzedCanonicalKey: actualKey || ""
+    }), {
+      state: "running",
+      currentItemId: item.id,
+      message
+    }, "analyze_current_queue_item_failed", message);
   }
 
   async function analyzeCurrentQueueItem() {
@@ -4386,29 +4434,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, "analyze_current_queue_item_started", `Analyzing current queue item: ${item.label}.`);
 
     try {
-      const pageUpdated = await rerunFormatterOnActiveContentTab();
+      const pageUpdated = await rerunFormatterOnQueueItemTab(item) || await rerunFormatterOnActiveContentTab();
+      await refreshStudyData();
+      const captureKey = latestCaptureCanonicalKey();
+      if (captureKey && item.canonicalKey && captureKey !== item.canonicalKey) {
+        const message = `Canonical mismatch before analysis. Expected ${item.canonicalKey}; current capture is ${captureKey}.`;
+        await failCurrentQueueItem(item, message, captureKey);
+        return;
+      }
       const response = await chrome.runtime.sendMessage({
         type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
         reason: pageUpdated ? "queue-current-item" : "queue-current-item-stored-source"
       });
       if (!response?.ok) throw new Error(response?.error || "Analysis pipeline failed.");
       await refreshStudyData();
-      const verified = canonicalMatchForQueueItem(item, response.status || studyData.analysisStatus || {});
+      const verified = canonicalMatchForQueueItem(item, analysisPipelineStatus(response.status));
       if (!verified.matched) {
         const message = `Canonical mismatch after analysis. Expected ${item.canonicalKey}; got ${verified.actualKey || "none"}.`;
-        await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
-          status: "failed",
-          error: message,
-          failedAt: new Date().toISOString(),
-          completedAt: "",
-          lastAttemptedUrl: item.url,
-          expectedCanonicalKey: item.canonicalKey,
-          actualAnalyzedCanonicalKey: verified.actualKey || ""
-        }), {
-          state: "running",
-          currentItemId: item.id,
-          message
-        }, "analyze_current_queue_item_failed", message);
+        await failCurrentQueueItem(item, message, verified.actualKey || "");
         return;
       }
       const remainingRecords = updateQueueItem(analysisQueueRecords(), item.id, {
