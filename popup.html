@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     body {
-      width: 240px;
-      max-height: 580px;
+      width: 460px;
+      max-height: 680px;
+      box-sizing: border-box;
       padding: 12px;
       font-family: sans-serif;
       overflow-y: auto;
@@ -24,7 +25,7 @@
     }
 
     button {
-      margin-top: 12px;
+      margin-top: 10px;
       width: 100%;
       padding: 8px;
       cursor: pointer;
@@ -54,8 +55,15 @@
       line-height: 1.35;
     }
 
+    .page-workflow .workflow-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
     .page-workflow button {
-      margin-top: 8px;
+      margin-top: 0;
+      min-height: 36px;
     }
   </style>
 </head>
@@ -94,14 +102,16 @@
   <section class="page-workflow" aria-label="Page Workflow">
     <h4>Page Workflow</h4>
     <p>Manual navigation and selected-page cross-reference controls. Navigation does not analyze pages.</p>
-    <button id="previousPage">Previous page</button>
-    <button id="nextPage">Next page</button>
-    <button id="openSuggestedNext">Open suggested next</button>
-    <button id="analyzeThisPage">Analyze this page</button>
-    <button id="analyzeAndAddPage">Analyze and add this page to stored session</button>
-    <button id="addPageToCrossReference">Add this page to cross-reference set</button>
-    <button id="showCrossReferenceSet">Show cross-reference set</button>
-    <button id="clearCrossReferenceSet">Clear cross-reference set</button>
+    <div class="workflow-actions">
+      <button id="previousPage">Previous page</button>
+      <button id="nextPage">Next page</button>
+      <button id="openSuggestedNext">Open suggested next</button>
+      <button id="analyzeThisPage">Analyze this page</button>
+      <button id="analyzeAndAddPage">Analyze and add this page to stored session</button>
+      <button id="addPageToCrossReference">Add this page to cross-reference set</button>
+      <button id="showCrossReferenceSet">Show cross-reference set</button>
+      <button id="clearCrossReferenceSet">Clear cross-reference set</button>
+    </div>
   </section>
 
   <hr>

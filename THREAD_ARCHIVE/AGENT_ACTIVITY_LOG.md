@@ -4214,3 +4214,45 @@ Coordination notes:
 - `background.js` was not changed.
 - No automatic queue loop, crawling, book/volume execution, temporary-tab orchestration, background queue runner, GPT action buttons, or cross-reference storage expansion was added.
 - Next likely task: Phase 2B design for queue result persistence/per-page summaries, or queue runner UX refinement.
+## 2026-06-12 - pcdx - Popup Layout and Overlay Toggle Fix
+
+Task:
+- Improve extension popup dimensions/layout and fix the non-functioning page overlay checkbox before Phase 2B queue design.
+
+Files changed:
+- `popup.html`
+- `popup.js`
+- `content.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation:
+- Increased popup body width from `240px` to `460px` and max-height from `580px` to `680px`.
+- Changed Page Workflow controls to a two-column grid while preserving all existing manual controls.
+- Fixed `showPageOverlay` by adding it to content-script settings, rendering/removing a lightweight `#ice-page-overlay`, responding to sync setting changes, and handling the popup message `ICE_SET_PAGE_OVERLAY` for immediate active-page updates.
+- Kept popup workflow manual-only; no queue execution, crawling, automatic analysis, book/volume capture, temporary-tab orchestration, or background queue runner was added.
+
+Manual smoke:
+- Passed in a temporary Chrome profile with the unpacked extension loaded.
+- Popup computed width was `460px`; max-height was `680px`.
+- Page Workflow showed 8 buttons in two columns with no clipped buttons.
+- Overlay checkbox persisted checked and unchecked state across popup reload.
+- Overlay appeared on LDS Matthew 1 when enabled and disappeared when disabled.
+- Run Full Analysis and Open Study Panel controls remained present.
+- GPT buttons remained absent.
+
+Validation:
+- `node --check popup.js` passed.
+- `node --check content.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3 after one transient LDS Matthew 1 page-load timeout on the first broader run.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Coordination notes:
+- Cross-reference set remains separate from analyzed pages.
+- GPT buttons remain absent.
+- Next likely task: resume Phase 2B design for queue result persistence/per-page summaries, or continue popup/queue UX refinement if requested.

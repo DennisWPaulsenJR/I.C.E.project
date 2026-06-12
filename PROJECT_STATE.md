@@ -109,6 +109,14 @@ Current bridge note:
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
 Latest pcdx update:
+- Popup UX sizing and page overlay toggle were improved before Phase 2B work.
+- Popup width increased from `240px` to `460px`, max-height increased from `580px` to `680px`, and Page Workflow controls now render in a two-column grid to reduce cramped scrolling while preserving all manual controls.
+- Page overlay root cause: `showPageOverlay` existed in popup/background settings but was missing from content-script defaults/application, so the checkbox could persist without rendering or updating an overlay on the active page.
+- `content.js` now loads `showPageOverlay`, renders/removes a lightweight page overlay, responds to sync setting changes, and handles the popup message `ICE_SET_PAGE_OVERLAY` for immediate active-page updates.
+- Browser smoke confirmed the popup computed at 460px wide with 680px max-height, eight Page Workflow buttons present without clipping, overlay checkbox on/off state persisted across popup reopen, and the overlay appeared/removed on LDS Matthew 1.
+- Validation passed: `node --check popup.js`, `node --check content.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`; the first `qa:matthew-pages` attempt hit a transient LDS Matthew 1 page-load timeout and passed on rerun.
+- GPT buttons remain absent; cross-reference storage remains separate; no queue execution, crawling, automatic analysis, book/volume capture, temporary-tab orchestration, or background queue runner was added.
+- Next recommended task: resume Phase 2B design for queue result persistence/per-page summaries, or continue popup/queue UX refinement if the user redirects.Latest pcdx update:
 - Phase 2A hybrid manual-confirm-per-page queue runner is implemented, validated, browser-smoked, pushed, and confirmed in repo memory.
 - Pushed commits: `bc8e4e1 pcdx: Add manual queue item runner` and `962056f pcdx: Stabilize manual queue item verification`.
 - Browser smoke built a Matthew 1-5 queue; queued items stayed pending after build; Start selected Matthew 1 without navigation or analysis; Open current queue item opened only Matthew 1; Analyze current queue item marked Matthew 1 done only after canonical match; Next selected Matthew 2 without auto-open or auto-analysis.

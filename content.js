@@ -6,7 +6,8 @@
     enabled: true,
     strictMode: true,
     highlightPronouns: false,
-    autoCaptureOnPageLoad: true
+    autoCaptureOnPageLoad: true,
+    showPageOverlay: false
   };
 
   const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "INPUT", "TEXTAREA", "CODE", "PRE"]);
@@ -74,6 +75,8 @@
     "strictMode",
     "highlightPronouns"
   ];
+  const PAGE_OVERLAY_ID = "ice-page-overlay";
+  const PAGE_OVERLAY_STYLE_ID = "ice-page-overlay-style";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
@@ -426,6 +429,52 @@
     });
   }
 
+  function ensurePageOverlayStyle() {
+    if (document.getElementById(PAGE_OVERLAY_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = PAGE_OVERLAY_STYLE_ID;
+    style.textContent = `
+      #${PAGE_OVERLAY_ID} {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2147483647;
+        max-width: min(320px, calc(100vw - 32px));
+        padding: 10px 12px;
+        border: 1px solid rgba(15, 23, 42, .18);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .96);
+        color: #1f2937;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+        font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        pointer-events: none;
+      }
+      #${PAGE_OVERLAY_ID} strong {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 13px;
+      }
+    `;
+    document.documentElement.appendChild(style);
+  }
+
+  function updatePageOverlay() {
+    const existing = document.getElementById(PAGE_OVERLAY_ID);
+    if (!settings.showPageOverlay) {
+      existing?.remove();
+      return;
+    }
+
+    ensurePageOverlayStyle();
+    const overlay = existing || document.createElement("aside");
+    overlay.id = PAGE_OVERLAY_ID;
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+      <strong>I.C.E. page overlay</strong>
+      <span>${settings.enabled ? "Highlighting enabled" : "Highlighting disabled"} | ${settings.strictMode ? "Strict mode" : "Flexible mode"}</span>
+    `;
+    if (!existing) document.documentElement.appendChild(overlay);
+  }
   async function loadSettings() {
     settings = {
       ...DEFAULT_SETTINGS,
@@ -442,6 +491,7 @@
     observer?.disconnect();
     clearFormatting();
     applyFormatting();
+    updatePageOverlay();
     observePage();
   }
 
@@ -1018,6 +1068,9 @@
     if (FORMATTER_SETTING_KEYS.some((key) => changes[key])) {
       reprocessPage();
     }
+    if (changes.showPageOverlay || changes.enabled || changes.strictMode) {
+      updatePageOverlay();
+    }
   });
 
   safeAddRuntimeMessageListener((message, _sender, sendResponse) => {
@@ -1031,6 +1084,13 @@
         .catch((error) => sendResponse({ ok: false, error: error.message }));
 
       return true;
+    }
+
+    if (message?.type === "ICE_SET_PAGE_OVERLAY") {
+      settings.showPageOverlay = Boolean(message.showPageOverlay);
+      updatePageOverlay();
+      sendResponse({ ok: true, showPageOverlay: settings.showPageOverlay });
+      return false;
     }
 
     if (message?.type === "ICE_CAPTURE_PAGE_TEXT") {
@@ -1054,6 +1114,7 @@
       logContextUnavailableOnce();
     }
     applyFormatting();
+    updatePageOverlay();
     observePage();
     if (isExtensionContextValid()) {
       maybeAutoCapture("page-load");

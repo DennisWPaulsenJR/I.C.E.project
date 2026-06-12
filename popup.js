@@ -269,6 +269,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     await chrome.storage.sync.set({
       [id]: value
     });
+    if (id === "showPageOverlay") {
+      await applyPageOverlaySetting(value);
+    }
+  }
+
+  async function applyPageOverlaySetting(showPageOverlay) {
+    try {
+      await sendMessageToActiveTab({
+        type: "ICE_SET_PAGE_OVERLAY",
+        showPageOverlay
+      });
+      setCaptureStatus(showPageOverlay ? "Page overlay shown." : "Page overlay hidden.");
+    } catch (error) {
+      setCaptureStatus(`Overlay setting saved. Reload the active page if overlay did not update: ${error.message}`);
+    }
   }
 
   function pageRecordKey(page = {}) {
@@ -2220,7 +2235,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
 
   document.getElementById("showPageOverlay")
-    .addEventListener("change", () => saveSetting("showPageOverlay"));
+    .addEventListener("change", () => {
+      saveSetting("showPageOverlay").catch((error) => setCaptureStatus(error.message));
+    });
 
   document.getElementById("previousPage")
     .addEventListener("click", () => {
