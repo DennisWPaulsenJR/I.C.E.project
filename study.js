@@ -56,6 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     analysisQueueStatus: "ICE_ANALYSIS_QUEUE_STATUS",
     analysisQueueHistory: "ICE_ANALYSIS_QUEUE_HISTORY",
     analysisQueueManifest: "ICE_ANALYSIS_QUEUE_MANIFEST",
+    analysisQueuePageSummaries: "ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES",
     panelUiState: "ICE_PANEL_UI_STATE",
     gptReviewReport: "ICE_GPT_REVIEW_REPORT"
   };
@@ -73,6 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "analysisQueueStatus",
     "analysisQueueHistory",
     "analysisQueueManifest",
+    "analysisQueuePageSummaries",
     "activeAdapter",
     "panelUiState"
   ];
@@ -1816,6 +1818,170 @@ document.addEventListener("DOMContentLoaded", async () => {
   function analysisQueueDetailsLine(records = analysisQueueRecords()) {
     if (!records.length) return "Queue is empty.";
     return records.map((item) => `${item.label}: ${item.status}${item.error ? ` (${item.error})` : ""}`).join("\n");
+  }
+
+  function limitedText(value = "", maxLength = 500) {
+    return trimText(value, maxLength);
+  }
+
+  function analysisQueuePageSummaries(records = studyData.analysisQueuePageSummaries) {
+    const rawRecords = Array.isArray(records)
+      ? records
+      : (records && typeof records === "object" ? Object.values(records) : []);
+    const seen = new Set();
+    return rawRecords
+      .map((item) => ({
+        schemaVersion: 1,
+        id: normalizeText(item.id || item.canonicalKey || item.queueItemId || ""),
+        canonicalKey: normalizeText(item.canonicalKey || ""),
+        queueItemId: normalizeText(item.queueItemId || ""),
+        label: normalizeText(item.label || item.canonicalKey || item.queueItemId || "Queued page"),
+        url: normalizeText(item.url || ""),
+        book: normalizeText(item.book || ""),
+        chapter: normalizeText(item.chapter || ""),
+        source: normalizeText(item.source || "queue") || "queue",
+        status: ["done", "failed"].includes(item.status) ? item.status : "done",
+        analyzedAt: normalizeText(item.analyzedAt || ""),
+        updatedAt: normalizeText(item.updatedAt || ""),
+        failedAt: normalizeText(item.failedAt || ""),
+        adapter: normalizeText(item.adapter || ""),
+        analysisTarget: item.analysisTarget && typeof item.analysisTarget === "object" && !Array.isArray(item.analysisTarget) ? item.analysisTarget : {},
+        counts: item.counts && typeof item.counts === "object" && !Array.isArray(item.counts) ? item.counts : {},
+        primaryEntities: asArray(item.primaryEntities).map((value) => normalizeText(value)).filter(Boolean).slice(0, 8),
+        chapterType: normalizeText(item.chapterType || ""),
+        attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0,
+        error: limitedText(item.error || "", 500),
+        expectedCanonicalKey: normalizeText(item.expectedCanonicalKey || ""),
+        actualAnalyzedCanonicalKey: normalizeText(item.actualAnalyzedCanonicalKey || "")
+      }))
+      .filter((item) => item.id)
+      .filter((item) => {
+        const key = item.canonicalKey || item.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => Number(left.chapter || 0) - Number(right.chapter || 0) || left.label.localeCompare(right.label));
+  }
+
+  function queuePageSummaryCounts() {
+    const status = studyData.analysisStatus || {};
+    const derivedLayerCounts = status.derivedLayerCounts || {};
+    const statusCount = (key, fallback) => Number.isFinite(Number(status[key])) ? Number(status[key]) : fallback;
+    return {
+      entities: statusCount("entityRegistryCount", countItems(studyData.entityRegistry)),
+      mentions: statusCount("mentionCount", countItems(studyData.mentionIndex)),
+      semanticEvents: statusCount("semanticEventCount", countItems(studyData.semanticEvents)),
+      relationships: statusCount("relationshipGraphCount", countItems(studyData.relationshipGraph)),
+      passageFunctions: statusCount("passageFunctionCount", countItems(studyData.passageFunctions)),
+      referenceGraph: statusCount("referenceGraphCount", countItems(studyData.referenceGraph)),
+      sourceDiscovery: statusCount("sourceDiscoveryCount", countItems(studyData.sourceDiscoveryIndex)),
+      domHints: statusCount("domHintCount", countItems(studyData.domSemanticHints)),
+      coverageLayers: Object.values(derivedLayerCounts).filter((value) => Number(value) > 0).length || layerCountPairs().filter(([, value]) => Number(value) > 0).length
+    };
+  }
+
+  function queuePagePrimaryEntities(limit = 8) {
+    const names = [];
+    const seen = new Set();
+    for (const item of [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]) {
+      const name = entityDisplayNameFromRecord(item);
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      names.push(name);
+      if (names.length >= limit) break;
+    }
+    return names;
+  }
+
+  function queuePageAnalysisTarget(status = studyData.analysisStatus || {}) {
+    const marker = studyData.canonicalAnalysisTarget || {};
+    return {
+      pageKey: normalizeText(marker.pageKey || analyzedCanonicalKeyFromStatus(status) || ""),
+      captureId: normalizeText(marker.captureId || marker.sourceCaptureId || status.sourceCaptureId || studyData.latestCapture?.id || ""),
+      title: normalizeText(marker.title || marker.sourceTitle || status.sourceCaptureTitle || studyData.latestCapture?.title || ""),
+      book: normalizeText(marker.book || marker.sourceCaptureBook || status.sourceCaptureBook || ""),
+      chapter: normalizeText(marker.chapter || marker.sourceCaptureChapter || status.sourceCaptureChapter || ""),
+      url: normalizeText(marker.url || marker.activeUrl || status.activeUrl || studyData.latestCapture?.url || "")
+    };
+  }
+
+  function queuePageDoneSummary(item = {}, verified = {}) {
+    const status = studyData.analysisStatus || {};
+    const canonicalKey = normalizeText(item.canonicalKey || verified.actualKey || "");
+    const now = new Date().toISOString();
+    return {
+      schemaVersion: 1,
+      id: canonicalKey,
+      canonicalKey,
+      queueItemId: item.id || "",
+      label: item.label || canonicalKey || "Queued page",
+      url: item.url || "",
+      book: item.book || "",
+      chapter: item.chapter || "",
+      source: "queue",
+      status: "done",
+      analyzedAt: normalizeText(status.analyzedAt || now),
+      updatedAt: now,
+      adapter: normalizeText(studyData.activeAdapter?.adapterName || status.activeAdapterName || ""),
+      analysisTarget: queuePageAnalysisTarget(status),
+      counts: queuePageSummaryCounts(),
+      primaryEntities: queuePagePrimaryEntities(8),
+      chapterType: activeChapterType(),
+      error: ""
+    };
+  }
+
+  function queuePageFailedSummary(item = {}, message = "", actualKey = "") {
+    const now = new Date().toISOString();
+    const canonicalKey = normalizeText(item.canonicalKey || "");
+    return {
+      schemaVersion: 1,
+      id: canonicalKey || item.id || "",
+      canonicalKey,
+      queueItemId: item.id || "",
+      label: item.label || canonicalKey || item.id || "Queued page",
+      url: item.url || "",
+      book: item.book || "",
+      chapter: item.chapter || "",
+      source: "queue",
+      status: "failed",
+      attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0,
+      failedAt: now,
+      updatedAt: now,
+      error: limitedText(message, 500),
+      expectedCanonicalKey: item.canonicalKey || "",
+      actualAnalyzedCanonicalKey: actualKey || ""
+    };
+  }
+
+  async function writeQueuePageSummary(summary = {}) {
+    const key = normalizeText(summary.canonicalKey || summary.id || summary.queueItemId || "");
+    if (!key) return;
+    const summaries = analysisQueuePageSummaries();
+    const nextSummaries = [summary, ...summaries.filter((item) => (item.canonicalKey || item.id) !== key)].slice(0, 250);
+    studyData.analysisQueuePageSummaries = nextSummaries;
+    await chrome.storage.local.set({ [STORAGE_KEYS.analysisQueuePageSummaries]: nextSummaries });
+  }
+
+  function analysisQueuePageSummaryLine(summaries = analysisQueuePageSummaries()) {
+    if (!summaries.length) return "No queue page summaries recorded yet.";
+    const done = summaries.filter((item) => item.status === "done").length;
+    const failed = summaries.filter((item) => item.status === "failed").length;
+    return `${summaries.length} page summary record(s): ${done} done, ${failed} failed. Summaries are lightweight; full semantic records remain latest/global.`;
+  }
+
+  function analysisQueuePageSummaryDetails(summaries = analysisQueuePageSummaries()) {
+    if (!summaries.length) return "No queue page summaries recorded yet.";
+    return summaries.slice(0, 12).map((item) => {
+      if (item.status === "failed") {
+        return `${item.label}: failed (${item.error || "No error recorded"}) expected ${item.expectedCanonicalKey || "unknown"}; actual ${item.actualAnalyzedCanonicalKey || "none"}`;
+      }
+      const counts = item.counts || {};
+      const primary = asArray(item.primaryEntities).length ? ` | Primary: ${asArray(item.primaryEntities).join(", ")}` : "";
+      return `${item.label}: done | entities ${counts.entities || 0}, mentions ${counts.mentions || 0}, events ${counts.semanticEvents || 0}, relationships ${counts.relationships || 0}, coverage layers ${counts.coverageLayers || 0}${primary}`;
+    }).join("\n");
   }
 
   function pageChipLines(pages = []) {
@@ -3951,7 +4117,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Done", String(counts.done)],
       ["Failed", String(counts.failed)],
       ["Skipped", String(counts.skipped)],
-      ["Queue contents", analysisQueueDetailsLine(records)]
+      ["Result summaries", analysisQueuePageSummaryLine()],
+      ["Queue contents", analysisQueueDetailsLine(records)],
+      ["Summary contents", analysisQueuePageSummaryDetails()]
     ].forEach(([label, value]) => {
       const term = document.createElement("dt");
       term.textContent = label;
@@ -4387,6 +4555,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function failCurrentQueueItem(item, message, actualKey = "") {
+    await writeQueuePageSummary(queuePageFailedSummary({ ...item, attempts: item.attempts + 1 }, message, actualKey));
     await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
       status: "failed",
       error: message,
@@ -4454,6 +4623,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await failCurrentQueueItem(item, message, verified.actualKey || "");
         return;
       }
+      await writeQueuePageSummary(queuePageDoneSummary(item, verified));
       const remainingRecords = updateQueueItem(analysisQueueRecords(), item.id, {
         status: "done",
         error: "",
@@ -4469,6 +4639,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         message: `${item.label} analyzed and verified. Click Next queue item to continue.`
       }, "analyze_current_queue_item_done", `${item.label} marked done after canonical match. No next item was opened or analyzed automatically.`);
     } catch (error) {
+      await writeQueuePageSummary(queuePageFailedSummary({ ...item, attempts: item.attempts + 1 }, error.message, ""));
       await writeAnalysisQueue(updateQueueItem(analysisQueueRecords(), item.id, {
         status: "failed",
         error: error.message,
@@ -11596,6 +11767,7 @@ createRevelationPartsSection(item.subEvents)
       "canonicalAnalyzedPages",
       "analysisQueue",
       "analysisQueueHistory",
+      "analysisQueuePageSummaries",
       "canonicalAnalysisTarget"
     ];
     for (const alias of arrayAliases) {
