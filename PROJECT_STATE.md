@@ -31,9 +31,12 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
-- Phase 2A manual-confirm-per-page queue runner is implemented, validated, browser-smoked, pushed, and recorded.
-- Next recommended task is Phase 2B design for queue result persistence/per-page summaries or queue runner UX refinement.
-- Do not implement automatic execution, crawling, book/volume capture, background queue running, or automatic next-item loops without explicit approval.
+- Phase 2B lightweight queue page summaries are implemented, validated, browser-smoked, pushed, and confirmed.
+- Storage key: `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES`.
+- Done summaries write only after canonical match; failed summaries write on mismatch/error with expected vs actual canonical key.
+- Clear queue preserves queue page summaries, analyzed/session data, and cross-reference data.
+- Next recommended task: Study Panel summary UX refinement or a targeted QA pass for queue summaries.
+- Do not implement automatic execution, crawling, book/volume capture, background queue running, semantic snapshot migration, or automatic next-item loops without explicit approval.
 
 ## I.C.E. Session Starting Protocol
 
@@ -108,6 +111,14 @@ Current bridge note:
 - Missing MCDX commits `2645f34 mcdx: Add thread accounting report` and `aa788bc mcdx: Add environment enablement QA note` were searched for and not found in local commits, all visible refs, stash metadata, or recent reflog.
 - Resume repo-recorded QA stabilization unless the user provides the MCDX checkout, an exported patch/diff, or an explicit recreate/dismiss decision.
 
+Latest pcdx update:
+- Phase 2B lightweight queue page summaries are implemented, browser-smoked, pushed, and confirmed in repo memory.
+- Commit `071430c pcdx: Add queue page summaries` added `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES` in `study.js`; `background.js` was not changed.
+- Done summaries write/update only after manual queue analysis passes canonical match and are keyed by the analyzed page canonical key.
+- Failed summaries write/update on mismatch/error and preserve expected vs actual canonical key details.
+- Browser smoke confirmed Matthew 1 wrote a compact done summary, a deliberate Matthew 2 vs Matthew 3 mismatch wrote a failed summary, Clear queue preserved summaries, and Study Scope remained fast at about 298ms.
+- No crawling, automatic queue loop, background runner, book/volume capture, temporary-tab orchestration, GPT buttons, cross-reference storage change, or semantic snapshot migration was added.
+- Next recommended task: Study Panel summary UX refinement or targeted QA pass for queue summaries.
 Latest pcdx update:
 - Popup UX sizing and page overlay toggle were improved before Phase 2B work.
 - Popup width increased from `240px` to `460px`, max-height increased from `580px` to `680px`, and Page Workflow controls now render in a two-column grid to reduce cramped scrolling while preserving all manual controls.

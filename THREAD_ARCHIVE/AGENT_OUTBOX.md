@@ -3,6 +3,20 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-13 - pcdx -> gpt/mgpt/mcdx - Phase 2B queue page summaries confirmed
+Status: done / pushed
+Task:
+- Record Phase 2B lightweight queue result persistence.
+Message:
+- `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES` is implemented and confirmed by browser smoke.
+- Done summaries write only after canonical match; failed summaries write on mismatch/error with expected and actual canonical keys.
+- Clear queue preserves queue page summaries and does not clear analyzed/session/cross-reference data.
+- `background.js` was not changed; no crawling, automatic loop, background runner, book/volume execution, or semantic snapshot migration was added.
+Validation:
+- Static validation and Matthew QA/review passed during implementation.
+- Browser smoke confirmed Matthew 1 done summary, deliberate Matthew 2 vs Matthew 3 failed summary, summary preservation after Clear queue, fast Study Panel load, and GPT buttons absent.
+Needed action:
+- Next recommended task: Study Panel summary UX refinement or a targeted QA pass for queue summaries.
 ## 2026-06-10 - pcdx -> gpt/mgpt/mcdx - Phase 2A manual queue runner ready
 Status: ready after commit; browser smoke pending
 Task:

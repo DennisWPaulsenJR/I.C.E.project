@@ -4256,3 +4256,44 @@ Coordination notes:
 - Cross-reference set remains separate from analyzed pages.
 - GPT buttons remain absent.
 - Next likely task: resume Phase 2B design for queue result persistence/per-page summaries, or continue popup/queue UX refinement if requested.
+
+## 2026-06-13 - pcdx - Phase 2B Queue Page Summaries Completion
+
+Task:
+- Record completion of Phase 2B lightweight queue page summaries.
+
+Files changed:
+- `study.js`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Implementation / commit:
+- `071430c pcdx: Add queue page summaries`
+- Added lightweight queue result persistence with storage key `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES`.
+- Done summaries write/update only after manual queue analysis passes canonical match.
+- Failed summaries write/update on mismatch/error and preserve expected vs actual canonical key details.
+- Clear queue preserves queue page summaries; it does not clear analyzed/session/cross-reference data.
+
+Browser smoke:
+- Passed in a temporary Chrome profile with the unpacked extension loaded.
+- Built Matthew 1-5 queue from Matthew 1 + Matthew 5 analyzed anchors.
+- Matthew 1 done summary wrote only after canonical match and was keyed by Matthew 1 canonicalKey.
+- Summary remained lightweight: no raw page text and no full semantic arrays; done summary size was about 1151 bytes.
+- Deliberate Matthew 2 vs Matthew 3 mismatch wrote a failed summary with expectedCanonicalKey for Matthew 2 and actualAnalyzedCanonicalKey for Matthew 3; failed summary size was about 1081 bytes.
+- Clear queue preserved `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES`; summary count remained 2 after clear.
+- Analyzed/session data and cross-reference data were preserved; Study Scope loaded in about 298ms; GPT buttons remained absent.
+
+Validation:
+- `node --check study.js` passed.
+- `node --check popup.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5.
+
+Coordination notes:
+- `background.js` was not changed.
+- No crawling, automatic queue loop, automatic next item, book/volume capture, temporary-tab orchestration, background runner, cross-reference storage change, GPT buttons, or semantic snapshot migration was added.
+- Next recommended task: Study Panel summary UX refinement or targeted QA pass for queue summaries.
