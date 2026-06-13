@@ -626,7 +626,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ...asArray(studyData.revelationPatterns),
       ...asArray(studyData.movementSemantics),
       ...asArray(studyData.semanticContinuity),
-      ...asArray(studyData.teachingSemantics),
+      ...scopedSemanticRecords(studyData.teachingSemantics),
       ...asArray(studyData.passageFunctions)
     ];
     return layers.filter((record) => {
@@ -1186,6 +1186,97 @@ document.addEventListener("DOMContentLoaded", async () => {
     const selectedPages = sorted.filter((page) => pageBookName(page).toLowerCase() === book && pageChapterNumber(page) >= min && pageChapterNumber(page) <= max);
     return selectedSessionScopeFromPages(selectedPages.length ? selectedPages : sorted);
   }
+
+  function currentStudyScopePages() {
+    const analyzedPages = analyzedPageHistory();
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
+    if (range?.pages?.length) return range.pages;
+    const activePage = activeSourcePageRecord();
+    if (activePage) return [activePage];
+    return analyzedPages;
+  }
+
+  function currentStudyScopeLabel() {
+    const range = selectedRangeFromAnalyzedPages(analyzedPageHistory());
+    if (range?.sessionLabel) return range.sessionLabel;
+    const pages = currentStudyScopePages();
+    return pages.length ? pages.map(volumePageLabel).join(" + ") : "current scope";
+  }
+
+  function recordScopeSearchText(item = {}) {
+    return [
+      item.scopePath,
+      item.verseRange,
+      item.verseRef,
+      item.sourceTitle,
+      item.sourceUrl,
+      item.activeUrl,
+      item.url,
+      item.chapterScope,
+      item.sessionScope,
+      item.currentScope,
+      item.currentSource,
+      item.sourceCaptureBook,
+      item.sourceCaptureChapter,
+      item.book,
+      item.chapter,
+      item.sourceContext?.scopePath,
+      item.sourceContext?.sourceTitle,
+      item.sourceContext?.book,
+      item.sourceContext?.chapter,
+      item.analysisTarget?.pageKey,
+      item.analysisTarget?.title,
+      item.analysisTarget?.book,
+      item.analysisTarget?.chapter,
+      item.analysisTarget?.url,
+      ...normalizeScopeList(item.scopes, item)
+    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function recordMatchesCurrentStudyScope(item = {}) {
+    const pages = currentStudyScopePages();
+    if (!pages.length) return true;
+    const scopeText = recordScopeSearchText(item);
+    if (!scopeText) return true;
+    const allowed = pages.map((page) => ({
+      book: pageBookName(page),
+      slug: scopeBookSlug(pageBookName(page)),
+      chapter: String(pageChapterNumber(page)),
+      label: volumePageLabel(page).toLowerCase(),
+      url: normalizeText(sourcePageUrl(page)).replace(/\/+$/, "").toLowerCase(),
+      key: normalizeText(page.pageKey || pageRecordKey(page)).toLowerCase()
+    })).filter((page) => page.book && page.chapter);
+    if (!allowed.length) return true;
+    const allowedChapters = new Set(allowed.map((page) => page.chapter));
+    const allowedBooks = new Set(allowed.flatMap((page) => [page.book.toLowerCase(), page.slug]).filter(Boolean));
+    const allowedHit = allowed.some((page) =>
+      scopeText.includes(page.label) ||
+      scopeText.includes(page.url) ||
+      scopeText.includes(page.key) ||
+      scopeText.includes(`scripture.nt.${page.slug}.${page.chapter}`) ||
+      new RegExp(`\\b${escapeRegExp(page.book)}\\s+${page.chapter}\\b`, "i").test(scopeText)
+    );
+    const chapterMatches = [];
+    const patterns = [
+      /scripture\.nt\.([a-z]+)\.(\d+)/gi,
+      /\b(matthew|matt|mark|luke|john)\s+(\d+)\b/gi,
+      /\/scriptures\/nt\/(matt|mark|luke|john)\/(\d+)\b/gi
+    ];
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(scopeText)) !== null) chapterMatches.push({ book: match[1], chapter: match[2] });
+    }
+    const explicitOutOfScope = chapterMatches.some((match) => {
+      const book = match.book.toLowerCase() === "matt" ? "matthew" : match.book.toLowerCase();
+      return allowedBooks.has(book) && !allowedChapters.has(String(match.chapter));
+    });
+    if (explicitOutOfScope) return false;
+    return allowedHit || chapterMatches.length === 0;
+  }
+
+  function scopedSemanticRecords(records = []) {
+    return asArray(records).filter((item) => recordMatchesCurrentStudyScope(item));
+  }
   function volumePageLabel(page = {}) {
     const book = normalizeText(page.sourceCaptureBook || page.book || "");
     const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
@@ -1317,9 +1408,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (stored.length) return stored.map(normalizeSessionContinuityReviewRecord);
     const analyzedPages = analyzedPageHistory();
     const range = selectedRangeFromAnalyzedPages(analyzedPages);
-    if (!range || analyzedPages.length < 2) return [];
-    const labels = range.labels.length ? range.labels : analyzedPages.map(volumePageLabel).filter(Boolean);
-    const chapterSet = new Set(analyzedPages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean));
+    const scopePages = range?.pages?.length ? range.pages : analyzedPages;
+    if (!range || scopePages.length < 2) return [];
+    const labels = range.labels.length ? range.labels : scopePages.map(volumePageLabel).filter(Boolean);
+    const chapterSet = new Set(scopePages.map((page) => Number(page.sourceCaptureChapter || page.chapter || 0)).filter(Boolean));
     const hasChapter = (chapter) => chapterSet.has(chapter);
     const unique = (values = []) => Array.from(new Set(values.map((value) => normalizeText(value)).filter(Boolean)));
     return [{
@@ -1335,7 +1427,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         hasChapter(3) ? "John" : "",
         hasChapter(5) ? "disciples" : "",
         hasChapter(5) ? "People / multitudes" : "",
-        ...asArray(studyData.characterInteractions).flatMap((item) => [item.sourceCharacter, item.targetCharacter])
+        ...scopedSemanticRecords(studyData.characterInteractions).flatMap((item) => [item.sourceCharacter, item.targetCharacter])
       ]).slice(0, 12),
       continuingThemes: unique([
         hasChapter(1) ? "mission revealed" : "",
@@ -1343,14 +1435,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         hasChapter(3) ? "mission announced" : "",
         hasChapter(4) ? "mission prepared" : "",
         hasChapter(5) ? "mission taught" : "",
-        ...asArray(studyData.principleRelationships).flatMap((item) => [item.principle, ...asArray(item.relatedPrinciples)]),
-        ...asArray(studyData.semanticContinuity).flatMap((item) => asArray(item.continuity))
+        ...scopedSemanticRecords(studyData.principleRelationships).flatMap((item) => [item.principle, ...asArray(item.relatedPrinciples)]),
+        ...scopedSemanticRecords(studyData.semanticContinuity).flatMap((item) => asArray(item.continuity))
       ]).slice(0, 14),
       continuingAuthorityPaths: unique([
         hasChapter(1) || hasChapter(2) ? "THE LORD -> AngEL Of THE LORD -> Joseph" : "",
         hasChapter(3) ? "HOLY SPIRIT source wording / derived display continuity" : "",
         hasChapter(5) ? "JESUS -> disciples / multitudes" : "",
-        ...asArray(studyData.originAuthorityPaths).map((item) => [item.origin, item.messenger, item.recipient].filter(Boolean).join(" -> "))
+        ...scopedSemanticRecords(studyData.originAuthorityPaths).map((item) => [item.origin, item.messenger, item.recipient].filter(Boolean).join(" -> "))
       ]).slice(0, 8),
       teachingProgression: [
         hasChapter(1) ? "Matthew 1: mission revealed" : "",
@@ -1360,8 +1452,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         hasChapter(5) ? "Matthew 5: mission taught" : ""
       ].filter(Boolean),
       continuingPrincipleFamilies: unique([
-        ...asArray(studyData.principleRelationships).map((item) => item.principle),
-        ...asArray(studyData.teachingSemantics).flatMap((item) => [item.principle, item.teachingTopic, item.blessing, item.commandment]),
+        ...scopedSemanticRecords(studyData.principleRelationships).map((item) => item.principle),
+        ...scopedSemanticRecords(studyData.teachingSemantics).flatMap((item) => [item.principle, item.teachingTopic, item.blessing, item.commandment]),
         hasChapter(5) ? "righteousness" : "",
         hasChapter(5) ? "kingdom" : "",
         hasChapter(5) ? "mercy" : "",
@@ -1369,7 +1461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         hasChapter(1) || hasChapter(2) ? "fulfillment" : ""
       ]).slice(0, 12),
       continuingCharacterInteractions: unique([
-        ...asArray(studyData.characterInteractions).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
+        ...scopedSemanticRecords(studyData.characterInteractions).map((item) => `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`),
         hasChapter(3) ? "John -> people | preaches / prepares" : "",
         hasChapter(5) ? "JESUS -> disciples | teaches" : "",
         hasChapter(5) ? "JESUS -> People / multitudes | teaches in surrounding audience context" : ""
@@ -1380,15 +1472,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         `Analyzed session pages: ${labels.join(", ")}`,
         countItems(studyData.semanticContinuity) ? `Semantic continuity records available: ${countItems(studyData.semanticContinuity)}` : "",
         countItems(studyData.ontologyRoles) ? `Ontology role records available: ${countItems(studyData.ontologyRoles)}` : "",
-        countItems(studyData.principleRelationships) ? `Principle relationship records available: ${countItems(studyData.principleRelationships)}` : "",
-        countItems(studyData.characterInteractions) ? `Character interaction records available: ${countItems(studyData.characterInteractions)}` : ""
+        countItems(scopedSemanticRecords(studyData.principleRelationships)) ? `Principle relationship records available in ${currentStudyScopeLabel()}: ${countItems(scopedSemanticRecords(studyData.principleRelationships))}` : "",
+        countItems(scopedSemanticRecords(studyData.characterInteractions)) ? `Character interaction records available in ${currentStudyScopeLabel()}: ${countItems(scopedSemanticRecords(studyData.characterInteractions))}` : ""
       ]),
-      confidence: hasChapter(5) && countItems(studyData.teachingSemantics) ? "probable" : "possible",
+      confidence: hasChapter(5) && countItems(scopedSemanticRecords(studyData.teachingSemantics)) ? "probable" : "possible",
       sourceGrounding: range.isContiguous ? "Review layer uses analyzed page history plus currently stored continuity, ontology, principle relationship, character interaction, authority path, relationship role, and teaching records. It does not crawl or infer unanalyzed pages." : "Review layer uses selected analyzed pages only. Missing intermediate pages are not analyzed and are not included in the continuity review."
     }];
   }
   function knowledgeGraphRecords() {
-    const stored = asArray(studyData.knowledgeGraph);
+    const stored = scopedSemanticRecords(studyData.knowledgeGraph);
     if (stored.length) return stored;
     const records = [];
     const byNode = new Map();
@@ -1433,7 +1525,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (update.sourceGrounding) item.sourceGrounding = update.sourceGrounding;
     };
 
-    asArray(studyData.characterInteractions).forEach((interaction) => {
+    scopedSemanticRecords(studyData.characterInteractions).forEach((interaction) => {
       const source = interaction.sourceCharacter || "";
       const target = interaction.targetCharacter || "";
       const type = /multitudes|people|disciples|wise men/i.test(source) ? "Group / Character" : /THE LORD|JESUS|HOLY SPIRIT/i.test(source) ? "Authority / Character" : "Character";
@@ -1447,7 +1539,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sourceGrounding: interaction.sourceGrounding
       });
     });
-    asArray(studyData.principleRelationships).forEach((relationship) => {
+    scopedSemanticRecords(studyData.principleRelationships).forEach((relationship) => {
       const related = asArray(relationship.relatedPrinciples);
       addNode(relationship.principle, "Principle", {
         relationships: related.map((item) => `${relationship.relationshipType || "related"} -> ${item}`),
@@ -1460,7 +1552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sourceGrounding: relationship.sourceGrounding
       });
     });
-    asArray(studyData.teachingSemantics).forEach((teaching) => {
+    scopedSemanticRecords(studyData.teachingSemantics).forEach((teaching) => {
       const topic = teaching.teachingTopic || teaching.blessing || teaching.commandment || teaching.principle || teaching.discourseType || "Teaching / Discourse";
       const relatedPrinciples = [teaching.principle, teaching.blessing, teaching.commandment, teaching.promise, teaching.warning].map((value) => normalizeText(value)).filter(Boolean);
       addNode(topic, "Teaching", {
@@ -2021,13 +2113,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["Semantic Relationship Roles", countItems(studyData.entityRelationRoles)],
       ["Movement / Location", countItems(studyData.movementSemantics)],
       ["Semantic Causality", countItems(studyData.semanticCausality)],
-      ["Teaching / Discourse", countItems(studyData.teachingSemantics)],
-      ["Principle Relationships", countItems(studyData.principleRelationships)],
-      ["Principle Networks", countItems(studyData.principleNetworks)],
-      ["Focus Lens", countItems(studyData.focusLens)],
-      ["Scope Lens", countItems(studyData.scopeLens)],
-      ["Depth Lens", countItems(studyData.depthLens)],
-      ["Character Interactions", countItems(studyData.characterInteractions)],
+      ["Teaching / Discourse", countItems(scopedSemanticRecords(studyData.teachingSemantics))],
+      ["Principle Relationships", countItems(scopedSemanticRecords(studyData.principleRelationships))],
+      ["Principle Networks", countItems(scopedSemanticRecords(studyData.principleNetworks))],
+      ["Focus Lens", countItems(scopedSemanticRecords(studyData.focusLens))],
+      ["Scope Lens", countItems(scopedSemanticRecords(studyData.scopeLens))],
+      ["Depth Lens", countItems(scopedSemanticRecords(studyData.depthLens))],
+      ["Character Interactions", countItems(scopedSemanticRecords(studyData.characterInteractions))],
       ["Study Progression", countItems(studyProgressionRecords())],
       ["Semantic Resolution Explanations", countItems(resolutionExplanationRecords())],
       ["Session Continuity Review", countItems(sessionContinuityReviewRecords())],
@@ -2090,7 +2182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       values.push(label);
     };
     asArray(studyData.ontologyRoles).forEach((item) => add(item.semanticItem || item.entityName || item.name, item.ontologyClass || item.classLabel || item.semanticRole));
-    asArray(studyData.teachingSemantics).forEach((item) => {
+    scopedSemanticRecords(studyData.teachingSemantics).forEach((item) => {
       add(item.speaker, "Speaker");
       add(item.canonicalIdentity, "Canonical/source identity");
       asArray(item.relatedEntities).forEach((entity) => add(entity));
@@ -2099,14 +2191,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function teachingSummaryLines(limit = 8) {
-    return asArray(studyData.teachingSemantics).slice(0, limit).map((item) => {
+    return scopedSemanticRecords(studyData.teachingSemantics).slice(0, limit).map((item) => {
       const label = item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType || "Teaching record";
       return `${label} | ${item.verseRange || item.scopePath || "current scope"} | ${displayConfidence(item.confidence || "probable")}`;
     });
   }
 
   function principleRelationshipSummaryLines(limit = 6) {
-    return asArray(studyData.principleRelationships).slice(0, limit).map((item) => {
+    return scopedSemanticRecords(studyData.principleRelationships).slice(0, limit).map((item) => {
       const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
       return `${item.principle || "Principle"} ${item.relationshipType || "related"} ${related || "related principles"} | ${displayConfidence(item.confidence || "probable")}`;
     });
@@ -2114,13 +2206,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
   function principleNetworkSummaryLines(limit = 6) {
-    return asArray(studyData.principleNetworks).slice(0, limit).map((item) => {
+    return scopedSemanticRecords(studyData.principleNetworks).slice(0, limit).map((item) => {
       const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ") || "related principles awaiting records";
       return `${item.corePrinciple || "Principle"} | Related: ${related} | ${displayConfidence(item.confidence || "probable")}`;
     });
   }
   function characterInteractionSummaryLines(limit = 6) {
-    return asArray(studyData.characterInteractions).slice(0, limit).map((item) => {
+    return scopedSemanticRecords(studyData.characterInteractions).slice(0, limit).map((item) => {
       return `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${passageFunctionTitle(item.interactionType || "interaction")} | ${displayConfidence(item.confidence || "probable")}`;
     });
   }
@@ -2208,9 +2300,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (countItems(knowledgeGraphRecords()) > 0) return "Scripture Knowledge Graph";
     if (countItems(sessionContinuityReviewRecords()) > 0) return "Session Continuity Review";
-    if (countItems(studyData.teachingSemantics) > 0) return "Teaching / Discourse Structure";
+    if (countItems(scopedSemanticRecords(studyData.teachingSemantics)) > 0) return "Teaching / Discourse Structure";
     if (countItems(studyData.principleNetworks) > 0) return "Principle Networks";
-    if (countItems(studyData.principleRelationships) > 0) return "Principle Relationships";
+    if (countItems(scopedSemanticRecords(studyData.principleRelationships)) > 0) return "Principle Relationships";
     if (countItems(studyData.passageFunctions) > 0) return "Passage Functions";
     return "Current Study Panel section";
   }
@@ -2224,19 +2316,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function topEvidenceLines(limit = 3) {
     const values = [];
-    asArray(studyData.teachingSemantics).forEach((item) => {
+    scopedSemanticRecords(studyData.teachingSemantics).forEach((item) => {
       const phrase = normalizeText(item.sourcePhrase || "");
       const meaning = normalizeText(item.derivedMeaning || "");
       if (phrase) values.push(`${phrase}${meaning ? ` | ${meaning}` : ""}`);
     });
-    asArray(studyData.principleRelationships).forEach((item) => {
+    scopedSemanticRecords(studyData.principleRelationships).forEach((item) => {
       const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
       if (item.principle) values.push(`${item.principle} ${item.relationshipType || "related"} ${related || "related principles"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
-    asArray(studyData.principleNetworks).forEach((item) => {
+    scopedSemanticRecords(studyData.principleNetworks).forEach((item) => {
       if (item.corePrinciple) values.push(`${item.corePrinciple} | ${asArray(item.relatedPrinciples).slice(0, 3).join(", ") || "principle network"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
-    asArray(studyData.characterInteractions).forEach((item) => {
+    scopedSemanticRecords(studyData.characterInteractions).forEach((item) => {
       if (item.sourceCharacter || item.targetCharacter) values.push(`${item.sourceCharacter || "source"} -> ${item.targetCharacter || "target"} | ${item.interactionType || "interaction"} | ${item.sourcePhrase || "source phrase not recorded"}`);
     });
     knowledgeGraphRecords().forEach((item) => {
@@ -2306,8 +2398,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       `domSemanticHints: ${countItems(studyData.domSemanticHints)}`,
       `sourceDiscovery: ${countItems(studyData.sourceDiscoveryIndex)}`,
       `referenceGraph: ${countItems(studyData.referenceGraph)}`,
-      `teachingSemantics: ${countItems(studyData.teachingSemantics)}`,
-      `principleRelationships: ${countItems(studyData.principleRelationships)}`,
+      `teachingSemantics: ${countItems(scopedSemanticRecords(studyData.teachingSemantics))}`,
+      `principleRelationships: ${countItems(scopedSemanticRecords(studyData.principleRelationships))}`,
       `principleNetworks: ${countItems(studyData.principleNetworks)}`,
       `characterInteractions: ${countItems(studyData.characterInteractions)}`,
       `sessionContinuityReview: ${countItems(sessionContinuityReviewRecords())}`,
@@ -2346,7 +2438,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const chapterType = activeChapterType();
     const unclassified = majorUnclassifiedEntityLines();
     if (unclassified.length) concerns.push(`Class Unclassified major entities: ${unclassified.join(", ")}`);
-    if (/Teaching/i.test(chapterType) && countItems(studyData.teachingSemantics) === 0) concerns.push("Primary applicable layer has zero records: Teaching / Discourse Structure.");
+    if (/Teaching/i.test(chapterType) && countItems(scopedSemanticRecords(studyData.teachingSemantics)) === 0) concerns.push("Primary applicable layer has zero records: Teaching / Discourse Structure.");
     if (/movement|protection/i.test(chapterType) && countItems(studyData.movementSemantics) === 0) concerns.push("Primary applicable layer has zero records: Movement / Location Semantics.");
     if (/scripture|Matthew/i.test(pageLabel) && /generic_html_adapter/i.test(studyData.activeAdapter?.adapterName || studyData.analysisStatus?.activeAdapterName || "")) concerns.push("Generic adapter is active on a scripture-like source page.");
     if (analyzedPageHistory().length > 1 && countItems(studyData.semanticContinuity) === 0) concerns.push("Session spans multiple pages but continuity records are missing.");
@@ -2606,18 +2698,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
       {
         layer: "Teaching / Discourse Structure",
-        count: countItems(studyData.teachingSemantics),
-        status: coverageStatus({ count: countItems(studyData.teachingSemantics), applicable: isTeaching, primary: isTeaching, pilot: true })
+        count: countItems(scopedSemanticRecords(studyData.teachingSemantics)),
+        status: coverageStatus({ count: countItems(scopedSemanticRecords(studyData.teachingSemantics)), applicable: isTeaching, primary: isTeaching, pilot: true })
       },
       {
         layer: "Principle Relationships",
-        count: countItems(studyData.principleRelationships),
-        status: coverageStatus({ count: countItems(studyData.principleRelationships), applicable: isTeaching, pilot: true })
+        count: countItems(scopedSemanticRecords(studyData.principleRelationships)),
+        status: coverageStatus({ count: countItems(scopedSemanticRecords(studyData.principleRelationships)), applicable: isTeaching, pilot: true })
       },
       {
         layer: "Character Interactions",
-        count: countItems(studyData.characterInteractions),
-        status: coverageStatus({ count: countItems(studyData.characterInteractions), applicable: chapter === 1 || chapter === 2 || chapter === 5, pilot: true })
+        count: countItems(scopedSemanticRecords(studyData.characterInteractions)),
+        status: coverageStatus({ count: countItems(scopedSemanticRecords(studyData.characterInteractions)), applicable: chapter === 1 || chapter === 2 || chapter === 5, pilot: true })
       },
       {
         layer: "Study Progression",
@@ -2636,13 +2728,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
       {
         layer: "Semantic Sequence / Causality",
-        count: countItems(studyData.semanticCausality),
-        status: coverageStatus({ count: countItems(studyData.semanticCausality), applicable: chapter === 1 || chapter === 2 })
+        count: countItems(scopedSemanticRecords(studyData.semanticCausality)),
+        status: coverageStatus({ count: countItems(scopedSemanticRecords(studyData.semanticCausality)), applicable: chapter === 1 || chapter === 2 })
       },
       {
         layer: "Cross-Chapter Continuity",
-        count: countItems(studyData.semanticContinuity),
-        status: coverageStatus({ count: countItems(studyData.semanticContinuity), applicable: true, sessionScoped: true })
+        count: countItems(scopedSemanticRecords(studyData.semanticContinuity)),
+        status: coverageStatus({ count: countItems(scopedSemanticRecords(studyData.semanticContinuity)), applicable: true, sessionScoped: true })
       },
       {
         layer: "Semantic Ontology Roles",
@@ -2738,7 +2830,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         relatedSemanticLayers: ["Reference Roles", "Source Discovery", "Reference Graph"]
       }));
     });
-    asArray(studyData.teachingSemantics).slice(0, 8).forEach((item) => {
+    scopedSemanticRecords(studyData.teachingSemantics).slice(0, 8).forEach((item) => {
       const label = item.teachingTopic || item.blessing || item.commandment || item.principle || item.discourseType || "Teaching";
       records.push(resolutionExplanationRecord({
         result: label,
@@ -2758,7 +2850,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         relatedSemanticLayers: ["Teaching / Discourse Structure"]
       }));
     });
-    asArray(studyData.principleRelationships).slice(0, 8).forEach((item) => {
+    scopedSemanticRecords(studyData.principleRelationships).slice(0, 8).forEach((item) => {
       const related = asArray(item.relatedPrinciples).slice(0, 3).join(", ");
       records.push(resolutionExplanationRecord({
         result: `${item.principle || "Principle"} ${passageFunctionTitle(item.relationshipType || "related")} ${related || "related principle"}`,
@@ -2778,7 +2870,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         relatedSemanticLayers: ["Principle Relationships", "Teaching / Discourse Structure"]
       }));
     });
-    asArray(studyData.characterInteractions).slice(0, 8).forEach((item) => {
+    scopedSemanticRecords(studyData.characterInteractions).slice(0, 8).forEach((item) => {
       records.push(resolutionExplanationRecord({
         result: `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"}`,
         sourceEvidence: item.sourcePhrase,
@@ -3006,9 +3098,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function guidedStudyRecords() {
     const records = [];
-    const teachings = asArray(studyData.teachingSemantics);
-    const principles = asArray(studyData.principleRelationships);
-    const interactions = asArray(studyData.characterInteractions);
+    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const principles = scopedSemanticRecords(studyData.principleRelationships);
+    const interactions = scopedSemanticRecords(studyData.characterInteractions);
     const graph = knowledgeGraphRecords();
     const sessionReview = sessionContinuityReviewRecords();
     const library = libraryAwarenessRecords();
@@ -3202,16 +3294,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const activePage = activeSourcePageRecord();
     if (activePage) return volumePageLabel(activePage);
-    const teaching = asArray(studyData.teachingSemantics).find((item) => item.teachingTopic || item.teachingBlock || item.speaker);
+    const teaching = scopedSemanticRecords(studyData.teachingSemantics).find((item) => item.teachingTopic || item.teachingBlock || item.speaker);
     return teaching?.teachingTopic || teaching?.teachingBlock || teaching?.speaker || "Current analyzed source";
   }
 
   function studyProgressionRecords() {
     const explored = [];
     const related = [];
-    const teachings = asArray(studyData.teachingSemantics);
-    const principles = asArray(studyData.principleRelationships);
-    const interactions = asArray(studyData.characterInteractions);
+    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const principles = scopedSemanticRecords(studyData.principleRelationships);
+    const interactions = scopedSemanticRecords(studyData.characterInteractions);
     const graph = knowledgeGraphRecords();
     const library = libraryAwarenessRecords();
     const sessionReview = sessionContinuityReviewRecords();
@@ -3565,7 +3657,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("trustVerificationCards");
     const count = document.getElementById("trustVerificationCount");
     if (!container || !count) return;
-    const records = asArray(studyData.trustVerification);
+    const records = scopedSemanticRecords(studyData.trustVerification);
     const filtered = records.filter((item) => matchesSearchQuery(trustVerificationSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} trust record(s)`;
@@ -3648,7 +3740,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("semanticQuestionsCards");
     const count = document.getElementById("semanticQuestionsCount");
     if (!container || !count) return;
-    const records = asArray(studyData.semanticQuestions);
+    const records = scopedSemanticRecords(studyData.semanticQuestions);
     const answered = records.filter((item) => item.questionKind !== "suggested");
     const suggested = records.filter((item) => item.questionKind === "suggested");
     const filteredAnswered = answered.filter((item) => matchesSearchQuery(semanticQuestionSearchText(item), term));
@@ -3796,8 +3888,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function libraryAwarenessRecords() {
     const records = [
-      ...asArray(studyData.principleRelationships).map(libraryAwarenessRecordFromPrinciple),
-      ...asArray(studyData.teachingSemantics).map(libraryAwarenessRecordFromTeaching)
+      ...scopedSemanticRecords(studyData.principleRelationships).map(libraryAwarenessRecordFromPrinciple),
+      ...scopedSemanticRecords(studyData.teachingSemantics).map(libraryAwarenessRecordFromTeaching)
     ].filter(Boolean);
     const seen = new Set();
     return records.filter((item) => {
@@ -8477,7 +8569,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (mode !== "principleRelationship") {
-      asArray(studyData.principleRelationships)
+      scopedSemanticRecords(studyData.principleRelationships)
         .filter((relationship) => semanticVerseOverlap(relationship, item) || semanticEntityOverlap(relationship, item) || asArray(relationship.relatedTeachingSemantics).some((id) => id && normalizeText(JSON.stringify(item)).includes(normalizeText(id))))
         .forEach((relationship) => links.push(semanticNavItem(
           `Principle Relationship: ${relationship.principle || "principle"} ${relationship.relationshipType || "related"} ${asArray(relationship.relatedPrinciples).join(", ") || "related principle"}`,
@@ -8488,7 +8580,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (mode !== "focusLens") {
-      asArray(studyData.focusLens)
+      scopedSemanticRecords(studyData.focusLens)
         .filter((focus) => semanticVerseOverlap(focus, item) || semanticEntityOverlap(focus, item) || matchesSearchQuery(focusLensSearchText(focus), semanticRecordEntityNames(item).join(" ")))
         .forEach((focus) => links.push(semanticNavItem(
           `Focus Lens: ${focus.currentFocus || "focus"} | ${focus.focusType || "Focus"}`,
@@ -8498,7 +8590,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         )));
     }
     if (mode !== "principleNetwork") {
-      asArray(studyData.principleNetworks)
+      scopedSemanticRecords(studyData.principleNetworks)
         .filter((network) => semanticVerseOverlap(network, item) || semanticEntityOverlap(network, item) || matchesSearchQuery(principleNetworkSearchText(network), semanticRecordEntityNames(item).join(" ")))
         .forEach((network) => links.push(semanticNavItem(
           `Principle Network: ${network.corePrinciple || "principle"}`,
@@ -8508,7 +8600,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         )));
     }
     if (mode !== "characterInteraction") {
-      asArray(studyData.characterInteractions)
+      scopedSemanticRecords(studyData.characterInteractions)
         .filter((interaction) => semanticVerseOverlap(interaction, item) || semanticEntityOverlap(interaction, item))
         .forEach((interaction) => links.push(semanticNavItem(
           `Character Interaction: ${interaction.sourceCharacter || "source"} -> ${interaction.targetCharacter || "target"} | ${interaction.interactionType || "interaction"}`,
@@ -9553,7 +9645,7 @@ createRevelationPartsSection(item.subEvents)
   function renderMovementSemantics(term) {
     const container = document.getElementById("movementSemanticsCards");
     const count = document.getElementById("movementSemanticsCount");
-    const records = asArray(studyData.movementSemantics);
+    const records = scopedSemanticRecords(studyData.movementSemantics);
     const filtered = records.filter((item) => matchesSearchQuery(movementSemanticSearchText(item), term));
 
     if (!container || !count) return;
@@ -9669,7 +9761,7 @@ createRevelationPartsSection(item.subEvents)
   function renderSemanticCausality(term) {
     const container = document.getElementById("semanticCausalityCards");
     const count = document.getElementById("semanticCausalityCount");
-    const records = asArray(studyData.semanticCausality);
+    const records = scopedSemanticRecords(studyData.semanticCausality);
     const filtered = records.filter((item) => matchesSearchQuery(semanticCausalitySearchText(item), term));
 
     if (!container || !count) return;
@@ -9816,7 +9908,7 @@ createRevelationPartsSection(item.subEvents)
   function renderTeachingSemantics(term) {
     const container = document.getElementById("teachingSemanticsCards");
     const count = document.getElementById("teachingSemanticsCount");
-    const records = asArray(studyData.teachingSemantics);
+    const records = scopedSemanticRecords(studyData.teachingSemantics);
     const filtered = records.filter((item) => matchesSearchQuery(teachingSemanticSearchText(item), term));
 
     if (!container || !count) return;
@@ -9924,7 +10016,7 @@ createRevelationPartsSection(item.subEvents)
   function renderPrincipleRelationships(term) {
     const container = document.getElementById("principleRelationshipsCards");
     const count = document.getElementById("principleRelationshipsCount");
-    const records = asArray(studyData.principleRelationships);
+    const records = scopedSemanticRecords(studyData.principleRelationships);
     const filtered = records.filter((item) => matchesSearchQuery(principleRelationshipSearchText(item), term));
 
     if (!container || !count) return;
@@ -10054,7 +10146,7 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("focusLensCards");
     const count = document.getElementById("focusLensCount");
     if (!container || !count) return;
-    const records = asArray(studyData.focusLens);
+    const records = scopedSemanticRecords(studyData.focusLens);
     const filtered = records.filter((item) => matchesSearchQuery(focusLensSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} focus record(s)`;
@@ -10144,7 +10236,7 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("scopeLensCards");
     const count = document.getElementById("scopeLensCount");
     if (!container || !count) return;
-    const records = asArray(studyData.scopeLens);
+    const records = scopedSemanticRecords(studyData.scopeLens);
     const filtered = records.filter((item) => matchesSearchQuery(scopeLensSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} scope record(s)`;
@@ -10233,7 +10325,7 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("depthLensCards");
     const count = document.getElementById("depthLensCount");
     if (!container || !count) return;
-    const records = asArray(studyData.depthLens);
+    const records = scopedSemanticRecords(studyData.depthLens);
     const filtered = records.filter((item) => matchesSearchQuery(depthLensSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} depth record(s)`;
@@ -10340,7 +10432,7 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("principleNetworksCards");
     const count = document.getElementById("principleNetworksCount");
     if (!container || !count) return;
-    const records = asArray(studyData.principleNetworks);
+    const records = scopedSemanticRecords(studyData.principleNetworks);
     const filtered = records.filter((item) => matchesSearchQuery(principleNetworkSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} network(s)`;
@@ -10445,7 +10537,7 @@ createRevelationPartsSection(item.subEvents)
   function renderSemanticContinuity(term) {
     const container = document.getElementById("semanticContinuityCards");
     const count = document.getElementById("semanticContinuityCount");
-    const records = asArray(studyData.semanticContinuity);
+    const records = scopedSemanticRecords(studyData.semanticContinuity);
     const filtered = records.filter((item) => matchesSearchQuery(semanticContinuitySearchText(item), term));
 
     if (!container || !count) return;
@@ -11344,7 +11436,7 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("interactionCards");
     const count = document.getElementById("interactionCount");
     if (!container || !count) return;
-    const semanticRecords = asArray(studyData.characterInteractions);
+    const semanticRecords = scopedSemanticRecords(studyData.characterInteractions);
     const filteredSemantic = semanticRecords.filter((item) => matchesSearchQuery(characterInteractionSearchText(item), term));
     const legacyInteractions = Array.isArray(studyData.interactionGraph)
       ? dedupeInteractions(studyData.interactionGraph)
@@ -11527,7 +11619,7 @@ createRevelationPartsSection(item.subEvents)
       seen.add(key);
       records.push(item);
     };
-    asArray(studyData.teachingSemantics).forEach((item) => {
+    scopedSemanticRecords(studyData.teachingSemantics).forEach((item) => {
       const common = {
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
@@ -11552,7 +11644,7 @@ createRevelationPartsSection(item.subEvents)
       if (item.example) add({ ...common, category: "Examples", label: item.example, type: "example" });
       if (item.audience) add({ ...common, category: "Audience Conditions", label: item.audience, type: "audience" });
     });
-    asArray(studyData.principleRelationships).forEach((item) => {
+    scopedSemanticRecords(studyData.principleRelationships).forEach((item) => {
       const common = {
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
