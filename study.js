@@ -1484,8 +1484,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (stored.length) return stored;
     const records = [];
     const byNode = new Map();
-    const activePage = activeSourcePageRecord();
-    const chapterScope = activePage ? volumePageLabel(activePage) : studyData.analysisStatus?.sourceCaptureTitle || "Current source";
+    const chapterScope = currentStudyScopeLabel();
     const sessionReview = sessionContinuityReviewRecords()[0] || null;
     const sessionScope = sessionReview?.sessionRange || chapterScope;
     const uniquePush = (target, field, values) => {
@@ -2649,12 +2648,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     copyPlainTextReport(label, builder());
   }
   function activeChapterNumber() {
-    const page = activeSourcePageRecord();
+    const scopePages = currentStudyScopePages();
+    const scopedPage = scopePages.length ? scopePages[scopePages.length - 1] : null;
+    const page = scopedPage || activeSourcePageRecord();
     return Number(page?.sourceCaptureChapter || page?.chapter || studyData.analysisStatus?.sourceCaptureChapter || 0);
   }
 
   function activeChapterType() {
-    const page = activeSourcePageRecord();
+    const scopePages = currentStudyScopePages();
+    const scopedPage = scopePages.length ? scopePages[scopePages.length - 1] : null;
+    const page = scopedPage || activeSourcePageRecord();
     const book = normalizeText(page?.sourceCaptureBook || studyData.analysisStatus?.sourceCaptureBook || "");
     const chapter = activeChapterNumber();
     if (/Matthew/i.test(book) && chapter === 1) return "Narrative-heavy";
@@ -3292,6 +3295,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const value = semanticFocusValueLabel(currentSemanticFocus);
       if (value && !/^semantic focus$/i.test(value)) return value;
     }
+    const scopeLabel = currentStudyScopeLabel();
+    if (scopeLabel && !/^current scope$/i.test(scopeLabel)) return scopeLabel;
     const activePage = activeSourcePageRecord();
     if (activePage) return volumePageLabel(activePage);
     const teaching = scopedSemanticRecords(studyData.teachingSemantics).find((item) => item.teachingTopic || item.teachingBlock || item.speaker);
@@ -11937,6 +11942,15 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Semantic Coverage") return semanticCoverageRows().length;
     if (label === "Semantic Resolution Explanation") return resolutionExplanationRecords().length;
     if (label === "Scripture Knowledge Graph") return knowledgeGraphRecords().length;
+    if (label === "Focus Lens") return scopedSemanticRecords(studyData.focusLens).length;
+    if (label === "Scope Lens") return scopedSemanticRecords(studyData.scopeLens).length;
+    if (label === "Depth Lens") return scopedSemanticRecords(studyData.depthLens).length;
+    if (label === "Teaching / Discourse Structure") return scopedSemanticRecords(studyData.teachingSemantics).length;
+    if (label === "Principle Relationships") return scopedSemanticRecords(studyData.principleRelationships).length;
+    if (label === "Principle Networks") return scopedSemanticRecords(studyData.principleNetworks).length;
+    if (label === "Semantic Continuity") return scopedSemanticRecords(studyData.semanticContinuity).length;
+    if (label === "Movement Semantics") return scopedSemanticRecords(studyData.movementSemantics).length;
+    if (label === "Semantic Causality") return scopedSemanticRecords(studyData.semanticCausality).length;
     if (label === "Current Page") return activeSourcePageRecord() ? 1 : 0;
     if (label === "Source Context") return findSourceContext() ? 1 : 0;
     if (label === "Source Adapter") return studyData.activeAdapter ? 1 : 0;

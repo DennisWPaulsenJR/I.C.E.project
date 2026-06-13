@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-13 - pcdx - Targeted scope-isolation QA
+Summary:
+- Ran targeted Study Panel scope-isolation QA for retained/global Matthew 5 semantic data while active Study Scope was Matthew 1 -> Matthew 2.
+- Initial targeted QA found residual metadata leaks: Semantic Coverage still used retained Matthew 5 chapter type, Knowledge Graph showed Chapter Scope Matthew 5, Study Progression current focus could prefer retained latest page, and deferred scoped-section summaries could show raw retained counts.
+- Tightened `study.js` so those metadata/count paths prefer the selected Study Scope.
+- Final targeted QA passed with 13 seeded Matthew 5 teaching records and 5 seeded Matthew 5 principle relationship records retained globally.
+- Verified no leaked lower-section terms: Sermon on the Mount, Kingdom of Heaven, Mercy, Peacemaking, or Study JESUS as Teacher.
+- Verified scoped sections: Guided Study, Study Progression, Semantic Coverage, Scripture Knowledge Graph, Teaching / Discourse Structure, Principle Relationships, Focus Lens, Scope Lens, and Depth Lens.
+- Queue page summaries remained available and separate; Cross-reference Set remained separate from analyzed scope; GPT buttons remained absent; no crawling, automatic queue processing, or automatic analysis occurred.
+
+Files touched:
+- `study.js`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+
+Checks:
+- Targeted scope-isolation Playwright smoke passed in a temporary browser profile.
+- `node --check study.js` passed.
+- `node --check popup.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` was attempted twice and failed before LDS semantic extraction with `plain_text_adapter` / zero DOM hints; a later clean harness rerun is recommended.
+
+Commit:
+- This commit: `pcdx: Record scope isolation QA`
+
+Status:
+- Targeted scope-isolation QA confirmed; next likely feature task is Study Panel queue summary UX refinement.
 ## 2026-06-10 - pcdx - Add manual queue item runner
 Summary:
 - Implemented Phase 2A hybrid manual-confirm-per-page queue execution in the Study Panel.

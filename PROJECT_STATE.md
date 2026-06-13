@@ -38,6 +38,16 @@ Current Active WIP:
 - Next recommended task: Study Panel summary UX refinement or a targeted QA pass for queue summaries.
 - Do not implement automatic execution, crawling, book/volume capture, background queue running, semantic snapshot migration, or automatic next-item loops without explicit approval.
 
+Latest pcdx update:
+- Targeted scope-isolation QA for retained/global Matthew 5 data under an active Matthew 1 -> Matthew 2 Study Scope passed after a small follow-up `study.js` metadata tightening.
+- QA seeded 13 Matthew 5 teaching records and 5 Matthew 5 principle relationship records while forcing selected Study Scope to Matthew 1 -> Matthew 2.
+- Verified no lower-section leaks of Sermon on the Mount, Kingdom of Heaven, Mercy, Peacemaking, or Study JESUS as Teacher.
+- Scoped sections verified: Guided Study, Study Progression, Semantic Coverage, Scripture Knowledge Graph, Teaching / Discourse Structure, Principle Relationships, Focus Lens, Scope Lens, and Depth Lens.
+- Queue page summaries remained available and separate; Cross-reference Set remained separate from analyzed Study Scope; GPT buttons remained absent; no crawling, automatic queue processing, or automatic analysis occurred.
+- Follow-up code tightening made Semantic Coverage chapter type, Knowledge Graph chapter scope, Study Progression current focus, and deferred scoped-section counts prefer the selected Study Scope instead of retained latest/global Matthew 5 metadata.
+- Static checks passed: `node --check study.js`, `node --check popup.js`, `node --check background.js`, and `git diff --check`.
+- Note: `npm.cmd run qa:matthew1` was attempted twice after the scoped metadata fix and failed in the known harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records. Treat this as requiring a later clean harness rerun; it was not a scoped-section leak in the targeted Study Panel QA.
+- Next likely feature task: Study Panel queue summary UX refinement.
 ## I.C.E. Session Starting Protocol
 
 Every `gpt`, `mgpt`, `pcdx`, and `mcdx` session must begin by reading, in order:

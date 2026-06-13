@@ -3,6 +3,22 @@
 This file is the quick direct-message lane for `gpt`, `mgpt`, `pcdx`, and `mcdx` handoffs.
 It should stay concise and current.
 It is not the full project history.
+## 2026-06-13 - pcdx -> gpt/mgpt/mcdx - Scope isolation QA confirmed
+Status: done / ready after commit
+Task:
+- Verify retained Matthew 5 semantic data does not leak into active Matthew 1 -> Matthew 2 Study Scope.
+Message:
+- Targeted QA passed after a small Study Panel metadata/count tightening in `study.js`.
+- Retained/global Matthew 5 teaching/principle records no longer appear as current-scope guidance under Matthew 1 -> Matthew 2.
+- Verified no lower-section leaks of Sermon on the Mount, Kingdom of Heaven, Mercy, Peacemaking, or Study JESUS as Teacher.
+- Guided Study, Study Progression, Semantic Coverage, Knowledge Graph, Teaching/Principle/Focus/Scope/Depth sections, and semantic scoped counts now respect selected Study Scope.
+- Queue summaries and Cross-reference Set remained separate; GPT buttons remained absent; no crawling or automatic queue processing occurred.
+Validation:
+- Targeted Playwright scope-isolation smoke passed.
+- Static checks passed: `node --check study.js`, `node --check popup.js`, `node --check background.js`, and `git diff --check`.
+- Note: `npm.cmd run qa:matthew1` failed twice in source-load/harness mode with `plain_text_adapter` and zero LDS semantic records; rerun cleanly later.
+Needed action:
+- Next likely feature task: Study Panel queue summary UX refinement.
 ## 2026-06-13 - pcdx -> gpt/mgpt/mcdx - Phase 2B queue page summaries confirmed
 Status: done / pushed
 Task:
