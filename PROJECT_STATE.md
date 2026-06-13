@@ -31,23 +31,19 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
-- Phase 2B lightweight queue page summaries are implemented, validated, browser-smoked, pushed, and confirmed.
-- Storage key: `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES`.
-- Done summaries write only after canonical match; failed summaries write on mismatch/error with expected vs actual canonical key.
-- Clear queue preserves queue page summaries, analyzed/session data, and cross-reference data.
-- Next recommended task: Study Panel summary UX refinement or a targeted QA pass for queue summaries.
+- Phase 9.2a Study Panel Queue Summary UX refinement is implemented in this update.
+- Queue Summary is informational only: it displays Current Active Page, Analyzed Pages, Missing Pages Between Analyzed Pages, Suggested Next, Available Continuity Links, Session Type, cross-reference status, queue status, and lightweight queue result summary status.
+- Queue Summary reuses Study Scope canonical analyzed page markers, the separate Cross-reference Set, and lightweight queue summaries. It does not analyze, select pages, create ranges, crawl, modify scope, or process queue items.
+- Phase 2B lightweight queue page summaries remain implemented under `ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES`; done summaries write only after canonical match, failed summaries write on mismatch/error, and Clear queue preserves summaries.
 - Do not implement automatic execution, crawling, book/volume capture, background queue running, semantic snapshot migration, or automatic next-item loops without explicit approval.
 
 Latest pcdx update:
-- Targeted scope-isolation QA for retained/global Matthew 5 data under an active Matthew 1 -> Matthew 2 Study Scope passed after a small follow-up `study.js` metadata tightening.
-- QA seeded 13 Matthew 5 teaching records and 5 Matthew 5 principle relationship records while forcing selected Study Scope to Matthew 1 -> Matthew 2.
-- Verified no lower-section leaks of Sermon on the Mount, Kingdom of Heaven, Mercy, Peacemaking, or Study JESUS as Teacher.
-- Scoped sections verified: Guided Study, Study Progression, Semantic Coverage, Scripture Knowledge Graph, Teaching / Discourse Structure, Principle Relationships, Focus Lens, Scope Lens, and Depth Lens.
-- Queue page summaries remained available and separate; Cross-reference Set remained separate from analyzed Study Scope; GPT buttons remained absent; no crawling, automatic queue processing, or automatic analysis occurred.
-- Follow-up code tightening made Semantic Coverage chapter type, Knowledge Graph chapter scope, Study Progression current focus, and deferred scoped-section counts prefer the selected Study Scope instead of retained latest/global Matthew 5 metadata.
-- Static checks passed: `node --check study.js`, `node --check popup.js`, `node --check background.js`, and `git diff --check`.
-- Note: `npm.cmd run qa:matthew1` was attempted twice after the scoped metadata fix and failed in the known harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records. Treat this as requiring a later clean harness rerun; it was not a scoped-section leak in the targeted Study Panel QA.
-- Next likely feature task: Study Panel queue summary UX refinement.
+- Added a concise Study Panel `Queue Summary` section immediately after Study Scope so users can see active/analyzed pages, missing page opportunities, continuity links, suggested next page, and session type without opening multiple lower sections.
+- Controlled extension smoke passed in a temporary browser profile: Matthew 1-only rendered `Single Page` with suggested Matthew 2; Matthew 1 + Matthew 5 rendered `Non-Contiguous Selection`, listed Matthew 2, Matthew 3, and Matthew 4 as missing, and showed Matthew 1 -> Matthew 2 plus Matthew 5 -> Matthew 6 continuity links.
+- Static checks passed: `node --check study.js` and `git diff --check`.
+- Broad validation blocker: `npm.cmd run qa:matthew-pages` failed twice at `qa:matthew1`, and `npm.cmd run review:matthew-session` failed at the same first step, in the known LDS harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records. Treat this as a harness/source-load rerun issue, not a Queue Summary scope leak.
+- GPT buttons remain absent; Cross-reference Set remains separate from analyzed Study Scope; no crawling, automatic queue processing, automatic analysis, or scope modification was added.
+- Next recommended task: resolve or rerun the LDS QA harness adapter issue, then continue Study Panel queue summary UX polish or targeted queue summary QA.
 ## I.C.E. Session Starting Protocol
 
 Every `gpt`, `mgpt`, `pcdx`, and `mcdx` session must begin by reading, in order:

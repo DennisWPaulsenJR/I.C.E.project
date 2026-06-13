@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "panelUiState"
   ];
   const FULL_STORAGE_ALIASES = Object.keys(STORAGE_KEYS);
-  const STARTUP_RENDERER_LABELS = new Set(["Study Scope"]);
+  const STARTUP_RENDERER_LABELS = new Set(["Study Scope", "Queue Summary"]);
   const DEFERRED_SECTION_SUMMARIES = {
     "Guided Study": "Grounded next study paths from current semantic records.",
     "Study Progression": "Current focus, explored topics, related topics, and suggested next study direction.",
@@ -1609,6 +1609,62 @@ document.addEventListener("DOMContentLoaded", async () => {
     return suggestedNextPageLabel(activePage || scope?.end);
   }
 
+  function queueSummarySessionTypeLabel(range, analyzedPages = []) {
+    const count = asArray(analyzedPages).length;
+    if (!range || !count) return "No analyzed pages";
+    if (count < 2 || range.count < 2) return "Single Page";
+    return range.isContiguous ? "Contiguous Range" : "Non-Contiguous Selection";
+  }
+
+  function queueSummarySuggestedNextLine(activePage, range) {
+    const missing = asArray(range?.missingLabels).map((label) => normalizeText(label)).filter(Boolean);
+    if (missing.length) return missing[0];
+    const seed = range?.end || activePage || null;
+    const target = pageNavigationTarget(seed || {}, 1);
+    if (target?.label) return target.label;
+    return suggestedNextPageLabel(seed);
+  }
+
+  function queueSummaryContinuityLines(analyzedPages = []) {
+    const lines = sortedAnalyzedPages(analyzedPages)
+      .map((page) => {
+        const target = pageNavigationTarget(page, 1);
+        return target?.label ? `${volumePageLabel(page)} -> ${target.label}` : "";
+      })
+      .filter(Boolean);
+    return lines.length ? lines : ["None yet"];
+  }
+
+  function queueSummaryBoundaryLine(range, analyzedPages = []) {
+    if (!asArray(analyzedPages).length) return "No analyzed pages are available for study opportunities yet.";
+    if (range && !range.isContiguous) return "Selected analyzed pages only; missing intermediate pages are opportunities, not analyzed scope.";
+    return "Uses canonical analyzed pages from Study Scope; informational only.";
+  }
+
+  function queueSummaryRows() {
+    const activePage = activeSourcePageRecord();
+    const analyzedPages = analyzedPageHistory();
+    const range = selectedRangeFromAnalyzedPages(analyzedPages);
+    const analyzedLabels = sortedAnalyzedPages(analyzedPages).map(volumePageLabel).filter(Boolean);
+    const missingLabels = asArray(range?.missingLabels).map((label) => normalizeText(label)).filter(Boolean);
+    return [
+      ["Current Active Page", activePage ? volumePageLabel(activePage) : "No active source page selected"],
+      ["Analyzed Pages", analyzedLabels.length ? analyzedLabels.join("\n") : "None"],
+      ["Session Type", queueSummarySessionTypeLabel(range, analyzedPages)],
+      ["Missing Pages Between Analyzed Pages", missingLabels.length ? missingLabels.join("\n") : "None"],
+      ["Suggested Next", queueSummarySuggestedNextLine(activePage, range)],
+      ["Available Continuity Links", queueSummaryContinuityLines(analyzedPages).join("\n")],
+      ["Selected Cross-reference Pages", crossReferenceSetLine()],
+      ["Queue State", analysisQueueSummaryLine()],
+      ["Queue Result Summaries", analysisQueuePageSummaryLine()],
+      ["Boundary", queueSummaryBoundaryLine(range, analyzedPages)],
+      ["Provenance", "Derived from Study Scope canonical analyzed page markers, the separate cross-reference set, and lightweight queue summaries. This section does not analyze, select, crawl, or modify scope."]
+    ];
+  }
+
+  function queueSummarySearchText() {
+    return queueSummaryRows().map(([label, value]) => `${label} ${value}`).join(" ");
+  }
   function sourcePageUrl(page = {}) {
     return normalizeText(page.activeUrl || page.url || page.sourceUrl || "");
   }
@@ -4188,6 +4244,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.appendChild(createStudyScopeCard());
   }
 
+  function createQueueSummaryCard() {
+    const card = document.createElement("article");
+    card.className = "study-card volume-context-card queue-summary-card";
+    const heading = document.createElement("h3");
+    heading.textContent = "Queue Summary";
+
+    const list = document.createElement("dl");
+    list.className = "volume-context-list";
+    queueSummaryRows().forEach(([label, value]) => {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.textContent = value || "None";
+      list.append(term, detail);
+    });
+
+    card.append(heading, list);
+    return card;
+  }
+
+  function renderQueueSummary(term) {
+    const container = document.getElementById("queueSummaryCards");
+    const count = document.getElementById("queueSummaryCount");
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = "summary";
+    if (term && !includesTerm(queueSummarySearchText(), term)) {
+      appendEmpty(container, "No queue summary match.");
+      return;
+    }
+    container.appendChild(createQueueSummaryCard());
+  }
   function createAnalysisQueueDetails() {
     const records = analysisQueueRecords();
     const status = analysisQueueStatus();
@@ -11877,6 +11965,7 @@ createRevelationPartsSection(item.subEvents)
   function studySectionRenderers() {
     return [
       { label: "Study Scope", sectionId: "volumeContextSection", renderer: renderVolumeContext },
+      { label: "Queue Summary", sectionId: "queueSummarySection", renderer: renderQueueSummary },
       { label: "Guided Study", sectionId: "guidedStudySection", renderer: renderGuidedStudy },
       { label: "Study Progression", sectionId: "studyProgressionSection", renderer: renderStudyProgression },
       { label: "Focus Lens", sectionId: "focusLensSection", renderer: renderFocusLens },

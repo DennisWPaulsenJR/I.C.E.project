@@ -21,6 +21,33 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-13 - pcdx - Refine queue summary UX
+Summary:
+- Added an informational Study Panel Queue Summary after Study Scope.
+- Queue Summary displays Current Active Page, Analyzed Pages, Session Type, Missing Pages Between Analyzed Pages, Suggested Next, Available Continuity Links, Cross-reference Set status, queue state, and queue result summary status.
+- Reuses Study Scope canonical analyzed markers, the separate Cross-reference Set, and lightweight queue summaries; it does not analyze, select, create ranges, crawl, modify scope, or process queue items.
+- Controlled extension smoke passed for Matthew 1 single-page state and Matthew 1 + Matthew 5 non-contiguous state with Matthew 2/3/4 listed as missing and continuity opportunities shown.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Queue Summary smoke passed in a temporary browser profile.
+- `npm.cmd run qa:matthew-pages` failed twice at `qa:matthew1` in the known LDS harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records.
+- `npm.cmd run review:matthew-session` failed at the same prerequisite step before report generation.
+
+Commit:
+- This commit: `pcdx: Refine queue summary UX`
+
+Status:
+- Queue Summary UX implemented with targeted smoke passing; broad Matthew QA needs a clean LDS adapter harness rerun.
+
 ## 2026-06-13 - pcdx - Targeted scope-isolation QA
 Summary:
 - Ran targeted Study Panel scope-isolation QA for retained/global Matthew 5 semantic data while active Study Scope was Matthew 1 -> Matthew 2.

@@ -1,3 +1,31 @@
+## 2026-06-13 - Refine Study Panel Queue Summary UX
+
+Instruction summary:
+- Add a concise informational Queue Summary to the Study Panel so users can understand analyzed pages, missing pages, suggested next pages, continuity links, and session type without opening multiple sections.
+- Preserve scope isolation, source validation, provenance, evidence weighting, Focus / Scope / Depth architecture, and all manual queue safety rules.
+
+Codex action summary:
+- Added a `Queue Summary` section immediately after Study Scope in `study.html`.
+- Added lightweight `study.js` summary helpers and renderer that reuse Study Scope analyzed-page markers, Cross-reference Set state, queue status, and queue page summary status.
+- Kept Queue Summary informational only; it does not analyze pages, select pages, create ranges, crawl, modify scope, or process queue items.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled extension smoke passed for Matthew 1 single-page summary and Matthew 1 + Matthew 5 non-contiguous summary.
+- `npm.cmd run qa:matthew-pages` failed twice at Matthew 1 in the known harness/source-load mode: `plain_text_adapter` with zero LDS semantic extraction records.
+- `npm.cmd run review:matthew-session` failed at the same Matthew 1 prerequisite step before report generation.
+
+Status:
+- Implemented with targeted smoke passing; broad Matthew QA remains blocked by the known LDS harness/source-load adapter issue.
+
 ## 2026-06-04 - Document Multi-Agent Session Starting Protocol
 
 Instruction summary:
