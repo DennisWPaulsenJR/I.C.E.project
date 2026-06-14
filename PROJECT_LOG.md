@@ -1,3 +1,31 @@
+## 2026-06-14 - Add View Lens Foundation
+
+Instruction summary:
+- Add a display-only View Lens foundation that describes how current scoped study information is being presented.
+- Reuse existing semantic records and preserve provenance, evidence weighting, source/derived wording boundaries, sacred-name preferences, class distinctions, and all no-crawling / no-automatic-analysis rules.
+
+Codex action summary:
+- Added a deferred Study Panel `View Lens` section after Depth Lens.
+- Added derived view inference for Summary, Guided Study, and Knowledge Graph using existing scoped semantic records only.
+- Displayed purpose, primary records, related and future views, why the view matters, source phrase, derived meaning, provenance, evidence weight, reasoning path, and grounding.
+- Kept `ICE_VIEW_LENS` as a non-persisted display-layer identifier; no selectors, timeline renderer, graph renderer, extraction, storage migration, crawling, or automatic analysis were added.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and regenerated the session report.
+
+Status:
+- View Lens foundation implemented and validated; future view renderers and user selectors remain intentionally deferred.
 ## 2026-06-13 - Stabilize Matthew QA Harness Capture
 
 Instruction summary:

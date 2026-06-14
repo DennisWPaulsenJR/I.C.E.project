@@ -20,6 +20,31 @@ Status:
 ```
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
+## 2026-06-14 - pcdx - Add View Lens foundation
+Summary:
+- Added a deferred, display-only `ICE_VIEW_LENS` Study Panel layer after Depth Lens.
+- View Lens infers Summary, Guided Study, or Knowledge Graph from existing scoped records and presents purpose, primary records, related/future views, provenance, evidence weight, source phrase, derived meaning, reasoning, and grounding.
+- No storage key, semantic extraction, user selector, timeline/graph renderer, crawling, automatic analysis, or queue behavior change was added.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit: `pcdx: Add view lens foundation`.
+
+Status:
+- Implemented and validated; selectors and future presentation renderers remain deferred.
 
 ## 2026-06-13 - pcdx - Stabilize Matthew QA harness capture
 Summary:

@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Focus Lens": "Current semantic focus inferred from the analyzed source.",
     "Scope Lens": "The range where the current focus is being considered.",
     "Depth Lens": "How much semantic expansion is active in the current panel.",
+    "View Lens": "How current scoped study information is being presented.",
     "Semantic Coverage": "Layer-by-layer applicability and record status for the current chapter.",
     "Semantic Resolution Explanation": "Why generated semantic labels are grounded and how they were resolved.",
     "Session Continuity Review": "Continuity across analyzed pages in the current session.",
@@ -10442,6 +10443,188 @@ createRevelationPartsSection(item.subEvents)
     }
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createDepthLensCard(item)));
   }
+  function viewLensPurpose(currentView) {
+    return {
+      "Guided Study": "Introduce major teachings and grounded study paths from the current scoped semantic records.",
+      "Knowledge Graph": "Present current scoped entities, principles, and relationships as a structured semantic network.",
+      "Summary": "Present the current Study Scope, queue opportunities, and semantic availability in a concise overview."
+    }[currentView] || "Present current study information without changing the underlying semantic records.";
+  }
+
+  function viewLensWhy(currentView) {
+    return {
+      "Guided Study": "This view turns existing scoped semantic records into a readable starting path without changing their source grounding or evidence weight.",
+      "Knowledge Graph": "This view helps expose structure between existing entities, principles, and relationships while keeping source wording separate from derived meaning.",
+      "Summary": "This view keeps the active scope and available study opportunities understandable before deeper presentation modes are opened."
+    }[currentView] || "The selected presentation explains existing records without creating new semantic evidence.";
+  }
+
+  function viewLensPrimaryRecords(currentView, availability = {}) {
+    const records = [];
+    const add = (condition, label) => {
+      if (condition && !records.includes(label)) records.push(label);
+    };
+    if (currentView === "Guided Study") {
+      add(availability.teachingSemantics, "Teaching Semantics");
+      add(availability.principleNetworks, "Principle Networks");
+      add(availability.knowledgeGraph, "Knowledge Graph");
+      add(availability.principleRelationships, "Principle Relationships");
+      add(availability.characterInteractions, "Character Interactions");
+      if (!records.length) records.push("Guided Study Suggestions");
+    } else if (currentView === "Knowledge Graph") {
+      add(availability.knowledgeGraph, "Knowledge Graph");
+      add(availability.relationshipGraph, "Relationship Graph");
+      add(availability.entityRegistry, "Entity Registry");
+      add(availability.principleNetworks, "Principle Networks");
+      if (!records.length) records.push("Current Scoped Semantic Records");
+    } else {
+      records.push("Study Scope", "Queue Summary", "Semantic Coverage");
+    }
+    return records.slice(0, 6);
+  }
+
+  function viewLensRecords() {
+    const guided = guidedStudyRecords();
+    const graph = knowledgeGraphRecords();
+    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const principles = scopedSemanticRecords(studyData.principleRelationships);
+    const networks = scopedSemanticRecords(studyData.principleNetworks);
+    const interactions = scopedSemanticRecords(studyData.characterInteractions);
+    const relationshipGraph = scopedSemanticRecords(studyData.relationshipGraph);
+    const entityRegistry = scopedSemanticRecords(studyData.entityRegistry);
+    const hasStudyData = Boolean(activeSourcePageRecord()) || analyzedPageHistory().length > 0 || guided.length > 0 || graph.length > 0;
+    if (!hasStudyData) return [];
+
+    const currentView = guided.length ? "Guided Study" : (graph.length ? "Knowledge Graph" : "Summary");
+    const availability = {
+      teachingSemantics: teachings.length,
+      principleRelationships: principles.length,
+      principleNetworks: networks.length,
+      characterInteractions: interactions.length,
+      knowledgeGraph: graph.length,
+      relationshipGraph: relationshipGraph.length,
+      entityRegistry: entityRegistry.length
+    };
+    const primaryRecords = viewLensPrimaryRecords(currentView, availability);
+    const relatedViews = uniqueStudyList([
+      currentView !== "Summary" ? "Summary" : "",
+      currentView !== "Guided Study" && guided.length ? "Guided Study" : "",
+      currentView !== "Knowledge Graph" && graph.length ? "Knowledge Graph" : "",
+      interactions.length || entityRegistry.length ? "Character Focus" : "",
+      principles.length || networks.length ? "Principle Focus" : "",
+      relationshipGraph.length || interactions.length ? "Relationship Focus" : ""
+    ]).slice(0, 6);
+    const sourcePhrase = guided.find((item) => item.sourcePhrase)?.sourcePhrase ||
+      teachings.find((item) => item.sourcePhrase)?.sourcePhrase ||
+      principles.find((item) => item.sourcePhrase)?.sourcePhrase ||
+      "No direct source phrase; View Lens is derived from existing scoped semantic records.";
+    const recordCount = currentView === "Guided Study" ? guided.length : (currentView === "Knowledge Graph" ? graph.length : analyzedPageHistory().length);
+    const derivedMeaning = `${currentView} is the current inferred presentation because ${recordCount} relevant scoped record(s) are available. This label changes presentation wording only; it does not change Study Scope or semantic records.`;
+    return [{
+      id: `view-lens-${currentView.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      currentView,
+      purpose: viewLensPurpose(currentView),
+      primaryRecords,
+      relatedViews,
+      futureAvailableViews: ["Timeline", "Character Focus", "Principle Focus", "Relationship Focus", "Authority Paths", "Study Journey"],
+      whyThisViewMatters: viewLensWhy(currentView),
+      activeScope: currentStudyScopeLabel(),
+      sourcePhrase,
+      derivedMeaning,
+      provenance: "I.C.E. View Lens derived display layer",
+      evidenceWeight: "Derived Semantic Evidence",
+      reasoningPath: [
+        "Read the current Study Scope.",
+        "Count available scoped presentation records.",
+        `Infer ${currentView} as the current display mode.`,
+        "Preserve source records and expose future views without activating them."
+      ],
+      sourceGrounding: `Derived from ${primaryRecords.join(", ")} within ${currentStudyScopeLabel()}; no new semantic extraction or source mutation.`,
+      confidence: currentView === "Summary" ? "possible" : "probable"
+    }];
+  }
+
+  function viewLensSearchText(item = {}) {
+    return [
+      item.currentView,
+      item.purpose,
+      item.primaryRecords,
+      item.relatedViews,
+      item.futureAvailableViews,
+      item.whyThisViewMatters,
+      item.activeScope,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createViewLensCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card view-lens-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    heading.textContent = renderDerivedSemanticDisplayText(item.currentView || "Summary", hasDivineDisplayContext([item.sourcePhrase, item.derivedMeaning]));
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["Display-only View Lens", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    const divineContext = hasDivineDisplayContext([item.sourcePhrase, item.derivedMeaning, item.primaryRecords, item.relatedViews]);
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Current View", item.currentView || "Summary", { preserveExact: true }),
+      createPassageFunctionSection("Purpose", item.purpose || "Present current study information.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Primary Records Used", "", { list: asArray(item.primaryRecords), plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Related Views", "", { list: asArray(item.relatedViews), plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Future Available Views", "", { list: asArray(item.futureAvailableViews), plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Why This View Matters", item.whyThisViewMatters || "This display explains existing records without changing them.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "No direct source phrase recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "View presentation is derived from existing semantic records.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. View Lens derived display layer", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "presentation mode inferred from existing scoped record availability", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: item.primaryRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Derived from current scoped semantic records.", { collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. View Lens", label: item.currentView || "Summary", layer: "View Lens / ICE_VIEW_LENS", storageKey: "Not persisted in Phase 9.2b", scopePath: item.activeScope, rule: "View Lens is a derived display layer only. It reuses existing scoped semantic records and does not extract, analyze, crawl, select, or modify Study Scope." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderViewLens(term) {
+    const container = document.getElementById("viewLensCards");
+    const count = document.getElementById("viewLensCount");
+    if (!container || !count) return;
+    const records = viewLensRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(viewLensSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} view record(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No View Lens record is available until current study data exists.");
+      return;
+    }
+    container.appendChild(createCard(
+      "View Lens",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_VIEW_LENS",
+        "Purpose: describe how current scoped study information is being presented.",
+        "Boundary: display-only foundation; no selectors, graph/timeline execution, new extraction, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived view lens layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No View Lens records match current filter.");
+      return;
+    }
+    filtered.forEach((item) => container.appendChild(createViewLensCard(item)));
+  }
   function principleNetworkSearchText(item = {}) {
     return [
       item.corePrinciple,
@@ -11971,6 +12154,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Focus Lens", sectionId: "focusLensSection", renderer: renderFocusLens },
       { label: "Scope Lens", sectionId: "scopeLensSection", renderer: renderScopeLens },
       { label: "Depth Lens", sectionId: "depthLensSection", renderer: renderDepthLens },
+      { label: "View Lens", sectionId: "viewLensSection", renderer: renderViewLens },
       { label: "Semantic Coverage", sectionId: "semanticCoverageSection", renderer: renderSemanticCoverage },
       { label: "Semantic Resolution Explanation", sectionId: "resolutionExplanationsSection", renderer: renderResolutionExplanations },
       { label: "Session Continuity Review", sectionId: "sessionContinuityReviewSection", renderer: renderSessionContinuityReview },
@@ -12034,6 +12218,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Focus Lens") return scopedSemanticRecords(studyData.focusLens).length;
     if (label === "Scope Lens") return scopedSemanticRecords(studyData.scopeLens).length;
     if (label === "Depth Lens") return scopedSemanticRecords(studyData.depthLens).length;
+    if (label === "View Lens") return viewLensRecords().length;
     if (label === "Teaching / Discourse Structure") return scopedSemanticRecords(studyData.teachingSemantics).length;
     if (label === "Principle Relationships") return scopedSemanticRecords(studyData.principleRelationships).length;
     if (label === "Principle Networks") return scopedSemanticRecords(studyData.principleNetworks).length;
@@ -12227,6 +12412,7 @@ createRevelationPartsSection(item.subEvents)
     const focusLensCount = countItems(studyData.focusLens);
     const scopeLensCount = countItems(studyData.scopeLens);
     const depthLensCount = countItems(studyData.depthLens);
+    const viewLensCount = countItems(viewLensRecords());
     const semanticQuestionsCount = countItems(studyData.semanticQuestions);
     const trustVerificationCount = countItems(studyData.trustVerification);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
@@ -12235,7 +12421,7 @@ createRevelationPartsSection(item.subEvents)
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + viewLensCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
     const message = document.getElementById("diagnosticMessage");
 
     setElementText("diagnosticCaptures", captureCount);
@@ -12272,6 +12458,7 @@ createRevelationPartsSection(item.subEvents)
     setElementText("diagnosticFocusLens", focusLensCount);
     setElementText("diagnosticScopeLens", scopeLensCount);
     setElementText("diagnosticDepthLens", depthLensCount);
+    setElementText("diagnosticViewLens", viewLensCount);
     setElementText("diagnosticSemanticQuestions", semanticQuestionsCount);
     setElementText("diagnosticTrustVerification", trustVerificationCount);
     setElementText("diagnosticAdapter", activeAdapterName);
@@ -12304,6 +12491,7 @@ createRevelationPartsSection(item.subEvents)
         `focusLens: ${focusLensCount}`,
         `scopeLens: ${scopeLensCount}`,
         `depthLens: ${depthLensCount}`,
+        `viewLens: ${viewLensCount}`,
         `semanticQuestions: ${semanticQuestionsCount}`,
         `trustVerification: ${trustVerificationCount}`
       ].join(" | "));
