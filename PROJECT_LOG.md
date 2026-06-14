@@ -1,3 +1,35 @@
+## 2026-06-13 - Stabilize Matthew QA Harness Capture
+
+Instruction summary:
+- Investigate and fix the known `qa:matthew1` `plain_text_adapter` / zero LDS semantic extraction harness issue before pushing the Queue Summary commit.
+- Preserve Queue Summary behavior, source isolation, frozen target behavior, and all no-crawling / no-automatic-queue-processing boundaries.
+
+Codex action summary:
+- Identified the root cause as a QA harness race/weak readiness check: the harness accepted the LDS app shell via `main`/`article` and ran `runFullAnalysisPipeline()` before a content-script LDS capture was reliably persisted.
+- Updated Matthew QA harnesses to wait for real verse markup (`[data-eng-ref], .verse`), force an active-tab `ICE_CAPTURE_PAGE_TEXT` content capture, inject extension content scripts if the receiver is missing, persist the capture, and then run background analysis.
+- Regenerated `QA_REPORTS/latest-study-panel-report.md` through the passing `review:matthew-session` command.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed with `lds_scripture_adapter` and populated LDS semantic extraction layers.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and regenerated the session report.
+
+Status:
+- QA harness blocker fixed; Queue Summary behavior unchanged.
 ## 2026-06-13 - Refine Study Panel Queue Summary UX
 
 Instruction summary:
@@ -24,7 +56,7 @@ Validation run:
 - `npm.cmd run review:matthew-session` failed at the same Matthew 1 prerequisite step before report generation.
 
 Status:
-- Implemented with targeted smoke passing; broad Matthew QA remains blocked by the known LDS harness/source-load adapter issue.
+- Implemented with targeted smoke passing; broad Matthew QA was subsequently restored by the Matthew QA harness capture stabilization entry above.
 
 ## 2026-06-04 - Document Multi-Agent Session Starting Protocol
 

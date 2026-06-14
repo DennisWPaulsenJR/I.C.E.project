@@ -450,6 +450,61 @@ async function readStorage(worker) {
   return await worker.evaluate(async (keys) => chrome.storage.local.get(keys), STORAGE_KEYS);
 }
 
+async function captureActiveSourcePage(worker) {
+  return await worker.evaluate(async () => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs.find((candidate) => /churchofjesuschrist\.org\/study\/scriptures\//i.test(candidate.url || "")) || tabs[0];
+    if (!tab?.id) throw new Error("No active scripture tab available for QA capture.");
+
+    async function requestCapture() {
+      try {
+        return await chrome.tabs.sendMessage(tab.id, { type: "ICE_CAPTURE_PAGE_TEXT" });
+      } catch (_error) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["engine.js", "content.js", "pageOverlay.js"]
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return await chrome.tabs.sendMessage(tab.id, { type: "ICE_CAPTURE_PAGE_TEXT" });
+      }
+    }
+
+    const response = await requestCapture();
+    if (!response?.ok || !response.capture?.text) {
+      throw new Error(response?.error || "Content capture returned no text.");
+    }
+
+    const capture = response.capture;
+    if (capture.sourceAdapter?.adapterName !== "lds_scripture_adapter") {
+      throw new Error(`Expected forced QA capture to use lds_scripture_adapter, got ${capture.sourceAdapter?.adapterName || "missing"}.`);
+    }
+
+    await chrome.storage.local.set({
+      ICE_LATEST_CAPTURE: capture,
+      ICE_CAPTURE_HISTORY: [{
+        id: capture.id,
+        title: capture.title || "",
+        url: capture.url || "",
+        capturedAt: capture.capturedAt || new Date().toISOString(),
+        wordCount: capture.wordCount || 0,
+        charCount: capture.characterCount || capture.charCount || 0,
+        divineReferenceCount: capture.divineReferenceCount || 0,
+        text: capture.text || "",
+        domSemanticHints: capture.domSemanticHints || [],
+        sourceAdapter: capture.sourceAdapter || null,
+        textHash: "qa-forced-capture"
+      }]
+    });
+
+    return {
+      title: capture.title || "",
+      url: capture.url || "",
+      wordCount: capture.wordCount || 0,
+      adapterName: capture.sourceAdapter?.adapterName || "",
+      domHintCount: Array.isArray(capture.domSemanticHints) ? capture.domSemanticHints.length : 0
+    };
+  });
+}
 async function runBackgroundAnalysis(worker) {
   return await worker.evaluate(async () => {
     if (typeof runFullAnalysisPipeline === "function") {
@@ -523,7 +578,9 @@ async function main() {
     page = await context.newPage();
     await page.goto(TEST_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(() => document.body && document.body.innerText.length > 1000, null, { timeout: 45000 });
-    await page.waitForSelector("[data-eng-ref], .verse, main, article", { timeout: 45000 });
+    await page.waitForSelector("[data-eng-ref], .verse", { timeout: 45000 });
+    await page.waitForFunction(() => document.querySelectorAll("[data-eng-ref], .verse").length >= 5, null, { timeout: 45000 });
+    await captureActiveSourcePage(worker);
     await runBackgroundAnalysis(worker);
 
     storageData = await waitForAnalysis(worker);

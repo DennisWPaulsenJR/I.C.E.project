@@ -21,6 +21,39 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-13 - pcdx - Stabilize Matthew QA harness capture
+Summary:
+- Investigated the `qa:matthew1` `plain_text_adapter` / zero LDS semantic extraction blocker before pushing Queue Summary work.
+- Root cause: the harness could accept the LDS app shell through broad `main`/`article` readiness and call `runFullAnalysisPipeline()` before a content-script LDS capture was reliably persisted.
+- Updated Matthew QA scripts to wait for real verse markup, force an active-tab `ICE_CAPTURE_PAGE_TEXT` capture, inject extension content scripts if no receiver exists, persist the capture, and then run background analysis.
+- Queue Summary behavior was not changed; no crawling, automatic queue processing, automatic analysis, or source-isolation relaxation was added.
+
+Files touched:
+- `qa/matthew1-extension-qa.js`
+- `qa/matthew2-extension-qa.js`
+- `qa/matthew3-extension-qa.js`
+- `qa/matthew5-extension-qa.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit: `pcdx: Stabilize Matthew QA harness capture`.
+
+Status:
+- Matthew QA harness stabilized; ready to commit and then push when approved/requested.
+
+
 ## 2026-06-13 - pcdx - Refine queue summary UX
 Summary:
 - Added an informational Study Panel Queue Summary after Study Scope.
@@ -39,14 +72,14 @@ Checks:
 - `node --check study.js` passed.
 - `git diff --check` passed.
 - Controlled Queue Summary smoke passed in a temporary browser profile.
-- `npm.cmd run qa:matthew-pages` failed twice at `qa:matthew1` in the known LDS harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records.
-- `npm.cmd run review:matthew-session` failed at the same prerequisite step before report generation.
+- Initial `npm.cmd run qa:matthew-pages` failed twice at `qa:matthew1` in the LDS harness/source-load mode with `plain_text_adapter` and zero LDS semantic extraction records; the follow-up harness stabilization entry restored this validation.
+- Initial `npm.cmd run review:matthew-session` failed at the same prerequisite step before report generation; the follow-up harness stabilization entry restored this validation.
 
 Commit:
 - This commit: `pcdx: Refine queue summary UX`
 
 Status:
-- Queue Summary UX implemented with targeted smoke passing; broad Matthew QA needs a clean LDS adapter harness rerun.
+- Queue Summary UX implemented with targeted smoke passing; broad Matthew QA was restored by the follow-up harness stabilization entry.
 
 ## 2026-06-13 - pcdx - Targeted scope-isolation QA
 Summary:
