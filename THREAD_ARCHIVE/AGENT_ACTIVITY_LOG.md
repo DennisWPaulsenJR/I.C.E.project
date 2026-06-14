@@ -20,6 +20,37 @@ Status:
 ```
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
+
+## 2026-06-14 - pcdx - Add Journey Hubs foundation
+Summary:
+- Added a deferred, derived `ICE_JOURNEY_HUBS` Study Panel layer after Journey Paths.
+- Identified Character, Event, Teaching, Principle, Fulfillment, and Revelation convergence points only when existing current-scope Journey Nodes, Journey Paths, and approved semantic records met grounded thresholds.
+- Added hub name/type, connected nodes/paths, centrality, scope boundary, provenance, evidence weight, reasoning, source/derived wording, confidence, and grounding.
+- Preserved the `JESUS` / `JESUS CHRIST` distinction and kept all connected destinations resolved to existing Journey Nodes.
+- No persisted Journey Hubs key, visualization, traversal controls, navigation, extraction, crawling, automatic analysis, scope mutation, or queue behavior change was added.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 1/2/5 Journey Hubs smoke passed with five major hubs per fixture, deferred loading, exact requested fields, no buttons, no page errors, and no persistence.
+- Smoke confirmed `JESUS CHRIST`, `Fulfillment`, `Sermon on the Mount`, and `JESUS as Teacher` hubs.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit: `pcdx: Add journey hubs foundation`.
+
+Status:
+- Implemented and validated; visualization, traversal controls, navigation, and automatic analysis remain deferred.
+
 ## 2026-06-14 - pcdx - Add Journey Paths foundation
 Summary:
 - Added a deferred, derived `ICE_JOURNEY_PATHS` Study Panel layer after Journey Nodes.

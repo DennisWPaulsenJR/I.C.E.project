@@ -1,3 +1,36 @@
+## 2026-06-14 - Add Journey Hubs Foundation
+
+Instruction summary:
+- Identify major grounded convergence points across existing Journey Nodes and Journey Paths without adding visualization, traversal controls, navigation, or automatic analysis.
+- Reuse approved current-scope semantic layers while preserving provenance, evidence weighting, source/derived wording boundaries, identity/name preferences, class distinctions, and all no-crawling rules.
+
+Codex action summary:
+- Added a deferred Study Panel `Journey Hubs` section after Journey Paths.
+- Derived Character, Event, Teaching, Principle, Fulfillment, and Revelation hubs only after grounded convergence thresholds were met.
+- Required every displayed Connected Node to resolve to an existing current-scope Journey Node and reused existing Journey Paths for Connected Paths.
+- Added exact Knowledge Graph identity grounding for `JESUS CHRIST` without collapsing narrative `JESUS`, plus graph-backed aggregate grounding for Fulfillment and Revelation.
+- Displayed hub identity/type, connected nodes/paths, centrality, scope boundary, provenance, evidence weight, reasoning path, source phrase, derived meaning, confidence, and grounding.
+- Kept `ICE_JOURNEY_HUBS` non-persisted; no visualization, traversal controls, automatic navigation, extraction, storage migration, crawling, automatic analysis, or queue behavior change was added.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 1/2/5 extension smoke passed with deferred rendering, no buttons, no persistence, no page errors, and five major hubs per fixture.
+- Smoke confirmed `JESUS CHRIST`, `Fulfillment`, `Sermon on the Mount`, and `JESUS as Teacher` grounded hubs.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and regenerated the session report.
+
+Status:
+- Journey Hubs foundation implemented and validated; visualization, traversal controls, navigation, and automatic analysis remain intentionally deferred.
+
 ## 2026-06-14 - Add Journey Paths Foundation
 
 Instruction summary:
