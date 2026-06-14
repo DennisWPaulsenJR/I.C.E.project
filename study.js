@@ -10432,7 +10432,16 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function depthLensRelatedPaths(item = {}) {
-    return studyPathList(item.enabledSemanticLayers, item.relatedEvidence).slice(0, 8);
+    const enabledLayers = studyPathList(item.enabledSemanticLayers);
+    return (enabledLayers.length ? enabledLayers : studyPathList(item.relatedEvidence)).slice(0, 8);
+  }
+
+  function depthLensLayerSummary(item = {}) {
+    return [
+      ...asArray(item.strictLayers).map((layer) => `Strict: ${layer}`),
+      ...asArray(item.groundedLayers).map((layer) => `Grounded: ${layer}`),
+      ...asArray(item.elaborateLayers).map((layer) => `Elaborate: ${layer}`)
+    ];
   }
 
   function createFocusLensCard(item = {}) {
@@ -10633,17 +10642,12 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Related Study Paths", "", { list: depthLensRelatedPaths(item), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Current Depth", item.currentDepth || "Strict", { preserveExact: true }),
       createPassageFunctionSection("Expansion Level", item.expansionLevel || "Minimal semantic expansion", { preserveExact: true }),
-      createPassageFunctionSection("Enabled Semantic Layers", "", { list: asArray(item.enabledSemanticLayers), plainList: true, collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Strict Layers", "", { list: asArray(item.strictLayers), plainList: true, collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Grounded Layers", "", { list: asArray(item.groundedLayers), plainList: true, collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Elaborate Layers", "", { list: asArray(item.elaborateLayers), plainList: true, collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
-      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Depth Lens", { preserveExact: true }),
+      createPassageFunctionSection("Enabled Semantic Layers", "", { list: depthLensLayerSummary(item), plainList: true, divineContext, preferHolySpirit: true }),
+      item.sourcePhrase ? createPassageFunctionSection("Source Phrase", item.sourcePhrase, { divineContext, sourceQuote: true }) : null,
+      item.derivedMeaning ? createPassageFunctionSection("Derived Meaning", item.derivedMeaning, { divineContext, preferHolySpirit: true }) : null,
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "depth classification derived from enabled semantic layer families", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.enabledSemanticLayers), ...asArray(item.relatedEvidence)], sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
       createWordingProvenanceSection({ source: item.provenance || "I.C.E. Depth Lens", label: title, layer: "Depth Lens", storageKey: "ICE_DEPTH_LENS", scopePath: item.scopePath || item.verseRange, rule: "Depth Lens records are display-only summaries derived from existing semantic layer availability; they do not change source records, add user controls, crawl sources, or implement Strong's/POS analysis." })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
