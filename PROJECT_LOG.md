@@ -4532,3 +4532,21 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-06-14 - Phase 9.4c Evidence Chains Foundation
+
+Implemented a reusable, collapsed `ICE_EVIDENCE_CHAINS` display layer for Guided Study, Principle Networks, Journey Nodes, Journey Paths, and Scene Intelligence.
+
+The chain exposes existing grounding in a readable order:
+- Source Verse
+- Observation
+- Derived Record
+- Related Records
+- Conclusion
+- Evidence Weight
+- Provenance
+- Reasoning Path
+
+Guided Study retains originating verse/scope/source metadata in memory so its existing source-verse modal remains available. Scene chains keep explicit facts, strongly implied supports, and possible inferences visibly distinct. No new semantic extraction, doctrine, persisted records, crawling, automatic analysis, or queue execution was added.
+
+Controlled Matthew 5 smoke found five Guided Study chains and confirmed `Matthew 5:1-2` opened captured verse text without leaving the Study Panel. Required Matthew QA and session review passed.

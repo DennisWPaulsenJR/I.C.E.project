@@ -3370,6 +3370,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function guidedStudyRecord(record = {}) {
+    const sourceRecord = record.sourceRecord || {};
     return {
       pathType: record.pathType || "Study Focus",
       title: record.title || "Study current source",
@@ -3382,7 +3383,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       evidenceWeight: record.evidenceWeight || "Derived Semantic Evidence",
       confidence: record.confidence || "probable",
       sourceGrounding: record.sourceGrounding || record.why || "Grounded in current semantic records.",
-      supportingLayers: uniqueStudyList(record.supportingLayers)
+      supportingLayers: uniqueStudyList(record.supportingLayers),
+      reasoningPath: uniqueStudyList(record.reasoningPath || sourceRecord.reasoningPath),
+      verseRange: record.verseRange || sourceRecord.verseRange || "",
+      scopePath: record.scopePath || sourceRecord.scopePath || "",
+      sourceContext: record.sourceContext || sourceRecord.sourceContext || {},
+      sourceUrl: record.sourceUrl || sourceRecord.sourceUrl || sourceRecord.sourceContext?.sourceUrl || "",
+      book: record.book || sourceRecord.book || sourceRecord.sourceContext?.book || "",
+      chapter: record.chapter || sourceRecord.chapter || sourceRecord.sourceContext?.chapter || ""
     };
   }
 
@@ -3408,7 +3416,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: "Derived Semantic Evidence / Relationship Inference",
         confidence: jesusTeaching?.confidence || "probable",
         sourceGrounding: jesusTeaching?.sourceGrounding || "Teaching and graph records ground JESUS as central speaker/teacher where available.",
-        supportingLayers: ["Teaching / Discourse Structure", "Scripture Knowledge Graph"]
+        supportingLayers: ["Teaching / Discourse Structure", "Scripture Knowledge Graph"],
+        sourceRecord: jesusTeaching
       }));
     }
     const mercyPrinciple = principles.find((item) => /mercy|merciful|peace|peacemak|reconcil/i.test([item.principle, asArray(item.relatedPrinciples).join(" "), item.derivedMeaning].join(" ")));
@@ -3425,7 +3434,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: "Relationship Inference",
         confidence: mercyPrinciple.confidence,
         sourceGrounding: mercyPrinciple.sourceGrounding,
-        supportingLayers: ["Principle Relationships", "Teaching / Discourse Structure"]
+        supportingLayers: ["Principle Relationships", "Teaching / Discourse Structure"],
+        sourceRecord: mercyPrinciple
       }));
     }
     const teachingBlock = teachings.find((item) => item.teachingBlock || item.teachingTopic || item.discourseType);
@@ -3442,7 +3452,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: teachingBlock.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
         confidence: teachingBlock.confidence,
         sourceGrounding: teachingBlock.sourceGrounding,
-        supportingLayers: ["Teaching / Discourse Structure"]
+        supportingLayers: ["Teaching / Discourse Structure"],
+        sourceRecord: teachingBlock
       }));
     }
     const relation = interactions.find((item) => /JESUS|THE LORD|AngEL|Joseph|Herod/i.test([item.sourceCharacter, item.targetCharacter].join(" ")));
@@ -3459,7 +3470,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: "Relationship Inference",
         confidence: relation.confidence,
         sourceGrounding: relation.sourceGrounding,
-        supportingLayers: ["Character Interactions"]
+        supportingLayers: ["Character Interactions"],
+        sourceRecord: relation
       }));
     }
     const continuity = sessionReview[0];
@@ -3476,7 +3488,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: "Continuity Inference",
         confidence: continuity.confidence,
         sourceGrounding: continuity.sourceGrounding,
-        supportingLayers: ["Session Continuity Review"]
+        supportingLayers: ["Session Continuity Review"],
+        sourceRecord: continuity
       }));
     }
     const family = library[0];
@@ -3493,7 +3506,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         evidenceWeight: "Library Awareness Classification",
         confidence: family.confidence,
         sourceGrounding: family.sourceGrounding || family.currentGrounding,
-        supportingLayers: ["Library Awareness", family.semanticSourceLayer]
+        supportingLayers: ["Library Awareness", family.semanticSourceLayer],
+        sourceRecord: family
       }));
     }
     return records.slice(0, 8);
@@ -3531,7 +3545,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       createPassageFunctionSection("Source", item.provenance || "I.C.E. generated study suggestion", { preserveExact: true }),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "suggestion uses current grounded semantic records only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingLayers, sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
-      createPassageFunctionSection("Supporting Layers", "", { collapsed: true, summaryLabel: "Show supporting layers", list: asArray(item.supportingLayers), plainList: true })
+      createPassageFunctionSection("Supporting Layers", "", { collapsed: true, summaryLabel: "Show supporting layers", list: asArray(item.supportingLayers), plainList: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `${item.pathType || "Study Focus"} record`,
+        relatedRecords: [...asArray(item.supportingLayers), ...asArray(item.related)],
+        conclusion: item.title,
+        reasoningPath: item.reasoningPath.length
+          ? item.reasoningPath
+          : ["Current-scope source evidence retained", "Existing supporting semantic layers reviewed", "Guided Study suggestion displayed"]
+      })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;
@@ -8186,6 +8208,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function evidenceChainObservation(item = {}, options = {}) {
+    return normalizeText(
+      options.observation ||
+      item.sourcePhrase ||
+      item.sourceWording ||
+      item.summarySnippet ||
+      asArray(item.evidence)[0] ||
+      item.sourceGrounding ||
+      ""
+    );
+  }
+
+  function createEvidenceChainSection(item = {}, options = {}) {
+    const observation = evidenceChainObservation(item, options);
+    const recordLabel = normalizeText(options.recordLabel || "Derived semantic record");
+    const conclusion = normalizeText(options.conclusion || item.derivedMeaning || item.why || item.whyItMatters || item.whyConnected || "");
+    const relatedRecords = uniqueStudyList(options.relatedRecords || item.supportingRecords || item.supportingLayers || item.relatedEvidence).slice(0, 8);
+    const reasoningPath = uniqueStudyList(options.reasoningPath || item.reasoningPath).slice(0, 10);
+    const provenance = normalizeText(options.provenance || item.provenance || "I.C.E. derived display layer");
+    const evidenceWeight = normalizeText(options.evidenceWeight || item.evidenceWeight || displayConfidence(item.confidence || "probable"));
+    if (!observation || !conclusion) return null;
+
+    const section = document.createElement("section");
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const body = document.createElement("div");
+    const sourceSection = document.createElement("section");
+    const sourceHeading = document.createElement("h4");
+    section.className = "semantic-section semantic-section-collapsible evidence-chain";
+    section.dataset.semanticLayer = "ICE_EVIDENCE_CHAINS";
+    summary.textContent = "Show Evidence Chain";
+    body.className = "evidence-chain-body";
+    sourceSection.className = "semantic-section evidence-chain-source";
+    sourceHeading.className = "semantic-section-title";
+    sourceHeading.textContent = "Source Verse";
+    sourceSection.append(sourceHeading, renderSourceVerseRef(item));
+    details.append(summary);
+    [
+      sourceSection,
+      createPassageFunctionSection("Observation", observation, { alwaysVisible: true, sourceQuote: true }),
+      createPassageFunctionSection("Derived Record", recordLabel, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("Related Records", "", { list: relatedRecords, plainList: true, alwaysVisible: true }),
+      createPassageFunctionSection("Conclusion", conclusion, { alwaysVisible: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Evidence Weight", evidenceWeight, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("Provenance", provenance, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("Reasoning Path", "", { list: reasoningPath, plainList: true, alwaysVisible: true })
+    ].filter(Boolean).forEach((entry) => body.appendChild(entry));
+    details.appendChild(body);
+    section.appendChild(details);
+    return section;
+  }
+
   function referenceRoleSourceProvenanceLabel(item = {}) {
     const reference = normalizeText(item.discoveredReference || "");
     const href = normalizeText(item.referenceHref || "");
@@ -11262,7 +11336,12 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Grounding", item.sourceGrounding || "Derived from current scoped semantic records.", { collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Journey Nodes", label: item.nodeName || "Journey Node", layer: "Journey Nodes / ICE_JOURNEY_NODES", storageKey: "Not persisted in Phase 9.3a", scopePath: item.activeScope, rule: "Journey Nodes are derived destination records only. They do not add navigation controls, timelines, graph visualization, crawling, automatic analysis, or scope changes." })
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Journey Nodes", label: item.nodeName || "Journey Node", layer: "Journey Nodes / ICE_JOURNEY_NODES", storageKey: "Not persisted in Phase 9.3a", scopePath: item.activeScope, rule: "Journey Nodes are derived destination records only. They do not add navigation controls, timelines, graph visualization, crawling, automatic analysis, or scope changes." }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Journey Node: ${item.nodeName || "Journey Node"}`,
+        relatedRecords: [...asArray(item.supportingLayers), ...asArray(item.evidence), ...asArray(item.relatedNodes)],
+        conclusion: item.whyItMatters || item.derivedMeaning
+      })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;
@@ -11593,7 +11672,12 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Grounding", item.sourceGrounding || "Derived from current scoped semantic records.", { collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
-      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Journey Paths", label: `${item.fromNode || "Journey Node"} -> ${item.toNode || "Journey Node"}`, layer: "Journey Paths / ICE_JOURNEY_PATHS", storageKey: "Not persisted in Phase 9.3b", scopePath: item.activeScope, rule: "Journey Paths connect existing grounded Journey Nodes only. They do not add navigation controls, visual timelines, graph rendering, automatic traversal, crawling, analysis, or scope changes." })
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Journey Paths", label: `${item.fromNode || "Journey Node"} -> ${item.toNode || "Journey Node"}`, layer: "Journey Paths / ICE_JOURNEY_PATHS", storageKey: "Not persisted in Phase 9.3b", scopePath: item.activeScope, rule: "Journey Paths connect existing grounded Journey Nodes only. They do not add navigation controls, visual timelines, graph rendering, automatic traversal, crawling, analysis, or scope changes." }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Journey Path: ${item.fromNode || "Journey Node"} -> ${item.toNode || "Journey Node"}`,
+        relatedRecords: item.supportingRecords,
+        conclusion: item.whyConnected || item.derivedMeaning
+      })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;
@@ -12016,7 +12100,16 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence).slice(0, 8), hiddenCount: Math.max(0, asArray(item.evidence).length - 8), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "principleNetwork"), divineContext, preferHolySpirit: true }),
       renderSourceVerseRef(item),
-      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true })
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Principle Network: ${item.corePrinciple || "Principle"}`,
+        relatedRecords: [
+          ...asArray(item.relatedPrinciples),
+          ...asArray(item.relatedTeachingSemantics),
+          ...asArray(item.relatedPrincipleRelationships)
+        ],
+        conclusion: item.derivedMeaning || item.corePrinciple
+      })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;
@@ -12990,6 +13083,24 @@ createRevelationPartsSection(item.subEvents)
     return wrapper;
   }
 
+  function sceneEvidenceChainRecords(scene = {}) {
+    const context = scene.sceneContext || {};
+    return uniqueStudyList([
+      ...asArray(context.explicitFacts).map((item) => `Explicit: ${item.statement}`),
+      ...asArray(context.stronglyImplied).map((item) => `Strongly implied: ${item.statement}`),
+      ...asArray(context.possibleInferences).map((item) => `Possible: ${item.statement}`)
+    ]);
+  }
+
+  function sceneEvidenceChainReasoning(scene = {}) {
+    const context = scene.sceneContext || {};
+    return uniqueStudyList([
+      ...asArray(context.explicitFacts).flatMap((item) => asArray(item.reasoningPath)),
+      ...asArray(context.stronglyImplied).flatMap((item) => asArray(item.reasoningPath)),
+      ...asArray(context.possibleInferences).flatMap((item) => asArray(item.reasoningPath))
+    ]);
+  }
+
   function createSceneCard(scene = {}) {
     const card = document.createElement("article");
     const header = document.createElement("header");
@@ -13014,7 +13125,16 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Participants", participants),
       createPassageFunctionSection("Witnesses", formatSceneWitnesses(scene)),
       createSceneContextSection(scene),
-      renderSourceVerseRef(scene)
+      renderSourceVerseRef(scene),
+      createEvidenceChainSection(scene, {
+        observation: asArray(scene.sceneContext?.explicitFacts)[0]?.sourcePhrase || scene.summarySnippet,
+        recordLabel: `Scene Intelligence: ${scene.sceneTitle || "Scene"}`,
+        relatedRecords: sceneEvidenceChainRecords(scene),
+        conclusion: scene.summarySnippet,
+        evidenceWeight: `Explicit facts remain separate from strongly implied supports and possible inferences; scene accuracy is ${displayAppConfidence(scene.confidence || "possible")}.`,
+        provenance: "I.C.E. Scene Models + Scene Context",
+        reasoningPath: sceneEvidenceChainReasoning(scene)
+      })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
     return card;

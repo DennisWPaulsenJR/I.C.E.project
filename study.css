@@ -653,6 +653,32 @@ body {
   display: grid;
   gap: 7px;
 }
+
+.evidence-chain details {
+  background: #f7fafc;
+  border: 1px solid #d9e4ee;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.evidence-chain details[open] {
+  gap: 10px;
+}
+
+.evidence-chain-body {
+  display: grid;
+  gap: 9px;
+}
+
+.evidence-chain-body > .semantic-section {
+  border-left: 2px solid #9db5d1;
+  padding-left: 10px;
+}
+
+.evidence-chain-source .source-verse-reference {
+  margin-top: 4px;
+}
+
 .semantic-resolution-trace details {
   background: #f7fafc;
   border: 1px solid #d9e4ee;

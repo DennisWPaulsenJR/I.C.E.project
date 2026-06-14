@@ -4571,3 +4571,34 @@ Coordination notes:
 - No crawling, automatic fetching, automatic analysis, automatic queue processing, or scope modification was added.
 - GPT action buttons remain absent.
 - Next recommended task: user presentation review, then extend quick references to remaining evaluations and semantic cards.
+
+## 2026-06-14 - pcdx - Evidence Chains Foundation
+
+Task:
+- Add transparent source-to-conclusion Evidence Chains to the first grounded Study Panel targets.
+
+Files changed:
+- `study.js`
+- `study.css`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `QA_REPORTS/latest-study-panel-report.md` refreshed by required review validation
+
+Implementation:
+- Added reusable collapsed Evidence Chains identified as `ICE_EVIDENCE_CHAINS`.
+- Added chains to Guided Study, Principle Networks, Journey Nodes, Journey Paths, and Scene Intelligence.
+- Each chain displays Source Verse, Observation, Derived Record, Related Records, Conclusion, Evidence Weight, Provenance, and Reasoning Path from existing records.
+- Guided Study now carries its originating record's source metadata in memory for exact verse-preview resolution.
+- Scene chains retain explicit / strongly implied / possible distinctions.
+- No new extraction, doctrine, persistence layer, crawling, automatic analysis, or queue processing was added.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled Matthew 5 extension smoke found 5 Guided Study chains, verified all required fields, opened `Matthew 5:1-2` with captured verse text, and confirmed the panel URL did not change.
+
+Next recommended step:
+- Review Evidence Chain presentation with the user, then expand only to cards with retained, inspectable source-to-conclusion grounding.

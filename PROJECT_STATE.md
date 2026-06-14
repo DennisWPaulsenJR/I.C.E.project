@@ -31,6 +31,15 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.4c Evidence Chains Foundation is implemented in this update as a derived, display-only layer identified by `ICE_EVIDENCE_CHAINS`.
+- Guided Study, Principle Networks, Journey Nodes, Journey Paths, and Scene Intelligence cards now expose a collapsed Evidence Chain.
+- Each chain presents the retained progression: Source Verse -> Observation -> Derived Record -> Related Records -> Conclusion, followed by Evidence Weight, Provenance, and Reasoning Path.
+- Evidence Chains reuse existing source phrases, verse metadata, semantic records, evidence weights, provenance, and reasoning paths; they do not create new extraction, doctrine, analysis, or persisted semantic records.
+- Guided Study now retains the originating semantic record's verse/scope/source metadata in memory so its chain can open the existing Source Verse Quick Reference.
+- Scene chains preserve `Explicit`, `Strongly implied`, and `Possible` labels and never collapse inference into source fact.
+- Controlled Matthew 5 smoke confirmed 5 Guided Study Evidence Chains, all required trace fields, a working `Matthew 5:1-2` verse preview with captured text, and no navigation away from the Study Panel.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: user presentation review of Evidence Chains, then extend the reusable chain only to additional semantic cards whose existing records contain honest source-to-conclusion grounding.
 - Phase 9.4 Source Verse Quick Reference is implemented in this update.
 - Scenes, Teaching / Discourse Structure, Principles / Teachings, Principle Relationships, Principle Networks, Journey Nodes, and Journey Paths expose compact source-verse references when exact grounded scope is available.
 - Clicking a verse reference opens a small in-panel modal with the book/chapter/verse label, captured verse text or grounded source excerpt, provenance wording, and an explicit source-page link.
