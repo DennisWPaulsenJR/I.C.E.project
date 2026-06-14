@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Scope Lens": "The range where the current focus is being considered.",
     "Depth Lens": "How much semantic expansion is active in the current panel.",
     "View Lens": "How current scoped study information is being presented.",
+    "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Semantic Coverage": "Layer-by-layer applicability and record status for the current chapter.",
     "Semantic Resolution Explanation": "Why generated semantic labels are grounded and how they were resolved.",
     "Session Continuity Review": "Continuity across analyzed pages in the current session.",
@@ -10625,6 +10626,333 @@ createRevelationPartsSection(item.subEvents)
     }
     filtered.forEach((item) => container.appendChild(createViewLensCard(item)));
   }
+  function journeyNodeCanonicalName(value = "") {
+    const label = normalizeText(value);
+    if (!label) return "";
+    if (/^beatitude blessing$/i.test(label) || /^beatitudes?$/i.test(label)) return "Beatitudes";
+    if (/law and fulfillment|law fulfillment/i.test(label)) return "Law Fulfillment";
+    if (/^sermon on the mount teaching context$/i.test(label)) return "Sermon on the Mount";
+    return label;
+  }
+
+  function journeyNodeTypeFromLabel(type = "", label = "") {
+    const combined = `${normalizeText(type)} ${normalizeText(label)}`;
+    if (/fulfill/i.test(combined)) return "Fulfillment";
+    if (/revelation|reveals|dream|messenger|warns/i.test(combined)) return "Revelation";
+    if (/teaching|discourse|blessing|beatitude|commandment/i.test(combined)) return "Teaching";
+    if (/principle/i.test(combined)) return "Principle";
+    if (/character|authority|ontology role|group/i.test(combined)) return "Character";
+    return "Event";
+  }
+
+  function journeyNodeNameFromTeaching(item = {}) {
+    const combined = [item.discourseType, item.teachingTopic, item.principle, item.blessing, item.commandment, item.derivedMeaning].map((value) => normalizeText(value)).join(" ");
+    if (/blessing|beatitude/i.test(combined)) return "Beatitudes";
+    if (/law and fulfillment|law fulfillment|fulfillment and righteousness/i.test(combined)) return "Law Fulfillment";
+    if (/^teaching_block$/i.test(normalizeText(item.discourseType)) && item.teachingBlock) return journeyNodeCanonicalName(item.teachingBlock);
+    return journeyNodeCanonicalName(item.teachingTopic || item.principle || item.commandment || item.blessing || item.teachingBlock);
+  }
+
+  function journeyNodeTypeFromTeaching(item = {}) {
+    const combined = [item.discourseType, item.teachingTopic, item.principle, item.blessing, item.commandment].map((value) => normalizeText(value)).join(" ");
+    if (/fulfill/i.test(combined)) return "Fulfillment";
+    if (/principle/i.test(item.discourseType || "") && !item.blessing && !item.commandment) return "Principle";
+    return "Teaching";
+  }
+
+  function journeyNodeNameFromInteraction(item = {}) {
+    const source = normalizeText(item.sourceCharacter || "Source");
+    const target = normalizeText(item.targetCharacter || "Target");
+    const interaction = normalizeText(item.interactionType || "interacts with");
+    const grounding = [interaction, item.sourcePhrase, item.derivedMeaning, item.verseRange].map((value) => normalizeText(value)).join(" ");
+    if (/\bnames?\b/i.test(interaction) && /\bJESUS\b/i.test(target)) return "Naming of JESUS";
+    if (/egypt/i.test(grounding) && /warn|command|protect|move|flee/i.test(grounding)) return "Flight into Egypt";
+    if (/wise men/i.test(grounding) && /visit|worship|came|house/i.test(grounding)) return "Wise Men visit";
+    if (/reveal|instruct|warn|dream|messenger/i.test(grounding) && target) return `${target} receives revelation`;
+    return journeyNodeCanonicalName(`${source} ${passageFunctionTitle(interaction)} ${target}`);
+  }
+
+  function journeyNodeScopeBoundary(nodeName = "") {
+    const scope = currentStudyScopeLabel();
+    const lenses = scopedSemanticRecords(studyData.scopeLens);
+    const match = lenses.find((item) => normalizeText(item.activeFocus).toLowerCase() === normalizeText(nodeName).toLowerCase()) || lenses[0];
+    return match?.scopeBoundary || `Includes only confirmed records in ${scope}; unselected or future pages are excluded.`;
+  }
+
+  function journeyNodesRecords() {
+    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const networks = scopedSemanticRecords(studyData.principleNetworks);
+    const graph = knowledgeGraphRecords();
+    const interactions = scopedSemanticRecords(studyData.characterInteractions);
+    const focuses = scopedSemanticRecords(studyData.focusLens);
+    const progression = studyProgressionRecords()[0] || null;
+    const nodes = new Map();
+
+    const addNode = (candidate = {}) => {
+      const nodeName = journeyNodeCanonicalName(candidate.nodeName);
+      if (!nodeName) return;
+      const key = nodeName.toLowerCase();
+      const existing = nodes.get(key) || {
+        id: `journey-node-${key.replace(/[^a-z0-9]+/g, "-")}`,
+        nodeName,
+        nodeType: candidate.nodeType || "Event",
+        whyItMatters: "",
+        relatedNodeNames: [],
+        suggestedNodeNames: [],
+        scopeBoundary: journeyNodeScopeBoundary(nodeName),
+        activeScope: currentStudyScopeLabel(),
+        sourcePhrase: "",
+        derivedMeaning: "",
+        provenanceSources: [],
+        evidenceWeights: [],
+        reasoningPath: [],
+        supportingLayers: [],
+        evidence: [],
+        sourceGrounding: "",
+        confidence: "possible"
+      };
+      if (existing.nodeType === "Event" && candidate.nodeType && candidate.nodeType !== "Event") existing.nodeType = candidate.nodeType;
+      if (!existing.whyItMatters && candidate.whyItMatters) existing.whyItMatters = normalizeText(candidate.whyItMatters);
+      if (!existing.sourcePhrase && candidate.sourcePhrase) existing.sourcePhrase = normalizeText(candidate.sourcePhrase);
+      if (!existing.derivedMeaning && candidate.derivedMeaning) existing.derivedMeaning = normalizeText(candidate.derivedMeaning);
+      if (!existing.sourceGrounding && candidate.sourceGrounding) existing.sourceGrounding = normalizeText(candidate.sourceGrounding);
+      if (candidate.scopeBoundary) existing.scopeBoundary = normalizeText(candidate.scopeBoundary);
+      if (candidate.confidence === "explicit" || (candidate.confidence === "probable" && existing.confidence === "possible")) existing.confidence = candidate.confidence;
+      existing.relatedNodeNames = uniqueStudyList([...existing.relatedNodeNames, ...asArray(candidate.relatedNodeNames)]).slice(0, 14);
+      existing.suggestedNodeNames = uniqueStudyList([...existing.suggestedNodeNames, ...asArray(candidate.suggestedNodeNames)]).slice(0, 8);
+      existing.provenanceSources = uniqueStudyList([...existing.provenanceSources, candidate.provenance]).slice(0, 8);
+      existing.evidenceWeights = uniqueStudyList([...existing.evidenceWeights, candidate.evidenceWeight]).slice(0, 6);
+      existing.reasoningPath = uniqueStudyList([...existing.reasoningPath, ...asArray(candidate.reasoningPath)]).slice(0, 10);
+      existing.supportingLayers = uniqueStudyList([...existing.supportingLayers, ...asArray(candidate.supportingLayers)]).slice(0, 8);
+      existing.evidence = uniqueStudyList([...existing.evidence, ...asArray(candidate.evidence)]).slice(0, 8);
+      nodes.set(key, existing);
+    };
+
+    teachings.forEach((item) => {
+      const nodeName = journeyNodeNameFromTeaching(item);
+      addNode({
+        nodeName,
+        nodeType: journeyNodeTypeFromTeaching(item),
+        whyItMatters: item.derivedMeaning || item.sourceGrounding || `${nodeName} is a grounded teaching destination in the current scope.`,
+        relatedNodeNames: [item.speaker, item.audience, item.principle, item.blessing, item.commandment, item.promise, ...asArray(item.relatedEntities)],
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        provenance: "Teaching Semantics",
+        evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
+        reasoningPath: ["Teaching record selected", "Destination name derived from grounded teaching fields", "Current Study Scope boundary applied"],
+        supportingLayers: ["Teaching Semantics"],
+        evidence: item.evidence,
+        sourceGrounding: item.sourceGrounding,
+        confidence: item.confidence
+      });
+    });
+
+    networks.forEach((item) => {
+      const nodeName = journeyNodeCanonicalName(item.corePrinciple);
+      addNode({
+        nodeName,
+        nodeType: /fulfill/i.test(nodeName) ? "Fulfillment" : "Principle",
+        whyItMatters: item.derivedMeaning || item.sourceGrounding || `${nodeName} connects grounded principles in the current scope.`,
+        relatedNodeNames: [...asArray(item.relatedPrinciples), ...asArray(item.characterExamples)],
+        sourcePhrase: item.sourcePhrase || asArray(item.evidence)[0],
+        derivedMeaning: item.derivedMeaning,
+        provenance: item.provenance || "Principle Networks",
+        evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference",
+        reasoningPath: item.reasoningPath,
+        supportingLayers: ["Principle Networks", "Principle Relationships", "Knowledge Graph"],
+        evidence: item.evidence,
+        sourceGrounding: item.sourceGrounding,
+        confidence: item.confidence
+      });
+    });
+
+    interactions.forEach((item) => {
+      const nodeName = journeyNodeNameFromInteraction(item);
+      const nodeType = nodeName === "Flight into Egypt" ? "Event" : journeyNodeTypeFromLabel(item.interactionType, `${item.sourcePhrase || ""} ${item.derivedMeaning || ""}`);
+      addNode({
+        nodeName,
+        nodeType,
+        whyItMatters: item.derivedMeaning || item.sourceGrounding || `${nodeName} is grounded by a current-scope character interaction.`,
+        relatedNodeNames: [item.sourceCharacter, item.targetCharacter, ...asArray(item.relatedEntities)],
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        provenance: "Character Interactions",
+        evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
+        reasoningPath: ["Character interaction selected", `Interaction classified as ${nodeType}`, "Destination wording derived from grounded source and interaction fields"],
+        supportingLayers: ["Character Interactions", ...(asArray(item.relatedTeachingSemantics).length ? ["Teaching Semantics"] : [])],
+        evidence: item.evidence,
+        sourceGrounding: item.sourceGrounding,
+        confidence: item.confidence
+      });
+    });
+
+    graph.forEach((item) => {
+      if (!/character|teaching|principle|event|revelation|fulfill/i.test(item.type || "")) return;
+      const nodeName = journeyNodeCanonicalName(item.node);
+      addNode({
+        nodeName,
+        nodeType: journeyNodeTypeFromLabel(item.type, nodeName),
+        whyItMatters: item.derivedMeaning || item.sourceGrounding || `${nodeName} is connected to grounded records in the current Knowledge Graph.`,
+        relatedNodeNames: [...asArray(item.relatedNodes), ...asArray(item.relatedPrinciples)],
+        sourcePhrase: item.sourcePhrase,
+        derivedMeaning: item.derivedMeaning,
+        provenance: "Knowledge Graph",
+        evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
+        reasoningPath: ["Knowledge Graph node selected", "Existing relationships retained", "Current Study Scope boundary applied"],
+        supportingLayers: ["Knowledge Graph"],
+        evidence: item.evidence,
+        sourceGrounding: item.sourceGrounding,
+        confidence: item.confidence
+      });
+    });
+
+    focuses.forEach((item) => {
+      addNode({
+        nodeName: item.currentFocus,
+        nodeType: journeyNodeTypeFromLabel(item.focusType, item.currentFocus),
+        whyItMatters: item.derivedMeaning || item.sourceGrounding,
+        relatedNodeNames: [...asArray(item.relatedCharacters), ...asArray(item.relatedPrinciples), ...asArray(item.relatedTeachings)],
+        suggestedNodeNames: [item.suggestedNextFocus],
+        sourcePhrase: item.sourcePhrase || asArray(item.relatedEvidence)[0],
+        derivedMeaning: item.derivedMeaning,
+        provenance: item.provenance || "Focus Lens",
+        evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence",
+        reasoningPath: item.reasoningPath,
+        supportingLayers: ["Focus Lens"],
+        evidence: item.relatedEvidence,
+        sourceGrounding: item.sourceGrounding,
+        confidence: item.confidence
+      });
+    });
+
+    const records = Array.from(nodes.values()).slice(0, 48);
+    const names = new Map(records.map((item) => [item.nodeName.toLowerCase(), item.nodeName]));
+    const resolveName = (value) => names.get(journeyNodeCanonicalName(value).toLowerCase()) || "";
+    const progressionSuggestion = resolveName(progression?.suggestedNextTopic || "");
+    records.forEach((item) => {
+      item.relatedNodes = uniqueStudyList(item.relatedNodeNames.map(resolveName)).filter((value) => value && value.toLowerCase() !== item.nodeName.toLowerCase()).slice(0, 8);
+      item.suggestedNextNodes = uniqueStudyList([
+        ...item.suggestedNodeNames.map(resolveName),
+        progressionSuggestion,
+        ...item.relatedNodes
+      ]).filter((value) => value && value.toLowerCase() !== item.nodeName.toLowerCase()).slice(0, 4);
+      item.provenance = `I.C.E. Journey Nodes derived from ${item.provenanceSources.join(", ") || "current scoped semantic records"}`;
+      item.evidenceWeight = item.evidenceWeights.join(" / ") || "Derived Semantic Evidence";
+      item.whyItMatters = item.whyItMatters || `${item.nodeName} is a grounded destination available within ${item.activeScope}.`;
+      item.derivedMeaning = item.derivedMeaning || item.whyItMatters;
+      item.sourcePhrase = item.sourcePhrase || "No direct source phrase recorded; node is derived from existing scoped semantic records.";
+      item.reasoningPath = uniqueStudyList([
+        ...item.reasoningPath,
+        "Existing semantic records reused without new extraction",
+        "Related and suggested nodes limited to grounded destinations in the current scope"
+      ]).slice(0, 10);
+      item.sourceGrounding = item.sourceGrounding || `Derived from ${item.supportingLayers.join(", ")} within ${item.activeScope}.`;
+      delete item.relatedNodeNames;
+      delete item.suggestedNodeNames;
+      delete item.provenanceSources;
+      delete item.evidenceWeights;
+    });
+    return records;
+  }
+
+  function journeyNodeSearchText(item = {}) {
+    return [
+      item.nodeName,
+      item.nodeType,
+      item.whyItMatters,
+      item.relatedNodes,
+      item.suggestedNextNodes,
+      item.scopeBoundary,
+      item.activeScope,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.supportingLayers,
+      item.evidence,
+      item.sourceGrounding,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createJourneyNodeCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card journey-node-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.nodeName, item.whyItMatters, item.sourcePhrase, item.derivedMeaning, item.relatedNodes]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.nodeName || "Journey Node", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.nodeType || "Event", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Node Name", item.nodeName || "Journey Node", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Node Type", item.nodeType || "Event", { preserveExact: true }),
+      createPassageFunctionSection("Why It Matters", item.whyItMatters || "Grounded destination in the current Study Scope.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Nodes", "", { list: asArray(item.relatedNodes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Suggested Next Nodes", "", { list: asArray(item.suggestedNextNodes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Journey Nodes", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "journey destination derived from existing scoped semantic records", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.supportingLayers), ...asArray(item.evidence)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createPassageFunctionSection("Grounding", item.sourceGrounding || "Derived from current scoped semantic records.", { collapsed: true, summaryLabel: "Show Evidence", divineContext, preferHolySpirit: true }),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Journey Nodes", label: item.nodeName || "Journey Node", layer: "Journey Nodes / ICE_JOURNEY_NODES", storageKey: "Not persisted in Phase 9.3a", scopePath: item.activeScope, rule: "Journey Nodes are derived destination records only. They do not add navigation controls, timelines, graph visualization, crawling, automatic analysis, or scope changes." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderJourneyNodes(term) {
+    const container = document.getElementById("journeyNodesCards");
+    const count = document.getElementById("journeyNodesCount");
+    if (!container || !count) return;
+    const records = journeyNodesRecords();
+    const normalizedTerm = normalizeText(term).toLowerCase();
+    const filtered = records
+      .filter((item) => matchesSearchQuery(journeyNodeSearchText(item), term))
+      .sort((left, right) => {
+        if (!normalizedTerm) return 0;
+        const rank = (item) => {
+          const name = normalizeText(item.nodeName).toLowerCase();
+          if (name === normalizedTerm) return 0;
+          if (name.includes(normalizedTerm)) return 1;
+          return 2;
+        };
+        return rank(left) - rank(right);
+      });
+    clearElement(container);
+    count.textContent = `${filtered.length} journey node(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No grounded Journey Nodes are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Journey Nodes",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_JOURNEY_NODES",
+        "Purpose: represent meaningful grounded study destinations that can support future journeys.",
+        "Boundary: records only; no timeline, graph visualization, navigation controls, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived journey node layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Journey Nodes match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createJourneyNodeCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) {
+      appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more journey node(s) hidden by the preview limit. Use panel search to focus a destination.`);
+    }
+  }
   function principleNetworkSearchText(item = {}) {
     return [
       item.corePrinciple,
@@ -12155,6 +12483,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Scope Lens", sectionId: "scopeLensSection", renderer: renderScopeLens },
       { label: "Depth Lens", sectionId: "depthLensSection", renderer: renderDepthLens },
       { label: "View Lens", sectionId: "viewLensSection", renderer: renderViewLens },
+      { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Semantic Coverage", sectionId: "semanticCoverageSection", renderer: renderSemanticCoverage },
       { label: "Semantic Resolution Explanation", sectionId: "resolutionExplanationsSection", renderer: renderResolutionExplanations },
       { label: "Session Continuity Review", sectionId: "sessionContinuityReviewSection", renderer: renderSessionContinuityReview },
@@ -12219,6 +12548,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Scope Lens") return scopedSemanticRecords(studyData.scopeLens).length;
     if (label === "Depth Lens") return scopedSemanticRecords(studyData.depthLens).length;
     if (label === "View Lens") return viewLensRecords().length;
+    if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Teaching / Discourse Structure") return scopedSemanticRecords(studyData.teachingSemantics).length;
     if (label === "Principle Relationships") return scopedSemanticRecords(studyData.principleRelationships).length;
     if (label === "Principle Networks") return scopedSemanticRecords(studyData.principleNetworks).length;
@@ -12413,6 +12743,7 @@ createRevelationPartsSection(item.subEvents)
     const scopeLensCount = countItems(studyData.scopeLens);
     const depthLensCount = countItems(studyData.depthLens);
     const viewLensCount = countItems(viewLensRecords());
+    const journeyNodesCount = countItems(journeyNodesRecords());
     const semanticQuestionsCount = countItems(studyData.semanticQuestions);
     const trustVerificationCount = countItems(studyData.trustVerification);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
@@ -12421,7 +12752,7 @@ createRevelationPartsSection(item.subEvents)
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
       orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
-      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + viewLensCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
+      principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + viewLensCount + journeyNodesCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
     const message = document.getElementById("diagnosticMessage");
 
     setElementText("diagnosticCaptures", captureCount);
@@ -12459,6 +12790,7 @@ createRevelationPartsSection(item.subEvents)
     setElementText("diagnosticScopeLens", scopeLensCount);
     setElementText("diagnosticDepthLens", depthLensCount);
     setElementText("diagnosticViewLens", viewLensCount);
+    setElementText("diagnosticJourneyNodes", journeyNodesCount);
     setElementText("diagnosticSemanticQuestions", semanticQuestionsCount);
     setElementText("diagnosticTrustVerification", trustVerificationCount);
     setElementText("diagnosticAdapter", activeAdapterName);
@@ -12492,6 +12824,7 @@ createRevelationPartsSection(item.subEvents)
         `scopeLens: ${scopeLensCount}`,
         `depthLens: ${depthLensCount}`,
         `viewLens: ${viewLensCount}`,
+        `journeyNodes: ${journeyNodesCount}`,
         `semanticQuestions: ${semanticQuestionsCount}`,
         `trustVerification: ${trustVerificationCount}`
       ].join(" | "));

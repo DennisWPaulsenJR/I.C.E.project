@@ -1,3 +1,33 @@
+## 2026-06-14 - Add Journey Nodes Foundation
+
+Instruction summary:
+- Add grounded, derived Journey Nodes as meaningful study destinations after Focus, Scope, Depth, and View.
+- Reuse current semantic layers while preserving provenance, evidence weighting, source/derived wording boundaries, identity/name preferences, class distinctions, and all no-crawling / no-automatic-analysis rules.
+
+Codex action summary:
+- Added a deferred Study Panel `Journey Nodes` section after View Lens.
+- Derived Character, Event, Teaching, Principle, Revelation, and Fulfillment nodes from current-scope Teaching Semantics, Principle Networks, Knowledge Graph, Character Interactions, Focus Lens, Scope Lens, and Study Progression.
+- Added grounded related-node and suggested-next-node summaries, exact destination search prioritization, honest preview-limit messaging, scope boundaries, provenance, evidence weight, reasoning, source phrase, and derived meaning.
+- Kept `ICE_JOURNEY_NODES` non-persisted; no timeline, graph visualization, navigation controls, new extraction, storage migration, crawling, or automatic analysis were added.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 5 extension smoke passed with 36 grounded nodes, deferred loading, no buttons, and no `ICE_JOURNEY_NODES` persistence.
+- Targeted Matthew 1/2 smoke confirmed `Joseph receives revelation`, `Naming of JESUS`, `Flight into Egypt`, and Herod destinations.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and regenerated the session report.
+
+Status:
+- Journey Nodes foundation implemented and validated; journey edges, timelines, graph visualization, and navigation controls remain intentionally deferred.
 ## 2026-06-14 - Add View Lens Foundation
 
 Instruction summary:

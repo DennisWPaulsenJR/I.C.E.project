@@ -20,6 +20,34 @@ Status:
 ```
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
+## 2026-06-14 - pcdx - Add Journey Nodes foundation
+Summary:
+- Added a deferred, derived `ICE_JOURNEY_NODES` Study Panel layer after View Lens.
+- Built grounded Character, Event, Teaching, Principle, Revelation, and Fulfillment destinations from existing current-scope semantic layers.
+- Added related/suggested node summaries, scope boundaries, provenance, evidence weight, source/derived wording, reasoning, exact-name search priority, and honest preview-limit messaging.
+- No persisted Journey Nodes key, timeline, graph visualization, navigation controls, extraction, crawling, automatic analysis, or queue behavior change was added.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 5 Journey Nodes smoke passed; 36 grounded nodes, no buttons, and no persistence.
+- Targeted Matthew 1/2 smoke passed for Joseph revelation, Naming of JESUS, Flight into Egypt, and Herod destinations.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit: `pcdx: Add journey nodes foundation`.
+
+Status:
+- Implemented and validated; edges, timelines, graph visualization, and navigation controls remain deferred.
 ## 2026-06-14 - pcdx - Add View Lens foundation
 Summary:
 - Added a deferred, display-only `ICE_VIEW_LENS` Study Panel layer after Depth Lens.
