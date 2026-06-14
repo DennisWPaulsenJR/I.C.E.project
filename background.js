@@ -55,6 +55,7 @@ const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
 const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
 const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
 const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
+const JOURNEY_PAGE_SNAPSHOTS_KEY = "ICE_JOURNEY_PAGE_SNAPSHOTS";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
@@ -8292,9 +8293,16 @@ async function runFullAnalysisPipeline(reason = "manual") {
       movementSemantics,
       semanticCausality
     );
-    const storedScopeState = await chrome.storage.local.get([ANALYSIS_HISTORY_KEY, CANONICAL_ANALYZED_PAGES_KEY]);
+    const storedScopeState = await chrome.storage.local.get([
+      ANALYSIS_HISTORY_KEY,
+      CANONICAL_ANALYZED_PAGES_KEY,
+      JOURNEY_PAGE_SNAPSHOTS_KEY
+    ]);
     const previousCanonicalAnalyzedPages = Array.isArray(storedScopeState[CANONICAL_ANALYZED_PAGES_KEY])
       ? storedScopeState[CANONICAL_ANALYZED_PAGES_KEY]
+      : [];
+    const previousJourneyPageSnapshots = Array.isArray(storedScopeState[JOURNEY_PAGE_SNAPSHOTS_KEY])
+      ? storedScopeState[JOURNEY_PAGE_SNAPSHOTS_KEY]
       : [];
     const previousConfirmedAnalysisHistory = previousCanonicalAnalyzedPages.map((item) => ({
       sourceCaptureId: item.captureId || "",
@@ -8581,6 +8589,39 @@ async function runFullAnalysisPipeline(reason = "manual") {
       .filter(Boolean)
       .filter((item, index, items) => item.pageKey && items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
       .slice(0, 24);
+    const currentJourneyPageSnapshot = currentCanonicalMarker ? {
+      schemaVersion: 1,
+      pageKey: currentCanonicalMarker.pageKey,
+      canonicalKey: currentCanonicalMarker.pageKey,
+      label: [status.sourceCaptureBook, status.sourceCaptureChapter].filter(Boolean).join(" ") || status.sourceCaptureTitle,
+      sourceTitle: status.sourceCaptureTitle,
+      url: status.activeUrl,
+      book: status.sourceCaptureBook,
+      chapter: String(status.sourceCaptureChapter || ""),
+      captureId: status.sourceCaptureId,
+      adapter: status.activeAdapterName,
+      analyzedAt: status.analyzedAt,
+      updatedAt: status.analyzedAt,
+      records: {
+        teachingSemantics: teachingSemantics.slice(0, 48),
+        principleRelationships: principleRelationships.slice(0, 72),
+        characterInteractions: characterInteractions.slice(0, 72),
+        knowledgeGraph: knowledgeGraph.slice(0, 96),
+        principleNetworks: principleNetworks.slice(0, 72),
+        focusLens: focusLens.slice(0, 48),
+        scopeLens: scopeLens.slice(0, 24),
+        sessionContinuityReview: sessionContinuityReview.slice(0, 16)
+      }
+    } : null;
+    const canonicalPageKeys = new Set(canonicalAnalyzedPages.map((item) => item.pageKey).filter(Boolean));
+    const journeyPageSnapshots = [currentJourneyPageSnapshot, ...previousJourneyPageSnapshots]
+      .filter(Boolean)
+      .filter((item, index, items) =>
+        item.pageKey &&
+        canonicalPageKeys.has(item.pageKey) &&
+        items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index
+      )
+      .slice(0, 24);
     const analysisHistory = canonicalAnalyzedPages.map((item) => ({
       sourceCaptureId: item.captureId || "",
       sourceTitle: item.sourceTitle || "Current source",
@@ -8641,7 +8682,8 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ANALYSIS_HISTORY_KEY]: analysisHistory,
       [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
       [CANONICAL_ANALYSIS_TARGET_KEY]: currentCanonicalMarker,
-      [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null
+      [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null,
+      [JOURNEY_PAGE_SNAPSHOTS_KEY]: journeyPageSnapshots
     });
 
     return status;

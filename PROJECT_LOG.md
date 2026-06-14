@@ -1,3 +1,38 @@
+## 2026-06-14 - Retain Journey Records By Study Scope
+
+Instruction summary:
+- Preserve valid Journey Nodes, Paths, and Hubs across analyzed session pages without allowing retained or browser-global records to leak into a narrower active Study Scope.
+- Add page-level retention and explicit retained/excluded diagnostics while preserving all no-crawling and no-automatic-analysis boundaries.
+
+Codex action summary:
+- Added bounded per-page Journey source snapshots under `ICE_JOURNEY_PAGE_SNAPSHOTS`, keyed by the canonical analyzed page key.
+- Updated Journey derivation to merge Teaching Semantics, Principle Relationships, Character Interactions, Knowledge Graph, Principle Networks, Focus Lens, Scope Lens, and Session Continuity inputs only from snapshots in the active Study Scope.
+- Added Journey records-by-page, retained-page, excluded-page, and exclusion-reason diagnostics.
+- Grouped interaction sequence paths by canonical page to prevent false cross-chapter adjacency.
+- Kept Journey Nodes, Paths, and Hubs as derived display records rather than persisted output records.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated the session report.
+- Controlled browser smoke retained Matthew 5 at 37 Nodes / 72 Paths / 16 Hubs after Matthew 6.
+- Controlled scope smoke showed Matthew 1 -> Matthew 2 at 7 Nodes / 6 Paths / 2 Hubs while explicitly excluding Matthew 5 and Matthew 6 with no Matthew 5 term leakage.
+
+Status:
+- Implemented and validated; Journey navigation, crawling, automatic traversal, and full semantic snapshot migration remain deferred.
+
 ## 2026-06-14 - Add Journey Hubs Foundation
 
 Instruction summary:

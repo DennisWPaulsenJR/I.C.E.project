@@ -21,6 +21,37 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-14 - pcdx - Retain Journey records by Study Scope
+Summary:
+- Added canonical per-page Journey source snapshots in `ICE_JOURNEY_PAGE_SNAPSHOTS`.
+- Journey Nodes, Paths, and Hubs now reuse only retained snapshots whose page keys are in the active Study Scope.
+- Added records-by-page, retained-page, excluded-page, and exclusion-reason diagnostics.
+- Prevented cross-page interaction adjacency from creating false Journey Paths.
+- Kept Journey output derived, deferred, source-grounded, and non-navigational.
+
+Files touched:
+- `background.js`
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` and `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed.
+- Browser smoke: Matthew 5 = 37/72/16; Matthew 5 -> Matthew 6 retained 37/72/16; Matthew 1 -> Matthew 2 = 7/6/2.
+- Scope smoke explicitly excluded Matthew 5 and Matthew 6 from Matthew 1 -> Matthew 2 and found no Matthew 5 Journey term leakage.
+- Four page snapshots used about 285 KB; Study Panel startup remained about 36-92ms.
+
+Commit:
+- This commit: `pcdx: Retain journey records by study scope`.
+
+Status:
+- Implemented and validated; no crawling, automatic analysis, automatic traversal, or Journey navigation was added.
+
 ## 2026-06-14 - pcdx - Add Journey Hubs foundation
 Summary:
 - Added a deferred, derived `ICE_JOURNEY_HUBS` Study Panel layer after Journey Paths.

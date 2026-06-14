@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     analysisQueueHistory: "ICE_ANALYSIS_QUEUE_HISTORY",
     analysisQueueManifest: "ICE_ANALYSIS_QUEUE_MANIFEST",
     analysisQueuePageSummaries: "ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES",
+    journeyPageSnapshots: "ICE_JOURNEY_PAGE_SNAPSHOTS",
     panelUiState: "ICE_PANEL_UI_STATE",
     gptReviewReport: "ICE_GPT_REVIEW_REPORT"
   };
@@ -187,6 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let pendingSemanticFocus = null;
   let currentSemanticFocus = null;
   let semanticFocusInputUpdate = false;
+  let journeyDiagnosticSnapshotKeys = null;
   console.log("[FOCUS DEBUG] study.js loaded", {
     rendererVersion: "v2",
     focusedMountCount: document.querySelectorAll("#focused-relationship-view").length
@@ -4437,6 +4439,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const currentKey = pageRecordKey(activePage || pageRecordFromStatus(studyData.analysisStatus || {}) || {});
     const remainingHistory = analyzedPageHistory().filter((item) => pageRecordKey(item) !== currentKey);
     const remainingCanonical = asArray(studyData.canonicalAnalyzedPages).filter((item) => item.pageKey !== currentKey);
+    const remainingJourneySnapshots = asArray(studyData.journeyPageSnapshots).filter((item) => item.pageKey !== currentKey);
 
     await chrome.storage.local.remove([
       STORAGE_KEYS.timelineItems,
@@ -4488,6 +4491,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await chrome.storage.local.set({
       [STORAGE_KEYS.analysisHistory]: remainingHistory,
       [STORAGE_KEYS.canonicalAnalyzedPages]: remainingCanonical,
+      [STORAGE_KEYS.journeyPageSnapshots]: remainingJourneySnapshots,
       [STORAGE_KEYS.activeSourcePage]: activePage,
       [STORAGE_KEYS.selectedRange]: rangeFromAnalyzedPages(remainingHistory),
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_active_page_analysis", updatedAt: new Date().toISOString() }
@@ -4545,6 +4549,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.analysisStatus,
       STORAGE_KEYS.analysisHistory,
       STORAGE_KEYS.canonicalAnalyzedPages,
+      STORAGE_KEYS.journeyPageSnapshots,
       STORAGE_KEYS.activeSourcePage,
       STORAGE_KEYS.selectedRange
     ]);
@@ -10680,17 +10685,118 @@ createRevelationPartsSection(item.subEvents)
 
   function journeyNodeScopeBoundary(nodeName = "") {
     const scope = currentStudyScopeLabel();
-    const lenses = scopedSemanticRecords(studyData.scopeLens);
+    const lenses = journeyRetainedSemanticRecords("scopeLens");
     const match = lenses.find((item) => normalizeText(item.activeFocus).toLowerCase() === normalizeText(nodeName).toLowerCase()) || lenses[0];
     return match?.scopeBoundary || `Includes only confirmed records in ${scope}; unselected or future pages are excluded.`;
   }
 
+  function journeySnapshotPageRecord(snapshot = {}) {
+    const page = {
+      sourceCaptureId: snapshot.captureId || "",
+      sourceTitle: snapshot.sourceTitle || snapshot.label || [snapshot.book, snapshot.chapter].filter(Boolean).join(" ") || "Journey source",
+      sourceCaptureBook: snapshot.book || "",
+      sourceCaptureChapter: String(snapshot.chapter || ""),
+      activeUrl: snapshot.url || "",
+      activeAdapterName: snapshot.adapter || "",
+      analyzedAt: snapshot.analyzedAt || "",
+      updatedAt: snapshot.updatedAt || snapshot.analyzedAt || "",
+      pageKey: snapshot.pageKey || snapshot.canonicalKey || ""
+    };
+    const reason = sourcePageValidationReason(page, { requireAnalyzed: true });
+    if (reason !== "accepted") return { page: null, reason };
+    if (!page.pageKey || page.pageKey !== pageRecordKey(page)) return { page: null, reason: "snapshot canonical page key does not match source metadata" };
+    return { page, reason: "accepted" };
+  }
+
+  function journeySnapshotScopeState() {
+    const scopePages = currentStudyScopePages();
+    const activeKeys = journeyDiagnosticSnapshotKeys || new Set(
+      scopePages.map((page) => page.pageKey || pageRecordKey(page)).filter(Boolean)
+    );
+    const retained = [];
+    const excluded = [];
+    asArray(studyData.journeyPageSnapshots).forEach((snapshot) => {
+      const validation = journeySnapshotPageRecord(snapshot);
+      const label = normalizeText(snapshot.label || [snapshot.book, snapshot.chapter].filter(Boolean).join(" ") || snapshot.pageKey || "Unknown Journey page");
+      if (!validation.page) {
+        excluded.push({ snapshot, label, reason: validation.reason });
+        return;
+      }
+      if (!activeKeys.size) {
+        excluded.push({ snapshot, label, reason: "no confirmed active Study Scope page key" });
+        return;
+      }
+      if (!activeKeys.has(validation.page.pageKey)) {
+        excluded.push({ snapshot, label, reason: `outside active Study Scope (${currentStudyScopeLabel()})` });
+        return;
+      }
+      retained.push({ snapshot, page: validation.page, label });
+    });
+    return { retained, excluded, scopePages };
+  }
+
+  function journeyRetainedSemanticRecords(alias) {
+    const snapshots = asArray(studyData.journeyPageSnapshots);
+    if (!snapshots.length) return scopedSemanticRecords(studyData[alias]);
+    const state = journeySnapshotScopeState();
+    const records = [];
+    const seen = new Set();
+    state.retained.forEach(({ snapshot, page, label }) => {
+      asArray(snapshot.records?.[alias]).forEach((item, index) => {
+        const key = `${page.pageKey}|${normalizeText(item?.id || item?.node || item?.currentFocus || item?.principle || item?.teachingTopic || index)}`.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        records.push({
+          ...item,
+          journeyPageKey: page.pageKey,
+          journeyPageLabel: label,
+          sourceCaptureBook: item?.sourceCaptureBook || page.sourceCaptureBook,
+          sourceCaptureChapter: item?.sourceCaptureChapter || page.sourceCaptureChapter,
+          sourceContext: {
+            ...(item?.sourceContext || {}),
+            sourceTitle: item?.sourceContext?.sourceTitle || page.sourceTitle,
+            sourceUrl: item?.sourceContext?.sourceUrl || page.activeUrl,
+            book: item?.sourceContext?.book || page.sourceCaptureBook,
+            chapter: item?.sourceContext?.chapter || page.sourceCaptureChapter,
+            sourceCaptureId: item?.sourceContext?.sourceCaptureId || page.sourceCaptureId
+          }
+        });
+      });
+    });
+    return scopedSemanticRecords(records);
+  }
+
+  function journeyKnowledgeGraphRecords() {
+    const snapshots = asArray(studyData.journeyPageSnapshots);
+    if (snapshots.length) return journeyRetainedSemanticRecords("knowledgeGraph");
+    return knowledgeGraphRecords();
+  }
+
+  function journeyRecordsByPageDiagnostics() {
+    const state = journeySnapshotScopeState();
+    const previousKeys = journeyDiagnosticSnapshotKeys;
+    try {
+      return state.retained.map(({ page, label }) => {
+        journeyDiagnosticSnapshotKeys = new Set([page.pageKey]);
+        return {
+          pageKey: page.pageKey,
+          label,
+          nodes: journeyNodesRecords().length,
+          paths: journeyPathRecords().length,
+          hubs: journeyHubRecords().length
+        };
+      });
+    } finally {
+      journeyDiagnosticSnapshotKeys = previousKeys;
+    }
+  }
+
   function journeyNodesRecords() {
-    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
-    const networks = scopedSemanticRecords(studyData.principleNetworks);
-    const graph = knowledgeGraphRecords();
-    const interactions = scopedSemanticRecords(studyData.characterInteractions);
-    const focuses = scopedSemanticRecords(studyData.focusLens);
+    const teachings = journeyRetainedSemanticRecords("teachingSemantics");
+    const networks = journeyRetainedSemanticRecords("principleNetworks");
+    const graph = journeyKnowledgeGraphRecords();
+    const interactions = journeyRetainedSemanticRecords("characterInteractions");
+    const focuses = journeyRetainedSemanticRecords("focusLens");
     const progression = studyProgressionRecords()[0] || null;
     const nodes = new Map();
 
@@ -11028,7 +11134,7 @@ createRevelationPartsSection(item.subEvents)
       paths.set(key, existing);
     };
 
-    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const teachings = journeyRetainedSemanticRecords("teachingSemantics");
     teachings.forEach((item) => {
       const teachingNode = journeyNodeNameFromTeaching(item);
       const blockNode = journeyNodeCanonicalName(item.teachingBlock);
@@ -11065,7 +11171,7 @@ createRevelationPartsSection(item.subEvents)
       }));
     });
 
-    scopedSemanticRecords(studyData.principleNetworks).forEach((item) => {
+    journeyRetainedSemanticRecords("principleNetworks").forEach((item) => {
       asArray(item.relatedPrinciples).forEach((related) => addPath({
         fromNode: item.corePrinciple,
         toNode: related,
@@ -11082,7 +11188,7 @@ createRevelationPartsSection(item.subEvents)
       }));
     });
 
-    knowledgeGraphRecords().forEach((item) => {
+    journeyKnowledgeGraphRecords().forEach((item) => {
       asArray(item.relatedNodes).forEach((related) => {
         const relationship = asArray(item.relationships).find((value) => normalizeText(value).toLowerCase().includes(normalizeText(related).toLowerCase())) || asArray(item.relationships)[0] || "related";
         addPath({
@@ -11102,34 +11208,40 @@ createRevelationPartsSection(item.subEvents)
       });
     });
 
-    const interactions = scopedSemanticRecords(studyData.characterInteractions)
-      .slice()
-      .sort((left, right) => Number(left.timelinePosition || 0) - Number(right.timelinePosition || 0));
-    for (let index = 0; index < interactions.length - 1; index += 1) {
-      const current = interactions[index];
-      const next = interactions[index + 1];
-      const fromNode = journeyNodeNameFromInteraction(current);
-      const toNode = journeyNodeNameFromInteraction(next);
-      addPath({
-        fromNode,
-        toNode,
-        relationshipType: "Leads To",
-        whyConnected: `${fromNode} precedes ${toNode} in the grounded current-source interaction sequence.`,
-        supportingRecords: [
-          `${current.sourceCharacter || "Source"} -> ${current.targetCharacter || "Target"} | ${current.interactionType || "interaction"}`,
-          `${next.sourceCharacter || "Source"} -> ${next.targetCharacter || "Target"} | ${next.interactionType || "interaction"}`,
-          ...asArray(current.evidence),
-          ...asArray(next.evidence)
-        ],
-        provenance: "Character Interactions",
-        evidenceWeight: current.sourcePhrase && next.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
-        sourcePhrase: current.sourcePhrase,
-        derivedMeaning: `${current.derivedMeaning || fromNode} ${next.derivedMeaning || toNode}`,
-        reasoningPath: ["Current-scope character interactions ordered by existing record position", "Adjacent interaction destinations resolved to Journey Nodes", "No timeline or automatic traversal created"],
-        sourceGrounding: [current.sourceGrounding, next.sourceGrounding].filter(Boolean).join(" "),
-        confidence: current.confidence === "explicit" && next.confidence === "explicit" ? "explicit" : "probable"
-      });
-    }
+    const interactionGroups = new Map();
+    journeyRetainedSemanticRecords("characterInteractions").forEach((item) => {
+      const pageKey = item.journeyPageKey || "current-source";
+      if (!interactionGroups.has(pageKey)) interactionGroups.set(pageKey, []);
+      interactionGroups.get(pageKey).push(item);
+    });
+    interactionGroups.forEach((interactions) => {
+      interactions.sort((left, right) => Number(left.timelinePosition || 0) - Number(right.timelinePosition || 0));
+      for (let index = 0; index < interactions.length - 1; index += 1) {
+        const current = interactions[index];
+        const next = interactions[index + 1];
+        const fromNode = journeyNodeNameFromInteraction(current);
+        const toNode = journeyNodeNameFromInteraction(next);
+        addPath({
+          fromNode,
+          toNode,
+          relationshipType: "Leads To",
+          whyConnected: `${fromNode} precedes ${toNode} in the grounded same-page interaction sequence.`,
+          supportingRecords: [
+            `${current.sourceCharacter || "Source"} -> ${current.targetCharacter || "Target"} | ${current.interactionType || "interaction"}`,
+            `${next.sourceCharacter || "Source"} -> ${next.targetCharacter || "Target"} | ${next.interactionType || "interaction"}`,
+            ...asArray(current.evidence),
+            ...asArray(next.evidence)
+          ],
+          provenance: "Character Interactions",
+          evidenceWeight: current.sourcePhrase && next.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
+          sourcePhrase: current.sourcePhrase,
+          derivedMeaning: `${current.derivedMeaning || fromNode} ${next.derivedMeaning || toNode}`,
+          reasoningPath: ["Current-scope character interactions grouped by canonical analyzed page", "Same-page interactions ordered by existing record position", "Adjacent interaction destinations resolved to Journey Nodes", "No timeline or automatic traversal created"],
+          sourceGrounding: [current.sourceGrounding, next.sourceGrounding].filter(Boolean).join(" "),
+          confidence: current.confidence === "explicit" && next.confidence === "explicit" ? "explicit" : "probable"
+        });
+      }
+    });
 
     sessionContinuityReviewRecords().forEach((item) => {
       const continuityNodes = uniqueStudyList([...asArray(item.continuingThemes), ...asArray(item.continuingPrincipleFamilies)]).map(resolveNode).filter(Boolean);
@@ -11281,10 +11393,10 @@ createRevelationPartsSection(item.subEvents)
     const nodes = journeyNodesRecords();
     const paths = journeyPathRecords();
     if (nodes.length < 2) return [];
-    const graph = knowledgeGraphRecords();
-    const networks = scopedSemanticRecords(studyData.principleNetworks);
-    const interactions = scopedSemanticRecords(studyData.characterInteractions);
-    const teachings = scopedSemanticRecords(studyData.teachingSemantics);
+    const graph = journeyKnowledgeGraphRecords();
+    const networks = journeyRetainedSemanticRecords("principleNetworks");
+    const interactions = journeyRetainedSemanticRecords("characterInteractions");
+    const teachings = journeyRetainedSemanticRecords("teachingSemantics");
     const nodeByName = new Map(nodes.map((item) => [journeyNodeCanonicalName(item.nodeName).toLowerCase(), item]));
     const resolveNode = (value = "") => nodeByName.get(journeyNodeCanonicalName(value).toLowerCase()) || null;
     const pathLabel = (item = {}) => `${item.fromNode} -> ${item.toNode} | ${item.relationshipType}`;
@@ -13078,6 +13190,7 @@ createRevelationPartsSection(item.subEvents)
       "analysisQueue",
       "analysisQueueHistory",
       "analysisQueuePageSummaries",
+      "journeyPageSnapshots",
       "canonicalAnalysisTarget"
     ];
     for (const alias of arrayAliases) {
@@ -13369,6 +13482,8 @@ createRevelationPartsSection(item.subEvents)
     const journeyNodesCount = countItems(journeyNodesRecords());
     const journeyPathsCount = countItems(journeyPathRecords());
     const journeyHubsCount = countItems(journeyHubRecords());
+    const journeySnapshotState = journeySnapshotScopeState();
+    const journeyRecordsByPage = journeyRecordsByPageDiagnostics();
     const semanticQuestionsCount = countItems(studyData.semanticQuestions);
     const trustVerificationCount = countItems(studyData.trustVerification);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
@@ -13418,6 +13533,18 @@ createRevelationPartsSection(item.subEvents)
     setElementText("diagnosticJourneyNodes", journeyNodesCount);
     setElementText("diagnosticJourneyPaths", journeyPathsCount);
     setElementText("diagnosticJourneyHubs", journeyHubsCount);
+    setElementText("diagnosticJourneyRecordsByPage", journeyRecordsByPage.length
+      ? journeyRecordsByPage.map((item) => `${item.label}: ${item.nodes} node(s), ${item.paths} path(s), ${item.hubs} hub(s)`).join(" | ")
+      : "None");
+    setElementText("diagnosticRetainedJourneyPages", journeySnapshotState.retained.length
+      ? journeySnapshotState.retained.map((item) => item.label).join(", ")
+      : "None");
+    setElementText("diagnosticExcludedJourneyPages", journeySnapshotState.excluded.length
+      ? journeySnapshotState.excluded.map((item) => item.label).join(", ")
+      : "None");
+    setElementText("diagnosticJourneyExclusionReason", journeySnapshotState.excluded.length
+      ? journeySnapshotState.excluded.map((item) => `${item.label}: ${item.reason}`).join(" | ")
+      : "None");
     setElementText("diagnosticSemanticQuestions", semanticQuestionsCount);
     setElementText("diagnosticTrustVerification", trustVerificationCount);
     setElementText("diagnosticAdapter", activeAdapterName);
