@@ -20,6 +20,35 @@ Status:
 ```
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
+## 2026-06-14 - pcdx - Add Journey Paths foundation
+Summary:
+- Added a deferred, derived `ICE_JOURNEY_PATHS` Study Panel layer after Journey Nodes.
+- Built grounded transitions only when both endpoints resolve to existing current-scope Journey Nodes, using the approved Leads To, Explains, Fulfills, Expands, Continues, Reveals, and Contrasts relationship types.
+- Reused Journey Nodes, Knowledge Graph, Principle Networks, Character Interactions, Teaching Semantics, and Session Continuity while preserving scope, provenance, evidence weight, and source/derived wording boundaries.
+- No persisted Journey Paths key, timeline, graph visualization, navigation controls, automatic traversal, extraction, crawling, automatic analysis, or queue behavior change was added.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 5 Journey Paths smoke passed with 41 grounded paths, no buttons, no page errors, and no persistence.
+- Smoke confirmed Mercy -> Peacemaking, Peacemaking -> Reconciliation, and the Law Fulfillment -> righteousness transition.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and regenerated `QA_REPORTS/latest-study-panel-report.md`.
+
+Commit:
+- This commit: `pcdx: Add journey paths foundation`.
+
+Status:
+- Implemented and validated; timelines, graph rendering, navigation controls, and automatic traversal remain deferred.
+
 ## 2026-06-14 - pcdx - Add Journey Nodes foundation
 Summary:
 - Added a deferred, derived `ICE_JOURNEY_NODES` Study Panel layer after View Lens.

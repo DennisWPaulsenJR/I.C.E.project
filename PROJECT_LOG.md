@@ -1,3 +1,35 @@
+## 2026-06-14 - Add Journey Paths Foundation
+
+Instruction summary:
+- Connect existing grounded Journey Nodes into derived Journey Paths without adding timelines, graph rendering, navigation controls, or automatic traversal.
+- Reuse current-scope semantic layers while preserving provenance, evidence weighting, source/derived wording boundaries, identity/name preferences, class distinctions, and all no-crawling / no-automatic-analysis rules.
+
+Codex action summary:
+- Added a deferred Study Panel `Journey Paths` section after Journey Nodes.
+- Derived Leads To, Explains, Fulfills, Expands, Continues, Reveals, and Contrasts transitions only when both endpoints resolve to existing current-scope Journey Nodes.
+- Reused Journey Nodes, Knowledge Graph, Principle Networks, Character Interactions, Teaching Semantics, and Session Continuity.
+- Added From/To nodes, relationship type, why connected, supporting records, scope boundary, provenance, evidence weight, reasoning, source phrase, derived meaning, confidence, and grounding.
+- Kept `ICE_JOURNEY_PATHS` non-persisted; no timeline, graph visualization, navigation controls, automatic traversal, extraction, storage migration, crawling, or automatic analysis were added.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- Controlled Matthew 5 extension smoke passed with 41 grounded paths, deferred loading, no buttons, no page errors, and no `ICE_JOURNEY_PATHS` persistence.
+- Smoke confirmed Mercy -> Peacemaking, Peacemaking -> Reconciliation, and the Law Fulfillment -> righteousness transition.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and regenerated the session report.
+
+Status:
+- Journey Paths foundation implemented and validated; visual timelines, graph rendering, navigation controls, and automatic traversal remain intentionally deferred.
+
 ## 2026-06-14 - Add Journey Nodes Foundation
 
 Instruction summary:
