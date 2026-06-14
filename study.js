@@ -13187,6 +13187,11 @@ createRevelationPartsSection(item.subEvents)
     return count > 0 ? `${count} record(s) ready; expand to view details.` : "No records found for this section.";
   }
 
+  function deferredSectionCountLabel(label) {
+    const count = deferredSectionRecordCount(label);
+    return count == null ? "summary" : `${count} record(s)`;
+  }
+
   function createDeferredSectionDetails(entry, options = {}) {
     const card = document.createElement("article");
     card.className = "study-card deferred-study-section-card";
@@ -13238,12 +13243,12 @@ createRevelationPartsSection(item.subEvents)
     if (container.dataset.deferredSection === entry.label) {
       const statusElement = container.querySelector(".deferred-study-section-status");
       if (statusElement) statusElement.textContent = status;
-      if (count) count.textContent = "summary";
+      if (count) count.textContent = deferredSectionCountLabel(entry.label);
       return;
     }
     clearElement(container);
     container.dataset.deferredSection = entry.label;
-    if (count) count.textContent = "summary";
+    if (count) count.textContent = deferredSectionCountLabel(entry.label);
     container.appendChild(createDeferredSectionDetails(entry));
   }
 
@@ -13295,7 +13300,7 @@ createRevelationPartsSection(item.subEvents)
         renderDeferredSectionPlaceholder(entry);
       }
     });
-    if (fullStudyDataLoaded && loadedDeferredSections.has("Diagnostics")) {
+    if (fullStudyDataLoaded) {
       safeRenderSection("Diagnostics", renderDiagnostics, term);
     }
   }
