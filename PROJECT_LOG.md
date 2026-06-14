@@ -272,6 +272,51 @@ Commit:
 
 Status:
 - Implemented and validated
+
+## 2026-06-14 - Add Source Verse Quick References
+
+Instruction summary:
+- Let users inspect the exact scripture wording used to derive semantic cards without leaving the Study Panel by default.
+
+Codex action summary:
+- Added a reusable source-reference resolver that reads `verseRange`, `scopePath`, source context, retained supporting records, and LDS DOM verse hints without inventing missing references.
+- Added a compact Source Verse Quick Reference link and native modal with reference label, captured verse text or grounded excerpt, provenance note, explicit source-page link, and close control.
+- Added first-wave references to Scenes, Teaching / Discourse Structure, Principles / Teachings, Principle Relationships, Principle Networks, Journey Nodes, and Journey Paths.
+- Preserved scene source URL, scope paths, and verse references during scene derivation.
+- Added Scene Context evidence tiers: Explicit Scene Facts, Strongly Implied Scene Supports, and Possible Scene Inferences.
+- Stored source phrase, verse scope, evidence weight, provenance, reasoning path, and confidence separately on each Scene Context record.
+- Added a conservative Matthew 8:16 pilot: three explicit healing/deliverance facts, one strongly implied unidentified-helper support, and one possible helper-category inference that explicitly states the verse does not identify those helpers.
+- Kept possible disciples/family/community members out of detected participants and explicit facts.
+- Preserved scoped source-reference metadata through derived Journey Nodes and Journey Paths.
+- Kept missing-reference behavior honest with `Source reference unavailable`.
+
+Files changed:
+- `background.js`
+- `study.html`
+- `study.css`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation run:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled extension smoke confirmed `Matthew 5:1-2` opened captured verse text in place, exposed the source-page link, and did not navigate the Study Panel.
+- Controlled Scene smoke resolved a grounded scene reference to `Matthew 5:1`.
+- Controlled Matthew 8 smoke generated 3 explicit, 1 strongly implied, and 1 possible Scene Context records, all referencing `Matthew 8:16`.
+- Matthew 8 modal preview displayed the captured verse text, and participant identities remained appropriately qualified.
+
+Commit:
+- This commit
+
+Status:
+- Implemented and validated
 ## 2026-06-01 - Freeze Analysis Target During Panel Render
 
 Instruction summary:

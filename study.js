@@ -929,6 +929,231 @@ document.addEventListener("DOMContentLoaded", async () => {
     return card;
   }
 
+  function sourceVerseBookTitle(value = "") {
+    const normalized = normalizeText(value).replace(/[_-]+/g, " ");
+    if (!normalized) return "";
+    const aliases = new Map([
+      ["matt", "Matthew"],
+      ["mk", "Mark"],
+      ["mrk", "Mark"],
+      ["lk", "Luke"],
+      ["jn", "John"]
+    ]);
+    const lower = normalized.toLowerCase();
+    return aliases.get(lower) || normalized.split(/\s+/).map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`).join(" ");
+  }
+
+  function sourceVerseNumbers(value = "") {
+    const numbers = [];
+    String(value || "").split(",").forEach((part) => {
+      const range = part.match(/(\d+)\s*[-\u2013]\s*(\d+)/);
+      if (range) {
+        const start = Number(range[1]);
+        const end = Number(range[2]);
+        if (start > 0 && end >= start && end - start <= 200) {
+          for (let verse = start; verse <= end; verse += 1) numbers.push(verse);
+        }
+        return;
+      }
+      const match = part.match(/\d+/);
+      if (match) numbers.push(Number(match[0]));
+    });
+    return Array.from(new Set(numbers.filter((value) => Number.isFinite(value) && value > 0)));
+  }
+
+  function sourceVersePartsFromText(value = "", context = {}) {
+    const text = normalizeText(value);
+    if (!text) return null;
+    const scriptureScope = text.match(/scripture\.(?:[^.]+\.)?([^.]+)\.(\d+)\.(?:verse|note)\.(\d+)(?:[-\u2013](\d+))?/i);
+    if (scriptureScope) {
+      const start = Number(scriptureScope[3]);
+      const end = Number(scriptureScope[4] || start);
+      return {
+        book: sourceVerseBookTitle(scriptureScope[1]),
+        chapter: Number(scriptureScope[2]),
+        verses: sourceVerseNumbers(start === end ? String(start) : `${start}-${end}`)
+      };
+    }
+    const named = text.match(/\b([1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+):(\d+(?:\s*[-\u2013]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-\u2013]\s*\d+)?)*)/);
+    if (named) {
+      return {
+        book: sourceVerseBookTitle(named[1]),
+        chapter: Number(named[2]),
+        verses: sourceVerseNumbers(named[3])
+      };
+    }
+    const compact = text.match(/^(\d+):(\d+(?:\s*[-\u2013]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-\u2013]\s*\d+)?)*)$/);
+    if (compact && context.book) {
+      return {
+        book: sourceVerseBookTitle(context.book),
+        chapter: Number(compact[1]),
+        verses: sourceVerseNumbers(compact[2])
+      };
+    }
+    return null;
+  }
+
+  function sourceVerseLabel(reference = {}) {
+    const verses = asArray(reference.verses).map(Number).filter(Boolean);
+    if (!reference.book || !reference.chapter || !verses.length) return "";
+    const consecutive = verses.every((verse, index) => index === 0 || verse === verses[index - 1] + 1);
+    const verseLabel = consecutive && verses.length > 1
+      ? `${verses[0]}\u2013${verses[verses.length - 1]}`
+      : verses.join(", ");
+    return `${reference.book} ${reference.chapter}:${verseLabel}`;
+  }
+
+  function sourceVerseCandidateValues(item = {}) {
+    return [
+      item.verseRange,
+      item.verseRef,
+      item.scopePath,
+      item.sourceScopePath,
+      item.fromScopePath,
+      item.sourceContext?.verseRange,
+      item.sourceContext?.verseRef,
+      item.sourceContext?.scopePath,
+      ...asArray(item.verseRefs),
+      ...asArray(item.scopePaths),
+      ...asArray(item.supportingRecords)
+    ].filter(Boolean);
+  }
+
+  function sourceVerseHintMatches(hint = {}, reference = {}) {
+    const hintContext = hint.sourceContext || {};
+    const hintBook = sourceVerseBookTitle(hint.book || hintContext.book);
+    const hintChapter = Number(hint.chapter || hintContext.chapter);
+    const hintVerse = Number(hint.verseNumber || sourceVersePartsFromText(hint.verseRef, { book: hintBook })?.verses?.[0]);
+    return hint.hintType === "verse_scope" &&
+      hintBook.toLowerCase() === normalizeText(reference.book).toLowerCase() &&
+      hintChapter === Number(reference.chapter) &&
+      asArray(reference.verses).map(Number).includes(hintVerse);
+  }
+
+  function sourceVerseHintFromGrounding(item = {}) {
+    const grounding = normalizeText(item.sourcePhrase || item.summarySnippet || item.sourceGrounding || "").toLowerCase();
+    if (!grounding) return null;
+    const sourceCaptureId = normalizeText(item.sourceCaptureId || item.sourceContext?.sourceCaptureId);
+    const candidates = asArray(studyData.domSemanticHints).filter((hint) =>
+      hint.hintType === "verse_scope" &&
+      (!sourceCaptureId || !hint.sourceCaptureId || hint.sourceCaptureId === sourceCaptureId)
+    );
+    let best = null;
+    let bestScore = 0;
+    const groundingTokens = new Set(grounding.split(/\W+/).filter((token) => token.length >= 4));
+    candidates.forEach((hint) => {
+      const hintText = normalizeText(hint.text).toLowerCase();
+      if (!hintText) return;
+      const direct = grounding.includes(hintText) || hintText.includes(grounding);
+      const overlap = hintText.split(/\W+/).filter((token) => groundingTokens.has(token)).length;
+      const score = direct ? 1000 + overlap : overlap;
+      if (score > bestScore) {
+        best = hint;
+        bestScore = score;
+      }
+    });
+    return bestScore >= 3 ? best : null;
+  }
+
+  function sourceVerseUrl(item = {}, hints = []) {
+    return normalizeText(
+      item.sourceUrl ||
+      item.sourceUri ||
+      item.sourceContext?.sourceUrl ||
+      hints.find((hint) => hint.sourceUrl || hint.sourceUri || hint.sourceContext?.sourceUrl)?.sourceUrl ||
+      hints.find((hint) => hint.sourceUrl || hint.sourceUri || hint.sourceContext?.sourceUrl)?.sourceUri ||
+      hints.find((hint) => hint.sourceContext?.sourceUrl)?.sourceContext?.sourceUrl ||
+      ""
+    );
+  }
+
+  function resolveSourceVerseReference(item = {}) {
+    const context = {
+      book: item.book || item.sourceCaptureBook || item.sourceContext?.book,
+      chapter: item.chapter || item.sourceCaptureChapter || item.sourceContext?.chapter
+    };
+    let reference = null;
+    for (const candidate of sourceVerseCandidateValues(item)) {
+      reference = sourceVersePartsFromText(candidate, context);
+      if (reference?.verses?.length) break;
+    }
+    const groundingHint = reference ? null : sourceVerseHintFromGrounding(item);
+    if (!reference && groundingHint) {
+      const hintContext = groundingHint.sourceContext || {};
+      reference = sourceVersePartsFromText(groundingHint.verseRef, {
+        book: groundingHint.book || hintContext.book
+      }) || {
+        book: sourceVerseBookTitle(groundingHint.book || hintContext.book),
+        chapter: Number(groundingHint.chapter || hintContext.chapter),
+        verses: [Number(groundingHint.verseNumber)]
+      };
+    }
+    if (!reference && context.book && context.chapter && item.verseNumber) {
+      reference = { book: sourceVerseBookTitle(context.book), chapter: Number(context.chapter), verses: [Number(item.verseNumber)] };
+    }
+    if (!reference?.verses?.length) return null;
+    const hints = asArray(studyData.domSemanticHints).filter((hint) => sourceVerseHintMatches(hint, reference));
+    const orderedHints = hints
+      .sort((left, right) => Number(left.verseNumber || 0) - Number(right.verseNumber || 0))
+      .map((hint) => normalizeText(hint.text))
+      .filter(Boolean);
+    const verseText = orderedHints
+      .slice(0, 8)
+      .join("\n");
+    const sourcePhrase = normalizeText(item.sourcePhrase || item.summarySnippet || item.sourceGrounding || "");
+    return {
+      ...reference,
+      label: sourceVerseLabel(reference),
+      verseText: verseText || sourcePhrase,
+      sourceUrl: sourceVerseUrl(item, hints),
+      textBasis: verseText
+        ? orderedHints.length > 8
+          ? `Captured verse text preview (8 of ${orderedHints.length} verses)`
+          : "Captured verse text"
+        : sourcePhrase ? "Grounded source excerpt" : "Verse text unavailable in current capture"
+    };
+  }
+
+  function showVersePreview(reference = {}) {
+    const dialog = document.getElementById("sourceVerseDialog");
+    const title = document.getElementById("sourceVerseDialogTitle");
+    const text = document.getElementById("sourceVerseDialogText");
+    const note = document.getElementById("sourceVerseDialogNote");
+    const link = document.getElementById("sourceVerseDialogLink");
+    if (!dialog || !title || !text || !note || !link) return;
+    title.textContent = reference.label || "Source reference";
+    text.textContent = reference.verseText || "Verse text is unavailable in the retained capture.";
+    note.textContent = `${reference.textBasis || "Source reference"}; derived meaning remains separate from source wording.`;
+    link.hidden = !reference.sourceUrl;
+    if (reference.sourceUrl) link.href = reference.sourceUrl;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+
+  function renderSourceVerseRef(item = {}) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "source-verse-reference";
+    const label = document.createElement("span");
+    label.className = "source-verse-reference-label";
+    label.textContent = "Derived from:";
+    wrapper.appendChild(label);
+    const reference = resolveSourceVerseReference(item);
+    if (!reference) {
+      const unavailable = document.createElement("span");
+      unavailable.className = "source-verse-reference-unavailable";
+      unavailable.textContent = "Source reference unavailable";
+      wrapper.appendChild(unavailable);
+      return wrapper;
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = reference.label;
+    button.setAttribute("aria-label", `Preview source verse ${reference.label}`);
+    button.addEventListener("click", () => showVersePreview(reference));
+    wrapper.appendChild(button);
+    return wrapper;
+  }
+
   function appendEmpty(container, message) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
@@ -9999,6 +10224,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "teaching"), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Entities", "", { collapsed: true, list: primaryEntityDistinctionLines(item.relatedEntities, [item.speaker, item.audience, item.teachingTopic, item.derivedMeaning]), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Hierarchy", "", { collapsed: true, list: hierarchyEntityLines(entities), plainList: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Semantic Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
@@ -10107,6 +10333,7 @@ createRevelationPartsSection(item.subEvents)
       evidence.length > shownEvidence.length ? createPassageFunctionSection("Full Evidence", "", { collapsed: true, summaryLabel: "Show full evidence", list: fullEvidence, divineContext }) : null,
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "teaching", 10), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "principleRelationship"), divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Semantic Grounding", trimText(item.sourceGrounding || "", 220) || "Not recorded.", { collapsed: true, summaryLabel: "Show semantic grounding", divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope", item.scopePath || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
@@ -10815,6 +11042,10 @@ createRevelationPartsSection(item.subEvents)
         activeScope: currentStudyScopeLabel(),
         sourcePhrase: "",
         derivedMeaning: "",
+        verseRange: "",
+        scopePath: "",
+        sourceContext: {},
+        sourceUrl: "",
         provenanceSources: [],
         evidenceWeights: [],
         reasoningPath: [],
@@ -10827,6 +11058,11 @@ createRevelationPartsSection(item.subEvents)
       if (!existing.whyItMatters && candidate.whyItMatters) existing.whyItMatters = normalizeText(candidate.whyItMatters);
       if (!existing.sourcePhrase && candidate.sourcePhrase) existing.sourcePhrase = normalizeText(candidate.sourcePhrase);
       if (!existing.derivedMeaning && candidate.derivedMeaning) existing.derivedMeaning = normalizeText(candidate.derivedMeaning);
+      const sourceRecord = candidate.sourceRecord || {};
+      if (!existing.verseRange && (candidate.verseRange || sourceRecord.verseRange)) existing.verseRange = normalizeText(candidate.verseRange || sourceRecord.verseRange);
+      if (!existing.scopePath && (candidate.scopePath || sourceRecord.scopePath)) existing.scopePath = normalizeText(candidate.scopePath || sourceRecord.scopePath);
+      if (!existing.sourceUrl && (candidate.sourceUrl || sourceRecord.sourceUrl || sourceRecord.sourceContext?.sourceUrl)) existing.sourceUrl = normalizeText(candidate.sourceUrl || sourceRecord.sourceUrl || sourceRecord.sourceContext?.sourceUrl);
+      if (!Object.keys(existing.sourceContext).length && (candidate.sourceContext || sourceRecord.sourceContext)) existing.sourceContext = { ...(candidate.sourceContext || sourceRecord.sourceContext) };
       if (!existing.sourceGrounding && candidate.sourceGrounding) existing.sourceGrounding = normalizeText(candidate.sourceGrounding);
       if (candidate.scopeBoundary) existing.scopeBoundary = normalizeText(candidate.scopeBoundary);
       if (candidate.confidence === "explicit" || (candidate.confidence === "probable" && existing.confidence === "possible")) existing.confidence = candidate.confidence;
@@ -10849,6 +11085,7 @@ createRevelationPartsSection(item.subEvents)
         relatedNodeNames: [item.speaker, item.audience, item.principle, item.blessing, item.commandment, item.promise, ...asArray(item.relatedEntities)],
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         provenance: "Teaching Semantics",
         evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
         reasoningPath: ["Teaching record selected", "Destination name derived from grounded teaching fields", "Current Study Scope boundary applied"],
@@ -10868,6 +11105,7 @@ createRevelationPartsSection(item.subEvents)
         relatedNodeNames: [...asArray(item.relatedPrinciples), ...asArray(item.characterExamples)],
         sourcePhrase: item.sourcePhrase || asArray(item.evidence)[0],
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         provenance: item.provenance || "Principle Networks",
         evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference",
         reasoningPath: item.reasoningPath,
@@ -10888,6 +11126,7 @@ createRevelationPartsSection(item.subEvents)
         relatedNodeNames: [item.sourceCharacter, item.targetCharacter, ...asArray(item.relatedEntities)],
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         provenance: "Character Interactions",
         evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
         reasoningPath: ["Character interaction selected", `Interaction classified as ${nodeType}`, "Destination wording derived from grounded source and interaction fields"],
@@ -10908,6 +11147,7 @@ createRevelationPartsSection(item.subEvents)
         relatedNodeNames: [...asArray(item.relatedNodes), ...asArray(item.relatedPrinciples)],
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         provenance: "Knowledge Graph",
         evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
         reasoningPath: ["Knowledge Graph node selected", "Existing relationships retained", "Current Study Scope boundary applied"],
@@ -10927,6 +11167,7 @@ createRevelationPartsSection(item.subEvents)
         suggestedNodeNames: [item.suggestedNextFocus],
         sourcePhrase: item.sourcePhrase || asArray(item.relatedEvidence)[0],
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         provenance: item.provenance || "Focus Lens",
         evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence",
         reasoningPath: item.reasoningPath,
@@ -11010,6 +11251,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Suggested Next Nodes", "", { list: asArray(item.suggestedNextNodes), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Journey Nodes", { preserveExact: true }),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "journey destination derived from existing scoped semantic records", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.supportingLayers), ...asArray(item.evidence)], sourcePhrase: item.sourcePhrase }),
@@ -11117,6 +11359,10 @@ createRevelationPartsSection(item.subEvents)
         activeScope: currentStudyScopeLabel(),
         sourcePhrase: "",
         derivedMeaning: "",
+        verseRange: "",
+        scopePath: "",
+        sourceContext: {},
+        sourceUrl: "",
         reasoningPath: [],
         sourceGrounding: "",
         confidence: "possible"
@@ -11124,6 +11370,11 @@ createRevelationPartsSection(item.subEvents)
       if (!existing.whyConnected && candidate.whyConnected) existing.whyConnected = normalizeText(candidate.whyConnected);
       if (!existing.sourcePhrase && candidate.sourcePhrase) existing.sourcePhrase = normalizeText(candidate.sourcePhrase);
       if (!existing.derivedMeaning && candidate.derivedMeaning) existing.derivedMeaning = normalizeText(candidate.derivedMeaning);
+      const sourceRecord = candidate.sourceRecord || {};
+      if (!existing.verseRange && (candidate.verseRange || sourceRecord.verseRange)) existing.verseRange = normalizeText(candidate.verseRange || sourceRecord.verseRange);
+      if (!existing.scopePath && (candidate.scopePath || sourceRecord.scopePath)) existing.scopePath = normalizeText(candidate.scopePath || sourceRecord.scopePath);
+      if (!existing.sourceUrl && (candidate.sourceUrl || sourceRecord.sourceUrl || sourceRecord.sourceContext?.sourceUrl)) existing.sourceUrl = normalizeText(candidate.sourceUrl || sourceRecord.sourceUrl || sourceRecord.sourceContext?.sourceUrl);
+      if (!Object.keys(existing.sourceContext).length && (candidate.sourceContext || sourceRecord.sourceContext)) existing.sourceContext = { ...(candidate.sourceContext || sourceRecord.sourceContext) };
       if (!existing.sourceGrounding && candidate.sourceGrounding) existing.sourceGrounding = normalizeText(candidate.sourceGrounding);
       if (candidate.scopeBoundary) existing.scopeBoundary = normalizeText(candidate.scopeBoundary);
       if (candidate.confidence === "explicit" || (candidate.confidence === "probable" && existing.confidence === "possible")) existing.confidence = candidate.confidence;
@@ -11149,6 +11400,7 @@ createRevelationPartsSection(item.subEvents)
           evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
           sourcePhrase: item.sourcePhrase,
           derivedMeaning: item.derivedMeaning,
+          sourceRecord: item,
           reasoningPath: ["Teaching block resolved to an existing Journey Node", "Teaching topic resolved to an existing Journey Node", "Current-scope teaching relationship classified"],
           sourceGrounding: item.sourceGrounding,
           confidence: item.confidence
@@ -11165,6 +11417,7 @@ createRevelationPartsSection(item.subEvents)
         evidenceWeight: item.sourcePhrase ? "Direct Source Evidence" : "Derived Semantic Evidence",
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         reasoningPath: ["Teaching destination selected", "Grounded teaching field resolved to an existing Journey Node", "Source and derived wording kept separate"],
         sourceGrounding: item.sourceGrounding,
         confidence: item.confidence
@@ -11182,6 +11435,7 @@ createRevelationPartsSection(item.subEvents)
         evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence / Relationship Inference",
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         reasoningPath: [...asArray(item.reasoningPath), "Both principle endpoints resolved to current-scope Journey Nodes"],
         sourceGrounding: item.sourceGrounding,
         confidence: item.confidence
@@ -11201,6 +11455,7 @@ createRevelationPartsSection(item.subEvents)
           evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
           sourcePhrase: item.sourcePhrase,
           derivedMeaning: item.derivedMeaning,
+          sourceRecord: item,
           reasoningPath: ["Knowledge Graph source node resolved", "Related graph node resolved", "Existing relationship wording classified into a Journey Path type"],
           sourceGrounding: item.sourceGrounding,
           confidence: item.confidence
@@ -11236,6 +11491,7 @@ createRevelationPartsSection(item.subEvents)
           evidenceWeight: current.sourcePhrase && next.sourcePhrase ? "Direct Source Evidence / Relationship Inference" : "Relationship Inference",
           sourcePhrase: current.sourcePhrase,
           derivedMeaning: `${current.derivedMeaning || fromNode} ${next.derivedMeaning || toNode}`,
+          sourceRecord: current,
           reasoningPath: ["Current-scope character interactions grouped by canonical analyzed page", "Same-page interactions ordered by existing record position", "Adjacent interaction destinations resolved to Journey Nodes", "No timeline or automatic traversal created"],
           sourceGrounding: [current.sourceGrounding, next.sourceGrounding].filter(Boolean).join(" "),
           confidence: current.confidence === "explicit" && next.confidence === "explicit" ? "explicit" : "probable"
@@ -11256,6 +11512,7 @@ createRevelationPartsSection(item.subEvents)
           evidenceWeight: "Continuity Inference",
           sourcePhrase: item.sourcePhrase,
           derivedMeaning: item.derivedMeaning,
+          sourceRecord: item,
           reasoningPath: ["Selected analyzed session confirmed", "Continuing current-scope destinations resolved", "Missing or unselected pages excluded"],
           sourceGrounding: item.sourceGrounding,
           confidence: item.confidence
@@ -11276,6 +11533,7 @@ createRevelationPartsSection(item.subEvents)
         evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence",
         sourcePhrase: item.sourcePhrase,
         derivedMeaning: item.derivedMeaning,
+        sourceRecord: item,
         reasoningPath: ["Existing Journey Node selected", "First grounded suggested-next node resolved", "Path kept informational only"],
         sourceGrounding: item.sourceGrounding,
         confidence: item.confidence
@@ -11324,6 +11582,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Supporting Records", "", { list: asArray(item.supportingRecords), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Journey Paths", { preserveExact: true }),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "path derived only after both endpoints resolved to existing Journey Nodes", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
@@ -11752,6 +12011,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Evidence", "", { list: asArray(item.evidence).slice(0, 8), hiddenCount: Math.max(0, asArray(item.evidence).length - 8), divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Related Semantic Layers", "", { collapsed: true, summaryLabel: "Show related semantic layers", navItems: relatedSemanticLayerNavItems(item, "principleNetwork"), divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Grounding", item.sourceGrounding || "Not recorded.", { collapsed: true, summaryLabel: "Show grounding", divineContext, preferHolySpirit: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -12670,6 +12930,92 @@ createRevelationPartsSection(item.subEvents)
     ).join(", ")}`;
   }
 
+  function createSceneContextItem(item = {}) {
+    const entry = document.createElement("article");
+    const statement = document.createElement("p");
+    entry.className = `scene-context-item scene-context-item-${normalizeText(item.tier || "explicit").replace(/_/g, "-")}`;
+    statement.className = "scene-context-statement";
+    statement.textContent = renderIceBeingDisplayText(item.statement || "Scene context not recorded.", {
+      divineContext: hasDivineDisplayContext([item.statement, item.sourcePhrase]),
+      humanContext: hasHumanBeingDisplayContext([item.statement, item.sourcePhrase]),
+      preferHolySpirit: true
+    });
+    entry.append(statement, renderSourceVerseRef(item));
+    [
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { sourceQuote: true }),
+      createPassageFunctionSection("Evidence Weight", item.evidenceWeight || displayConfidence(item.confidence || "possible"), { preserveExact: true, alwaysVisible: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Scene Context", { preserveExact: true, alwaysVisible: true }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, alwaysVisible: true })
+    ].filter(Boolean).forEach((section) => entry.appendChild(section));
+    return entry;
+  }
+
+  function createSceneContextTier(title, items = [], className = "") {
+    const section = document.createElement("section");
+    const heading = document.createElement("h4");
+    const body = document.createElement("div");
+    section.className = `scene-context-tier ${className}`.trim();
+    heading.className = "scene-context-tier-title";
+    heading.textContent = title;
+    body.className = "scene-context-tier-body";
+    if (items.length) {
+      items.forEach((item) => body.appendChild(createSceneContextItem(item)));
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "scene-context-empty";
+      empty.textContent = `No ${title.toLowerCase()} recorded for this scene.`;
+      body.appendChild(empty);
+    }
+    section.append(heading, body);
+    return section;
+  }
+
+  function createSceneContextSection(scene = {}) {
+    const wrapper = document.createElement("section");
+    const heading = document.createElement("h4");
+    const context = scene.sceneContext || {};
+    wrapper.className = "scene-context";
+    heading.className = "semantic-section-title";
+    heading.textContent = "Scene Context";
+    wrapper.append(
+      heading,
+      createSceneContextTier("Explicit Scene Facts", asArray(context.explicitFacts), "scene-context-explicit"),
+      createSceneContextTier("Strongly Implied Scene Supports", asArray(context.stronglyImplied), "scene-context-implied"),
+      createSceneContextTier("Possible Scene Inferences", asArray(context.possibleInferences), "scene-context-possible")
+    );
+    return wrapper;
+  }
+
+  function createSceneCard(scene = {}) {
+    const card = document.createElement("article");
+    const header = document.createElement("header");
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const participants = asArray(scene.participants).join(", ") || "No participants detected";
+    card.className = "study-card semantic-card scene-card";
+    header.className = "semantic-card-header";
+    heading.textContent = renderIceBeingDisplayText(scene.sceneTitle || "Scene", {
+      divineContext: hasDivineDisplayContext([scene.sceneTitle, scene.summarySnippet, scene.participants]),
+      humanContext: hasHumanBeingDisplayContext([scene.sceneTitle, scene.summarySnippet, scene.participants]),
+      preferHolySpirit: true
+    });
+    range.className = "semantic-card-range";
+    range.textContent = `${scene.sceneType || "scene"} | ${displayAppConfidence(scene.confidence || "possible")}`;
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Scene Summary", trimText(scene.summarySnippet, 180) || "No scene summary recorded."),
+      createPassageFunctionSection("Detected Roles", formatSceneRoles(scene) || "No scene roles detected."),
+      createPassageFunctionSection("Participants", participants),
+      createPassageFunctionSection("Witnesses", formatSceneWitnesses(scene)),
+      createSceneContextSection(scene),
+      renderSourceVerseRef(scene)
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
   function renderScenes(term) {
     const container = document.getElementById("sceneCards");
     const count = document.getElementById("sceneCount");
@@ -12688,22 +13034,7 @@ createRevelationPartsSection(item.subEvents)
       ].join(" "), term)
     );
 
-    renderLimited(container, filtered, count, (scene) => {
-      const participants = (scene.participants || []).join(", ") ||
-        "No participants detected";
-      const body = [
-        trimText(scene.summarySnippet, 140),
-        formatSceneRoles(scene),
-        `Participants: ${participants}`,
-        formatSceneWitnesses(scene)
-      ].filter(Boolean).join("\n");
-
-      return createCard(
-        scene.sceneTitle || "Scene",
-        body,
-        `${scene.sceneType || "scene"} | ${displayAppConfidence(scene.confidence || "possible")}`
-      );
-    }, "No scenes match.", "scene");
+    renderLimited(container, filtered, count, createSceneCard, "No scenes match.", "scene");
   }
 
   function characterInteractionSearchText(item = {}) {
@@ -13025,6 +13356,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createPassageFunctionSection("Related", "", { list: asArray(item.related), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Supporting Layers", "", { collapsed: true, summaryLabel: "Show supporting layers", list: asArray(item.supportingLayers), plainList: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Scope", item.scopePath || item.verseRange || "Not scoped.", { collapsed: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -13052,6 +13384,7 @@ createRevelationPartsSection(item.subEvents)
     [
       createPassageFunctionSection("Principle", principleText || "Not recorded.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Primary Entities / Characters", "", { list: classifiedPrimaryEntityLines(item, "principle", 10), plainList: true, divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
       createPassageFunctionSection("Source", item.sourceTitle || "Not recorded.", { collapsed: true, divineContext, preferHolySpirit: true })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
 
@@ -13718,6 +14051,10 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
   document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
   document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
+  document.getElementById("closeSourceVerseDialog")?.addEventListener("click", () => document.getElementById("sourceVerseDialog")?.close());
+  document.getElementById("sourceVerseDialog")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
   window.addEventListener("focus", () => scheduleRefreshStudyData());
   window.addEventListener("pageshow", () => scheduleRefreshStudyData());
   chrome.storage.onChanged.addListener((changes, areaName) => {

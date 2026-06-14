@@ -31,23 +31,28 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
-- Journey retention across analyzed Study Scope/session pages is implemented in this update.
-- Background analysis now stores bounded, canonical-keyed per-page Journey source snapshots in `ICE_JOURNEY_PAGE_SNAPSHOTS`.
-- Journey Nodes, Journey Paths, and Journey Hubs merge only snapshots whose canonical page keys are present in the active Study Scope.
-- Pages outside the active scope, invalid source pages, and non-scripture/browser sources are excluded before Journey derivation.
-- Diagnostics show Journey records by page, retained Journey pages, excluded Journey pages, and exclusion reasons.
-- Interaction-sequence Journey Paths are grouped by canonical page so adjacent records from different chapters are never joined as a single sequence.
-- Journey output records remain derived and non-persisted; this is not a full semantic snapshot migration.
+- Phase 9.4 Source Verse Quick Reference is implemented in this update.
+- Scenes, Teaching / Discourse Structure, Principles / Teachings, Principle Relationships, Principle Networks, Journey Nodes, and Journey Paths expose compact source-verse references when exact grounded scope is available.
+- Clicking a verse reference opens a small in-panel modal with the book/chapter/verse label, captured verse text or grounded source excerpt, provenance wording, and an explicit source-page link.
+- Opening a quick reference never navigates away by default and never fetches source text automatically.
+- Missing exact verse metadata displays `Source reference unavailable`; I.C.E. does not invent a citation.
+- Scene derivation now retains source URL, scope paths, and verse references from its ordered source events.
+- Scene Context groundwork separates `Explicit Scene Facts`, `Strongly Implied Scene Supports`, and `Possible Scene Inferences` in the stored Scene model and Study Panel.
+- Each Scene Context item retains its source phrase, verse reference, evidence weight, provenance, reasoning path, and confidence tier.
+- Matthew 8:16 support identifies the stated healing/deliverance actions as explicit, the unidentified plural helpers as strongly implied, and family/community/disciple participation only as explicitly labeled possibilities.
+- Possible participants are never promoted into detected Scene participants or explicit facts.
+- Journey Nodes and Journey Paths retain the source reference metadata of the scoped semantic records from which they were derived.
 - Preserve source phrase vs derived meaning, `JESUS` / `JESUS CHRIST`, `HOLY SPIRIT`, and Class I / Class i display distinctions.
 - Do not implement automatic execution, crawling, book/volume capture, background queue running, semantic snapshot migration, or automatic next-item loops without explicit approval.
 
 Latest pcdx update:
-- Controlled browser smoke confirmed Matthew 5 produces 37 Journey Nodes, 72 Journey Paths, and 16 Journey Hubs.
-- After analyzing Matthew 6, Matthew 5 remained available in the Matthew 5 -> Matthew 6 scope at 37/72/16; Matthew 6 correctly reported 0/0/0 because it currently contributes no grounded Journey records.
-- After selecting Matthew 1 -> Matthew 2, Journey output was 7 Nodes, 6 Paths, and 2 Hubs; Matthew 5 and Matthew 6 were explicitly excluded with no Sermon on the Mount, Kingdom of Heaven, Mercy, Peacemaking, or JESUS as Teacher leakage.
-- Four retained page snapshots occupied about 285 KB in the controlled smoke, and Study Panel startup remained fast at roughly 36-92ms.
+- Controlled extension smoke on LDS Matthew 5 confirmed a Teaching reference displayed `Matthew 5:1-2`, opened captured verse text for verses 1-2 in the modal, exposed the source-page link, and left the Study Panel URL unchanged.
+- The Scene reference smoke resolved to `Matthew 5:1`.
+- A separate controlled Matthew 8 smoke generated a healing/deliverance Scene with 3 explicit facts, 1 strongly implied support, and 1 possible inference, all grounded to `Matthew 8:16`.
+- The Matthew 8 preview displayed the captured verse text; disciples appeared only in the possible tier with the warning that the verse does not identify the helpers.
 - Validation passed: `node --check study.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew5`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
-- Next recommended task: targeted UX review of the new Journey diagnostics or design the eventual full per-page semantic snapshot architecture separately; do not begin Journey navigation yet.
+- `QA_REPORTS/latest-study-panel-report.md` was refreshed by the required session review command.
+- Next recommended task: targeted user review of Scene Context presentation, then cautiously expand source references/evidence tiers to remaining evaluations and semantic cards.
 
 ## I.C.E. Session Starting Protocol
 

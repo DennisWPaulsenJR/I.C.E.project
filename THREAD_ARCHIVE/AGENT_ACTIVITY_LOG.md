@@ -4530,3 +4530,44 @@ Coordination notes:
 - `background.js` was not changed.
 - No crawling, automatic queue loop, automatic next item, book/volume capture, temporary-tab orchestration, background runner, cross-reference storage change, GPT buttons, or semantic snapshot migration was added.
 - Next recommended task: Study Panel summary UX refinement or targeted QA pass for queue summaries.
+
+## 2026-06-14 - pcdx - Source Verse Quick Reference
+
+Task:
+- Add minimal clickable verse/source references so users can inspect scripture wording behind derived Study Panel cards.
+
+Implementation:
+- Added reusable `resolveSourceVerseReference`, `renderSourceVerseRef`, and `showVersePreview` behavior in `study.js`.
+- The resolver uses exact grounded metadata from `verseRange`, `scopePath`, source context, supporting records, and current LDS `verse_scope` DOM hints.
+- Added an in-panel modal showing reference, captured verse text or grounded source excerpt, provenance wording, and an explicit source-page link.
+- Added first-wave references to Scenes, Teaching / Discourse Structure, Principles / Teachings, Principle Relationships, Principle Networks, Journey Nodes, and Journey Paths.
+- Scene models now retain source URL, scope paths, and verse references from ordered source events.
+- Scene models now store distinct `explicitFacts`, `stronglyImplied`, and `possibleInferences` arrays under Scene Context.
+- Each Scene Context record carries source phrase, source scope, evidence weight, provenance, reasoning path, and confidence.
+- Matthew 8:16 pilot logic records the stated bringing, casting out, and healing actions as explicit; unidentified helpers as strongly implied; and family/community/disciple helper categories only as possible and not source-identified.
+- Possible helper categories do not enter the Scene participant list.
+- Journey Nodes and Paths retain source metadata from the scoped records that ground them.
+- Missing exact references display `Source reference unavailable`; no citation is invented.
+
+Browser smoke:
+- Passed in a temporary Chrome profile with the unpacked extension loaded on LDS Matthew 5.
+- Teaching quick reference displayed `Matthew 5:1-2`.
+- The modal displayed captured text for Matthew 5:1-2 and an `Open source page` link.
+- Opening the modal did not change the Study Panel URL.
+- A grounded Scene quick reference displayed `Matthew 5:1`.
+- A controlled LDS Matthew 8 smoke generated a healing/deliverance Scene with 3 explicit facts, 1 strongly implied support, and 1 possible inference.
+- Every Matthew 8 Scene Context record linked to `Matthew 8:16`; the preview displayed the captured verse wording.
+- The possible tier stated that helpers may have included family, community members, or disciples while preserving that Matthew 8:16 does not identify them.
+
+Validation:
+- `node --check study.js` passed.
+- `node --check background.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew5` passed.
+- `npm.cmd run qa:matthew-pages` passed for Matthew 1, Matthew 2, and Matthew 3.
+- `npm.cmd run review:matthew-session` passed for Matthew 1, Matthew 2, Matthew 3, and Matthew 5 and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Coordination notes:
+- No crawling, automatic fetching, automatic analysis, automatic queue processing, or scope modification was added.
+- GPT action buttons remain absent.
+- Next recommended task: user presentation review, then extend quick references to remaining evaluations and semantic cards.

@@ -5304,12 +5304,14 @@ function createEventItem(capture, sentence, sequenceIndex) {
   const eventText = normalizeWhitespace(sentence);
   const sourceCaptureId = capture.id || "";
   const isLineageRecord = GENEALOGY_PATTERN.test(eventText);
+  const sourceContext = buildSourceContext(capture);
+  const verseNumber = inferVerseNumberFromText(eventText);
   return {
     id: `${Date.now()}-${textHash(`${sourceCaptureId}|${sequenceIndex}|${eventText}`)}`,
     sourceCaptureId,
     sourceTitle: capture.title || "",
     sourceUrl: capture.url || "",
-    sourceContext: buildSourceContext(capture),
+    sourceContext,
     eventText,
     eventType: isSourceSummarySentence(eventText, sequenceIndex)
       ? "source_summary"
@@ -5321,6 +5323,11 @@ function createEventItem(capture, sentence, sequenceIndex) {
     normalizedYear: date.normalizedYear,
     orderingCue: detectOrderingCue(sentence),
     confidence: 0.7,
+    verseNumber,
+    verseRef: sourceContext.chapter && verseNumber ? `${sourceContext.chapter}:${verseNumber}` : "",
+    scopePath: sourceContext.book && sourceContext.chapter && verseNumber
+      ? `${sourceScopePrefix(sourceContext)}.verse.${verseNumber}`
+      : "",
     lineagePersons: isLineageRecord ? extractLineagePersons(eventText) : [],
     lineagePairs: isLineageRecord ? extractLineagePairs(eventText) : [],
     subEvents: createSemanticSubEvents(capture, eventText, sequenceIndex),
@@ -6124,6 +6131,15 @@ function createProphecyLinks(principleItems) {
 
 function sceneClassificationForEvent(eventItem) {
   const text = normalizeWhitespace(eventItem.eventText || "");
+  const context = eventItem.sourceContext || {};
+
+  if (context.book === "Matthew" && String(context.chapter || "") === "8" &&
+    /\bbrought unto him many\b|\bpossessed with devils\b|\bcast out the spirits\b|\bhealed all that were sick\b/i.test(text)) {
+    return {
+      sceneType: "healing and deliverance",
+      sceneTitle: "JESUS heals the sick and casts out spirits"
+    };
+  }
 
   if (/\bvoice from heaven\b|\bSpirit of God\b.*\bdescending\b|\bheavens? (?:opened|were opened)\b/i.test(text)) {
     return {
@@ -6193,6 +6209,110 @@ function sceneClassificationForEvent(eventItem) {
     sceneType: "narrative",
     sceneTitle: "Narrative scene"
   };
+}
+
+function createSceneContextRecord(eventItem, config = {}) {
+  const sourceContext = eventItem.sourceContext || {};
+  return {
+    id: `${Date.now()}-${textHash([
+      eventItem.id || eventItem.sourceCaptureId || "",
+      config.tier || "",
+      config.statement || ""
+    ].join("|"))}`,
+    tier: config.tier || "explicit",
+    statement: normalizeWhitespace(config.statement || ""),
+    sourcePhrase: normalizeWhitespace(config.sourcePhrase || eventItem.eventText || ""),
+    evidenceWeight: config.evidenceWeight || "Direct Source Evidence",
+    provenance: config.provenance || "Scripture source text",
+    reasoningPath: (config.reasoningPath || []).map((value) => normalizeWhitespace(value)).filter(Boolean),
+    confidence: config.confidence || "explicit",
+    sourceCaptureId: eventItem.sourceCaptureId || sourceContext.sourceCaptureId || "",
+    sourceUrl: eventItem.sourceUrl || sourceContext.sourceUrl || "",
+    sourceContext,
+    scopePath: eventItem.scopePath || "",
+    verseRef: eventItem.verseRef || "",
+    verseNumber: eventItem.verseNumber || ""
+  };
+}
+
+function sceneContextForEvent(eventItem) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  const context = eventItem.sourceContext || {};
+  const isMatthewEight = context.book === "Matthew" && String(context.chapter || "") === "8";
+  const isMatthewEightHealing = isMatthewEight &&
+    /\bbrought unto him many\b|\bpossessed with devils\b|\bcast out the spirits\b|\bhealed all that were sick\b/i.test(text);
+  const explicitFacts = [];
+  const stronglyImplied = [];
+  const possibleInferences = [];
+  const explicit = (statement, reasoningPath) => explicitFacts.push(createSceneContextRecord(eventItem, {
+    tier: "explicit",
+    statement,
+    evidenceWeight: "Direct Source Evidence",
+    provenance: "Scripture source text",
+    reasoningPath,
+    confidence: "explicit"
+  }));
+
+  if (isMatthewEightHealing) {
+    if (/\bbrought unto him many\b.*\bpossessed with devils\b/i.test(text)) {
+      explicit(
+        "Many people described as possessed with devils were brought to JESUS.",
+        ["Read the stated action and object in Matthew 8:16", "Resolve Him to JESUS from the immediate Matthew 8 scene context", "Keep the identity of those who brought them unspecified"]
+      );
+    }
+    if (/\bcast out the spirits\b/i.test(text)) {
+      explicit(
+        "JESUS cast out the spirits with His word.",
+        ["Read the stated action in Matthew 8:16", "Preserve the source action without adding a mechanism beyond His word"]
+      );
+    }
+    if (/\bhealed all that were sick\b/i.test(text)) {
+      explicit(
+        "JESUS healed all who were sick.",
+        ["Read the stated healing action in Matthew 8:16", "Preserve the source scope all that were sick"]
+      );
+    }
+    if (/\bthey brought\b/i.test(text)) {
+      stronglyImplied.push(createSceneContextRecord(eventItem, {
+        tier: "strongly_implied",
+        statement: "Other people performed the act of bringing the sick or possessed individuals to JESUS, but the verse does not identify them.",
+        evidenceWeight: "Strong Contextual Inference",
+        provenance: "I.C.E. Scene Context inference from the explicit plural subject they",
+        reasoningPath: ["The source explicitly uses the plural actor they", "Bringing another person ordinarily requires an assisting agent", "No identity is assigned to those agents"],
+        confidence: "probable"
+      }));
+      possibleInferences.push(createSceneContextRecord(eventItem, {
+        tier: "possible",
+        statement: "The unidentified helpers may have included family, community members, or disciples; Matthew 8:16 does not specify which.",
+        evidenceWeight: "Possible Contextual Inference",
+        provenance: "I.C.E. Scene Context possibility; participant identity is not source-stated",
+        reasoningPath: ["Start from the unidentified plural subject they", "List plausible helper categories only as possibilities", "Explicitly retain that the verse does not identify them"],
+        confidence: "possible"
+      }));
+    }
+  } else if (text) {
+    explicit(
+      stripLeadingSentenceNoise(text) || text,
+      ["Retain the source event wording as an explicit Scene fact", "Do not add unstated participants or motives"]
+    );
+  }
+
+  return { explicitFacts, stronglyImplied, possibleInferences };
+}
+
+function mergeSceneContext(target, source) {
+  for (const key of ["explicitFacts", "stronglyImplied", "possibleInferences"]) {
+    const existing = target[key] || [];
+    const seen = new Set(existing.map((item) => normalizeWhitespace(item.statement).toLowerCase()));
+    for (const item of source[key] || []) {
+      const statementKey = normalizeWhitespace(item.statement).toLowerCase();
+      if (!statementKey || seen.has(statementKey)) continue;
+      seen.add(statementKey);
+      existing.push(item);
+    }
+    target[key] = existing.slice(0, 12);
+  }
+  return target;
 }
 
 function sceneKeyForEvent(eventItem) {
@@ -6573,12 +6693,23 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
       prophecyLinks: [],
       summarySnippet: "",
       confidence: classification.sceneType === "narrative" ? "possible" : "probable",
+      sourceUrl: eventItem.sourceUrl || eventItem.sourceContext?.sourceUrl || "",
+      scopePaths: [],
+      verseRefs: [],
+      sceneContext: {
+        explicitFacts: [],
+        stronglyImplied: [],
+        possibleInferences: []
+      },
       eventActors: [],
       eventTexts: []
     };
 
     scene.sequenceStart = Math.min(scene.sequenceStart || sequenceOrder, sequenceOrder);
     scene.sequenceEnd = Math.max(scene.sequenceEnd || sequenceOrder, sequenceOrder);
+    if (eventItem.scopePath && !scene.scopePaths.includes(eventItem.scopePath)) scene.scopePaths.push(eventItem.scopePath);
+    if (eventItem.verseRef && !scene.verseRefs.includes(eventItem.verseRef)) scene.verseRefs.push(eventItem.verseRef);
+    mergeSceneContext(scene.sceneContext, sceneContextForEvent(eventItem));
     scene.eventTexts.push(eventItem.eventText || "");
     scene.summarySnippet = trimText(scene.eventTexts.join(" "), 240);
 
