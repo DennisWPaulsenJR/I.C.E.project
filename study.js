@@ -179,6 +179,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Prophecy Links": "prophecyLinks",
     "Timeline": "timelineItems"
   };
+  const DEFERRED_SCOPED_SECTION_ALIASES = {
+    "Focus Lens": "focusLens",
+    "Scope Lens": "scopeLens",
+    "Depth Lens": "depthLens",
+    "Trust & Verification": "trustVerification",
+    "Semantic Questions": "semanticQuestions",
+    "Teaching / Discourse Structure": "teachingSemantics",
+    "Principle Relationships": "principleRelationships",
+    "Principle Networks": "principleNetworks",
+    "Semantic Continuity": "semanticContinuity",
+    "Movement Semantics": "movementSemantics",
+    "Semantic Causality": "semanticCausality"
+  };
   const loadedDeferredSections = new Set();
   let fullStudyDataLoaded = false;
   let refreshInFlight = null;
@@ -3971,12 +3984,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("trustVerificationCards");
     const count = document.getElementById("trustVerificationCount");
     if (!container || !count) return;
+    const rawRecords = asArray(studyData.trustVerification);
     const records = scopedSemanticRecords(studyData.trustVerification);
     const filtered = records.filter((item) => matchesSearchQuery(trustVerificationSearchText(item), term));
     clearElement(container);
     count.textContent = `${filtered.length} trust record(s)`;
     if (records.length === 0) {
       appendEmpty(container, "No trust verification records are available yet.");
+      appendScopedRecordDiagnostics(container, "Trust & Verification", rawRecords, records);
       return;
     }
     container.appendChild(createCard(
@@ -4054,6 +4069,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("semanticQuestionsCards");
     const count = document.getElementById("semanticQuestionsCount");
     if (!container || !count) return;
+    const rawRecords = asArray(studyData.semanticQuestions);
     const records = scopedSemanticRecords(studyData.semanticQuestions);
     const answered = records.filter((item) => item.questionKind !== "suggested");
     const suggested = records.filter((item) => item.questionKind === "suggested");
@@ -4064,6 +4080,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     count.textContent = `${filtered.length} question(s)`;
     if (records.length === 0) {
       appendEmpty(container, "No semantic question answers or suggestions are available yet.");
+      appendScopedRecordDiagnostics(container, "Semantic Questions", rawRecords, records);
       return;
     }
     container.appendChild(createCard(
@@ -4084,10 +4101,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (filteredAnswered.length) {
       container.appendChild(createCard("Answered Questions", `${filteredAnswered.length} grounded answer(s)`, "semantic question answers"));
       filteredAnswered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+      if (filteredAnswered.length > DISPLAY_LIMIT) appendEmpty(container, `${filteredAnswered.length - DISPLAY_LIMIT} more answered question(s) hidden by the preview limit. Use panel search to narrow.`);
     }
     if (filteredSuggested.length) {
       container.appendChild(createCard("Suggested Next Questions", `${filteredSuggested.length} grounded suggestion(s)`, "contextual inquiry suggestions"));
       filteredSuggested.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createSemanticQuestionCard(item)));
+      if (filteredSuggested.length > DISPLAY_LIMIT) appendEmpty(container, `${filteredSuggested.length - DISPLAY_LIMIT} more suggested question(s) hidden by the preview limit. Use panel search to narrow.`);
     }
   }
   function renderSessionContinuityReview(term) {
@@ -13723,6 +13742,45 @@ createRevelationPartsSection(item.subEvents)
     return studySectionRenderers().find((entry) => entry.label === label) || null;
   }
 
+  function deferredScopedSectionRecords(label) {
+    const alias = DEFERRED_SCOPED_SECTION_ALIASES[label];
+    return alias ? scopedSemanticRecords(studyData[alias]) : null;
+  }
+
+  function deferredRawSectionRecords(label) {
+    const alias = DEFERRED_SECTION_COUNT_ALIASES[label] || DEFERRED_SCOPED_SECTION_ALIASES[label];
+    return alias ? asArray(studyData[alias]) : [];
+  }
+
+  function scopedRecordDiagnosticLines(label, rawRecords = deferredRawSectionRecords(label), scopedRecords = deferredScopedSectionRecords(label) || []) {
+    const raw = asArray(rawRecords);
+    const scoped = asArray(scopedRecords);
+    if (raw.length <= scoped.length) return [];
+    const samples = raw
+      .filter((item) => !recordMatchesCurrentStudyScope(item))
+      .slice(0, 3)
+      .map((item) => normalizeText(item.scopePath || item.verseRange || item.sourceContext?.sourceTitle || item.sourceContext?.sourceUrl || item.id || "unscoped record"))
+      .filter(Boolean);
+    return [
+      `${label} raw count: ${raw.length}`,
+      `${label} scoped count: ${scoped.length}`,
+      `Rejection reason: ${raw.length - scoped.length} record(s) did not match the active Study Scope (${currentStudyScopeLabel()}) by page key, source capture, scope path, verse range, or source URL.`,
+      samples.length ? `Rejected sample scope(s): ${samples.join("; ")}` : ""
+    ].filter(Boolean);
+  }
+
+  function appendScopedRecordDiagnostics(container, label, rawRecords = deferredRawSectionRecords(label), scopedRecords = deferredScopedSectionRecords(label) || []) {
+    const lines = scopedRecordDiagnosticLines(label, rawRecords, scopedRecords);
+    if (!container || !lines.length) return;
+    container.appendChild(createPassageFunctionSection("Scoped Record Diagnostics", "", {
+      list: lines,
+      plainList: true,
+      preserveExact: true,
+      collapsed: true,
+      summaryLabel: "Show scope filter diagnostics"
+    }));
+  }
+
   function deferredSectionRecordCount(label) {
     if (!fullStudyDataLoaded) return null;
     if (label === "Guided Study") return guidedStudyRecords().length;
@@ -13737,12 +13795,8 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;
-    if (label === "Teaching / Discourse Structure") return scopedSemanticRecords(studyData.teachingSemantics).length;
-    if (label === "Principle Relationships") return scopedSemanticRecords(studyData.principleRelationships).length;
-    if (label === "Principle Networks") return scopedSemanticRecords(studyData.principleNetworks).length;
-    if (label === "Semantic Continuity") return scopedSemanticRecords(studyData.semanticContinuity).length;
-    if (label === "Movement Semantics") return scopedSemanticRecords(studyData.movementSemantics).length;
-    if (label === "Semantic Causality") return scopedSemanticRecords(studyData.semanticCausality).length;
+    const scopedRecords = deferredScopedSectionRecords(label);
+    if (scopedRecords) return scopedRecords.length;
     if (label === "Current Page") return activeSourcePageRecord() ? 1 : 0;
     if (label === "Source Context") return findSourceContext() ? 1 : 0;
     if (label === "Source Adapter") return studyData.activeAdapter ? 1 : 0;
@@ -13789,6 +13843,7 @@ createRevelationPartsSection(item.subEvents)
       note.className = "deferred-study-section-note";
       note.textContent = "Full records load when this section is opened; no background crawling or report generation runs on panel open.";
       body.append(purpose, note);
+      appendScopedRecordDiagnostics(body, entry.label);
       details.addEventListener("toggle", () => {
         if (!details.open || loadedDeferredSections.has(entry.label)) return;
         note.textContent = "Loading details...";
