@@ -1,3 +1,18 @@
+## 2026-06-15 - Phase 9.5b Confidence Display Wording Refinement
+
+Refined `ICE_CONFIDENCE_ANALYSIS` user-facing wording so the panel speaks in terms of analysis support rather than doctrinal confidence.
+
+Display wording now uses:
+- Analysis Support: Strong
+- Analysis Support: Supported
+- Analysis Support: Limited
+
+The panel includes this helper text: "Analysis Support describes how directly I.C.E. can support this item from the current source and analyzed scope. It is not a judgment on scriptural truth."
+
+The section summary now reads `Show Analysis Support & Challenges`, and the supporting explanation heading is contextual: `Why Support Is Strong`, `Why Support Is Supported`, or `Why Support Is Limited`.
+
+Underlying `ICE_CONFIDENCE_ANALYSIS` behavior remains display-only. App accuracy, Evidence Weight, Provenance, source phrase vs derived meaning, source verse references, and explicit / strongly implied / possible Scene Context tiers are preserved.
+
 ## 2026-06-15 - Phase 9.5a Confidence & Challenge Framework
 
 Implemented a reusable `ICE_CONFIDENCE_ANALYSIS` display layer for major Study Panel semantic cards.
@@ -10,7 +25,7 @@ Initial targets:
 - Scene Intelligence cards
 - Scene Context tier items
 
-The layer displays Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference. Confidence is explicitly separate from App accuracy and is derived only from existing source phrases, verse references, supporting record counts, evidence weights, inference wording, and explicit / strongly implied / possible Scene Context tiers.
+The layer originally displayed Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference. Phase 9.5b refined the user-facing labels to Analysis Support wording while preserving the underlying display-only layer.
 
 Scene Context confidence preserves tier boundaries:
 - Explicit facts: High
@@ -19,7 +34,7 @@ Scene Context confidence preserves tier boundaries:
 
 No new doctrine, semantic extraction, persisted semantic records, crawling, automatic analysis, or queue execution was added.
 
-Controlled Matthew 5 smoke confirmed five Confidence & Challenge panels in Guided Study, verified the `ICE_CONFIDENCE_ANALYSIS` layer marker, and found Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference fields.
+Controlled Matthew 5 smoke confirmed five support panels in Guided Study, verified the `ICE_CONFIDENCE_ANALYSIS` layer marker, and found the required support, challenge, evidence weight, provenance, and source reference fields.
 
 ## 2026-06-14 - Retain Journey Records By Study Scope
 

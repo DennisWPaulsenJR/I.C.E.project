@@ -8312,6 +8312,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "Limited";
   }
 
+  function analysisSupportLabel(level = "") {
+    const normalized = normalizeText(level).toLowerCase();
+    if (normalized === "high" || normalized === "strong") return "Strong";
+    if (normalized === "moderate" || normalized === "supported") return "Supported";
+    return "Limited";
+  }
+
+  function analysisSupportHelperText() {
+    return "Analysis Support describes how directly I.C.E. can support this item from the current source and analyzed scope. It is not a judgment on scriptural truth.";
+  }
+
   function confidenceAnalysisWhyLines(item = {}, options = {}) {
     const combined = normalizeText([
       item.evidenceWeight,
@@ -8325,7 +8336,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (supportingCount > 1) lines.push("Multiple supporting semantic records are attached.");
     if (/relationship|inference/.test(combined)) lines.push("Conclusion depends on relationship inference from existing records.");
     if (/implied/.test(combined) || normalizeText(item.tier).toLowerCase() === "strongly-implied") lines.push("Reasoning includes a strongly implied support rather than only explicit wording.");
-    if (!lines.length) lines.push("Confidence is derived from the current record's retained evidence and app accuracy fields.");
+    if (!lines.length) lines.push("Analysis support is derived from the current record's retained evidence and App accuracy fields.");
     return uniqueStudyList(lines);
   }
 
@@ -8348,7 +8359,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createConfidenceChallengeSection(item = {}, options = {}) {
-    const level = options.level || confidenceAnalysisLevel(item, options);
+    const level = analysisSupportLabel(options.level || confidenceAnalysisLevel(item, options));
     const whyLines = confidenceAnalysisWhyLines(item, options);
     const challengeLines = confidenceAnalysisChallengeLines(item, options);
     const evidenceWeight = normalizeText(options.evidenceWeight || item.evidenceWeight || displayConfidence(item.confidence || "probable"));
@@ -8363,7 +8374,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sourceHeading = document.createElement("h4");
     section.className = "semantic-section semantic-section-collapsible evidence-chain confidence-analysis";
     section.dataset.semanticLayer = "ICE_CONFIDENCE_ANALYSIS";
-    summary.textContent = "Show Confidence & Challenge";
+    summary.textContent = "Show Analysis Support & Challenges";
     body.className = "evidence-chain-body confidence-analysis-body";
     sourceSection.className = "semantic-section evidence-chain-source confidence-analysis-source";
     sourceHeading.className = "semantic-section-title";
@@ -8371,8 +8382,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     sourceSection.append(sourceHeading, renderSourceVerseRef(item));
     details.append(summary);
     [
-      createPassageFunctionSection("Confidence", level, { alwaysVisible: true, preserveExact: true }),
-      createPassageFunctionSection("Why Confidence", "", { list: whyLines, plainList: true, alwaysVisible: true }),
+      createPassageFunctionSection("Analysis Support", level, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("What This Means", analysisSupportHelperText(), { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection(`Why Support Is ${level}`, "", { list: whyLines, plainList: true, alwaysVisible: true }),
       createPassageFunctionSection("Challenge Factors", "", { list: challengeLines, plainList: true, alwaysVisible: true }),
       createPassageFunctionSection("Evidence Weight", evidenceWeight, { alwaysVisible: true, preserveExact: true }),
       createPassageFunctionSection("Provenance", provenance, { alwaysVisible: true, preserveExact: true }),

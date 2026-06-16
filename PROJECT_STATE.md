@@ -31,15 +31,15 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
-- Phase 9.5a Confidence & Challenge Framework is implemented in this update as a derived, display-only layer identified by `ICE_CONFIDENCE_ANALYSIS`.
-- Guided Study, Principle Networks, Journey Nodes, Journey Paths, Scene cards, and Scene Context items now expose a collapsed Confidence & Challenge panel.
-- The panel shows Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and a Source Verse Reference.
-- Confidence is separate from App accuracy; it explains evidence strength and limitations, not scripture truth.
-- Confidence levels are derived from existing source phrases, source references, supporting record counts, evidence weights, inference language, and explicit/implied/possible tiers.
+- Phase 9.5b Confidence Display Wording Refinement is implemented in this update on top of the `ICE_CONFIDENCE_ANALYSIS` display layer.
+- Guided Study, Principle Networks, Journey Nodes, Journey Paths, Scene cards, and Scene Context items now expose a collapsed Analysis Support & Challenges panel.
+- The panel shows Analysis Support, helper text, Why Support Is Strong/Supported/Limited, Challenge Factors, Evidence Weight, Provenance, and a Source Verse Reference.
+- Analysis Support is separate from App accuracy; it describes how directly I.C.E. can support an item from the current source and analyzed scope and is not a judgment on scriptural truth.
+- User-facing support labels are Strong, Supported, and Limited instead of High, Moderate, and Limited confidence.
 - Scene Context confidence preserves tier boundaries: explicit facts are High, strongly implied supports are Moderate, and possible inferences are Limited.
 - No new doctrine, semantic extraction, persisted records, crawling, automatic analysis, or queue execution was added.
-- Controlled Matthew 5 smoke confirmed 5 Confidence & Challenge panels, `ICE_CONFIDENCE_ANALYSIS` layer identity, all required fields, and a working source reference inside the panel.
-- Next recommended task: user presentation review of Confidence & Challenge wording, especially Scene Context tier clarity.
+- Controlled Matthew 5 smoke for Phase 9.5a confirmed 5 support panels, `ICE_CONFIDENCE_ANALYSIS` layer identity, all required fields, and a working source reference inside the panel.
+- Next recommended task: user presentation review of Analysis Support wording, especially Scene Context tier clarity.
 - Phase 9.4c Evidence Chains Foundation is implemented in this update as a derived, display-only layer identified by `ICE_EVIDENCE_CHAINS`.
 - Guided Study, Principle Networks, Journey Nodes, Journey Paths, and Scene Intelligence cards now expose a collapsed Evidence Chain.
 - Each chain presents the retained progression: Source Verse -> Observation -> Derived Record -> Related Records -> Conclusion, followed by Evidence Weight, Provenance, and Reasoning Path.

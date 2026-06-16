@@ -21,12 +21,38 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-15 - pcdx - Refine confidence display wording
+Summary:
+- Refined `ICE_CONFIDENCE_ANALYSIS` user-facing labels from confidence wording to Analysis Support wording.
+- The panel now shows Analysis Support with Strong / Supported / Limited labels.
+- Added helper text explaining that Analysis Support describes I.C.E.'s support from current source/scope and is not a judgment on scriptural truth.
+- Renamed `Why Confidence` to contextual `Why Support Is Strong/Supported/Limited`.
+- Preserved App accuracy, Evidence Weight, Provenance, source references, and explicit / strongly implied / possible Scene Context tiers.
+
+Files touched:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated.
+
 ## 2026-06-15 - pcdx - Confidence & Challenge Framework
 Summary:
 - Added reusable collapsed `ICE_CONFIDENCE_ANALYSIS` display panels.
 - Applied panels to Guided Study, Principle Networks, Journey Nodes, Journey Paths, Scene Intelligence cards, and Scene Context tier items.
-- Panels show Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference.
-- Confidence remains separate from App accuracy and is derived only from retained source/evidence metadata.
+- Phase 9.5b refines the display wording to Analysis Support while preserving this display-only layer.
 - Scene Context preserves explicit / strongly implied / possible distinctions with High / Moderate / Limited confidence tiers.
 - No extraction, doctrine generation, persistence layer, crawling, automatic analysis, or queue processing was added.
 
@@ -42,7 +68,7 @@ Checks:
 - `git diff --check` passed.
 - `npm.cmd run qa:matthew-pages` passed.
 - `npm.cmd run review:matthew-session` passed.
-- Controlled Matthew 5 browser smoke found 5 Confidence & Challenge panels in Guided Study, verified `ICE_CONFIDENCE_ANALYSIS`, all required fields, and a source verse reference.
+- Controlled Matthew 5 browser smoke found 5 support panels in Guided Study, verified `ICE_CONFIDENCE_ANALYSIS`, all required fields, and a source verse reference.
 
 Commit:
 - Pending.
