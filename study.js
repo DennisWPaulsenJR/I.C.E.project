@@ -3566,6 +3566,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         reasoningPath: item.reasoningPath.length
           ? item.reasoningPath
           : ["Current-scope source evidence retained", "Existing supporting semantic layers reviewed", "Guided Study suggestion displayed"]
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: [...asArray(item.supportingLayers), ...asArray(item.related)],
+        provenance: item.provenance || "I.C.E. generated study suggestion"
       })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -8279,6 +8283,106 @@ document.addEventListener("DOMContentLoaded", async () => {
     return section;
   }
 
+  function confidenceAnalysisSupportingCount(item = {}, options = {}) {
+    return uniqueStudyList([
+      ...asArray(options.relatedRecords),
+      ...asArray(item.supportingRecords),
+      ...asArray(item.supportingLayers),
+      ...asArray(item.relatedEvidence),
+      ...asArray(item.evidence),
+      ...asArray(item.relatedSemanticRecords),
+      ...asArray(item.trustSignals)
+    ]).length;
+  }
+
+  function confidenceAnalysisLevel(item = {}, options = {}) {
+    const combined = normalizeText([
+      item.confidence,
+      item.evidenceWeight,
+      item.evidenceType,
+      item.tier,
+      options.evidenceWeight
+    ].join(" ")).toLowerCase();
+    const supportingCount = confidenceAnalysisSupportingCount(item, options);
+    const directSource = Boolean(item.sourcePhrase || item.sourceWording || options.observation);
+    if (/possible|limited|unresolved/.test(combined) || normalizeText(item.tier).toLowerCase() === "possible") return "Limited";
+    if (/explicit|direct source/.test(combined) && directSource && supportingCount >= 1) return "High";
+    if (directSource && supportingCount >= 2 && !/inference|implied/.test(combined)) return "High";
+    if (/relationship|inference|implied|probable|derived/.test(combined) || supportingCount > 0) return "Moderate";
+    return "Limited";
+  }
+
+  function confidenceAnalysisWhyLines(item = {}, options = {}) {
+    const combined = normalizeText([
+      item.evidenceWeight,
+      item.evidenceType,
+      item.sourceGrounding,
+      options.evidenceWeight
+    ].join(" ")).toLowerCase();
+    const lines = [];
+    if (item.sourcePhrase || item.sourceWording || options.observation || resolveSourceVerseReference(item)) lines.push("Direct verse/source reference is available for inspection.");
+    const supportingCount = confidenceAnalysisSupportingCount(item, options);
+    if (supportingCount > 1) lines.push("Multiple supporting semantic records are attached.");
+    if (/relationship|inference/.test(combined)) lines.push("Conclusion depends on relationship inference from existing records.");
+    if (/implied/.test(combined) || normalizeText(item.tier).toLowerCase() === "strongly-implied") lines.push("Reasoning includes a strongly implied support rather than only explicit wording.");
+    if (!lines.length) lines.push("Confidence is derived from the current record's retained evidence and app accuracy fields.");
+    return uniqueStudyList(lines);
+  }
+
+  function confidenceAnalysisChallengeLines(item = {}, options = {}) {
+    const combined = normalizeText([
+      item.confidence,
+      item.evidenceWeight,
+      item.evidenceType,
+      item.sourceGrounding,
+      options.evidenceWeight
+    ].join(" ")).toLowerCase();
+    const lines = [];
+    if (!item.sourcePhrase && !item.sourceWording && !options.observation) lines.push("No direct source phrase is retained on this record.");
+    if (/relationship|inference|derived/.test(combined)) lines.push("Derived relationship should be reviewed against the source verse and supporting records.");
+    if (/possible/.test(combined) || normalizeText(item.tier).toLowerCase() === "possible") lines.push("Possible inference; do not treat it as an explicit source fact.");
+    if (/implied/.test(combined) || normalizeText(item.tier).toLowerCase() === "strongly-implied") lines.push("Implied support; the source grounds the action but may not name every participant.");
+    if (!recordMatchesCurrentStudyScope(item)) lines.push(`Outside active Study Scope (${currentStudyScopeLabel()}) unless explicitly retained as context.`);
+    lines.push("Limited to currently analyzed source scope; no unselected pages or library-wide context are assumed.");
+    return uniqueStudyList(lines);
+  }
+
+  function createConfidenceChallengeSection(item = {}, options = {}) {
+    const level = options.level || confidenceAnalysisLevel(item, options);
+    const whyLines = confidenceAnalysisWhyLines(item, options);
+    const challengeLines = confidenceAnalysisChallengeLines(item, options);
+    const evidenceWeight = normalizeText(options.evidenceWeight || item.evidenceWeight || displayConfidence(item.confidence || "probable"));
+    const provenance = normalizeText(options.provenance || item.provenance || "I.C.E. derived display layer");
+    if (!level && !whyLines.length && !challengeLines.length) return null;
+
+    const section = document.createElement("section");
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const body = document.createElement("div");
+    const sourceSection = document.createElement("section");
+    const sourceHeading = document.createElement("h4");
+    section.className = "semantic-section semantic-section-collapsible evidence-chain confidence-analysis";
+    section.dataset.semanticLayer = "ICE_CONFIDENCE_ANALYSIS";
+    summary.textContent = "Show Confidence & Challenge";
+    body.className = "evidence-chain-body confidence-analysis-body";
+    sourceSection.className = "semantic-section evidence-chain-source confidence-analysis-source";
+    sourceHeading.className = "semantic-section-title";
+    sourceHeading.textContent = "Source Verse Reference";
+    sourceSection.append(sourceHeading, renderSourceVerseRef(item));
+    details.append(summary);
+    [
+      createPassageFunctionSection("Confidence", level, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("Why Confidence", "", { list: whyLines, plainList: true, alwaysVisible: true }),
+      createPassageFunctionSection("Challenge Factors", "", { list: challengeLines, plainList: true, alwaysVisible: true }),
+      createPassageFunctionSection("Evidence Weight", evidenceWeight, { alwaysVisible: true, preserveExact: true }),
+      createPassageFunctionSection("Provenance", provenance, { alwaysVisible: true, preserveExact: true }),
+      sourceSection
+    ].filter(Boolean).forEach((entry) => body.appendChild(entry));
+    details.appendChild(body);
+    section.appendChild(details);
+    return section;
+  }
+
   function referenceRoleSourceProvenanceLabel(item = {}) {
     const reference = normalizeText(item.discoveredReference || "");
     const href = normalizeText(item.referenceHref || "");
@@ -11360,6 +11464,10 @@ createRevelationPartsSection(item.subEvents)
         recordLabel: `Journey Node: ${item.nodeName || "Journey Node"}`,
         relatedRecords: [...asArray(item.supportingLayers), ...asArray(item.evidence), ...asArray(item.relatedNodes)],
         conclusion: item.whyItMatters || item.derivedMeaning
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: [...asArray(item.supportingLayers), ...asArray(item.evidence), ...asArray(item.relatedNodes)],
+        provenance: item.provenance || "I.C.E. Journey Nodes"
       })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -11696,6 +11804,10 @@ createRevelationPartsSection(item.subEvents)
         recordLabel: `Journey Path: ${item.fromNode || "Journey Node"} -> ${item.toNode || "Journey Node"}`,
         relatedRecords: item.supportingRecords,
         conclusion: item.whyConnected || item.derivedMeaning
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance || "I.C.E. Journey Paths"
       })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -12128,6 +12240,14 @@ createRevelationPartsSection(item.subEvents)
           ...asArray(item.relatedPrincipleRelationships)
         ],
         conclusion: item.derivedMeaning || item.corePrinciple
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: [
+          ...asArray(item.relatedPrinciples),
+          ...asArray(item.relatedTeachingSemantics),
+          ...asArray(item.relatedPrincipleRelationships)
+        ],
+        provenance: item.provenance || "I.C.E. Principle Network"
       })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);
@@ -13061,7 +13181,18 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { sourceQuote: true }),
       createPassageFunctionSection("Evidence Weight", item.evidenceWeight || displayConfidence(item.confidence || "possible"), { preserveExact: true, alwaysVisible: true }),
       createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Scene Context", { preserveExact: true, alwaysVisible: true }),
-      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, alwaysVisible: true })
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, alwaysVisible: true }),
+      createConfidenceChallengeSection(item, {
+        observation: item.sourcePhrase || item.statement,
+        evidenceWeight: item.evidenceWeight || displayConfidence(item.confidence || "possible"),
+        provenance: item.provenance || "I.C.E. Scene Context",
+        relatedRecords: [item.tier, item.statement],
+        level: normalizeText(item.tier).toLowerCase() === "explicit"
+          ? "High"
+          : normalizeText(item.tier).toLowerCase() === "strongly-implied"
+            ? "Moderate"
+            : "Limited"
+      })
     ].filter(Boolean).forEach((section) => entry.appendChild(section));
     return entry;
   }
@@ -13153,6 +13284,12 @@ createRevelationPartsSection(item.subEvents)
         evidenceWeight: `Explicit facts remain separate from strongly implied supports and possible inferences; scene accuracy is ${displayAppConfidence(scene.confidence || "possible")}.`,
         provenance: "I.C.E. Scene Models + Scene Context",
         reasoningPath: sceneEvidenceChainReasoning(scene)
+      }),
+      createConfidenceChallengeSection(scene, {
+        observation: asArray(scene.sceneContext?.explicitFacts)[0]?.sourcePhrase || scene.summarySnippet,
+        relatedRecords: sceneEvidenceChainRecords(scene),
+        evidenceWeight: `Scene accuracy: ${displayAppConfidence(scene.confidence || "possible")}; explicit/implied/possible tiers remain separate.`,
+        provenance: "I.C.E. Scene Models + Scene Context"
       })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
     card.append(header, body);

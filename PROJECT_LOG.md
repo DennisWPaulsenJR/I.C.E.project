@@ -1,3 +1,26 @@
+## 2026-06-15 - Phase 9.5a Confidence & Challenge Framework
+
+Implemented a reusable `ICE_CONFIDENCE_ANALYSIS` display layer for major Study Panel semantic cards.
+
+Initial targets:
+- Guided Study
+- Principle Networks
+- Journey Nodes
+- Journey Paths
+- Scene Intelligence cards
+- Scene Context tier items
+
+The layer displays Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference. Confidence is explicitly separate from App accuracy and is derived only from existing source phrases, verse references, supporting record counts, evidence weights, inference wording, and explicit / strongly implied / possible Scene Context tiers.
+
+Scene Context confidence preserves tier boundaries:
+- Explicit facts: High
+- Strongly implied supports: Moderate
+- Possible inferences: Limited
+
+No new doctrine, semantic extraction, persisted semantic records, crawling, automatic analysis, or queue execution was added.
+
+Controlled Matthew 5 smoke confirmed five Confidence & Challenge panels in Guided Study, verified the `ICE_CONFIDENCE_ANALYSIS` layer marker, and found Confidence, Why Confidence, Challenge Factors, Evidence Weight, Provenance, and Source Verse Reference fields.
+
 ## 2026-06-14 - Retain Journey Records By Study Scope
 
 Instruction summary:
