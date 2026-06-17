@@ -11087,6 +11087,8 @@ createRevelationPartsSection(item.subEvents)
     if (/^peacemaking$/i.test(label)) return "Peacemaking";
     if (/^reconciliation$/i.test(label)) return "Reconciliation";
     if (/^righteousness$/i.test(label)) return "Righteousness";
+    if (/^AngEL Of THE LORD receives revelation$/i.test(label) || /^Angel of THE LORD receives revelation$/i.test(label)) return "AngEL Of THE LORD appears to Joseph";
+    if (/^Joseph receives revelation$/i.test(label) || /^Joseph receives instruction$/i.test(label)) return "Joseph receives revelation/instruction";
     return label;
   }
 
@@ -11120,6 +11122,10 @@ createRevelationPartsSection(item.subEvents)
     const target = normalizeText(item.targetCharacter || "Target");
     const interaction = normalizeText(item.interactionType || "interacts with");
     const grounding = [interaction, item.sourcePhrase, item.derivedMeaning, item.verseRange].map((value) => normalizeText(value)).join(" ");
+    const hasAngel = /angel of (?:the )?lord|AngEL Of THE LORD/i.test(`${source} ${target} ${grounding}`);
+    const hasJoseph = /\bJoseph\b/i.test(`${source} ${target} ${grounding}`);
+    if (hasAngel && hasJoseph && /appear|appeareth|appeared/i.test(grounding)) return "AngEL Of THE LORD appears to Joseph";
+    if (hasAngel && hasJoseph && /instruct|bidden|saying|fear not|take unto thee|call his name|message|reveal/i.test(grounding)) return "AngEL Of THE LORD instructs Joseph";
     if (/\bnames?\b/i.test(interaction) && /\bJESUS\b/i.test(target)) return "Naming of JESUS";
     if (/egypt/i.test(grounding) && /warn|command|protect|move|flee/i.test(grounding)) return "Flight into Egypt";
     if (/wise men/i.test(grounding) && /visit|worship|came|house/i.test(grounding)) return "Wise Men visit";
@@ -11352,6 +11358,25 @@ createRevelationPartsSection(item.subEvents)
         sourceGrounding: item.sourceGrounding,
         confidence: item.confidence
       });
+      const interactionText = [item.sourceCharacter, item.targetCharacter, item.interactionType, item.sourcePhrase, item.derivedMeaning, item.sourceGrounding].map((value) => normalizeText(value)).join(" ");
+      if (/angel of (?:the )?lord|AngEL Of THE LORD/i.test(interactionText) && /\bJoseph\b/i.test(interactionText) && /instruct|bidden|saying|fear not|take unto thee|call his name|message|reveal|dream/i.test(interactionText)) {
+        addNode({
+          nodeName: "Joseph receives revelation/instruction",
+          nodeType: "Revelation",
+          whyItMatters: "Joseph is the grounded recipient of the angelic message and instruction in the current source.",
+          relatedNodeNames: ["THE LORD", "AngEL Of THE LORD", "Joseph", nodeName, ...asArray(item.relatedEntities)],
+          sourcePhrase: item.sourcePhrase,
+          derivedMeaning: "THE LORD remains the source authority; AngEL Of THE LORD is the messenger; Joseph receives the instruction.",
+          sourceRecord: item,
+          provenance: "Character Interactions",
+          evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Messenger-to-recipient distinction" : "Relationship Inference",
+          reasoningPath: ["Matthew 1 angel/Joseph interaction selected", "Source authority, messenger, and recipient roles kept distinct", "Recipient node named for Joseph rather than the angel"],
+          supportingLayers: ["Character Interactions", "Revelation Patterns", "Entity Relation Roles"],
+          evidence: item.evidence,
+          sourceGrounding: item.sourceGrounding || "Grounded by the angel appearing/speaking to Joseph and instructing him.",
+          confidence: item.confidence
+        });
+      }
     });
 
     graph.forEach((item) => {
@@ -11535,6 +11560,7 @@ createRevelationPartsSection(item.subEvents)
   }
   function journeyPathRelationshipType(value = "") {
     const text = normalizeText(value).toLowerCase();
+    if (/angel of (?:the )?lord|angel.*joseph|joseph.*angel/.test(text) && /appear|instruct|message|reveal|dream|warn|messenger/.test(text)) return "Instructs / Reveals Message To";
     if (/fulfill|prophecy/.test(text)) return "Fulfills";
     if (/reveal|dream|warn|messenger/.test(text)) return "Reveals";
     if (/contrast|adversar|oppos|decept/.test(text)) return "Contrasts";
@@ -11570,7 +11596,8 @@ createRevelationPartsSection(item.subEvents)
       const from = resolveNode(candidate.fromNode);
       const to = resolveNode(candidate.toNode);
       if (!from || !to || from.nodeName.toLowerCase() === to.nodeName.toLowerCase()) return;
-      const relationshipType = journeyPathRelationshipType(candidate.relationshipType);
+      const relationshipContext = [candidate.relationshipType, candidate.whyConnected, candidate.sourcePhrase, candidate.derivedMeaning, from.nodeName, to.nodeName].join(" ");
+      const relationshipType = journeyPathRelationshipType(relationshipContext);
       const key = [from.nodeName, relationshipType, to.nodeName].map((value) => normalizeText(value).toLowerCase()).join("|");
       const existing = paths.get(key) || {
         id: `journey-path-${key.replace(/[^a-z0-9]+/g, "-")}`,
@@ -11694,6 +11721,27 @@ createRevelationPartsSection(item.subEvents)
       const pageKey = item.journeyPageKey || "current-source";
       if (!interactionGroups.has(pageKey)) interactionGroups.set(pageKey, []);
       interactionGroups.get(pageKey).push(item);
+      const interactionText = [item.sourceCharacter, item.targetCharacter, item.interactionType, item.sourcePhrase, item.derivedMeaning, item.sourceGrounding].map((value) => normalizeText(value)).join(" ");
+      if (/angel of (?:the )?lord|AngEL Of THE LORD/i.test(interactionText) && /\bJoseph\b/i.test(interactionText) && /instruct|bidden|saying|fear not|take unto thee|call his name|message|reveal|dream/i.test(interactionText)) {
+        addPath({
+          fromNode: journeyNodeNameFromInteraction(item),
+          toNode: "Joseph receives revelation/instruction",
+          relationshipType: "Instructs / Reveals Message To",
+          whyConnected: "AngEL Of THE LORD is the messenger who delivers THE LORD's instruction to Joseph; Joseph is the recipient.",
+          supportingRecords: [
+            `${item.sourceCharacter || "Source"} -> ${item.targetCharacter || "Target"} | ${item.interactionType || "interaction"}`,
+            ...asArray(item.evidence)
+          ],
+          provenance: "Character Interactions",
+          evidenceWeight: item.sourcePhrase ? "Direct Source Evidence / Messenger-to-recipient distinction" : "Relationship Inference",
+          sourcePhrase: item.sourcePhrase,
+          derivedMeaning: "Source authority, messenger, and recipient are kept distinct: THE LORD / GOD as source authority, AngEL Of THE LORD as messenger, Joseph as recipient.",
+          sourceRecord: item,
+          reasoningPath: ["Matthew 1 angel/Joseph interaction selected", "Messenger endpoint resolved", "Joseph recipient node resolved", "Relationship worded as message delivery, not angel receiving revelation"],
+          sourceGrounding: item.sourceGrounding || "Grounded by Matthew 1:20-21 angel appearance, speech, and instruction to Joseph.",
+          confidence: item.confidence
+        });
+      }
     });
     interactionGroups.forEach((interactions) => {
       interactions.sort((left, right) => Number(left.timelinePosition || 0) - Number(right.timelinePosition || 0));
@@ -12455,6 +12503,7 @@ createRevelationPartsSection(item.subEvents)
 
   function timelineRelationshipTypeFromText(value = "") {
     const text = normalizeText(value).toLowerCase();
+    if (/angel of (?:the )?lord|angel.*joseph|joseph.*angel/.test(text) && /appear|instruct|message|reveal|dream|warn|messenger/.test(text)) return "Instructs / Reveals Message To";
     if (/fulfill|prophecy|spoken|called my son|nazarene/.test(text)) return "Fulfills";
     if (/warn|dream|angel|reveal|instruction|command/.test(text)) return "Reveals / Directs";
     if (/flee|return|depart|came|went|movement|travel|egypt|nazareth/.test(text)) return "Leads To";
