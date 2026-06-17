@@ -21,6 +21,36 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-16 - pcdx - Study Themes Foundation
+Summary:
+- Added a derived display-only `ICE_STUDY_THEMES` layer.
+- Added a deferred Study Panel `Study Themes` section after Timeline Sequence.
+- Study Themes use an approved theme catalog and emit only when retained, current-scope semantic records contain matching grounded wording.
+- Cards expose Theme Name, Why This Theme Exists, Supporting Records, Supporting Verses, Related Timeline Events, Related Journey Nodes, Related Principles, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Aligned Study Themes with retained Journey/Timeline source snapshots so Matthew 5 Mercy and Kingdom of Heaven remain visible when Matthew 5 is in scope without leaking into other scopes.
+- Preserved no doctrine generation, no outside-scope theme discovery, no crawling, and no automatic analysis.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled Study Themes presentation smoke passed for Matthew 2 Fulfillment and Matthew 5 Mercy / Kingdom of Heaven, with source verse references and support/provenance fields present.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser/user wording review remains recommended before theme navigation or persistence.
+
 ## 2026-06-16 - pcdx - Timeline Sequence Foundation
 Summary:
 - Added a derived display-only `ICE_TIMELINE_SEQUENCE` layer.

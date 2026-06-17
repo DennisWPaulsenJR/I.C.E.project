@@ -94,6 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Timeline Events": "Grounded event records derived from current-scope Journey, Scene, and semantic records.",
     "Timeline Relationships": "Grounded display relationships between existing current-scope Timeline Events.",
     "Timeline Sequence": "Current-scope event progression in source order using existing Timeline Events and Relationships.",
+    "Study Themes": "Current-scope thematic groupings derived from existing semantic records.",
     "Semantic Coverage": "Layer-by-layer applicability and record status for the current chapter.",
     "Semantic Resolution Explanation": "Why generated semantic labels are grounded and how they were resolved.",
     "Session Continuity Review": "Continuity across analyzed pages in the current session.",
@@ -12869,6 +12870,240 @@ createRevelationPartsSection(item.subEvents)
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more sequence step(s) hidden by the preview limit. Use panel search to focus a step.`);
   }
 
+  function studyThemeCatalog() {
+    return [
+      { name: "Redemption", pattern: /redeem|redemption|save|saviour|deliver|aton/i },
+      { name: "Mercy", pattern: /mercy|merciful|forgive|compassion/i },
+      { name: "Kingdom of Heaven", pattern: /kingdom of heaven|kingdom|poor in spirit|persecuted|righteousness/i },
+      { name: "Faith", pattern: /\bfaith\b|believ|trust/i },
+      { name: "Covenant", pattern: /covenant|promise|fulfil(?:l)?|fulfillment|prophet|spoken/i },
+      { name: "Obedience", pattern: /obey|obedien|command|arise|took|did as|observe/i },
+      { name: "Revelation", pattern: /reveal|dream|angel|messenger|warn|instruction/i },
+      { name: "Discipleship", pattern: /disciple|follow|come unto|learn|teach/i },
+      { name: "Healing", pattern: /heal|healed|sick|leper|cleanse|devil|spirit/i },
+      { name: "Fulfillment", pattern: /fulfill|fulfilled|prophecy|prophet|egypt|nazareth|spoken/i },
+      { name: "Righteousness", pattern: /righteous|law|commandment|reconciliation|pure in heart/i },
+      { name: "Peacemaking", pattern: /peace|peacemaker|reconcile|enemy/i }
+    ];
+  }
+
+  function studyThemeSourceRecords() {
+    const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
+      layer,
+      record,
+      label: normalizeText(record?.[labelKey] || record?.eventName || record?.nodeName || record?.corePrinciple || record?.teachingTopic || record?.sceneTitle || record?.node || record?.principle || record?.relationshipType || layer)
+    }));
+    return [
+      ...wrap("Principle Networks", journeyRetainedSemanticRecords("principleNetworks"), "corePrinciple"),
+      ...wrap("Timeline Events", timelineEventsRecords(), "eventName"),
+      ...wrap("Journey Nodes", journeyNodesRecords(), "nodeName"),
+      ...wrap("Journey Paths", journeyPathRecords(), "relationshipType"),
+      ...wrap("Knowledge Graph", journeyKnowledgeGraphRecords(), "node"),
+      ...wrap("Teaching Semantics", journeyRetainedSemanticRecords("teachingSemantics"), "teachingTopic"),
+      ...wrap("Principle Relationships", journeyRetainedSemanticRecords("principleRelationships"), "principle"),
+      ...wrap("Semantic Causality", scopedSemanticRecords(studyData.semanticCausality), "sequenceType"),
+      ...wrap("Trust & Verification", scopedSemanticRecords(studyData.trustVerification), "result"),
+      ...wrap("Scene Intelligence", journeyRetainedSemanticRecords("sceneModels"), "sceneTitle"),
+      ...wrap("Character Interactions", journeyRetainedSemanticRecords("characterInteractions"), "interactionType"),
+      ...wrap("Focus Lens", journeyRetainedSemanticRecords("focusLens"), "currentFocus")
+    ];
+  }
+
+  function studyThemeRecordText(item = {}) {
+    const record = item.record || {};
+    return [
+      item.layer,
+      item.label,
+      record.eventName,
+      record.nodeName,
+      record.corePrinciple,
+      record.teachingTopic,
+      record.teachingBlock,
+      record.principle,
+      record.relatedPrinciples,
+      record.relationshipType,
+      record.result,
+      record.challengeFactors,
+      record.whyConfidence,
+      record.whySupport,
+      record.commandment,
+      record.promise,
+      record.warning,
+      record.blessing,
+      record.application,
+      record.sceneTitle,
+      record.summarySnippet,
+      record.node,
+      record.type,
+      record.relationshipType,
+      record.whyItMatters,
+      record.whyConnected,
+      record.relatedJourneyNodes,
+      record.relatedJourneyPaths,
+      record.relatedPrinciples,
+      record.relatedNodes,
+      record.evidence,
+      record.sourcePhrase,
+      record.derivedMeaning,
+      record.sourceGrounding,
+      record.reasoningPath
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function studyThemeReferenceLabel(item = {}) {
+    const record = item.record || {};
+    return normalizeText(record.verseRange || record.scopePath || record.sourceContext?.sourceTitle || record.sourceUrl || "");
+  }
+
+  function studyThemeRecords() {
+    const sources = studyThemeSourceRecords();
+    const themes = [];
+    studyThemeCatalog().forEach((theme) => {
+      const matches = sources.filter((item) => theme.pattern.test(studyThemeRecordText(item)));
+      if (!matches.length) return;
+      const first = matches[0].record || {};
+      const relatedTimelineEvents = uniqueStudyList(matches
+        .filter((item) => item.layer === "Timeline Events")
+        .map((item) => item.record.eventName || item.label)).slice(0, 8);
+      const relatedJourneyNodes = uniqueStudyList(matches
+        .filter((item) => item.layer === "Journey Nodes")
+        .map((item) => item.record.nodeName || item.label)).slice(0, 8);
+      const relatedPrinciples = uniqueStudyList(matches
+        .flatMap((item) => [item.record.corePrinciple, item.record.principle, item.record.teachingTopic, ...asArray(item.record.relatedPrinciples)])
+        .map((value) => normalizeText(value))
+        .filter(Boolean)).slice(0, 10);
+      const supportingVerses = uniqueStudyList(matches.map(studyThemeReferenceLabel).filter(Boolean)).slice(0, 10);
+      const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
+      const sourcePhrases = uniqueStudyList(matches.map((item) => item.record.sourcePhrase || item.record.summarySnippet || item.record.derivedMeaning).filter(Boolean)).slice(0, 5);
+      themes.push({
+        id: `study-theme-${theme.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        themeName: theme.name,
+        whyThisThemeExists: `${theme.name} appears across ${matches.length} current-scope semantic record(s).`,
+        supportingRecords,
+        supportingVerses,
+        relatedTimelineEvents,
+        relatedJourneyNodes,
+        relatedPrinciples,
+        sourcePhrase: first.sourcePhrase || sourcePhrases[0] || "",
+        derivedMeaning: `${theme.name} is a derived current-scope study grouping based only on existing semantic records.`,
+        verseRange: first.verseRange || "",
+        scopePath: first.scopePath || "",
+        sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
+        sourceContext: first.sourceContext || {},
+        evidenceWeight: matches.some((item) => item.record.sourcePhrase) ? "Direct Source Evidence / Thematic Grouping" : "Derived Semantic Evidence / Thematic Grouping",
+        provenance: `I.C.E. Study Themes derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ")}`,
+        reasoningPath: [
+          "Approved theme label selected from Study Themes catalog",
+          "Current-scope semantic records searched for grounded theme wording",
+          `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
+          "Supporting verses, timeline events, journey nodes, and principles collected from matched records",
+          "No doctrine generation, crawling, or automatic analysis added"
+        ],
+        sourceGrounding: sourcePhrases.join(" ") || `Derived from existing current-scope records that mention ${theme.name}.`,
+        confidence: matches.some((item) => item.record.sourcePhrase || item.record.verseRange) ? "probable" : "possible",
+        activeScope: currentStudyScopeLabel(),
+        scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. No theme discovery outside analyzed scope.`
+      });
+    });
+    return themes.slice(0, 24);
+  }
+
+  function studyThemeSearchText(item = {}) {
+    return [
+      item.themeName,
+      item.whyThisThemeExists,
+      item.supportingRecords,
+      item.supportingVerses,
+      item.relatedTimelineEvents,
+      item.relatedJourneyNodes,
+      item.relatedPrinciples,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createStudyThemeCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card study-theme-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.themeName, item.supportingRecords, item.relatedTimelineEvents, item.relatedJourneyNodes, item.relatedPrinciples, item.sourcePhrase, item.derivedMeaning]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.themeName || "Study Theme", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.activeScope, `${asArray(item.supportingRecords).length} support record(s)`, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Theme Name", item.themeName || "Study Theme", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Why This Theme Exists", item.whyThisThemeExists || "Derived from current-scope semantic records.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Records", "", { list: asArray(item.supportingRecords), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Verses", "", { list: asArray(item.supportingVerses), plainList: true, preserveExact: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Related Timeline Events", "", { list: asArray(item.relatedTimelineEvents), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes", "", { list: asArray(item.relatedJourneyNodes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", "", { list: asArray(item.relatedPrinciples), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Study Themes", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence / Thematic Grouping", evidenceStrength: "theme emitted only when current-scope records contain matching grounded wording", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Study Themes", label: item.themeName || "Study Theme", layer: "Study Themes / ICE_STUDY_THEMES", storageKey: "Not persisted in Phase 9.7a", scopePath: item.activeScope, rule: "Study Themes group existing current-scope semantic records only. They do not generate doctrine, search outside analyzed scope, crawl, or automatically analyze." }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Study Theme: ${item.themeName || "Theme"}`,
+        relatedRecords: item.supportingRecords,
+        conclusion: item.whyThisThemeExists || item.derivedMeaning,
+        provenance: item.provenance || "I.C.E. Study Themes"
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance || "I.C.E. Study Themes"
+      })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderStudyThemes(term) {
+    const container = document.getElementById("studyThemesCards");
+    const count = document.getElementById("studyThemesCount");
+    if (!container || !count) return;
+    const records = studyThemeRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(studyThemeSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} theme(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Study Themes are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Study Themes",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_STUDY_THEMES",
+        "Purpose: group current-scope semantic records into major study themes.",
+        "Boundary: display records only; no doctrine generation, outside-scope theme discovery, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived study theme layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Study Themes match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createStudyThemeCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more study theme(s) hidden by the preview limit. Use panel search to focus a theme.`);
+  }
+
   function principleNetworkSearchText(item = {}) {
     return [
       item.corePrinciple,
@@ -14541,6 +14776,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Timeline Events", sectionId: "timelineEventsSection", renderer: renderTimelineEvents },
       { label: "Timeline Relationships", sectionId: "timelineRelationshipsSection", renderer: renderTimelineRelationships },
       { label: "Timeline Sequence", sectionId: "timelineSequenceSection", renderer: renderTimelineSequence },
+      { label: "Study Themes", sectionId: "studyThemesSection", renderer: renderStudyThemes },
       { label: "Semantic Coverage", sectionId: "semanticCoverageSection", renderer: renderSemanticCoverage },
       { label: "Semantic Resolution Explanation", sectionId: "resolutionExplanationsSection", renderer: renderResolutionExplanations },
       { label: "Session Continuity Review", sectionId: "sessionContinuityReviewSection", renderer: renderSessionContinuityReview },
@@ -14650,6 +14886,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Timeline Events") return timelineEventsRecords().length;
     if (label === "Timeline Relationships") return timelineRelationshipRecords().length;
     if (label === "Timeline Sequence") return timelineSequenceRecords().length;
+    if (label === "Study Themes") return studyThemeRecords().length;
     const scopedRecords = deferredScopedSectionRecords(label);
     if (scopedRecords) return scopedRecords.length;
     if (label === "Current Page") return activeSourcePageRecord() ? 1 : 0;

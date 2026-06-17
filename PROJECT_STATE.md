@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.7a Study Themes Foundation is implemented in this update as a derived display-only layer identified by `ICE_STUDY_THEMES`.
+- The Study Panel now includes a deferred `Study Themes` section after Timeline Sequence.
+- Study Themes use an approved theme catalog and emit current-scope groupings only when existing semantic records contain matching grounded wording.
+- Theme cards display Theme Name, Why This Theme Exists, Supporting Records, Supporting Verses, Related Timeline Events, Related Journey Nodes, Related Principles, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Study Themes reuse retained, current-scope Principle Networks, Principle Relationships, Timeline Events, Journey Nodes, Journey Paths, Knowledge Graph, Teaching Semantics, Scene Intelligence, Character Interactions, and Focus Lens records without generating doctrine, crawling, discovering themes outside analyzed scope, or automatically analyzing pages.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled Study Themes presentation smoke passed: Matthew 2 rendered Fulfillment, Matthew 5 rendered Mercy and Kingdom of Heaven, source verse references were present, and panel shell timing remained fast in the temporary profile.
+- Next recommended task: browser/user presentation review of Study Themes wording and preview ordering before adding theme navigation or persistence.
 - Phase 9.6c Timeline Sequence Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_SEQUENCE`.
 - The Study Panel now includes a deferred `Timeline Sequence` section after Timeline Relationships.
 - Timeline Sequence orders existing current-scope Timeline Events by source verse/scope metadata and shows progression as numbered source-order steps.

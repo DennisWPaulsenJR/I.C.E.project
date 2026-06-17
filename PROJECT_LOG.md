@@ -1,3 +1,15 @@
+## 2026-06-16 - Phase 9.7a Study Themes Foundation
+
+Implemented a derived `ICE_STUDY_THEMES` display layer for current-scope thematic groupings.
+
+The Study Panel now has a deferred `Study Themes` section after Timeline Sequence. Theme records use an approved catalog and are emitted only when existing current-scope semantic records contain matching grounded wording.
+
+Theme cards display Theme Name, Why This Theme Exists, Supporting Records, Supporting Verses, Related Timeline Events, Related Journey Nodes, Related Principles, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+
+The layer reuses retained, current-scope Principle Networks, Principle Relationships, Timeline Events, Journey Nodes, Journey Paths, Knowledge Graph, Teaching Semantics, Scene Intelligence, Character Interactions, and Focus Lens records. It does not generate doctrine, search outside analyzed scope, crawl, or automatically analyze pages.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. A controlled Study Themes presentation smoke confirmed Fulfillment in Matthew 2 and Mercy / Kingdom of Heaven in Matthew 5, with source verse references and support/provenance display present.
+
 ## 2026-06-16 - Phase 9.6c Timeline Sequence Foundation
 
 Implemented a derived `ICE_TIMELINE_SEQUENCE` display layer for current-scope event progression.
