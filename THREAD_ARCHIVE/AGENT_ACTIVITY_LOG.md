@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-16 - pcdx - Timeline Relationships Foundation
+Summary:
+- Added a derived display-only `ICE_TIMELINE_RELATIONSHIPS` layer.
+- Added a deferred Study Panel `Timeline Relationships` section after Timeline Events.
+- Timeline Relationships connect existing current-scope Timeline Events as `Event A -> Relationship -> Event B`.
+- Cards include source references for both events, why the events are related, supporting records, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Preserved no visual timeline, no dates, no traversal, no navigation controls, no crawling, no queue execution, and no automatic analysis.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled Matthew 2 presentation smoke passed with 9 Timeline Relationships, 5 preview cards, disclosure fields present, and no Matthew 5 wording leakage.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser/user presentation review across Matthew 1, Matthew 2, and Matthew 5 remains recommended before adding visual timeline or navigation concepts.
+
 ## 2026-06-16 - pcdx - Timeline Events Foundation
 Summary:
 - Added a derived display-only `ICE_TIMELINE_EVENTS` layer.

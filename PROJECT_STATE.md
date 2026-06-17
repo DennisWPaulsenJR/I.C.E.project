@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.6b Timeline Relationships Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_RELATIONSHIPS`.
+- The Study Panel now includes a deferred `Timeline Relationships` section after Timeline Events.
+- Timeline Relationships connect existing current-scope Timeline Events as `Event A -> Relationship -> Event B`.
+- Relationship cards display source references for both events, why the events are related, supporting records, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Timeline Relationships are current-scope display records only; they do not add visual timeline rendering, dates, traversal, navigation controls, crawling, queue execution, or automatic analysis.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled Matthew 2 presentation smoke confirmed 9 Timeline Relationships, 5 preview cards, Event A / Relationship / Event B display, Evidence Chain, Analysis Support, Challenge Factors, Provenance, and no Matthew 5 wording leakage.
+- Next recommended task: browser/user presentation review of Timeline Relationships across Matthew 1, Matthew 2, and Matthew 5 before adding any visual timeline or navigation concepts.
 - Phase 9.6a Timeline Events Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_EVENTS`.
 - The Study Panel now includes a deferred `Timeline Events` section after Journey Hubs.
 - Timeline Events are derived from current-scope Journey Nodes, Journey Paths, Journey Hubs, Scene Intelligence, Character Interactions, and Semantic Events.

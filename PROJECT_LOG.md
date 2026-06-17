@@ -1,3 +1,13 @@
+## 2026-06-16 - Phase 9.6b Timeline Relationships Foundation
+
+Implemented a derived `ICE_TIMELINE_RELATIONSHIPS` display layer for relationships between grounded Timeline Events.
+
+The Study Panel now has a deferred `Timeline Relationships` section after Timeline Events. Relationship cards present `Event A -> Relationship -> Event B`, with source references for both events, why they are related, supporting records, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and current Study Scope boundary.
+
+The layer reuses existing current-scope Timeline Events, Journey Paths, and Semantic Causality records. It does not persist a new semantic record set and does not add visual timelines, dates, traversal, navigation controls, crawling, queue execution, or automatic analysis.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. A controlled Matthew 2 presentation smoke rendered 9 Timeline Relationships with no Matthew 5 wording leakage.
+
 ## 2026-06-16 - Phase 9.6a Timeline Events Foundation
 
 Implemented a derived `ICE_TIMELINE_EVENTS` display layer for grounded events within the current Study Scope.
