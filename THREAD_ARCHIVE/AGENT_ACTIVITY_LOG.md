@@ -21,6 +21,34 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-16 - pcdx - Timeline Events Foundation
+Summary:
+- Added a derived display-only `ICE_TIMELINE_EVENTS` layer.
+- Added a deferred Study Panel `Timeline Events` section after Journey Hubs.
+- Timeline Events derive grounded event records from current-scope Journey Nodes, Journey Paths, Journey Hubs, Scene Intelligence, Character Interactions, and Semantic Events.
+- Cards expose Event Name, Event Type, Participants, Source Verse Reference, Why This Event Matters, Related Journey Nodes/Paths, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, and App accuracy.
+- Preserved no visual timeline, no cross-scope chronology, no date estimation, no traversal controls, no crawling, no queue execution, and no automatic analysis.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser/user presentation smoke of specific Timeline Events remains the recommended next check.
+
 ## 2026-06-15 - pcdx - Refine confidence display wording
 Summary:
 - Refined `ICE_CONFIDENCE_ANALYSIS` user-facing labels from confidence wording to Analysis Support wording.

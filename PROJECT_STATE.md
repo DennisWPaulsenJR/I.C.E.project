@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.6a Timeline Events Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_EVENTS`.
+- The Study Panel now includes a deferred `Timeline Events` section after Journey Hubs.
+- Timeline Events are derived from current-scope Journey Nodes, Journey Paths, Journey Hubs, Scene Intelligence, Character Interactions, and Semantic Events.
+- Timeline Event cards display Event Name, Event Type, Participants, Source Verse Reference, Why This Event Matters, Related Journey Nodes, Related Journey Paths, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, and App accuracy.
+- Timeline Events are current-scope records only; they do not add visual timeline rendering, chronology beyond the active Study Scope, date estimation, traversal controls, crawling, queue execution, or automatic analysis.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- `QA_REPORTS/latest-study-panel-report.md` was refreshed by the required session review command.
+- Next recommended task: browser/user presentation smoke of Timeline Events, especially Joseph revelation in Matthew 1, Egypt-related events in Matthew 2, teaching events in Matthew 5, and source verse quick references.
 - Phase 9.5b Confidence Display Wording Refinement is implemented in this update on top of the `ICE_CONFIDENCE_ANALYSIS` display layer.
 - Guided Study, Principle Networks, Journey Nodes, Journey Paths, Scene cards, and Scene Context items now expose a collapsed Analysis Support & Challenges panel.
 - The panel shows Analysis Support, helper text, Why Support Is Strong/Supported/Limited, Challenge Factors, Evidence Weight, Provenance, and a Source Verse Reference.

@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
+    "Timeline Events": "Grounded event records derived from current-scope Journey, Scene, and semantic records.",
     "Semantic Coverage": "Layer-by-layer applicability and record status for the current chapter.",
     "Semantic Resolution Explanation": "Why generated semantic labels are grounded and how they were resolved.",
     "Session Continuity Review": "Continuity across analyzed pages in the current session.",
@@ -12169,6 +12170,286 @@ createRevelationPartsSection(item.subEvents)
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createJourneyHubCard(item)));
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more journey hub(s) hidden by the preview limit. Use panel search to focus a convergence point.`);
   }
+
+  function timelineEventTypeFromText(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/dream|reveal|messenger|warn|angel|instruction/.test(text)) return "Revelation";
+    if (/teach|sermon|beatitude|disciple|command|principle/.test(text)) return "Teaching";
+    if (/heal|cleans|leper|sick|cast out|devil|spirit/.test(text)) return "Healing";
+    if (/travel|journey|depart|return|egypt|nazareth|galilee|mountain|came|went|flee|flight/.test(text)) return "Travel";
+    if (/fulfill|prophecy|prophet|spoken/.test(text)) return "Fulfillment";
+    if (/prophes/.test(text)) return "Prophecy";
+    if (/authority|command|rebuke|called|named/.test(text)) return "Authority Action";
+    return "Encounter";
+  }
+
+  function timelineEventNameFromRecord(record = {}, fallback = "Timeline event") {
+    return journeyNodeCanonicalName(
+      record.eventName
+      || record.nodeName
+      || record.sceneTitle
+      || record.chainTitle
+      || record.action
+      || record.eventType
+      || record.teachingTopic
+      || record.interactionType
+      || fallback
+    );
+  }
+
+  function timelineEventParticipants(record = {}) {
+    return uniqueStudyList([
+      ...asArray(record.participants),
+      ...asArray(record.relatedEntities),
+      ...asArray(record.relatedNodes),
+      record.speaker,
+      record.audience,
+      record.sourceCharacter,
+      record.targetCharacter,
+      record.actor,
+      record.narrator,
+      record.nodeName,
+      record.fromNode,
+      record.toNode
+    ].map((value) => normalizeText(value)).filter(Boolean)).slice(0, 8);
+  }
+
+  function timelineEventSourceFields(record = {}) {
+    return {
+      verseRange: record.verseRange || record.sourceVerse || record.sourceRef || "",
+      scopePath: record.scopePath || record.sourceScopePath || "",
+      sourcePhrase: record.sourcePhrase || record.anchorText || record.sourceSnippet || record.summarySnippet || "",
+      sourceUrl: record.sourceUrl || record.sourceContext?.sourceUrl || "",
+      sourceContext: record.sourceContext || {}
+    };
+  }
+
+  function timelineRelatedJourneyRecords(eventName = "", record = {}, nodes = [], paths = []) {
+    const eventText = normalizeText([eventName, record.derivedMeaning, record.sourceGrounding, record.sourcePhrase, record.summarySnippet].join(" ")).toLowerCase();
+    const relatedNodes = nodes
+      .filter((node) => {
+        const nodeName = normalizeText(node.nodeName).toLowerCase();
+        return nodeName && (eventText.includes(nodeName) || nodeName.includes(normalizeText(eventName).toLowerCase()));
+      })
+      .map((node) => node.nodeName);
+    const relatedPaths = paths
+      .filter((path) => relatedNodes.includes(path.fromNode) || relatedNodes.includes(path.toNode))
+      .map((path) => `${path.fromNode} -> ${path.toNode}`);
+    return {
+      relatedNodes: uniqueStudyList(relatedNodes).slice(0, 6),
+      relatedPaths: uniqueStudyList(relatedPaths).slice(0, 6)
+    };
+  }
+
+  function timelineEventsRecords() {
+    const nodes = journeyNodesRecords();
+    const paths = journeyPathRecords();
+    const events = new Map();
+    const addEvent = (record = {}, options = {}) => {
+      const eventName = timelineEventNameFromRecord(record, options.fallbackName);
+      if (!eventName) return;
+      const source = timelineEventSourceFields(record);
+      const text = [eventName, options.eventType, record.nodeType, record.sceneType, record.eventType, record.interactionType, record.derivedMeaning, record.sourceGrounding, source.sourcePhrase].join(" ");
+      const eventType = options.eventType || timelineEventTypeFromText(text);
+      const key = [eventName, source.verseRange || source.scopePath || record.journeyPageKey || record.id || options.sourceLayer].map((value) => normalizeText(value).toLowerCase()).join("|");
+      const related = timelineRelatedJourneyRecords(eventName, record, nodes, paths);
+      const existing = events.get(key) || {
+        id: `timeline-event-${key.replace(/[^a-z0-9]+/g, "-")}`,
+        eventName,
+        eventType,
+        participants: [],
+        whyItMatters: "",
+        relatedJourneyNodes: [],
+        relatedJourneyPaths: [],
+        sourcePhrase: "",
+        derivedMeaning: "",
+        verseRange: "",
+        scopePath: "",
+        sourceUrl: "",
+        sourceContext: {},
+        provenanceSources: [],
+        evidenceWeight: "",
+        reasoningPath: [],
+        sourceGrounding: "",
+        confidence: "possible",
+        activeScope: currentStudyScopeLabel(),
+        scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. No chronology beyond current analyzed scope is inferred.`
+      };
+      existing.participants = uniqueStudyList([...existing.participants, ...timelineEventParticipants(record)]).slice(0, 8);
+      existing.relatedJourneyNodes = uniqueStudyList([...existing.relatedJourneyNodes, ...related.relatedNodes, ...asArray(options.relatedJourneyNodes)]).slice(0, 8);
+      existing.relatedJourneyPaths = uniqueStudyList([...existing.relatedJourneyPaths, ...related.relatedPaths, ...asArray(options.relatedJourneyPaths)]).slice(0, 8);
+      if (!existing.whyItMatters) existing.whyItMatters = normalizeText(options.whyItMatters || record.whyItMatters || record.whyConnected || record.summarySnippet || record.derivedMeaning || `${eventName} is a grounded event within ${currentStudyScopeLabel()}.`);
+      if (!existing.sourcePhrase && source.sourcePhrase) existing.sourcePhrase = normalizeText(source.sourcePhrase);
+      if (!existing.derivedMeaning) existing.derivedMeaning = normalizeText(record.derivedMeaning || options.derivedMeaning || existing.whyItMatters);
+      if (!existing.verseRange && source.verseRange) existing.verseRange = normalizeText(source.verseRange);
+      if (!existing.scopePath && source.scopePath) existing.scopePath = normalizeText(source.scopePath);
+      if (!existing.sourceUrl && source.sourceUrl) existing.sourceUrl = normalizeText(source.sourceUrl);
+      if (!Object.keys(existing.sourceContext).length && Object.keys(source.sourceContext).length) existing.sourceContext = { ...source.sourceContext };
+      existing.provenanceSources = uniqueStudyList([...existing.provenanceSources, options.sourceLayer || record.provenance]).slice(0, 8);
+      if (!existing.evidenceWeight) existing.evidenceWeight = normalizeText(record.evidenceWeight || options.evidenceWeight || "Derived Semantic Evidence");
+      existing.reasoningPath = uniqueStudyList([
+        ...existing.reasoningPath,
+        ...asArray(record.reasoningPath),
+        `${options.sourceLayer || "Scoped semantic record"} reused as a grounded timeline event source`,
+        "Current Study Scope boundary applied",
+        "No visual timeline, date estimation, traversal control, crawling, or automatic analysis added"
+      ]).slice(0, 10);
+      if (!existing.sourceGrounding) existing.sourceGrounding = normalizeText(record.sourceGrounding || record.sourcePhrase || source.sourcePhrase || existing.whyItMatters);
+      if (record.confidence === "explicit" || (record.confidence === "probable" && existing.confidence === "possible")) existing.confidence = record.confidence;
+      events.set(key, existing);
+    };
+
+    nodes
+      .filter((item) => /event|revelation|teaching|fulfillment|prophecy|encounter|authority/i.test(item.nodeType || ""))
+      .forEach((item) => addEvent(item, {
+        sourceLayer: "Journey Nodes",
+        eventType: timelineEventTypeFromText(`${item.nodeName} ${item.nodeType} ${item.whyItMatters}`),
+        whyItMatters: item.whyItMatters
+      }));
+    scopedSemanticRecords(studyData.sceneModels).forEach((item) => addEvent(item, {
+      sourceLayer: "Scene Intelligence",
+      fallbackName: item.sceneTitle || "Scene event",
+      eventType: timelineEventTypeFromText(`${item.sceneTitle} ${item.sceneType} ${item.summarySnippet}`),
+      whyItMatters: item.summarySnippet || "Scene is grounded in the current Study Scope."
+    }));
+    journeyRetainedSemanticRecords("characterInteractions").forEach((item) => addEvent(item, {
+      sourceLayer: "Character Interactions",
+      fallbackName: journeyNodeNameFromInteraction(item),
+      eventType: timelineEventTypeFromText(`${item.interactionType} ${item.sourcePhrase} ${item.derivedMeaning}`),
+      whyItMatters: item.derivedMeaning || item.sourceGrounding
+    }));
+    scopedSemanticRecords(studyData.semanticEvents).forEach((item) => addEvent(item, {
+      sourceLayer: "Semantic Events",
+      fallbackName: `${item.actor || item.narrator || "Source"} ${item.action || item.eventType || "event"}`,
+      eventType: timelineEventTypeFromText(`${item.eventType} ${item.action} ${item.semanticCategory}`),
+      whyItMatters: item.normalizedMeaning || item.sourceGrounding || item.sourceSnippet
+    }));
+    journeyHubRecords()
+      .filter((item) => /event|teaching|fulfillment|revelation/i.test(item.hubType || ""))
+      .forEach((item) => addEvent(item, {
+        sourceLayer: "Journey Hubs",
+        fallbackName: item.hubName,
+        eventType: timelineEventTypeFromText(`${item.hubType} ${item.hubName} ${item.whyCentral}`),
+        whyItMatters: item.whyCentral,
+        relatedJourneyNodes: item.connectedNodes,
+        relatedJourneyPaths: item.connectedPaths
+      }));
+
+    return Array.from(events.values()).slice(0, 72).map((item) => ({
+      ...item,
+      provenance: `I.C.E. Timeline Events derived from ${item.provenanceSources.filter(Boolean).join(", ") || "current scoped semantic records"}`,
+      evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence",
+      participants: item.participants.length ? item.participants : ["Participants not explicitly resolved."],
+      relatedJourneyNodes: item.relatedJourneyNodes.length ? item.relatedJourneyNodes : ["No related Journey Node resolved in current scope."],
+      relatedJourneyPaths: item.relatedJourneyPaths.length ? item.relatedJourneyPaths : ["No related Journey Path resolved in current scope."],
+      sourcePhrase: item.sourcePhrase || "No direct source phrase recorded; event is derived from existing scoped semantic records."
+    }));
+  }
+
+  function timelineEventSearchText(item = {}) {
+    return [
+      item.eventName,
+      item.eventType,
+      item.participants,
+      item.whyItMatters,
+      item.relatedJourneyNodes,
+      item.relatedJourneyPaths,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createTimelineEventCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card timeline-event-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.eventName, item.participants, item.whyItMatters, item.sourcePhrase, item.derivedMeaning]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.eventName || "Timeline Event", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.eventType || "Encounter", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Event Name", item.eventName || "Timeline Event", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Event Type", item.eventType || "Encounter", { preserveExact: true }),
+      createPassageFunctionSection("Participants", "", { list: asArray(item.participants), plainList: true, divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Why This Event Matters", item.whyItMatters || "Grounded event in the current Study Scope.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes", "", { list: asArray(item.relatedJourneyNodes), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Paths", "", { list: asArray(item.relatedJourneyPaths), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Timeline Events", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence", evidenceStrength: "event derived only from existing current-scope semantic records", sourceGrounding: item.sourceGrounding || item.derivedMeaning, supportingRecords: [...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Timeline Events", label: item.eventName || "Timeline Event", layer: "Timeline Events / ICE_TIMELINE_EVENTS", storageKey: "Not persisted in Phase 9.6a", scopePath: item.activeScope, rule: "Timeline Events are grounded event records only. They do not add visualization, chronology beyond current scope, date estimation, traversal controls, crawling, or automatic analysis." }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Timeline Event: ${item.eventName || "Timeline Event"}`,
+        relatedRecords: [...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)],
+        conclusion: item.whyItMatters || item.derivedMeaning,
+        provenance: item.provenance || "I.C.E. Timeline Events"
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: [...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)],
+        provenance: item.provenance || "I.C.E. Timeline Events"
+      })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderTimelineEvents(term) {
+    const container = document.getElementById("timelineEventsCards");
+    const count = document.getElementById("timelineEventsCount");
+    if (!container || !count) return;
+    const records = timelineEventsRecords();
+    const normalizedTerm = normalizeText(term).toLowerCase();
+    const filtered = records.filter((item) => matchesSearchQuery(timelineEventSearchText(item), term)).sort((left, right) => {
+      if (!normalizedTerm) return 0;
+      const rank = (item) => {
+        const name = normalizeText(item.eventName).toLowerCase();
+        if (name === normalizedTerm) return 0;
+        if (name.includes(normalizedTerm)) return 1;
+        return 2;
+      };
+      return rank(left) - rank(right);
+    });
+    clearElement(container);
+    count.textContent = `${filtered.length} timeline event(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No grounded Timeline Events are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Timeline Events",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_TIMELINE_EVENTS",
+        "Purpose: represent grounded event records within the current Study Scope.",
+        "Boundary: records only; no visual timeline, chronology beyond current scope, date estimation, traversal controls, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived timeline event layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Timeline Events match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createTimelineEventCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more timeline event(s) hidden by the preview limit. Use panel search to focus an event.`);
+  }
+
   function principleNetworkSearchText(item = {}) {
     return [
       item.corePrinciple,
@@ -13838,6 +14119,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
+      { label: "Timeline Events", sectionId: "timelineEventsSection", renderer: renderTimelineEvents },
       { label: "Semantic Coverage", sectionId: "semanticCoverageSection", renderer: renderSemanticCoverage },
       { label: "Semantic Resolution Explanation", sectionId: "resolutionExplanationsSection", renderer: renderResolutionExplanations },
       { label: "Session Continuity Review", sectionId: "sessionContinuityReviewSection", renderer: renderSessionContinuityReview },
@@ -13944,6 +14226,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;
+    if (label === "Timeline Events") return timelineEventsRecords().length;
     const scopedRecords = deferredScopedSectionRecords(label);
     if (scopedRecords) return scopedRecords.length;
     if (label === "Current Page") return activeSourcePageRecord() ? 1 : 0;

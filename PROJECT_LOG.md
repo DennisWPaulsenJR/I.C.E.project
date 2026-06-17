@@ -1,3 +1,15 @@
+## 2026-06-16 - Phase 9.6a Timeline Events Foundation
+
+Implemented a derived `ICE_TIMELINE_EVENTS` display layer for grounded events within the current Study Scope.
+
+The Study Panel now has a deferred `Timeline Events` section after Journey Hubs. Timeline Events reuse current-scope Journey Nodes, Journey Paths, Journey Hubs, Scene Intelligence, Character Interactions, and Semantic Events without adding new semantic extraction or persistence.
+
+Cards display Event Name, Event Type, Participants, Source Verse Reference, Why This Event Matters, Related Journey Nodes, Related Journey Paths, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, and App accuracy.
+
+The layer is intentionally informational only: no visual timeline, no cross-book chronology, no date estimation, no traversal controls, no crawling, no queue execution, and no automatic analysis.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. The required review refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
 ## 2026-06-15 - Phase 9.5b Confidence Display Wording Refinement
 
 Refined `ICE_CONFIDENCE_ANALYSIS` user-facing wording so the panel speaks in terms of analysis support rather than doctrinal confidence.
