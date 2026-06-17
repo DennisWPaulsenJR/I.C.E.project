@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.6c Timeline Sequence Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_SEQUENCE`.
+- The Study Panel now includes a deferred `Timeline Sequence` section after Timeline Relationships.
+- Timeline Sequence orders existing current-scope Timeline Events by source verse/scope metadata and shows progression as numbered source-order steps.
+- Sequence cards display Sequence Number, Event, Source Verse Reference, Relationship to Previous Event, Related Timeline Relationship, Participants, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Timeline Sequence is current-scope display only; it does not add visual timeline rendering, date estimation, cross-book chronology, traversal, navigation controls, crawling, queue execution, or automatic analysis.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled Matthew 2 presentation smoke confirmed 34 Timeline Sequence steps, source-order preview cards, source verse popup behavior, Evidence Chain, Analysis Support, Provenance, no Matthew 5 wording leakage, and acceptable panel load around 1.7s in the temporary profile.
+- Next recommended task: browser/user presentation review of Timeline Sequence in Matthew 5 before any visual timeline work.
 - Phase 9.6b Timeline Relationships Foundation is implemented in this update as a derived display-only layer identified by `ICE_TIMELINE_RELATIONSHIPS`.
 - The Study Panel now includes a deferred `Timeline Relationships` section after Timeline Events.
 - Timeline Relationships connect existing current-scope Timeline Events as `Event A -> Relationship -> Event B`.

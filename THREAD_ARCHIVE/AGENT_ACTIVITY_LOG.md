@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-16 - pcdx - Timeline Sequence Foundation
+Summary:
+- Added a derived display-only `ICE_TIMELINE_SEQUENCE` layer.
+- Added a deferred Study Panel `Timeline Sequence` section after Timeline Relationships.
+- Timeline Sequence orders existing current-scope Timeline Events by source verse/scope metadata.
+- Cards expose Sequence Number, Event, Source Verse Reference, Relationship to Previous Event, Related Timeline Relationship, Participants, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+- Preserved no visual timeline, no date estimation, no cross-book chronology, no traversal, no navigation controls, no crawling, no queue execution, and no automatic analysis.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled Matthew 2 presentation smoke passed with 34 Timeline Sequence steps, source verse popup behavior, no Matthew 5 wording leakage, and about 1.7s panel load in a temporary profile.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser/user presentation review of Matthew 5 Timeline Sequence remains recommended before any visual timeline work.
+
 ## 2026-06-16 - pcdx - Timeline Relationships Foundation
 Summary:
 - Added a derived display-only `ICE_TIMELINE_RELATIONSHIPS` layer.

@@ -1,3 +1,13 @@
+## 2026-06-16 - Phase 9.6c Timeline Sequence Foundation
+
+Implemented a derived `ICE_TIMELINE_SEQUENCE` display layer for current-scope event progression.
+
+The Study Panel now has a deferred `Timeline Sequence` section after Timeline Relationships. Sequence cards number existing Timeline Events in source verse/scope order and show the Event, Source Verse Reference, Relationship to Previous Event, Related Timeline Relationship, Participants, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, App accuracy, and scope boundary.
+
+The layer reuses existing Timeline Events and Timeline Relationships. It does not persist a new semantic record set and does not add visual timelines, dates, cross-book chronology, traversal, navigation controls, crawling, queue execution, or automatic analysis.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. A controlled Matthew 2 presentation smoke rendered 34 Timeline Sequence steps, confirmed source verse popup behavior, and found no Matthew 5 wording leakage.
+
 ## 2026-06-16 - Phase 9.6b Timeline Relationships Foundation
 
 Implemented a derived `ICE_TIMELINE_RELATIONSHIPS` display layer for relationships between grounded Timeline Events.

@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
     "Timeline Events": "Grounded event records derived from current-scope Journey, Scene, and semantic records.",
     "Timeline Relationships": "Grounded display relationships between existing current-scope Timeline Events.",
+    "Timeline Sequence": "Current-scope event progression in source order using existing Timeline Events and Relationships.",
     "Semantic Coverage": "Layer-by-layer applicability and record status for the current chapter.",
     "Semantic Resolution Explanation": "Why generated semantic labels are grounded and how they were resolved.",
     "Session Continuity Review": "Continuity across analyzed pages in the current session.",
@@ -12698,6 +12699,176 @@ createRevelationPartsSection(item.subEvents)
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more timeline relationship(s) hidden by the preview limit. Use panel search to focus a relationship.`);
   }
 
+  function timelineSequencePosition(item = {}, fallback = 0) {
+    const source = normalizeText([item.verseRange, item.scopePath, item.sourcePhrase, item.eventName].filter(Boolean).join(" "));
+    const chapterVerse = source.match(/\b(?:Matthew|Mark|Luke|John)?\s*(\d+)\s*[:.]\s*(\d+)/i);
+    if (chapterVerse) return (Number(chapterVerse[1]) * 1000) + Number(chapterVerse[2]);
+    const scopeVerse = source.match(/\bverse:(\d+):(\d+)/i);
+    if (scopeVerse) return (Number(scopeVerse[1]) * 1000) + Number(scopeVerse[2]);
+    const verseOnly = source.match(/\b(?:verse|v\.?)\s*(\d+)\b/i);
+    if (verseOnly) return Number(verseOnly[1]);
+    return 100000 + fallback;
+  }
+
+  function timelineSequenceRelationship(previous = {}, current = {}, relationships = []) {
+    if (!previous.eventName) {
+      return {
+        relationshipToPrevious: "Starts current scope",
+        relatedTimelineRelationship: "No previous event in this sequence.",
+        support: null
+      };
+    }
+    const direct = relationships.find((item) =>
+      normalizeText(item.eventA).toLowerCase() === normalizeText(previous.eventName).toLowerCase()
+      && normalizeText(item.eventB).toLowerCase() === normalizeText(current.eventName).toLowerCase()
+    );
+    const reverse = relationships.find((item) =>
+      normalizeText(item.eventB).toLowerCase() === normalizeText(previous.eventName).toLowerCase()
+      && normalizeText(item.eventA).toLowerCase() === normalizeText(current.eventName).toLowerCase()
+    );
+    const nearby = direct || reverse || relationships.find((item) =>
+      [item.eventA, item.eventB].some((value) => normalizeText(value).toLowerCase() === normalizeText(previous.eventName).toLowerCase())
+      && [item.eventA, item.eventB].some((value) => normalizeText(value).toLowerCase() === normalizeText(current.eventName).toLowerCase())
+    );
+    if (!nearby) {
+      return {
+        relationshipToPrevious: "Follows in source order",
+        relatedTimelineRelationship: `${previous.eventName} -> ${current.eventName}`,
+        support: null
+      };
+    }
+    return {
+      relationshipToPrevious: nearby.relationshipType || "Relates To",
+      relatedTimelineRelationship: `${nearby.eventA || previous.eventName} -> ${nearby.eventB || current.eventName}`,
+      support: nearby
+    };
+  }
+
+  function timelineSequenceRecords() {
+    const events = timelineEventsRecords()
+      .map((item, index) => ({ ...item, sequencePosition: timelineSequencePosition(item, index), originalIndex: index }))
+      .sort((left, right) => left.sequencePosition - right.sequencePosition || left.originalIndex - right.originalIndex);
+    const relationships = timelineRelationshipRecords();
+    return events.slice(0, 72).map((event, index, ordered) => {
+      const previous = ordered[index - 1] || {};
+      const relation = timelineSequenceRelationship(previous, event, relationships);
+      const support = relation.support || {};
+      return {
+        ...event,
+        id: `timeline-sequence-${index + 1}-${event.id || event.eventName}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+        sequenceNumber: index + 1,
+        event: event.eventName,
+        relationshipToPrevious: relation.relationshipToPrevious,
+        relatedTimelineRelationship: relation.relatedTimelineRelationship,
+        relationshipSupport: support,
+        provenance: `I.C.E. Timeline Sequence derived from ${event.provenance || "Timeline Events"}${support.provenance ? ` and ${support.provenance}` : ""}`,
+        evidenceWeight: support.evidenceWeight || event.evidenceWeight || "Derived Semantic Evidence / Source Order",
+        reasoningPath: uniqueStudyList([
+          `Timeline Event positioned by source verse/scope order at ${event.sequencePosition}`,
+          index === 0 ? "First event starts the current analyzed scope sequence" : "Previous event selected from current-scope source order",
+          support.relationshipType ? "Related Timeline Relationship reused for progression wording" : "No direct Timeline Relationship found; sequence uses source order only",
+          ...asArray(event.reasoningPath),
+          ...asArray(support.reasoningPath),
+          "No visual timeline, date estimation, traversal, navigation control, crawling, or automatic analysis added"
+        ]).slice(0, 12),
+        sourceGrounding: support.sourceGrounding || event.sourceGrounding || event.sourcePhrase,
+        confidence: support.confidence === "explicit" || event.confidence === "explicit" ? "explicit" : (support.confidence || event.confidence || "probable")
+      };
+    });
+  }
+
+  function timelineSequenceSearchText(item = {}) {
+    return [
+      item.sequenceNumber,
+      item.event,
+      item.relationshipToPrevious,
+      item.relatedTimelineRelationship,
+      item.participants,
+      item.sourcePhrase,
+      item.derivedMeaning,
+      item.provenance,
+      item.evidenceWeight,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope,
+      item.confidence
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createTimelineSequenceCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card timeline-sequence-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.event, item.participants, item.sourcePhrase, item.derivedMeaning, item.relationshipToPrevious]);
+    heading.textContent = `${item.sequenceNumber}. ${renderDerivedSemanticDisplayText(item.event || "Timeline Event", divineContext)}`;
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [item.relationshipToPrevious || "Source order", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Sequence Number", String(item.sequenceNumber || ""), { preserveExact: true }),
+      createPassageFunctionSection("Event", item.event || "Timeline Event", { divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Relationship to Previous Event", item.relationshipToPrevious || "Source order", { preserveExact: true }),
+      createPassageFunctionSection("Related Timeline Relationship", item.relatedTimelineRelationship || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Participants", "", { list: asArray(item.participants), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
+      createPassageFunctionSection("Derived Meaning", item.derivedMeaning || item.whyItMatters || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Timeline Sequence", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence / Source Order", evidenceStrength: "sequence derived from existing Timeline Events ordered by source verse/scope metadata", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: [item.relatedTimelineRelationship, ...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)], sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Timeline Sequence", label: `${item.sequenceNumber || ""}. ${item.event || "Timeline Event"}`, layer: "Timeline Sequence / ICE_TIMELINE_SEQUENCE", storageKey: "Not persisted in Phase 9.6c", scopePath: item.activeScope, rule: "Timeline Sequence orders existing current-scope Timeline Events only. It does not add visual timeline rendering, dates, cross-book chronology, traversal, navigation controls, crawling, or automatic analysis." }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Timeline Sequence ${item.sequenceNumber || ""}: ${item.event || "Timeline Event"}`,
+        relatedRecords: [item.relatedTimelineRelationship, ...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)],
+        conclusion: item.relationshipToPrevious || item.whyItMatters || item.derivedMeaning,
+        provenance: item.provenance || "I.C.E. Timeline Sequence"
+      }),
+      createConfidenceChallengeSection(item, {
+        relatedRecords: [item.relatedTimelineRelationship, ...asArray(item.relatedJourneyNodes), ...asArray(item.relatedJourneyPaths)],
+        provenance: item.provenance || "I.C.E. Timeline Sequence"
+      })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderTimelineSequence(term) {
+    const container = document.getElementById("timelineSequenceCards");
+    const count = document.getElementById("timelineSequenceCount");
+    if (!container || !count) return;
+    const records = timelineSequenceRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(timelineSequenceSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} sequence step(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Timeline Sequence is available because no current-scope Timeline Events are available.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Timeline Sequence",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_TIMELINE_SEQUENCE",
+        "Purpose: show event progression in current-scope source order.",
+        "Boundary: display records only; no visual timeline, date estimation, cross-book chronology, traversal, navigation controls, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived timeline sequence layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Timeline Sequence steps match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createTimelineSequenceCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more sequence step(s) hidden by the preview limit. Use panel search to focus a step.`);
+  }
+
   function principleNetworkSearchText(item = {}) {
     return [
       item.corePrinciple,
@@ -14369,6 +14540,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
       { label: "Timeline Events", sectionId: "timelineEventsSection", renderer: renderTimelineEvents },
       { label: "Timeline Relationships", sectionId: "timelineRelationshipsSection", renderer: renderTimelineRelationships },
+      { label: "Timeline Sequence", sectionId: "timelineSequenceSection", renderer: renderTimelineSequence },
       { label: "Semantic Coverage", sectionId: "semanticCoverageSection", renderer: renderSemanticCoverage },
       { label: "Semantic Resolution Explanation", sectionId: "resolutionExplanationsSection", renderer: renderResolutionExplanations },
       { label: "Session Continuity Review", sectionId: "sessionContinuityReviewSection", renderer: renderSessionContinuityReview },
@@ -14477,6 +14649,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Journey Hubs") return journeyHubRecords().length;
     if (label === "Timeline Events") return timelineEventsRecords().length;
     if (label === "Timeline Relationships") return timelineRelationshipRecords().length;
+    if (label === "Timeline Sequence") return timelineSequenceRecords().length;
     const scopedRecords = deferredScopedSectionRecords(label);
     if (scopedRecords) return scopedRecords.length;
     if (label === "Current Page") return activeSourcePageRecord() ? 1 : 0;
