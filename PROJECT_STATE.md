@@ -31,6 +31,15 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.8a Context Lock & Meaning Staging Foundation is implemented in this update as derived display-only diagnostics identified by `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING`.
+- The Study Panel now includes deferred `Context Lock` and `Meaning Staging` sections after View Lens.
+- Context Lock records capture speaker, audience, authority source, messenger, recipient, participants, location, event scope, grounded observations, supported meaning, validation checks, and rejected inversions.
+- Meaning Staging records show the ladder from Level 0 Source Text through Level 6 Study Relationships and explain which lower stage(s) each diagnostic depends on.
+- The Matthew 1 Angel/Joseph lock preserves THE LORD / GOD as source authority, AngEL Of THE LORD as messenger, and Joseph as recipient; it explicitly rejects `AngEL Of THE LORD receives revelation`.
+- Matthew 2 and Matthew 5 locks preserve Herod/JESUS participant roles and JESUS/disciples/multitudes teacher/audience context.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled presentation smoke passed for Matthew 1, Matthew 2, and Matthew 5 Context Lock / Meaning Staging sections.
+- Next recommended task: user presentation review of Context Lock / Meaning Staging wording before attaching staging badges to every individual semantic card.
 - Phase 9.7a Study Themes Foundation is implemented in this update as a derived display-only layer identified by `ICE_STUDY_THEMES`.
 - The Study Panel now includes a deferred `Study Themes` section after Timeline Sequence.
 - Study Themes use an approved theme catalog and emit current-scope groupings only when existing semantic records contain matching grounded wording.

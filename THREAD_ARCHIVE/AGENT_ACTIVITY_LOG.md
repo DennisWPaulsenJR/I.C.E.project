@@ -21,6 +21,38 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-17 - pcdx - Context Lock and Meaning Staging Foundation
+Summary:
+- Added derived display-only `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING` diagnostics.
+- Added deferred Study Panel `Context Lock` and `Meaning Staging` sections after View Lens.
+- Context Lock captures speaker, audience, authority source, messenger, recipient, participants, location, event scope, grounded observations, supported meaning, validation checks, and rejected inversions.
+- Meaning Staging displays the Level 0-6 ladder from Source Text to Study Relationships and records which lower stage(s) derived diagnostics depend on.
+- Matthew 1 locks THE LORD / GOD as source authority, AngEL Of THE LORD as messenger, and Joseph as recipient; `AngEL Of THE LORD receives revelation` is explicitly rejected.
+- Matthew 2 and Matthew 5 locks preserve Herod/JESUS participant roles and JESUS/disciples/multitudes teacher/audience context.
+- Preserved no new semantic extraction, no doctrine generation, no crawling, no automatic analysis, and no lower-stage rewrites.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled presentation smoke passed for Matthew 1, Matthew 2, and Matthew 5 Context Lock / Meaning Staging sections.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review of wording is recommended before adding staging badges to every semantic card.
+
 ## 2026-06-16 - pcdx - Study Themes Foundation
 Summary:
 - Added a derived display-only `ICE_STUDY_THEMES` layer.

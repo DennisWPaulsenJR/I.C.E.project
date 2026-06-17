@@ -88,6 +88,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Scope Lens": "The range where the current focus is being considered.",
     "Depth Lens": "How much semantic expansion is active in the current panel.",
     "View Lens": "How current scoped study information is being presented.",
+    "Context Lock": "Display-only role locks for speaker, authority source, messenger, recipient, participants, and event scope.",
+    "Meaning Staging": "Display-only inference ladder diagnostics showing which stage a derived record depends on.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
@@ -11077,6 +11079,507 @@ createRevelationPartsSection(item.subEvents)
     }
     filtered.forEach((item) => container.appendChild(createViewLensCard(item)));
   }
+
+  function contextLockCurrentChapters() {
+    const chapters = new Set(currentStudyScopePages()
+      .filter((page) => /^Matthew$/i.test(pageBookName(page)))
+      .map((page) => pageChapterNumber(page))
+      .filter(Boolean));
+    const latestChapters = new Set();
+    [
+      pageRecordFromCapture(studyData.latestCapture),
+      pageRecordFromStatus(studyData.analysisStatus || {}),
+      rawPageRecordFromCapture(studyData.latestCapture),
+      {
+        sourceTitle: studyData.latestCapture?.title || studyData.analysisStatus?.sourceCaptureTitle || "",
+        activeUrl: studyData.latestCapture?.url || studyData.analysisStatus?.activeUrl || "",
+        sourceCaptureBook: studyData.analysisStatus?.sourceCaptureBook || "",
+        sourceCaptureChapter: studyData.analysisStatus?.sourceCaptureChapter || ""
+      }
+    ].filter(Boolean).forEach((page) => {
+      const fromTitle = sourceMatchFromTitle(page.sourceTitle || page.title || "");
+      const fromUrl = sourceMatchFromUrl(page.activeUrl || page.url || "");
+      const book = pageBookName(page) || fromTitle?.book || fromUrl?.book || "";
+      const chapter = pageChapterNumber(page) || Number(fromTitle?.chapter || fromUrl?.chapter || 0);
+      if (/^Matthew$/i.test(book) && chapter) latestChapters.add(chapter);
+    });
+    if (!analyzedPageHistory().length && latestChapters.size) return latestChapters;
+    latestChapters.forEach((chapter) => chapters.add(chapter));
+    return chapters;
+  }
+
+  function contextLockRecordSearchText(item = {}) {
+    return [
+      item.lockName,
+      item.eventScope,
+      item.speaker,
+      item.audience,
+      item.authoritySource,
+      item.messenger,
+      item.recipient,
+      item.participants,
+      item.location,
+      item.groundedObservations,
+      item.supportedMeaning,
+      item.validationChecks,
+      item.rejectedInversions,
+      item.sourcePhrase,
+      item.scopeBoundary,
+      item.provenance
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createContextLockRecord(candidate = {}) {
+    const scope = currentStudyScopeLabel();
+    return {
+      schemaVersion: 1,
+      layer: "ICE_CONTEXT_LOCK",
+      lockName: candidate.lockName || "Context Lock",
+      speaker: candidate.speaker || "",
+      audience: candidate.audience || "",
+      authoritySource: candidate.authoritySource || "",
+      messenger: candidate.messenger || "",
+      recipient: candidate.recipient || "",
+      participants: uniqueStudyList(asArray(candidate.participants)).slice(0, 12),
+      location: candidate.location || "",
+      eventScope: candidate.eventScope || scope,
+      sourcePhrase: candidate.sourcePhrase || "",
+      verseRange: candidate.verseRange || "",
+      scopePath: candidate.scopePath || "",
+      sourceContext: candidate.sourceContext || {},
+      groundedObservations: uniqueStudyList(asArray(candidate.groundedObservations)).slice(0, 10),
+      supportedMeaning: uniqueStudyList(asArray(candidate.supportedMeaning)).slice(0, 10),
+      validationChecks: uniqueStudyList(asArray(candidate.validationChecks)).slice(0, 10),
+      rejectedInversions: uniqueStudyList(asArray(candidate.rejectedInversions)).slice(0, 10),
+      scopeBoundary: candidate.scopeBoundary || `Context Lock applies only to confirmed records in ${scope}. Higher-level derived layers may depend on it but may not redefine it.`,
+      evidenceWeight: candidate.evidenceWeight || "Context Lock / Direct Source Evidence",
+      provenance: candidate.provenance || "I.C.E. Context Lock display diagnostics",
+      confidence: candidate.confidence || "explicit",
+      activeScope: scope
+    };
+  }
+
+  function contextLockRecords() {
+    const chapters = contextLockCurrentChapters();
+    const records = [];
+    const add = (candidate) => records.push(createContextLockRecord(candidate));
+    const sourceContextForChapter = (chapter) => ({
+      sourceTitle: `Matthew ${chapter}`,
+      book: "Matthew",
+      chapter: String(chapter),
+      sourceUrl: `https://www.churchofjesuschrist.org/study/scriptures/nt/matt/${chapter}`
+    });
+
+    if (chapters.has(1)) {
+      add({
+        lockName: "Matthew 1 Angel/Joseph Revelation Context",
+        speaker: "AngEL Of THE LORD",
+        audience: "Joseph",
+        authoritySource: "THE LORD / GOD",
+        messenger: "AngEL Of THE LORD",
+        recipient: "Joseph",
+        participants: ["THE LORD / GOD", "AngEL Of THE LORD", "Joseph", "Mary", "JESUS"],
+        location: "Dream context",
+        eventScope: "Matthew 1:20-21",
+        verseRange: "Matthew 1:20-21",
+        scopePath: "scripture.nt.matthew.1.verse.20",
+        sourceContext: sourceContextForChapter(1),
+        sourcePhrase: "the angel of THE LORD appeared unto him in a dream, saying",
+        groundedObservations: [
+          "AngEL Of THE LORD appears to Joseph in a dream.",
+          "AngEL Of THE LORD speaks/instructs Joseph.",
+          "Joseph is the addressed recipient."
+        ],
+        supportedMeaning: [
+          "Joseph receives revelation/instruction.",
+          "AngEL Of THE LORD functions as messenger, not recipient.",
+          "THE LORD / GOD remains the source authority where grounded by the revelation pattern."
+        ],
+        validationChecks: [
+          "Source authority, messenger, and recipient are separate role slots.",
+          "Higher layers may create message-delivery relationships but may not invert recipient roles.",
+          "Timeline/Journey labels must preserve Joseph as recipient."
+        ],
+        rejectedInversions: [
+          "Rejected: AngEL Of THE LORD receives revelation.",
+          "Rejected: AngEL Of THE LORD replaces THE LORD / GOD as source authority.",
+          "Rejected: Joseph becomes messenger for this verse context."
+        ]
+      });
+    }
+
+    if (chapters.has(2)) {
+      add({
+        lockName: "Matthew 2 Herod / Child Protection Context",
+        speaker: "AngEL Of THE LORD / wise men / Herod by scene",
+        audience: "Joseph, wise men, chief priests and scribes by scene",
+        authoritySource: "THE LORD / GOD where angelic warning is grounded",
+        messenger: "AngEL Of THE LORD for protective dream instructions",
+        recipient: "Joseph for protective warning; wise men for warning of GOD",
+        participants: ["Herod", "JESUS / young child", "Mary", "Joseph", "wise men", "AngEL Of THE LORD", "THE LORD / GOD", "Egypt"],
+        location: "Judaea, Bethlehem, Egypt, land of Israel, Nazareth",
+        eventScope: "Matthew 2",
+        verseRange: "Matthew 2",
+        scopePath: "scripture.nt.matthew.2",
+        sourceContext: sourceContextForChapter(2),
+        sourcePhrase: "Herod will seek the young child to destroy him; the angel of the Lord appeareth to Joseph",
+        groundedObservations: [
+          "Herod seeks the young child.",
+          "Joseph receives protective instruction.",
+          "The young child/JESUS is the protected target, not the hostile actor."
+        ],
+        supportedMeaning: [
+          "Herod remains hostile authority in this scope.",
+          "Joseph functions as obedient/protective steward.",
+          "AngEL Of THE LORD functions as protective messenger where the dream instruction appears."
+        ],
+        validationChecks: [
+          "Participant roles must not invert Herod and JESUS / young child.",
+          "Protective movement records must not imply automatic page traversal.",
+          "Fulfillment relationships remain study relationships, not context rewrites."
+        ],
+        rejectedInversions: [
+          "Rejected: JESUS / young child as hostile seeker.",
+          "Rejected: Herod as protected child.",
+          "Rejected: AngEL Of THE LORD as source authority replacing THE LORD / GOD."
+        ]
+      });
+    }
+
+    if (chapters.has(5)) {
+      add({
+        lockName: "Matthew 5 Teacher / Audience Context",
+        speaker: "JESUS",
+        audience: "disciples with multitudes in scene context",
+        authoritySource: "JESUS as teaching authority in source scene",
+        messenger: "",
+        recipient: "disciples / hearers",
+        participants: ["JESUS", "disciples", "multitudes"],
+        location: "Mountain teaching context",
+        eventScope: "Matthew 5:1-2 and chapter teaching context",
+        verseRange: "Matthew 5:1-2",
+        scopePath: "scripture.nt.matthew.5.verse.1",
+        sourceContext: sourceContextForChapter(5),
+        sourcePhrase: "he went up into a mountain: and when he was set, his disciples came unto him: And he opened his mouth, and taught them",
+        groundedObservations: [
+          "JESUS sees the multitudes.",
+          "JESUS goes up into a mountain.",
+          "Disciples come unto Him.",
+          "JESUS teaches."
+        ],
+        supportedMeaning: [
+          "JESUS is the teacher/speaker for the discourse.",
+          "Disciples are the immediate teaching audience in the source wording.",
+          "Multitudes remain scene context unless a record explicitly narrows or expands the audience."
+        ],
+        validationChecks: [
+          "Teaching, principle, and theme layers may depend on teacher/audience context but may not redefine it.",
+          "Mercy, Kingdom of Heaven, and righteousness themes remain study relationships.",
+          "Possible audience implications must not be promoted to explicit source facts."
+        ],
+        rejectedInversions: [
+          "Rejected: disciples as source teacher for the Sermon.",
+          "Rejected: themes/principles as the source speaker.",
+          "Rejected: possible audience implications as explicit facts."
+        ]
+      });
+    }
+
+    if (!records.length) {
+      const active = activeSourcePageRecord();
+      if (active) {
+        add({
+          lockName: `${volumePageLabel(active)} Source Context Lock`,
+          eventScope: volumePageLabel(active),
+          participants: uniqueStudyList([
+            ...asArray(studyData.entityRegistry).map((item) => item.displayName || item.canonicalName || item.entityName).slice(0, 8)
+          ]).filter(Boolean),
+          location: "Current analyzed source",
+          sourceContext: {
+            sourceTitle: active.sourceTitle,
+            sourceUrl: active.activeUrl,
+            book: active.sourceCaptureBook,
+            chapter: active.sourceCaptureChapter
+          },
+          groundedObservations: ["Current source page is locked as the lower-level context for derived Study Panel records."],
+          supportedMeaning: ["Derived layers may summarize or relate current-scope records, but they may not redefine the source page context."],
+          validationChecks: ["Reject role, authority, participant, or recipient changes not grounded by lower stages."],
+          rejectedInversions: ["Rejected: unselected/global page context replacing the active Study Scope."]
+        });
+      }
+    }
+
+    return records.slice(0, 12);
+  }
+
+  function contextLockSearchText(item = {}) {
+    return contextLockRecordSearchText(item);
+  }
+
+  function createContextLockCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card context-lock-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.lockName, item.authoritySource, item.messenger, item.recipient, item.participants]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.lockName || "Context Lock", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_CONTEXT_LOCK", item.eventScope || item.activeScope, displayConfidence(item.confidence || "explicit")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Speaker", item.speaker || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Audience", item.audience || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Authority Source", item.authoritySource || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Messenger", item.messenger || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Recipient", item.recipient || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Participants", "", { list: item.participants, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Location", item.location || "Not recorded.", { preserveExact: true }),
+      createPassageFunctionSection("Event Scope", item.eventScope || item.activeScope || "Current Study Scope", { preserveExact: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Grounded Observations", "", { list: item.groundedObservations, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supported Meaning", "", { list: item.supportedMeaning, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Validation Checks", "", { list: item.validationChecks, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Rejected Inversions", "", { list: item.rejectedInversions, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary, { preserveExact: true }),
+      createPassageFunctionSection("Evidence Weight", item.evidenceWeight, { preserveExact: true }),
+      createPassageFunctionSection("Provenance", item.provenance, { preserveExact: true }),
+      createWordingProvenanceSection({ source: item.provenance, label: item.lockName, layer: "Context Lock / ICE_CONTEXT_LOCK", storageKey: "Not persisted in Phase 9.8a", scopePath: item.eventScope || item.activeScope, rule: "Context Lock is display-only. Higher semantic layers may depend on locked context but may not rewrite speaker, audience, authority, messenger, recipient, participant, location, or event-scope facts." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderContextLock(term) {
+    const container = document.getElementById("contextLockCards");
+    const count = document.getElementById("contextLockCount");
+    if (!container || !count) return;
+    const records = contextLockRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(contextLockSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} lock record(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Context Lock diagnostics are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Context Lock",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_CONTEXT_LOCK",
+        "Purpose: preserve lower-level source/context role facts before higher semantic layers derive meaning.",
+        "Boundary: display-only diagnostics; no extraction, doctrine generation, crawling, automatic analysis, or source-record rewrites."
+      ].join("\n"),
+      "derived context lock layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Context Lock records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createContextLockCard(item)));
+  }
+
+  function meaningStagingLadder() {
+    return [
+      { level: 0, stage: "Source Text", description: "The verse/source wording itself." },
+      { level: 1, stage: "Context", description: "Who, what, where, when, speaker, audience, authority, and participants." },
+      { level: 2, stage: "Grounded Observation", description: "Things explicitly stated." },
+      { level: 3, stage: "Supported Meaning", description: "Things directly supported by source context." },
+      { level: 4, stage: "Strongly Implied Meaning", description: "Things required or highly supported by context." },
+      { level: 5, stage: "Possible Meaning", description: "Things plausible but not established." },
+      { level: 6, stage: "Study Relationship", description: "Connections to themes, journeys, timelines, fulfillment, knowledge graph, and principle networks." }
+    ];
+  }
+
+  function createMeaningStageRecord(candidate = {}) {
+    const ladder = meaningStagingLadder().find((item) => item.stage === candidate.stage || item.level === candidate.level) || meaningStagingLadder()[6];
+    return {
+      schemaVersion: 1,
+      layer: "ICE_MEANING_STAGING",
+      id: candidate.id || `meaning-stage-${ladder.level}-${normalizeText(candidate.recordLabel || candidate.stage).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      stageLevel: ladder.level,
+      stage: ladder.stage,
+      stageDescription: ladder.description,
+      recordLabel: candidate.recordLabel || ladder.stage,
+      reasoning: candidate.reasoning || "",
+      derivedFromStages: uniqueStudyList(asArray(candidate.derivedFromStages)).slice(0, 8),
+      validationChecks: uniqueStudyList(asArray(candidate.validationChecks)).slice(0, 8),
+      challengeFactors: uniqueStudyList(asArray(candidate.challengeFactors)).slice(0, 8),
+      sourcePhrase: candidate.sourcePhrase || "",
+      verseRange: candidate.verseRange || "",
+      scopePath: candidate.scopePath || "",
+      sourceContext: candidate.sourceContext || {},
+      relatedRecords: uniqueStudyList(asArray(candidate.relatedRecords)).slice(0, 8),
+      evidenceWeight: candidate.evidenceWeight || "Meaning Staging / Display Diagnostic",
+      provenance: candidate.provenance || "I.C.E. Meaning Staging display diagnostics",
+      confidence: candidate.confidence || "probable",
+      activeScope: currentStudyScopeLabel()
+    };
+  }
+
+  function meaningStagingRecords() {
+    const records = [];
+    const locks = contextLockRecords();
+    locks.forEach((lock) => {
+      records.push(createMeaningStageRecord({
+        level: 1,
+        recordLabel: `${lock.lockName}: Context`,
+        reasoning: "Context Lock records speaker, audience, authority, messenger, recipient, participants, location, and event scope before derived layers run.",
+        derivedFromStages: ["Level 0 Source Text"],
+        validationChecks: lock.validationChecks,
+        challengeFactors: lock.rejectedInversions,
+        sourcePhrase: lock.sourcePhrase,
+        verseRange: lock.verseRange,
+        scopePath: lock.scopePath,
+        sourceContext: lock.sourceContext,
+        relatedRecords: [lock.eventScope, ...lock.participants],
+        evidenceWeight: lock.evidenceWeight,
+        provenance: "I.C.E. Context Lock"
+      }));
+      lock.groundedObservations.forEach((observation, index) => records.push(createMeaningStageRecord({
+        level: 2,
+        recordLabel: observation,
+        reasoning: "Grounded observation is explicitly tied to the locked source/context role facts.",
+        derivedFromStages: ["Level 0 Source Text", "Level 1 Context"],
+        validationChecks: ["Must not add participants or recipients not grounded by source/context."],
+        challengeFactors: lock.rejectedInversions,
+        sourcePhrase: lock.sourcePhrase,
+        verseRange: lock.verseRange,
+        scopePath: lock.scopePath,
+        sourceContext: lock.sourceContext,
+        relatedRecords: [lock.lockName],
+        evidenceWeight: "Direct Source Evidence",
+        provenance: `I.C.E. Meaning Staging from ${lock.lockName}`,
+        id: `meaning-stage-observation-${lock.lockName}-${index}`
+      })));
+      lock.supportedMeaning.forEach((meaning, index) => records.push(createMeaningStageRecord({
+        level: 3,
+        recordLabel: meaning,
+        reasoning: "Supported meaning follows directly from Source Text plus Context Lock without changing lower-level roles.",
+        derivedFromStages: ["Level 0 Source Text", "Level 1 Context", "Level 2 Grounded Observation"],
+        validationChecks: ["Lower-level speaker, authority, messenger, recipient, and participant roles remain unchanged."],
+        challengeFactors: lock.rejectedInversions,
+        sourcePhrase: lock.sourcePhrase,
+        verseRange: lock.verseRange,
+        scopePath: lock.scopePath,
+        sourceContext: lock.sourceContext,
+        relatedRecords: [lock.lockName],
+        evidenceWeight: "Supported Meaning / Direct Context Support",
+        provenance: `I.C.E. Meaning Staging from ${lock.lockName}`,
+        id: `meaning-stage-supported-${lock.lockName}-${index}`
+      })));
+    });
+
+    [
+      ...journeyNodesRecords().slice(0, 8).map((item) => ({ label: `Journey Node: ${item.nodeName}`, item })),
+      ...journeyPathRecords().slice(0, 8).map((item) => ({ label: `Journey Path: ${item.fromNode} -> ${item.toNode}`, item })),
+      ...timelineEventsRecords().slice(0, 8).map((item) => ({ label: `Timeline Event: ${item.eventName}`, item })),
+      ...studyThemeRecords().slice(0, 8).map((item) => ({ label: `Study Theme: ${item.themeName}`, item }))
+    ].forEach(({ label, item }) => {
+      records.push(createMeaningStageRecord({
+        level: 6,
+        recordLabel: label,
+        reasoning: "Study relationship records connect already-grounded semantic records without redefining source text, context, observations, or supported meaning.",
+        derivedFromStages: ["Level 1 Context", "Level 2 Grounded Observation", "Level 3 Supported Meaning"],
+        validationChecks: [
+          "Role inversion rejected.",
+          "Authority inversion rejected.",
+          "Participant inversion rejected.",
+          "Unsupported recipient changes rejected."
+        ],
+        challengeFactors: ["Review source verse reference and evidence chain before treating a relationship as interpretive context."],
+        sourcePhrase: item.sourcePhrase,
+        verseRange: item.verseRange,
+        scopePath: item.scopePath,
+        sourceContext: item.sourceContext,
+        relatedRecords: item.supportingRecords || item.relatedJourneyNodes || item.relatedTimelineEvents || item.relatedPrinciples,
+        evidenceWeight: item.evidenceWeight,
+        provenance: item.provenance || "I.C.E. derived study relationship",
+        confidence: item.confidence
+      }));
+    });
+
+    return records.slice(0, 48);
+  }
+
+  function meaningStagingSearchText(item = {}) {
+    return [
+      item.stage,
+      item.recordLabel,
+      item.reasoning,
+      item.derivedFromStages,
+      item.validationChecks,
+      item.challengeFactors,
+      item.sourcePhrase,
+      item.relatedRecords,
+      item.provenance,
+      item.activeScope
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createMeaningStagingCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card meaning-staging-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.recordLabel, item.reasoning, item.relatedRecords]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.recordLabel || item.stage, divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = [`Level ${item.stageLevel}`, item.stage, item.activeScope].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Stage", item.stage || "Study Relationship", { preserveExact: true }),
+      createPassageFunctionSection("Stage Meaning", item.stageDescription || "", { preserveExact: true }),
+      createPassageFunctionSection("Reasoning", item.reasoning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Derived From Stage(s)", "", { list: item.derivedFromStages, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Validation Checks", "", { list: item.validationChecks, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Challenge Factors", "", { list: item.challengeFactors, plainList: true, preserveExact: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Related Records", "", { list: item.relatedRecords, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Evidence Weight", item.evidenceWeight || "Meaning Staging / Display Diagnostic", { preserveExact: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Meaning Staging", { preserveExact: true }),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Meaning Staging", label: item.recordLabel || item.stage, layer: "Meaning Staging / ICE_MEANING_STAGING", storageKey: "Not persisted in Phase 9.8a", scopePath: item.activeScope, rule: "Meaning Staging is display-only. Higher stages may depend on lower stages, but lower stages may never be modified by higher-level derived meanings or study relationships." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderMeaningStaging(term) {
+    const container = document.getElementById("meaningStagingCards");
+    const count = document.getElementById("meaningStagingCount");
+    if (!container || !count) return;
+    const records = meaningStagingRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(meaningStagingSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} staging record(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Meaning Staging diagnostics are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Meaning Staging",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_MEANING_STAGING",
+        "Purpose: show the inference ladder from Source Text through Context, Observation, Meaning, and Study Relationships.",
+        "Boundary: display-only diagnostics; no new semantic extraction, doctrine generation, crawling, automatic analysis, or lower-stage rewrites."
+      ].join("\n"),
+      "derived meaning staging layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Meaning Staging records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createMeaningStagingCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more staging record(s) hidden by the preview limit. Use panel search to focus a stage.`);
+  }
   function journeyNodeCanonicalName(value = "") {
     const label = normalizeText(value);
     if (!label) return "";
@@ -14819,6 +15322,8 @@ createRevelationPartsSection(item.subEvents)
       { label: "Scope Lens", sectionId: "scopeLensSection", renderer: renderScopeLens },
       { label: "Depth Lens", sectionId: "depthLensSection", renderer: renderDepthLens },
       { label: "View Lens", sectionId: "viewLensSection", renderer: renderViewLens },
+      { label: "Context Lock", sectionId: "contextLockSection", renderer: renderContextLock },
+      { label: "Meaning Staging", sectionId: "meaningStagingSection", renderer: renderMeaningStaging },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
@@ -14929,6 +15434,8 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Scope Lens") return scopedSemanticRecords(studyData.scopeLens).length;
     if (label === "Depth Lens") return scopedSemanticRecords(studyData.depthLens).length;
     if (label === "View Lens") return viewLensRecords().length;
+    if (label === "Context Lock") return contextLockRecords().length;
+    if (label === "Meaning Staging") return meaningStagingRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;
