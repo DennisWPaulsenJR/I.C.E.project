@@ -5381,7 +5381,6 @@ function createOrderedEvents(eventItems) {
   const grouped = new Map();
   for (const item of eventItems) {
     if (item.eventType === "source_summary" ||
-      item.eventType === "lineage_record" ||
       isSourceSummarySentence(item.eventText || "", item.sequenceIndex)) {
       continue;
     }
@@ -5454,6 +5453,18 @@ function explicitContextActor(eventItem) {
 
   if (/\bNow all this was done\b|\bthat it might be fulfilled\b/i.test(text)) {
     return "scripture narrator";
+  }
+
+  if (/\bshe brought forth\b.*\b(?:firstborn\s+)?son\b/i.test(text)) {
+    return "Mary";
+  }
+
+  if (/\bbirth of Jesus Christ\b/i.test(text) && /\bmother Mary\b/i.test(text)) {
+    return "Mary";
+  }
+
+  if (/\bMary\b.*\b(?:wife|mother)\b/i.test(text) && /\bbrought forth\b/i.test(text)) {
+    return "Mary";
   }
 
   if (/\bvoice from heaven\b/i.test(text) || /\bmy beloved Son\b/i.test(text)) {
@@ -5542,21 +5553,111 @@ function actorForEvent(eventItem, actorMemory) {
   const inferredActor = inferredNarrativeContinuityActor(text, actorMemory);
   if (inferredActor) return inferredActor;
 
+  const namedOrContextActor = leadingSubjectActor(text) || explicitContextActor(eventItem);
+  if (namedOrContextActor) return namedOrContextActor;
+
   if (PLURAL_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
     return actorMemory.previousPluralActor || "Unknown actor";
   }
   if (SINGULAR_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
     return actorMemory.previousSingularActor || "Unknown actor";
   }
-  return leadingSubjectActor(text) ||
-    explicitContextActor(eventItem) ||
-    "Unknown actor";
+  return "Unknown actor";
+}
+
+function resolvedActorDisplayName(actorName = "") {
+  if (/^angel of the lord$/i.test(actorName)) return "AngEL Of THE LORD";
+  if (/^angel of the lord$/i.test(actorName.replace(/^the\s+/i, ""))) return "AngEL Of THE LORD";
+  if (/^the lord$/i.test(actorName) || /^lord$/i.test(actorName)) return "THE LORD / GOD";
+  if (/^jesus$/i.test(actorName) || /^jesus christ$/i.test(actorName)) return "JESUS CHRIST";
+  return normalizeWhitespace(actorName || "");
+}
+
+function actorCategoryFor(actorName = "", eventItem = {}) {
+  const name = resolvedActorDisplayName(actorName);
+  if (/^AngEL Of THE LORD$/i.test(name)) return "Messenger";
+  if (/^THE LORD \/ GOD$|^Father$|^Spirit of GOD$/i.test(name)) return "Authority Source";
+  if (/^scripture narrator$/i.test(name)) return "Narrator";
+  if (/disciples|multitudes|people|wise men|chief priests|scribes|pharisees|sadducees/i.test(name)) return "Group";
+  if (/^Herod$/i.test(name)) return "Ruler";
+  if (eventItem.eventType === "lineage_record") return "Ancestor";
+  return "Person";
+}
+
+function actorFunctionFor(actorName = "", eventItem = {}) {
+  const name = resolvedActorDisplayName(actorName);
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  if (eventItem.eventType === "lineage_record") return "Genealogy participant / lineage support";
+  if (/^Mary$/i.test(name)) return /\bbrought forth\b/i.test(text) ? "Mother of JESUS CHRIST" : "Participant in birth narrative";
+  if (/^Joseph$/i.test(name)) return /angel|dream|fear not|bidden|called his name|took/i.test(text) ? "Recipient of instruction / obedient responder" : "Narrative participant";
+  if (/^JESUS CHRIST$/i.test(name)) return "Messianic identity / central person";
+  if (/^AngEL Of THE LORD$/i.test(name)) return "Messenger / instruction carrier";
+  if (/^THE LORD \/ GOD$|^Father$|^Spirit of GOD$/i.test(name)) return "Source authority";
+  if (/^scripture narrator$/i.test(name)) return "Narrator / fulfillment framer";
+  if (/disciples/i.test(name)) return "Audience";
+  if (/multitudes|people/i.test(name)) return "Observers / audience";
+  if (/^Herod$/i.test(name)) return "Ruler / hostile authority";
+  return "Actor in current source event";
+}
+
+function actorResolutionSource(actorName = "", eventItem = {}) {
+  const text = normalizeWhitespace(eventItem.eventText || "");
+  if (eventItem.eventType === "lineage_record") return "genealogy actor";
+  if (actorName && actorName !== "Unknown actor" && new RegExp(`\\b${actorName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)) return "explicit named entity";
+  if (/Mary/i.test(actorName) && /\bshe brought forth\b/i.test(text)) return "context pronoun resolved by birth scene";
+  if (/Joseph/i.test(actorName) && /\bhe\b/i.test(stripLeadingSentenceNoise(text))) return "narrative continuity / context";
+  if (/Angel of the Lord|AngEL Of THE LORD/i.test(actorName)) return "Context Lock messenger role";
+  if (/scripture narrator/i.test(actorName)) return "fulfillment narration context";
+  return actorName && actorName !== "Unknown actor" ? "contextual actor resolver" : "unresolved";
+}
+
+function actorNamesFromSemanticSubEvent(subEvent = {}) {
+  return Array.from(new Set([
+    subEvent.actor,
+    subEvent.target,
+    subEvent.recipient,
+    subEvent.concerning,
+    subEvent.narrator,
+    subEvent.quotedSpeaker,
+    subEvent.quotedProphet,
+    ...(subEvent.authorityChain || []),
+    ...(subEvent.participants || [])
+  ].map((value) => resolvedActorDisplayName(normalizeActorName(value || ""))).filter((value) => value && value !== "Unknown actor")));
+}
+
+function actorDiagnostics(actorName = "", eventItem = {}, overrides = {}) {
+  const resolvedActorName = overrides.resolvedActorName || resolvedActorDisplayName(actorName);
+  return {
+    resolvedActorName,
+    actorCategory: overrides.actorCategory || actorCategoryFor(actorName, eventItem),
+    actorFunction: overrides.actorFunction || actorFunctionFor(actorName, eventItem),
+    resolutionSource: overrides.resolutionSource || actorResolutionSource(actorName, eventItem)
+  };
 }
 
 function createActorTimelines(orderedEvents) {
   const grouped = new Map();
   const seenByActor = new Map();
   const memoryBySource = new Map();
+  const addActorAction = (actorName, item, actionKey, diagnostics = {}) => {
+    const normalizedActorName = resolvedActorDisplayName(actorName || "Unknown actor");
+    if (/^Unknown(?: actor)?$/i.test(normalizedActorName) && diagnostics.resolutionSource === "genealogy actor") return;
+    const resolvedDiagnostics = actorDiagnostics(normalizedActorName, item, diagnostics);
+    if (!grouped.has(normalizedActorName)) grouped.set(normalizedActorName, []);
+    if (!seenByActor.has(normalizedActorName)) seenByActor.set(normalizedActorName, new Set());
+
+    if (!seenByActor.get(normalizedActorName).has(actionKey)) {
+      seenByActor.get(normalizedActorName).add(actionKey);
+      grouped.get(normalizedActorName).push({
+        sourceEventId: item.id || "",
+        sequenceOrder: item.sequenceOrder,
+        eventText: trimText(item.eventText || "", 180),
+        orderingReason: item.orderingReason || "",
+        sourceContext: item.sourceContext,
+        ...resolvedDiagnostics
+      });
+    }
+  };
   for (const item of [...orderedEvents].sort((a, b) =>
     String(a.sourceCaptureId || a.sourceUrl || "").localeCompare(String(b.sourceCaptureId || b.sourceUrl || "")) ||
     Number(a.sequenceOrder || 0) - Number(b.sequenceOrder || 0)
@@ -5566,26 +5667,59 @@ function createActorTimelines(orderedEvents) {
       previousSingularActor: "",
       previousPluralActor: ""
     };
+    if (item.eventType === "lineage_record" && Array.isArray(item.lineagePersons) && item.lineagePersons.length) {
+      const lineageActors = Array.from(new Set([
+        ...item.lineagePersons,
+        /\bgeneration of Jesus Christ\b|\bJesus Christ\b/i.test(item.eventText || "") ? "JESUS CHRIST" : "",
+        /\bMary\b/i.test(item.eventText || "") ? "Mary" : ""
+      ].map((value) => normalizeWhitespace(value)).filter((value) => value && !/^Unknown(?: actor)?$/i.test(value))));
+      for (const lineageName of lineageActors) {
+        const lineageKey = [
+          item.id || "",
+          item.sequenceOrder ?? "",
+          "lineage",
+          lineageName
+        ].join("|");
+        addActorAction(lineageName, item, lineageKey, {
+          resolvedActorName: lineageName,
+          actorCategory: "Ancestor",
+          actorFunction: "Genealogy participant / lineage support",
+          resolutionSource: "genealogy actor"
+        });
+      }
+      memoryBySource.set(sourceKey, memory);
+      continue;
+    }
+    const semanticSubEventActors = new Set();
+    for (const subEvent of item.subEvents || []) {
+      const subEventActors = actorNamesFromSemanticSubEvent(subEvent);
+      for (const subEventActor of subEventActors) {
+        semanticSubEventActors.add(subEventActor);
+        const subEventKey = [
+          item.id || "",
+          subEvent.semanticEventId || subEvent.eventType || "",
+          subEventActor
+        ].join("|");
+        addActorAction(subEventActor, item, subEventKey, {
+          resolvedActorName: subEventActor,
+          actorCategory: actorCategoryFor(subEventActor, item),
+          actorFunction: actorFunctionFor(subEventActor, item),
+          resolutionSource: "semantic sub-event participant"
+        });
+      }
+    }
     const actorName = actorForEvent(item, memory);
+    if (actorName === "Unknown actor" && semanticSubEventActors.size) {
+      memoryBySource.set(sourceKey, memory);
+      continue;
+    }
     const actionKey = [
       item.id || "",
       item.sequenceOrder ?? "",
       normalizeWhitespace(item.eventText || "")
     ].join("|");
 
-    if (!grouped.has(actorName)) grouped.set(actorName, []);
-    if (!seenByActor.has(actorName)) seenByActor.set(actorName, new Set());
-
-    if (!seenByActor.get(actorName).has(actionKey)) {
-      seenByActor.get(actorName).add(actionKey);
-      grouped.get(actorName).push({
-        sourceEventId: item.id || "",
-        sequenceOrder: item.sequenceOrder,
-        eventText: trimText(item.eventText || "", 180),
-        orderingReason: item.orderingReason || "",
-        sourceContext: item.sourceContext
-      });
-    }
+    addActorAction(actorName, item, actionKey);
     if (actorName !== "Unknown actor") {
       if (PLURAL_ACTOR_NAMES.has(actorName)) memory.previousPluralActor = actorName;
       else memory.previousSingularActor = actorName;
@@ -5605,11 +5739,21 @@ function createActorTimelines(orderedEvents) {
     memoryBySource.set(sourceKey, memory);
   }
 
-  return Array.from(grouped.entries()).map(([actorName, orderedActions]) => ({
-    actorName,
-    sourceContexts: uniqueSourceContexts(orderedActions),
-    orderedActions
-  }));
+  return Array.from(grouped.entries()).filter(([actorName, orderedActions]) => {
+    if (!/^Unknown(?: actor)?$/i.test(actorName)) return true;
+    return (orderedActions || []).some((action) => action.resolutionSource !== "genealogy actor");
+  }).map(([actorName, orderedActions]) => {
+    const preferredAction = orderedActions.find((action) => action.resolutionSource !== "genealogy actor") || orderedActions[0] || {};
+    return {
+      actorName,
+      resolvedActorName: preferredAction.resolvedActorName || resolvedActorDisplayName(actorName),
+      actorCategory: preferredAction.actorCategory || actorCategoryFor(actorName),
+      actorFunction: preferredAction.actorFunction || actorFunctionFor(actorName),
+      resolutionSource: preferredAction.resolutionSource || actorResolutionSource(actorName),
+      sourceContexts: uniqueSourceContexts(orderedActions),
+      orderedActions
+    };
+  });
 }
 
 function dedupeActorTimelines(actorTimelines) {

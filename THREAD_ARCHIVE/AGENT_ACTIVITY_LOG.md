@@ -21,6 +21,38 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-18 - pcdx - Actor Resolution and Classification Foundation
+Summary:
+- Improved `ICE_ACTOR_TIMELINES` actor identification and diagnostics.
+- Actor timelines now prefer explicit named entities, semantic sub-event participants, and genealogy actors before falling back to `Unknown actor`.
+- Added actor diagnostics: `resolvedActorName`, `actorCategory`, `actorFunction`, and `resolutionSource`.
+- Preserved Matthew 1 genealogy participants as Ancestor actors.
+- Study Panel Actor cards now display resolved actor, category, function, resolution source, and action previews.
+- Matthew 1 actor smoke confirmed Mary, Joseph, JESUS CHRIST, AngEL Of THE LORD, and genealogy ancestors resolve; genealogy-only Unknown placeholders are removed.
+
+Files touched:
+- `background.js`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled Matthew 1 actor smoke passed.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review of Actor cards / Actor Timelines is recommended before adding actor-focused navigation.
+
 ## 2026-06-18 - pcdx - Guided Study Journeys Foundation
 Summary:
 - Added derived display-only `ICE_GUIDED_STUDY_JOURNEYS`.

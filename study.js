@@ -15234,20 +15234,29 @@ createRevelationPartsSection(item.subEvents)
       : [];
     const filtered = actors.filter((actor) => {
       const actionText = (actor.orderedActions || [])
-        .map((action) => action.eventText)
+        .map((action) => [action.eventText, action.resolvedActorName, action.actorCategory, action.actorFunction, action.resolutionSource].join(" "))
         .join(" ");
-      return includesTerm(`${actor.actorName} ${actionText}`, term);
+      return includesTerm(`${actor.actorName} ${actor.resolvedActorName || ""} ${actor.actorCategory || ""} ${actor.actorFunction || ""} ${actor.resolutionSource || ""} ${actionText}`, term);
     });
 
     renderLimited(container, filtered, count, (actor) => {
+      const diagnosticLines = [
+        `Resolved actor: ${actor.resolvedActorName || actor.actorName || "Unresolved"}`,
+        `Category: ${actor.actorCategory || "Unclassified"}`,
+        `Function: ${actor.actorFunction || "Not recorded"}`,
+        `Resolution source: ${actor.resolutionSource || "Not recorded"}`
+      ];
       const actions = (actor.orderedActions || [])
         .slice(0, 3)
-        .map((action) => `${action.sequenceOrder}. ${trimText(action.eventText, 90)}`)
+        .map((action) => {
+          const source = action.resolutionSource ? ` (${action.resolutionSource})` : "";
+          return `${action.sequenceOrder}. ${trimText(action.eventText, 90)}${source}`;
+        })
         .join(" ");
 
       return createCard(
-        actor.actorName,
-        actions || "No ordered actions yet.",
+        actor.resolvedActorName || actor.actorName,
+        `${diagnosticLines.join("\n")}\n${actions || "No ordered actions yet."}`,
         `${actor.orderedActions?.length || 0} action(s)`
       );
     }, "No detected actors match.", "actor");

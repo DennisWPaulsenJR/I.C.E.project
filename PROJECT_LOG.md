@@ -1,3 +1,15 @@
+## 2026-06-18 - Actor Resolution & Classification Foundation
+
+Improved `ICE_ACTOR_TIMELINES` actor identification, categorization, and display diagnostics.
+
+Actor timelines now prefer explicit named entities, semantic sub-event participants, and genealogy actors before falling back to `Unknown actor`. Matthew 1 genealogy records now preserve lineage participants as Ancestor actors instead of dropping them from actor timelines.
+
+Actor timeline entries now include `resolvedActorName`, `actorCategory`, `actorFunction`, and `resolutionSource`. Study Panel Actor cards display those diagnostics alongside action previews.
+
+Matthew 1 actor smoke confirmed Mary, Joseph, JESUS CHRIST, AngEL Of THE LORD, and genealogy ancestors resolve, with genealogy-only Unknown placeholders removed.
+
+Validation passed with `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+
 ## 2026-06-18 - Phase 10.0b Guided Study Journeys Foundation
 
 Implemented a derived display-only `ICE_GUIDED_STUDY_JOURNEYS` layer for readable study journeys built from current-scope Study Exploration Paths.

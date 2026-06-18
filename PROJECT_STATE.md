@@ -31,6 +31,13 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Actor Resolution & Classification Foundation is implemented in this update for `ICE_ACTOR_TIMELINES`.
+- Actor timelines now prefer explicit named entities, semantic sub-event participants, and lineage/genealogy actors before falling back to `Unknown actor`.
+- Actor timeline records now expose diagnostics: `resolvedActorName`, `actorCategory`, `actorFunction`, and `resolutionSource`.
+- Matthew 1 actor smoke confirmed Mary, Joseph, JESUS CHRIST, AngEL Of THE LORD, and genealogy ancestors resolve; genealogy participants are retained; genealogy-only `Unknown actor` placeholders are removed.
+- Actor cards in the Study Panel now show resolved actor, category, function, resolution source, and action previews.
+- Validation passed: `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: user presentation review of Actor cards / Actor Timelines before adding actor-focused navigation.
 - Phase 10.0b Guided Study Journeys Foundation is implemented in this update as a derived display-only layer identified by `ICE_GUIDED_STUDY_JOURNEYS`.
 - The Study Panel now includes a deferred `Guided Study Journeys` section after Study Exploration Paths.
 - Guided Study Journeys transform existing current-scope Study Exploration Paths into readable journeys with Journey Name, Why This Journey Exists, Recommended Starting Point, Suggested Progression, Key Verses, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, and App accuracy.
