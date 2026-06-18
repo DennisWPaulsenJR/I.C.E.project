@@ -1,3 +1,15 @@
+## 2026-06-18 - Phase 9.9b Focused Study View Presentation Polish
+
+Refined the `ICE_FOCUSED_STUDY_VIEWS` card presentation so each focus reads more like a guided study card and less like a technical semantic inventory.
+
+Focused Study View cards now lead with Why This Focus Matters, Source Verse Reference, Related Events, Related Teachings / Principles, Related Journey Nodes / Paths, and What to Explore Next.
+
+Evidence Chain, Analysis Support & Challenges, Provenance, Supporting Technical Records, and Reasoning Path remain preserved but are collapsed by default.
+
+This was a UI/presentation-only pass. It did not change semantic records, scope isolation, Context Lock, Meaning Staging, crawling behavior, automatic analysis behavior, or automatic focus selection.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. Controlled presentation smoke confirmed readable focused views for Matthew 1 Joseph, Matthew 2 Fulfillment, and Matthew 5 JESUS / Mercy, with technical disclosure sections collapsed and no browser contamination.
+
 ## 2026-06-18 - Phase 9.9a Focused Study Views Foundation
 
 Implemented a derived display-only `ICE_FOCUSED_STUDY_VIEWS` layer for grouping current-scope study records around a focus.

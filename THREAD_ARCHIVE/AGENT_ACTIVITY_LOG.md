@@ -21,6 +21,33 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-18 - pcdx - Focused Study View Presentation Polish
+Summary:
+- Refined `ICE_FOCUSED_STUDY_VIEWS` cards so they read like guided study cards instead of another technical semantic section.
+- Reordered visible content to lead with Why This Focus Matters, Source Verse Reference, Related Events, Related Teachings / Principles, Related Journey Nodes / Paths, and What to Explore Next.
+- Kept Evidence Chain, Analysis Support & Challenges, Provenance, Supporting Technical Records, and Reasoning Path available but collapsed by default.
+- Preserved source verse refs, scope isolation, Context Lock / Meaning Staging, no crawling, no automatic analysis, and no automatic focus selection.
+
+Files touched:
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled presentation smoke passed for Matthew 1 Joseph, Matthew 2 Fulfillment, Matthew 5 JESUS and Mercy, collapsed technical details, and no browser/Gmail contamination.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review is recommended before adding focus selector UX.
+
 ## 2026-06-18 - pcdx - Focused Study Views Foundation
 Summary:
 - Added derived display-only `ICE_FOCUSED_STUDY_VIEWS`.

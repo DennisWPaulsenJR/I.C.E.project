@@ -11827,6 +11827,20 @@ createRevelationPartsSection(item.subEvents)
     ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
   }
 
+  function focusedStudyDisplayList(values = [], limit = 8) {
+    return uniqueStudyList(asArray(values).flat(Infinity).map((value) => normalizeText(value)).filter(Boolean)).slice(0, limit);
+  }
+
+  function focusedStudyExploreNext(item = {}) {
+    return focusedStudyDisplayList([
+      item.relatedTeachings,
+      item.relatedThemes,
+      item.relatedPrinciples,
+      item.relatedJourneyNodes,
+      item.relatedScenes
+    ], 6).filter((value) => value.toLowerCase() !== normalizeText(item.focusName).toLowerCase());
+  }
+
   function createFocusedStudyViewCard(item = {}) {
     const card = document.createElement("article");
     card.className = "study-card semantic-card focused-study-view-card";
@@ -11841,20 +11855,29 @@ createRevelationPartsSection(item.subEvents)
     const body = document.createElement("div");
     body.className = "semantic-card-body";
     header.append(heading, range);
+    const relatedEvents = focusedStudyDisplayList([
+      item.relatedTimelineEvents,
+      item.relatedScenes,
+      item.relatedTimelineRelationships
+    ], 8);
+    const relatedTeachingsAndPrinciples = focusedStudyDisplayList([
+      item.relatedTeachings,
+      item.relatedPrinciples,
+      item.relatedThemes
+    ], 10);
+    const relatedJourneyItems = focusedStudyDisplayList([
+      item.relatedJourneyNodes,
+      item.relatedJourneyHubs,
+      item.relatedTimelineRelationships
+    ], 10);
+    const exploreNext = focusedStudyExploreNext(item);
     [
       createPassageFunctionSection("Why This Focus Matters", item.whyThisFocusMatters || "This focus groups existing current-scope records.", { divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Focus Source", item.focusSource || "Current-scope records", { preserveExact: true }),
-      createPassageFunctionSection("Related Context Lock records", item.relatedContextLocks.length ? "" : "No related Context Lock records found for this focus in the current Study Scope.", { list: item.relatedContextLocks, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for this focus in the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Timeline Relationships", item.relatedTimelineRelationships.length ? "" : "No related Timeline Relationships found for this focus in the current Study Scope.", { list: item.relatedTimelineRelationships, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Journey Nodes", item.relatedJourneyNodes.length ? "" : "No related Journey Nodes found for this focus in the current Study Scope.", { list: item.relatedJourneyNodes, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Journey Hubs", item.relatedJourneyHubs.length ? "" : "No related Journey Hubs found for this focus in the current Study Scope.", { list: item.relatedJourneyHubs, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for this focus in the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Principles", item.relatedPrinciples.length ? "" : "No related Principles found for this focus in the current Study Scope.", { list: item.relatedPrinciples, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Teachings", item.relatedTeachings.length ? "" : "No related Teachings found for this focus in the current Study Scope.", { list: item.relatedTeachings, plainList: true, divineContext, preferHolySpirit: true }),
-      createPassageFunctionSection("Related Scenes", item.relatedScenes.length ? "" : "No related Scenes found for this focus in the current Study Scope.", { list: item.relatedScenes, plainList: true, divineContext, preferHolySpirit: true }),
       renderSourceVerseRef(item),
-      createPassageFunctionSection("Supporting Records", "", { list: item.supportingRecords, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Events", relatedEvents.length ? "" : "No related events found for this focus in the current Study Scope.", { list: relatedEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Teachings / Principles", relatedTeachingsAndPrinciples.length ? "" : "No related teachings or principles found for this focus in the current Study Scope.", { list: relatedTeachingsAndPrinciples, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes / Paths", relatedJourneyItems.length ? "" : "No related Journey Nodes or Paths found for this focus in the current Study Scope.", { list: relatedJourneyItems, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("What to Explore Next", exploreNext.length ? "" : "No next exploration suggestions are available for this focus yet.", { list: exploreNext, plainList: true, divineContext, preferHolySpirit: true }),
       createEvidenceChainSection(item, {
         recordLabel: `Focused Study View: ${item.focusName}`,
         conclusion: item.whyThisFocusMatters,
@@ -11867,9 +11890,11 @@ createRevelationPartsSection(item.subEvents)
         relatedRecords: item.supportingRecords,
         provenance: item.provenance
       }),
-      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Focused Study Views", { preserveExact: true }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Focused Study Views", { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "focus grouping derived from existing scoped records only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
-      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Technical Records", "", { list: item.supportingRecords, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Supporting Technical Records" }),
+      createPassageFunctionSection("Related Context Lock records", item.relatedContextLocks.length ? "" : "No related Context Lock records found for this focus in the current Study Scope.", { list: item.relatedContextLocks, plainList: true, divineContext, preferHolySpirit: true, collapsed: true }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Reasoning Path" }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
       createWordingProvenanceSection({ source: item.provenance || "I.C.E. Focused Study Views", label: item.focusName || "Focused Study View", layer: "Focused Study Views / ICE_FOCUSED_STUDY_VIEWS", storageKey: "Not persisted in Phase 9.9a", scopePath: item.activeScope, rule: "Focused Study Views are display-only groupings over existing current-scope records. They do not auto-select focus, render graphs/timelines, crawl, analyze, or modify scope." })
     ].filter(Boolean).forEach((section) => body.appendChild(section));

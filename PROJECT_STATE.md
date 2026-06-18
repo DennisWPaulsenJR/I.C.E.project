@@ -31,6 +31,13 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.9b Focused Study View Presentation Polish is implemented in this update as a UI/presentation-only refinement to `ICE_FOCUSED_STUDY_VIEWS`.
+- Focused Study View cards now read more like guided study cards: Why This Focus Matters, Key Source Verse reference, Related Events, Related Teachings / Principles, Related Journey Nodes / Paths, and What to Explore Next appear before technical details.
+- Evidence Chain, Analysis Support & Challenges, Provenance, Supporting Technical Records, and Reasoning Path remain available but are collapsed by default.
+- No semantic records, scope behavior, Context Lock, Meaning Staging, crawling, automatic analysis, or automatic focus selection behavior changed.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled presentation smoke passed for readable Matthew 1 Joseph, Matthew 2 Fulfillment, Matthew 5 JESUS and Mercy focused views, with technical details collapsed and no browser/Gmail contamination.
+- Next recommended task: user presentation review of Focused Study View wording before adding any focus selector UX.
 - Phase 9.9a Focused Study Views Foundation is implemented in this update as a derived display-only layer identified by `ICE_FOCUSED_STUDY_VIEWS`.
 - The Study Panel now includes a deferred `Focused Study Views` section after Meaning Staging.
 - Focused Study Views group existing current-scope records around candidate focus names such as JESUS CHRIST, JESUS, Joseph, Mary, AngEL Of THE LORD, Fulfillment, Mercy, Faith, Redemption, and Kingdom Of Heaven.
