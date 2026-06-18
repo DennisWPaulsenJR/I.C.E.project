@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 10.0b Guided Study Journeys Foundation is implemented in this update as a derived display-only layer identified by `ICE_GUIDED_STUDY_JOURNEYS`.
+- The Study Panel now includes a deferred `Guided Study Journeys` section after Study Exploration Paths.
+- Guided Study Journeys transform existing current-scope Study Exploration Paths into readable journeys with Journey Name, Why This Journey Exists, Recommended Starting Point, Suggested Progression, Key Verses, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, and App accuracy.
+- Example journey names include Following Fulfillment, Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher when supported by current-scope records.
+- The layer is display-only; it does not navigate, advance chapters, render graphs, crawl, automatically analyze, or modify scope.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled presentation smoke passed for Matthew 2 Following Fulfillment and Matthew 5 Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher journeys, with no browser/Gmail contamination.
+- Next recommended task: user presentation review of Guided Study Journeys before adding selectors, navigation, graph, or timeline UX.
 - Phase 10.0a Study Exploration Paths Foundation is implemented in this update as a derived display-only layer identified by `ICE_STUDY_EXPLORATION_PATHS`.
 - The Study Panel now includes a deferred `Study Exploration Paths` section after Focused Study Views.
 - Study Exploration Paths derive current-scope routes from Focused Study Views, Study Themes, Journey Nodes/Paths/Hubs, Timeline Events/Relationships/Sequence, Context Lock, Meaning Staging, Principles, and Teachings.

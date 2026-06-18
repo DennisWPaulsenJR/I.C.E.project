@@ -1,3 +1,15 @@
+## 2026-06-18 - Phase 10.0b Guided Study Journeys Foundation
+
+Implemented a derived display-only `ICE_GUIDED_STUDY_JOURNEYS` layer for readable study journeys built from current-scope Study Exploration Paths.
+
+The Study Panel now has a deferred `Guided Study Journeys` section after Study Exploration Paths. Journey records translate existing exploration path steps into user-oriented journeys such as Following Fulfillment, Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher when current-scope records support those routes.
+
+Journey cards display Journey Name, Why This Journey Exists, Recommended Starting Point, Suggested Progression, Key Verses, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and scope boundary.
+
+The layer is informational only. It does not add automatic navigation, chapter advancement, graph rendering, crawling, automatic analysis, new semantic extraction, or scope changes.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. Controlled presentation smoke confirmed Matthew 2 Following Fulfillment and Matthew 5 Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher journeys with no browser contamination.
+
 ## 2026-06-18 - Phase 10.0a Study Exploration Paths Foundation
 
 Implemented a derived display-only `ICE_STUDY_EXPLORATION_PATHS` layer for meaningful study routes through the current Study Scope.

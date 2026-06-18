@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-18 - pcdx - Guided Study Journeys Foundation
+Summary:
+- Added derived display-only `ICE_GUIDED_STUDY_JOURNEYS`.
+- Added a deferred Study Panel `Guided Study Journeys` section after Study Exploration Paths.
+- Guided journeys transform current-scope Study Exploration Paths into readable journey cards such as Following Fulfillment, Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher when supported by current-scope records.
+- Cards expose Journey Name, Why This Journey Exists, Recommended Starting Point, Suggested Progression, Key Verses, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and scope boundary.
+- Preserved no automatic navigation, no chapter advancement, no graph rendering, no crawling, no automatic analysis, and no scope mutation.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled presentation smoke passed for Matthew 2 Following Fulfillment and Matthew 5 Understanding Mercy, Understanding the Kingdom of Heaven, and JESUS as Teacher journeys, with no browser/Gmail contamination.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review is recommended before adding selectors, navigation, graph, or timeline UX.
+
 ## 2026-06-18 - pcdx - Study Exploration Paths Foundation
 Summary:
 - Added derived display-only `ICE_STUDY_EXPLORATION_PATHS`.

@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Meaning Staging": "Display-only inference ladder diagnostics showing which stage a derived record depends on.",
     "Focused Study Views": "Display-only candidate views that group current-scope records around a focus.",
     "Study Exploration Paths": "Display-only study routes through current-scope focus, theme, journey, and timeline records.",
+    "Guided Study Journeys": "Display-only guided study journeys derived from current-scope exploration paths.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
@@ -12103,6 +12104,172 @@ createRevelationPartsSection(item.subEvents)
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more exploration path(s) hidden by the preview limit. Use panel search to focus a path.`);
   }
 
+  function guidedStudyJourneyName(item = {}) {
+    const focus = normalizeText(item.startingPoint || item.focusName || item.pathName);
+    if (/mercy/i.test(focus)) return "Understanding Mercy";
+    if (/kingdom of heaven/i.test(focus)) return "Understanding the Kingdom of Heaven";
+    if (/fulfillment/i.test(focus)) return "Following Fulfillment";
+    if (/JESUS/i.test(focus) && /teacher|teaching|sermon|disciple/i.test(studyExplorationPathSearchText(item))) return "JESUS as Teacher";
+    if (/JESUS/i.test(focus)) return "Studying JESUS";
+    return `${focus || "Current Scope"} Study Journey`;
+  }
+
+  function guidedStudyJourneyWhy(item = {}) {
+    const focus = normalizeText(item.startingPoint || item.focusName || item.pathName);
+    const steps = focusedStudyDisplayList(item.pathSteps, 6);
+    if (/mercy/i.test(focus)) return "Mercy is connected to existing current-scope principles, teachings, and relationship records, so this journey helps trace how mercy develops into peaceful relationships and reconciliation.";
+    if (/kingdom of heaven/i.test(focus)) return "Kingdom of Heaven records connect current-scope teachings, righteousness language, and related principles into a guided study route.";
+    if (/fulfillment/i.test(focus)) return "Fulfillment records connect current-scope events and journey nodes, helping the user study how the narrative supports fulfillment themes.";
+    if (/JESUS/i.test(focus)) return "JESUS is central to the current-scope teaching, event, and journey records, so this journey organizes related records around Him without changing scope.";
+    return `${focus || "This focus"} connects ${steps.length} current-scope study step(s) into a readable guided journey.`;
+  }
+
+  function guidedStudyJourneyProgression(item = {}) {
+    const focus = normalizeText(item.startingPoint || item.focusName || "");
+    const steps = focusedStudyDisplayList(item.pathSteps, 8);
+    const lower = steps.join(" ").toLowerCase();
+    if (/mercy/i.test(focus)) {
+      return focusedStudyDisplayList([steps.find((value) => /beatitude/i.test(value)) || "Beatitudes", "Mercy", steps.find((value) => /peace/i.test(value)) || "Peacemaking", steps.find((value) => /reconcil/i.test(value)) || "Reconciliation"], 6);
+    }
+    if (/kingdom of heaven/i.test(focus)) {
+      return focusedStudyDisplayList(["Kingdom of Heaven", steps.find((value) => /poor in spirit/i.test(value)) || "Poor In Spirit", steps.find((value) => /righteous/i.test(value)) || "Righteousness", steps.find((value) => /persecut/i.test(value)) || "Persecution"], 6);
+    }
+    if (/fulfillment/i.test(focus)) {
+      return focusedStudyDisplayList([steps.find((value) => /wise/i.test(value)) || "Wise Men", steps.find((value) => /herod/i.test(value)) || "Herod", steps.find((value) => /egypt/i.test(value)) || "Egypt", steps.find((value) => /nazareth/i.test(value)) || "Nazareth"], 6);
+    }
+    if (/JESUS/i.test(focus) && /teacher|teaching|sermon|disciple/.test(lower)) {
+      return focusedStudyDisplayList(["JESUS", steps.find((value) => /teacher|teach/i.test(value)) || "Teacher", steps.find((value) => /beatitude/i.test(value)) || "Beatitudes", steps.find((value) => /mercy/i.test(value)) || "Mercy", steps.find((value) => /peace/i.test(value)) || "Peacemaking"], 7);
+    }
+    return steps;
+  }
+
+  function guidedStudyJourneyRecords() {
+    return studyExplorationPathRecords().map((item) => {
+      const suggestedProgression = guidedStudyJourneyProgression(item);
+      if (suggestedProgression.length < 2) return null;
+      const sourceReference = resolveSourceVerseReference(item);
+      const keyVerses = focusedStudyDisplayList([item.sourceVerseReferences, sourceReference?.label], 6);
+      return {
+        ...item,
+        id: `guided-study-journey-${item.id || item.pathName}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+        journeyName: guidedStudyJourneyName(item),
+        whyThisJourneyExists: guidedStudyJourneyWhy(item),
+        recommendedStartingPoint: suggestedProgression[0] || item.startingPoint || item.focusName,
+        suggestedProgression,
+        keyVerses,
+        evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence / Guided Journey",
+        provenance: `I.C.E. Guided Study Journeys derived from ${item.provenance || "Study Exploration Paths"}`,
+        reasoningPath: uniqueStudyList([
+          "Study Exploration Path selected from current Study Scope",
+          "Path steps converted into a user-readable guided progression",
+          "Related themes, timeline events, journey nodes, principles, and teachings retained from source path",
+          "No automatic navigation, chapter advancement, graph rendering, crawling, or automatic analysis added",
+          ...asArray(item.reasoningPath)
+        ]).slice(0, 12),
+        sourceGrounding: item.sourceGrounding || item.sourcePhrase || `Derived from current-scope exploration path records connected to ${item.startingPoint || item.focusName}.`,
+        confidence: item.confidence || "probable"
+      };
+    }).filter(Boolean).slice(0, 24);
+  }
+
+  function guidedStudyJourneySearchText(item = {}) {
+    return [
+      item.journeyName,
+      item.whyThisJourneyExists,
+      item.recommendedStartingPoint,
+      item.suggestedProgression,
+      item.keyVerses,
+      item.relatedThemes,
+      item.relatedTimelineEvents,
+      item.relatedJourneyNodes,
+      item.relatedPrinciples,
+      item.relatedTeachings,
+      item.supportingRecords,
+      item.provenance,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createGuidedStudyJourneyCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card guided-study-journey-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.journeyName, item.suggestedProgression, item.relatedTeachings, item.relatedPrinciples]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.journeyName || "Guided Study Journey", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_GUIDED_STUDY_JOURNEYS", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Why This Journey Exists", item.whyThisJourneyExists || "This journey translates a current-scope exploration path into a readable study route.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Recommended Starting Point", item.recommendedStartingPoint || "Current focus", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Suggested Progression", "", { list: item.suggestedProgression, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Key Verses", "", { list: item.keyVerses, plainList: true, divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for this journey in the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for this journey in the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes", item.relatedJourneyNodes.length ? "" : "No related Journey Nodes found for this journey in the current Study Scope.", { list: item.relatedJourneyNodes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", item.relatedPrinciples.length ? "" : "No related Principles found for this journey in the current Study Scope.", { list: item.relatedPrinciples, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Teachings", item.relatedTeachings.length ? "" : "No related Teachings found for this journey in the current Study Scope.", { list: item.relatedTeachings, plainList: true, divineContext, preferHolySpirit: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Guided Study Journey: ${item.journeyName}`,
+        conclusion: item.whyThisJourneyExists,
+        relatedRecords: item.supportingRecords,
+        reasoningPath: item.reasoningPath,
+        provenance: item.provenance
+      }),
+      createConfidenceChallengeSection(item, {
+        evidenceWeight: item.evidenceWeight,
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance
+      }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Guided Study Journeys", { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "guided journey derived from existing scoped exploration paths only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Supporting Technical Records", "", { list: item.supportingRecords, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Supporting Technical Records" }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Reasoning Path" }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Guided Study Journeys", label: item.journeyName || "Guided Study Journey", layer: "Guided Study Journeys / ICE_GUIDED_STUDY_JOURNEYS", storageKey: "Not persisted in Phase 10.0b", scopePath: item.activeScope, rule: "Guided Study Journeys are display-only routes over existing current-scope exploration paths. They do not navigate, advance chapters, render graphs, crawl, analyze, or modify scope." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderGuidedStudyJourneys(term) {
+    const container = document.getElementById("guidedStudyJourneysCards");
+    const count = document.getElementById("guidedStudyJourneysCount");
+    if (!container || !count) return;
+    const records = guidedStudyJourneyRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(guidedStudyJourneySearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} guided journey(ies)`;
+    if (!records.length) {
+      appendEmpty(container, "No Guided Study Journeys are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Guided Study Journeys",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_GUIDED_STUDY_JOURNEYS",
+        "Purpose: transform study exploration paths into understandable study journeys.",
+        "Boundary: display-only; no automatic navigation, chapter advancement, graph rendering, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived guided study journeys layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Guided Study Journeys match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createGuidedStudyJourneyCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more guided journey(ies) hidden by the preview limit. Use panel search to focus a journey.`);
+  }
+
   function journeyNodeCanonicalName(value = "") {
     const label = normalizeText(value);
     if (!label) return "";
@@ -15849,6 +16016,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Meaning Staging", sectionId: "meaningStagingSection", renderer: renderMeaningStaging },
       { label: "Focused Study Views", sectionId: "focusedStudyViewsSection", renderer: renderFocusedStudyViews },
       { label: "Study Exploration Paths", sectionId: "studyExplorationPathsSection", renderer: renderStudyExplorationPaths },
+      { label: "Guided Study Journeys", sectionId: "guidedStudyJourneysSection", renderer: renderGuidedStudyJourneys },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
@@ -15963,6 +16131,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Meaning Staging") return meaningStagingRecords().length;
     if (label === "Focused Study Views") return focusedStudyViewsRecords().length;
     if (label === "Study Exploration Paths") return studyExplorationPathRecords().length;
+    if (label === "Guided Study Journeys") return guidedStudyJourneyRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;
