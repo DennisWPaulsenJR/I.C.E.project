@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Context Lock": "Display-only role locks for speaker, authority source, messenger, recipient, participants, and event scope.",
     "Meaning Staging": "Display-only inference ladder diagnostics showing which stage a derived record depends on.",
     "Focused Study Views": "Display-only candidate views that group current-scope records around a focus.",
+    "Study Exploration Paths": "Display-only study routes through current-scope focus, theme, journey, and timeline records.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
@@ -11931,6 +11932,177 @@ createRevelationPartsSection(item.subEvents)
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createFocusedStudyViewCard(item)));
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more focused view(s) hidden by the preview limit. Use panel search to focus a view.`);
   }
+
+  function studyExplorationPathSteps(item = {}) {
+    return focusedStudyDisplayList([
+      item.focusName,
+      item.relatedTeachings,
+      item.relatedJourneyNodes,
+      item.relatedThemes,
+      item.relatedPrinciples,
+      item.relatedTimelineEvents,
+      item.relatedJourneyHubs,
+      item.relatedScenes
+    ], 9);
+  }
+
+  function studyExplorationPathRecords() {
+    return focusedStudyViewsRecords().map((item) => {
+      const pathSteps = studyExplorationPathSteps(item);
+      const relatedThemes = focusedStudyDisplayList(item.relatedThemes, 8);
+      const relatedTimelineEvents = focusedStudyDisplayList([item.relatedTimelineEvents, item.relatedScenes], 8);
+      const relatedJourneyNodes = focusedStudyDisplayList([item.relatedJourneyNodes, item.relatedJourneyHubs], 8);
+      const relatedPrinciples = focusedStudyDisplayList(item.relatedPrinciples, 8);
+      const relatedTeachings = focusedStudyDisplayList(item.relatedTeachings, 8);
+      const sourceReference = resolveSourceVerseReference(item);
+      const sourceVerseReferences = focusedStudyDisplayList(sourceReference?.label ? [sourceReference.label] : [], 4);
+      const exploreNext = focusedStudyExploreNext(item);
+      const pathSignalCount = [
+        relatedThemes,
+        relatedTimelineEvents,
+        relatedJourneyNodes,
+        relatedPrinciples,
+        relatedTeachings,
+        exploreNext
+      ].reduce((total, list) => total + list.length, 0);
+      if (pathSteps.length < 2 || pathSignalCount < 1) return null;
+      return {
+        ...item,
+        id: `study-exploration-path-${item.id || item.focusName}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+        pathName: `${item.focusName} Exploration Path`,
+        whyThisPathExists: `${item.focusName} connects ${pathSteps.length} current-scope study step(s) through existing focus, theme, journey, timeline, teaching, and principle records.`,
+        startingPoint: item.focusName,
+        pathSteps,
+        relatedThemes,
+        relatedTimelineEvents,
+        relatedJourneyNodes,
+        relatedPrinciples,
+        relatedTeachings,
+        sourceVerseReferences,
+        exploreNext,
+        supportingRecords: focusedStudyDisplayList([
+          item.supportingRecords,
+          relatedThemes,
+          relatedTimelineEvents,
+          relatedJourneyNodes,
+          relatedPrinciples,
+          relatedTeachings
+        ], 16),
+        evidenceWeight: item.evidenceWeight || "Derived Semantic Evidence / Exploration Path",
+        provenance: `I.C.E. Study Exploration Paths derived from ${item.provenance || "Focused Study Views and current-scope semantic records"}`,
+        reasoningPath: uniqueStudyList([
+          "Focused Study View selected as current-scope starting point",
+          "Related current-scope themes, timeline events, journey nodes, teachings, and principles collected",
+          "Path steps ordered as a display route only",
+          "No automatic navigation, graph rendering, timeline visualization, crawling, or automatic analysis added",
+          ...asArray(item.reasoningPath)
+        ]).slice(0, 12),
+        sourceGrounding: item.sourceGrounding || item.sourcePhrase || `Derived from current-scope records connected to ${item.focusName}.`,
+        confidence: item.confidence || "probable"
+      };
+    }).filter(Boolean).slice(0, 24);
+  }
+
+  function studyExplorationPathSearchText(item = {}) {
+    return [
+      item.pathName,
+      item.whyThisPathExists,
+      item.startingPoint,
+      item.pathSteps,
+      item.relatedThemes,
+      item.relatedTimelineEvents,
+      item.relatedJourneyNodes,
+      item.relatedPrinciples,
+      item.relatedTeachings,
+      item.sourceVerseReferences,
+      item.exploreNext,
+      item.supportingRecords,
+      item.provenance,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createStudyExplorationPathCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card study-exploration-path-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.pathName, item.pathSteps, item.relatedTeachings, item.relatedPrinciples]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.pathName || "Study Exploration Path", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_STUDY_EXPLORATION_PATHS", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Why This Path Exists", item.whyThisPathExists || "This route groups existing current-scope study records.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Starting Point", item.startingPoint || item.focusName || "Current focus", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Path Steps", "", { list: item.pathSteps, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for this path in the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for this path in the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes", item.relatedJourneyNodes.length ? "" : "No related Journey Nodes found for this path in the current Study Scope.", { list: item.relatedJourneyNodes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", item.relatedPrinciples.length ? "" : "No related Principles found for this path in the current Study Scope.", { list: item.relatedPrinciples, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Teachings", item.relatedTeachings.length ? "" : "No related Teachings found for this path in the current Study Scope.", { list: item.relatedTeachings, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Source Verse References", "", { list: item.sourceVerseReferences, plainList: true, divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("What to Explore Next", item.exploreNext.length ? "" : "No next exploration suggestions are available for this path yet.", { list: item.exploreNext, plainList: true, divineContext, preferHolySpirit: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Study Exploration Path: ${item.pathName}`,
+        conclusion: item.whyThisPathExists,
+        relatedRecords: item.supportingRecords,
+        reasoningPath: item.reasoningPath,
+        provenance: item.provenance
+      }),
+      createConfidenceChallengeSection(item, {
+        evidenceWeight: item.evidenceWeight,
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance
+      }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Study Exploration Paths", { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "exploration path derived from existing scoped records only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Supporting Technical Records", "", { list: item.supportingRecords, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Supporting Technical Records" }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Reasoning Path" }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Study Exploration Paths", label: item.pathName || "Study Exploration Path", layer: "Study Exploration Paths / ICE_STUDY_EXPLORATION_PATHS", storageKey: "Not persisted in Phase 10.0a", scopePath: item.activeScope, rule: "Study Exploration Paths are display-only routes over existing current-scope records. They do not navigate, render graphs/timelines, crawl, analyze, or modify scope." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderStudyExplorationPaths(term) {
+    const container = document.getElementById("studyExplorationPathsCards");
+    const count = document.getElementById("studyExplorationPathsCount");
+    if (!container || !count) return;
+    const records = studyExplorationPathRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(studyExplorationPathSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} exploration path(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Study Exploration Paths are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Study Exploration Paths",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_STUDY_EXPLORATION_PATHS",
+        "Purpose: show meaningful study routes through current-scope semantic structures.",
+        "Boundary: display-only; no automatic navigation, graph rendering, timeline visualization, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived study exploration paths layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Study Exploration Paths match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createStudyExplorationPathCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more exploration path(s) hidden by the preview limit. Use panel search to focus a path.`);
+  }
+
   function journeyNodeCanonicalName(value = "") {
     const label = normalizeText(value);
     if (!label) return "";
@@ -15676,6 +15848,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Context Lock", sectionId: "contextLockSection", renderer: renderContextLock },
       { label: "Meaning Staging", sectionId: "meaningStagingSection", renderer: renderMeaningStaging },
       { label: "Focused Study Views", sectionId: "focusedStudyViewsSection", renderer: renderFocusedStudyViews },
+      { label: "Study Exploration Paths", sectionId: "studyExplorationPathsSection", renderer: renderStudyExplorationPaths },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
@@ -15789,6 +15962,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Context Lock") return contextLockRecords().length;
     if (label === "Meaning Staging") return meaningStagingRecords().length;
     if (label === "Focused Study Views") return focusedStudyViewsRecords().length;
+    if (label === "Study Exploration Paths") return studyExplorationPathRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;

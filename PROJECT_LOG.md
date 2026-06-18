@@ -1,3 +1,15 @@
+## 2026-06-18 - Phase 10.0a Study Exploration Paths Foundation
+
+Implemented a derived display-only `ICE_STUDY_EXPLORATION_PATHS` layer for meaningful study routes through the current Study Scope.
+
+The Study Panel now has a deferred `Study Exploration Paths` section after Focused Study Views. Path records start from existing Focused Study Views and assemble current-scope steps from Study Themes, Journey Nodes, Journey Paths, Journey Hubs, Timeline Events, Timeline Relationships, Timeline Sequence, Context Lock, Meaning Staging, Principles, and Teachings.
+
+Path cards display Path Name, Why This Path Exists, Starting Point, Path Steps, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Source Verse References, What to Explore Next, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and scope boundary.
+
+The layer is informational only. It does not add automatic navigation, graph rendering, timeline visualization, crawling, automatic analysis, new semantic extraction, or scope changes.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. Controlled presentation smoke confirmed a Matthew 2 Fulfillment exploration path and Matthew 5 JESUS, Mercy, and Kingdom of Heaven paths with no browser contamination.
+
 ## 2026-06-18 - Phase 9.9b Focused Study View Presentation Polish
 
 Refined the `ICE_FOCUSED_STUDY_VIEWS` card presentation so each focus reads more like a guided study card and less like a technical semantic inventory.

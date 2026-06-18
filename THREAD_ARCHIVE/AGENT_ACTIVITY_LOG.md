@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-18 - pcdx - Study Exploration Paths Foundation
+Summary:
+- Added derived display-only `ICE_STUDY_EXPLORATION_PATHS`.
+- Added a deferred Study Panel `Study Exploration Paths` section after Focused Study Views.
+- Exploration paths start from existing Focused Study Views and assemble current-scope route steps from Study Themes, Journey Nodes/Paths/Hubs, Timeline Events/Relationships/Sequence, Context Lock, Meaning Staging, Principles, and Teachings.
+- Cards expose Path Name, Why This Path Exists, Starting Point, Path Steps, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Source Verse References, What to Explore Next, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and scope boundary.
+- Preserved no automatic navigation, no graph rendering, no timeline visualization, no crawling, no automatic analysis, and no scope mutation.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled presentation smoke passed for Matthew 2 Fulfillment exploration path and Matthew 5 JESUS, Mercy, and Kingdom of Heaven paths, with no browser/Gmail contamination.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review is recommended before adding selector, navigation, graph, or timeline UX.
+
 ## 2026-06-18 - pcdx - Focused Study View Presentation Polish
 Summary:
 - Refined `ICE_FOCUSED_STUDY_VIEWS` cards so they read like guided study cards instead of another technical semantic section.

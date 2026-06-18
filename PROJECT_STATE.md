@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 10.0a Study Exploration Paths Foundation is implemented in this update as a derived display-only layer identified by `ICE_STUDY_EXPLORATION_PATHS`.
+- The Study Panel now includes a deferred `Study Exploration Paths` section after Focused Study Views.
+- Study Exploration Paths derive current-scope routes from Focused Study Views, Study Themes, Journey Nodes/Paths/Hubs, Timeline Events/Relationships/Sequence, Context Lock, Meaning Staging, Principles, and Teachings.
+- Path cards display Path Name, Why This Path Exists, Starting Point, Path Steps, Related Themes, Related Timeline Events, Related Journey Nodes, Related Principles, Related Teachings, Source Verse References, What to Explore Next, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, and App accuracy.
+- The layer is display-only; it does not navigate, render graphs, render timelines, crawl, automatically analyze, or modify scope.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled presentation smoke passed for Matthew 2 Fulfillment exploration path and Matthew 5 JESUS, Mercy, and Kingdom of Heaven exploration paths, with no browser/Gmail contamination.
+- Next recommended task: user presentation review of Study Exploration Paths before adding selector, navigation, graph, or timeline UX.
 - Phase 9.9b Focused Study View Presentation Polish is implemented in this update as a UI/presentation-only refinement to `ICE_FOCUSED_STUDY_VIEWS`.
 - Focused Study View cards now read more like guided study cards: Why This Focus Matters, Key Source Verse reference, Related Events, Related Teachings / Principles, Related Journey Nodes / Paths, and What to Explore Next appear before technical details.
 - Evidence Chain, Analysis Support & Challenges, Provenance, Supporting Technical Records, and Reasoning Path remain available but are collapsed by default.
