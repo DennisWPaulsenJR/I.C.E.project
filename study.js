@@ -90,6 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "View Lens": "How current scoped study information is being presented.",
     "Context Lock": "Display-only role locks for speaker, authority source, messenger, recipient, participants, and event scope.",
     "Meaning Staging": "Display-only inference ladder diagnostics showing which stage a derived record depends on.",
+    "Focused Study Views": "Display-only candidate views that group current-scope records around a focus.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
     "Journey Hubs": "Major grounded convergence points across current-scope Journey Nodes and Journey Paths.",
@@ -11580,6 +11581,331 @@ createRevelationPartsSection(item.subEvents)
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createMeaningStagingCard(item)));
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more staging record(s) hidden by the preview limit. Use panel search to focus a stage.`);
   }
+
+  function focusedStudyRecordText(item = {}) {
+    const record = item.record || item;
+    return [
+      item.layer,
+      item.label,
+      record.focusName,
+      record.lockName,
+      record.recordLabel,
+      record.themeName,
+      record.nodeName,
+      record.hubName,
+      record.eventName,
+      record.fromNode,
+      record.toNode,
+      record.relationshipType,
+      record.corePrinciple,
+      record.teachingTopic,
+      record.teachingBlock,
+      record.principle,
+      record.sceneTitle,
+      record.speaker,
+      record.audience,
+      record.authoritySource,
+      record.messenger,
+      record.recipient,
+      record.participants,
+      record.relatedRecords,
+      record.relatedTimelineEvents,
+      record.relatedJourneyNodes,
+      record.relatedPrinciples,
+      record.relatedNodes,
+      record.relatedEntities,
+      record.supportingRecords,
+      record.sourcePhrase,
+      record.derivedMeaning,
+      record.whyItMatters,
+      record.whyConnected,
+      record.whyThisThemeExists,
+      record.reasoning,
+      record.reasoningPath,
+      record.sourceGrounding
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function focusedStudySourceRecords() {
+    const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
+      layer,
+      record,
+      label: normalizeText(record?.[labelKey] || record?.lockName || record?.recordLabel || record?.themeName || record?.nodeName || record?.hubName || record?.eventName || record?.corePrinciple || record?.teachingTopic || record?.sceneTitle || record?.relationshipType || layer)
+    }));
+    return [
+      ...wrap("Context Lock", contextLockRecords(), "lockName"),
+      ...wrap("Meaning Staging", meaningStagingRecords(), "recordLabel"),
+      ...wrap("Study Themes", studyThemeRecords(), "themeName"),
+      ...wrap("Journey Nodes", journeyNodesRecords(), "nodeName"),
+      ...wrap("Journey Paths", journeyPathRecords(), "relationshipType"),
+      ...wrap("Journey Hubs", journeyHubRecords(), "hubName"),
+      ...wrap("Timeline Events", timelineEventsRecords(), "eventName"),
+      ...wrap("Timeline Relationships", timelineRelationshipRecords(), "relationshipType"),
+      ...wrap("Timeline Sequence", timelineSequenceRecords(), "event"),
+      ...wrap("Principle Networks", journeyRetainedSemanticRecords("principleNetworks"), "corePrinciple"),
+      ...wrap("Teaching Semantics", journeyRetainedSemanticRecords("teachingSemantics"), "teachingTopic"),
+      ...wrap("Principle Relationships", journeyRetainedSemanticRecords("principleRelationships"), "principle"),
+      ...wrap("Scene Intelligence", journeyRetainedSemanticRecords("sceneModels"), "sceneTitle"),
+      ...wrap("Focus Lens", journeyRetainedSemanticRecords("focusLens"), "currentFocus")
+    ];
+  }
+
+  function focusedStudyCandidateNames() {
+    const candidates = [];
+    const preferredFocusOrder = [
+      "JESUS CHRIST",
+      "JESUS",
+      "Joseph",
+      "Mary",
+      "AngEL Of THE LORD",
+      "Fulfillment",
+      "Mercy",
+      "Faith",
+      "Redemption",
+      "Kingdom Of Heaven"
+    ];
+    const sourcePriority = {
+      "Current semantic focus": 0,
+      "Study Themes": 1,
+      "Focus Lens": 2,
+      "Principle Networks": 3,
+      "Teaching Semantics": 4,
+      "Journey Nodes": 5,
+      "Journey Hubs": 6,
+      "Context Lock": 7
+    };
+    const cleanFocusLabel = (value = "") => {
+      let label = normalizeText(value)
+        .replace(/\s+where\b.*$/i, "")
+        .replace(/\s+for\b.*$/i, "")
+        .replace(/\s+by scene\b.*$/i, "")
+        .replace(/\s+in scene context\b.*$/i, "")
+        .replace(/\s+as .*$/i, "")
+        .trim();
+      if (/angel of (?:the )?lord|AngEL Of THE LORD/i.test(label)) return "AngEL Of THE LORD";
+      if (/\bJoseph\b/i.test(label)) return "Joseph";
+      if (/\bMary\b/i.test(label)) return "Mary";
+      if (/\bHerod\b/i.test(label)) return "Herod";
+      if (/\bJESUS CHRIST\b|Jesus Christ/i.test(label)) return "JESUS CHRIST";
+      if (/\bJESUS\b|\byoung child\b|\bchild\b/i.test(label)) return "JESUS";
+      if (/\bdisciples\b/i.test(label)) return "disciples";
+      if (/\bmultitudes?\b/i.test(label)) return "multitudes";
+      if (/\bwise men\b/i.test(label)) return "wise men";
+      return label;
+    };
+    const add = (value, source = "") => {
+      const cleaned = cleanFocusLabel(value);
+      const label = renderDerivedSemanticDisplayText(cleaned, hasDivineDisplayContext(cleaned));
+      if (!label || label.length < 3) return;
+      if (label.length > 60 || /[,;]/.test(label)) return;
+      if (/^(current scope|current source|source|target|event|relationship|principle|teaching|study theme|context lock)$/i.test(label)) return;
+      candidates.push({ label, source, priority: sourcePriority[source] ?? 20 });
+    };
+    if (currentSemanticFocus) add(semanticFocusValueLabel(currentSemanticFocus), "Current semantic focus");
+    studyThemeRecords().forEach((item) => add(item.themeName, "Study Themes"));
+    scopedSemanticRecords(studyData.focusLens).forEach((item) => {
+      add(item.currentFocus, "Focus Lens");
+      add(item.suggestedNextFocus, "Focus Lens");
+      asArray(item.relatedCharacters).forEach((value) => add(value, "Focus Lens"));
+      asArray(item.relatedPrinciples).forEach((value) => add(value, "Focus Lens"));
+    });
+    contextLockRecords().forEach((item) => {
+      [item.authoritySource, item.messenger, item.recipient, item.speaker, item.audience, ...asArray(item.participants)].forEach((value) => add(value, "Context Lock"));
+    });
+    journeyNodesRecords().forEach((item) => add(item.nodeName, "Journey Nodes"));
+    journeyHubRecords().forEach((item) => add(item.hubName, "Journey Hubs"));
+    journeyRetainedSemanticRecords("principleNetworks").forEach((item) => {
+      add(item.corePrinciple, "Principle Networks");
+      asArray(item.relatedPrinciples).forEach((value) => add(value, "Principle Networks"));
+    });
+    journeyRetainedSemanticRecords("teachingSemantics").forEach((item) => {
+      [item.teachingTopic, item.principle, item.blessing, item.commandment, item.speaker, item.audience].forEach((value) => add(value, "Teaching Semantics"));
+    });
+    const seen = new Set();
+    const preferredIndex = (label = "") => {
+      const index = preferredFocusOrder.findIndex((value) => value.toLowerCase() === label.toLowerCase());
+      return index >= 0 ? index : preferredFocusOrder.length + 1;
+    };
+    return candidates.sort((left, right) => preferredIndex(left.label) - preferredIndex(right.label) || left.priority - right.priority || left.label.localeCompare(right.label)).filter((candidate) => {
+      const key = candidate.label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 32);
+  }
+
+  function focusedStudyMatchesFocus(source = {}, focusName = "") {
+    const text = focusedStudyRecordText(source).toLowerCase();
+    const focus = normalizeText(focusName).toLowerCase();
+    if (!focus) return false;
+    if (text.includes(focus)) return true;
+    const words = focus.split(/\s+/).filter((word) => word.length >= 4);
+    return words.length ? words.every((word) => text.includes(word)) : false;
+  }
+
+  function focusedStudyLabelList(matches = [], layer, labelPicker, limit = 8) {
+    return uniqueStudyList(matches
+      .filter((item) => item.layer === layer)
+      .map((item) => normalizeText(labelPicker(item.record || {}) || item.label))
+      .filter(Boolean)).slice(0, limit);
+  }
+
+  function focusedStudyViewsRecords() {
+    const sources = focusedStudySourceRecords();
+    return focusedStudyCandidateNames().map((candidate) => {
+      const matches = sources.filter((item) => focusedStudyMatchesFocus(item, candidate.label));
+      if (!matches.length) return null;
+      const first = matches[0].record || {};
+      const relatedContextLocks = focusedStudyLabelList(matches, "Context Lock", (item) => item.lockName, 5);
+      const relatedTimelineEvents = focusedStudyLabelList(matches, "Timeline Events", (item) => item.eventName, 8);
+      const relatedTimelineRelationships = focusedStudyLabelList(matches, "Timeline Relationships", (item) => `${item.fromEvent || item.fromNode || "Event A"} -> ${item.toEvent || item.toNode || "Event B"}`, 8);
+      const relatedJourneyNodes = focusedStudyLabelList(matches, "Journey Nodes", (item) => item.nodeName, 8);
+      const relatedJourneyHubs = focusedStudyLabelList(matches, "Journey Hubs", (item) => item.hubName, 8);
+      const relatedThemes = focusedStudyLabelList(matches, "Study Themes", (item) => item.themeName, 8);
+      const relatedPrinciples = uniqueStudyList(matches.flatMap((item) => [
+        item.record?.corePrinciple,
+        item.record?.principle,
+        ...asArray(item.record?.relatedPrinciples)
+      ]).map((value) => normalizeText(value)).filter(Boolean)).slice(0, 10);
+      const relatedTeachings = focusedStudyLabelList(matches, "Teaching Semantics", (item) => item.teachingTopic || item.teachingBlock || item.principle, 8);
+      const relatedScenes = focusedStudyLabelList(matches, "Scene Intelligence", (item) => item.sceneTitle, 8);
+      return {
+        id: `focused-study-view-${candidate.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        focusName: candidate.label,
+        focusSource: candidate.source || "Current-scope records",
+        whyThisFocusMatters: `${candidate.label} appears across ${matches.length} current-scope record(s), so I.C.E. can group existing study material around this focus without changing scope.`,
+        relatedContextLocks,
+        relatedTimelineEvents,
+        relatedTimelineRelationships,
+        relatedJourneyNodes,
+        relatedJourneyHubs,
+        relatedThemes,
+        relatedPrinciples,
+        relatedTeachings,
+        relatedScenes,
+        supportingRecords: uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`)).slice(0, 14),
+        sourcePhrase: first.sourcePhrase || first.sourceWording || "",
+        verseRange: first.verseRange || "",
+        scopePath: first.scopePath || "",
+        sourceContext: first.sourceContext || {},
+        sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
+        activeScope: currentStudyScopeLabel(),
+        evidenceWeight: matches.some((item) => item.record?.sourcePhrase || item.record?.verseRange) ? "Direct Source Evidence / Focused Study Grouping" : "Derived Semantic Evidence / Focused Study Grouping",
+        provenance: `I.C.E. Focused Study Views derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ")}`,
+        reasoningPath: [
+          "Candidate focus selected from existing current-scope records",
+          "Matching records grouped by focus wording",
+          "Context Lock and Meaning Staging remain lower-stage safeguards",
+          "No focus selector, graph rendering, timeline visualization, crawling, or automatic analysis added"
+        ],
+        sourceGrounding: matches.map((item) => item.record?.sourcePhrase || item.record?.sourceGrounding || item.record?.derivedMeaning).filter(Boolean).slice(0, 3).join(" ") || `Derived from current-scope records that mention ${candidate.label}.`,
+        confidence: matches.some((item) => item.record?.sourcePhrase || item.record?.verseRange) ? "probable" : "possible"
+      };
+    }).filter(Boolean).slice(0, 24);
+  }
+
+  function focusedStudyViewsSearchText(item = {}) {
+    return [
+      item.focusName,
+      item.focusSource,
+      item.whyThisFocusMatters,
+      item.relatedContextLocks,
+      item.relatedTimelineEvents,
+      item.relatedTimelineRelationships,
+      item.relatedJourneyNodes,
+      item.relatedJourneyHubs,
+      item.relatedThemes,
+      item.relatedPrinciples,
+      item.relatedTeachings,
+      item.relatedScenes,
+      item.supportingRecords,
+      item.sourcePhrase,
+      item.provenance,
+      item.reasoningPath,
+      item.sourceGrounding,
+      item.activeScope
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createFocusedStudyViewCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card focused-study-view-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.focusName, item.whyThisFocusMatters, item.sourcePhrase, item.relatedContextLocks]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.focusName || "Focused Study View", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_FOCUSED_STUDY_VIEWS", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Why This Focus Matters", item.whyThisFocusMatters || "This focus groups existing current-scope records.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Focus Source", item.focusSource || "Current-scope records", { preserveExact: true }),
+      createPassageFunctionSection("Related Context Lock records", item.relatedContextLocks.length ? "" : "No related Context Lock records found for this focus in the current Study Scope.", { list: item.relatedContextLocks, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for this focus in the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Relationships", item.relatedTimelineRelationships.length ? "" : "No related Timeline Relationships found for this focus in the current Study Scope.", { list: item.relatedTimelineRelationships, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Nodes", item.relatedJourneyNodes.length ? "" : "No related Journey Nodes found for this focus in the current Study Scope.", { list: item.relatedJourneyNodes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Journey Hubs", item.relatedJourneyHubs.length ? "" : "No related Journey Hubs found for this focus in the current Study Scope.", { list: item.relatedJourneyHubs, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for this focus in the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Principles", item.relatedPrinciples.length ? "" : "No related Principles found for this focus in the current Study Scope.", { list: item.relatedPrinciples, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Teachings", item.relatedTeachings.length ? "" : "No related Teachings found for this focus in the current Study Scope.", { list: item.relatedTeachings, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Scenes", item.relatedScenes.length ? "" : "No related Scenes found for this focus in the current Study Scope.", { list: item.relatedScenes, plainList: true, divineContext, preferHolySpirit: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Supporting Records", "", { list: item.supportingRecords, plainList: true, divineContext, preferHolySpirit: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Focused Study View: ${item.focusName}`,
+        conclusion: item.whyThisFocusMatters,
+        relatedRecords: item.supportingRecords,
+        reasoningPath: item.reasoningPath,
+        provenance: item.provenance
+      }),
+      createConfidenceChallengeSection(item, {
+        evidenceWeight: item.evidenceWeight,
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance
+      }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Focused Study Views", { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "focus grouping derived from existing scoped records only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Focused Study Views", label: item.focusName || "Focused Study View", layer: "Focused Study Views / ICE_FOCUSED_STUDY_VIEWS", storageKey: "Not persisted in Phase 9.9a", scopePath: item.activeScope, rule: "Focused Study Views are display-only groupings over existing current-scope records. They do not auto-select focus, render graphs/timelines, crawl, analyze, or modify scope." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderFocusedStudyViews(term) {
+    const container = document.getElementById("focusedStudyViewsCards");
+    const count = document.getElementById("focusedStudyViewsCount");
+    if (!container || !count) return;
+    const records = focusedStudyViewsRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(focusedStudyViewsSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} focused view(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Focused Study Views are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Focused Study Views",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_FOCUSED_STUDY_VIEWS",
+        "Purpose: organize existing current-scope records around a focus candidate.",
+        "Boundary: display-only foundation; no new extraction, automatic focus selection, graph rendering, timeline visualization, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived focused study view layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Focused Study Views match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createFocusedStudyViewCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more focused view(s) hidden by the preview limit. Use panel search to focus a view.`);
+  }
   function journeyNodeCanonicalName(value = "") {
     const label = normalizeText(value);
     if (!label) return "";
@@ -15324,6 +15650,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "View Lens", sectionId: "viewLensSection", renderer: renderViewLens },
       { label: "Context Lock", sectionId: "contextLockSection", renderer: renderContextLock },
       { label: "Meaning Staging", sectionId: "meaningStagingSection", renderer: renderMeaningStaging },
+      { label: "Focused Study Views", sectionId: "focusedStudyViewsSection", renderer: renderFocusedStudyViews },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
       { label: "Journey Hubs", sectionId: "journeyHubsSection", renderer: renderJourneyHubs },
@@ -15436,6 +15763,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "View Lens") return viewLensRecords().length;
     if (label === "Context Lock") return contextLockRecords().length;
     if (label === "Meaning Staging") return meaningStagingRecords().length;
+    if (label === "Focused Study Views") return focusedStudyViewsRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;
     if (label === "Journey Hubs") return journeyHubRecords().length;

@@ -31,6 +31,14 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 9.9a Focused Study Views Foundation is implemented in this update as a derived display-only layer identified by `ICE_FOCUSED_STUDY_VIEWS`.
+- The Study Panel now includes a deferred `Focused Study Views` section after Meaning Staging.
+- Focused Study Views group existing current-scope records around candidate focus names such as JESUS CHRIST, JESUS, Joseph, Mary, AngEL Of THE LORD, Fulfillment, Mercy, Faith, Redemption, and Kingdom Of Heaven.
+- Focus cards display why the focus matters, related Context Lock records, Timeline Events, Timeline Relationships, Journey Nodes, Journey Hubs, Study Themes, Principles, Teachings, Scenes, Source Verse Reference, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, and App accuracy.
+- The layer reuses existing Context Lock, Meaning Staging, Study Themes, Journey, Timeline, Principle, Teaching, Scene, and Focus Lens records only; it does not add semantic extraction, persistence, focus selectors, graph rendering, timeline visualization, crawling, or automatic analysis.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Controlled presentation smoke passed for Matthew 1 Joseph, Matthew 2 Fulfillment, Matthew 5 JESUS and Mercy, source verse popup behavior, scope isolation, and absence of browser/Gmail contamination.
+- Next recommended task: user presentation review of Focused Study View wording and preview order before adding any focus selector UX.
 - Phase 9.8a Context Lock & Meaning Staging Foundation is implemented in this update as derived display-only diagnostics identified by `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING`.
 - The Study Panel now includes deferred `Context Lock` and `Meaning Staging` sections after View Lens.
 - Context Lock records capture speaker, audience, authority source, messenger, recipient, participants, location, event scope, grounded observations, supported meaning, validation checks, and rejected inversions.

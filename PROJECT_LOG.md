@@ -1,3 +1,15 @@
+## 2026-06-18 - Phase 9.9a Focused Study Views Foundation
+
+Implemented a derived display-only `ICE_FOCUSED_STUDY_VIEWS` layer for grouping current-scope study records around a focus.
+
+The Study Panel now has a deferred `Focused Study Views` section after Meaning Staging. Focus cards organize existing scoped records around candidate focus names such as JESUS CHRIST, JESUS, Joseph, Mary, AngEL Of THE LORD, Fulfillment, Mercy, Faith, Redemption, and Kingdom Of Heaven.
+
+Cards display Why This Focus Matters, related Context Lock records, Timeline Events, Timeline Relationships, Journey Nodes, Journey Hubs, Study Themes, Principles, Teachings, Scenes, Source Verse Reference, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and current Study Scope.
+
+The layer reuses existing Context Lock, Meaning Staging, Study Themes, Journey, Timeline, Principle, Teaching, Scene, and Focus Lens records. It does not add new semantic extraction, persistence, automatic focus selection, graph rendering, timeline visualization, crawling, or automatic analysis.
+
+Validation passed with `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`. Controlled clean-scope presentation smoke passed for Matthew 1 Joseph, Matthew 2 Fulfillment, Matthew 5 JESUS and Mercy, source verse popup behavior, and no cross-page or browser contamination.
+
 ## 2026-06-17 - Phase 9.8a Context Lock & Meaning Staging Foundation
 
 Implemented derived display-only `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING` diagnostics.

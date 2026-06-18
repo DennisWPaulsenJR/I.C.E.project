@@ -21,6 +21,35 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-18 - pcdx - Focused Study Views Foundation
+Summary:
+- Added derived display-only `ICE_FOCUSED_STUDY_VIEWS`.
+- Added a deferred Study Panel `Focused Study Views` section after Meaning Staging.
+- Focus cards group existing current-scope records around candidate focus names such as JESUS CHRIST, JESUS, Joseph, Mary, AngEL Of THE LORD, Fulfillment, Mercy, Faith, Redemption, and Kingdom Of Heaven.
+- Cards expose Why This Focus Matters, related Context Lock records, Timeline Events, Timeline Relationships, Journey Nodes, Journey Hubs, Study Themes, Principles, Teachings, Scenes, Source Verse Reference, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, App accuracy, and scope boundary.
+- Preserved no new semantic extraction, no persistence, no automatic focus selection, no graph rendering, no timeline visualization, no crawling, and no automatic analysis.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+- Controlled clean-scope presentation smoke passed for Matthew 1 Joseph, Matthew 2 Fulfillment, Matthew 5 JESUS and Mercy, source verse popups, scope isolation, and no browser/Gmail contamination.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. User presentation review of Focused Study View wording and preview order is recommended before adding focus selector UX.
+
 ## 2026-06-17 - pcdx - Context Lock and Meaning Staging Foundation
 Summary:
 - Added derived display-only `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING` diagnostics.
