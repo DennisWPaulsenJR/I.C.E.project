@@ -5023,3 +5023,36 @@ Boundaries:
 
 Next recommended step:
 - Browser presentation smoke for Matthew 1, Matthew 2, and Matthew 5 Study Scope Hierarchy before adding hierarchy navigation or selectors.
+
+## 2026-06-19 - pcdx - Scope Perspective Foundation
+
+Task:
+- Add Phase 10.1b `ICE_SCOPE_PERSPECTIVES` so users can view the same current-scope focus through character, event, principle, narrative, and book perspectives.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added a deferred Study Panel section titled `Scope Perspectives`.
+- Derived Scope Perspective records from existing Focused Study Views and Study Scope Hierarchy.
+- Each card displays Focus Item, Character Perspective, Event Perspective, Principle Perspective, Narrative Perspective, Book Perspective, Current Scope Boundary, Supporting Verses, Related Themes, Related Timeline Events, Related Exploration Paths, Evidence Chain, Analysis Support, Challenge Factors, Provenance, Evidence Weight, Reasoning Path, and App accuracy.
+- Added focus-specific wording for Mary, Joseph, JESUS/JESUS CHRIST, AngEL Of THE LORD, Mercy, and Fulfillment when current-scope records support them.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Boundaries:
+- Display-only.
+- No navigation controls, automatic scope expansion, crawling, automatic analysis, graph rendering, queue execution, or source-record mutation.
+- Scope isolation, verse references, provenance, evidence weighting, Context Lock, and Meaning Staging remain preserved.
+
+Next recommended step:
+- Browser presentation smoke for Matthew 1 Mary/Joseph, Matthew 2 Fulfillment, and Matthew 5 Mercy/JESUS perspectives before adding focus selectors or navigation.

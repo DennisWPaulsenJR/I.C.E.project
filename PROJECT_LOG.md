@@ -4771,3 +4771,40 @@ Validation passed:
 - `git diff --check`
 - `npm.cmd run qa:matthew-pages`
 - `npm.cmd run review:matthew-session`
+
+## 2026-06-19 - Phase 10.1b Scope Perspective Foundation
+
+Implemented a derived display-only `ICE_SCOPE_PERSPECTIVES` layer in the Study Panel.
+
+The new deferred `Scope Perspectives` section presents current-scope focus items through multiple perspectives:
+- Focus Item
+- Character Perspective
+- Event Perspective
+- Principle Perspective
+- Narrative Perspective
+- Book Perspective
+- Current Scope Boundary
+- Supporting Verses
+- Related Themes
+- Related Timeline Events
+- Related Exploration Paths
+- Evidence Chain
+- Analysis Support
+- Challenge Factors
+- Provenance
+
+The layer is derived from existing Focused Study Views, Study Scope Hierarchy, Study Themes, Timeline Events, Study Exploration Paths, Context Lock, and Meaning Staging. It supports user-facing perspectives such as Matthew 1 Mary/Joseph, Matthew 2 Fulfillment, and Matthew 5 Mercy/JESUS when those records are present in the active analyzed scope.
+
+Boundaries retained:
+- Display-only.
+- No navigation controls.
+- No automatic scope expansion.
+- No crawling.
+- No automatic analysis.
+- Scope isolation, verse references, provenance, and evidence weighting remain preserved.
+
+Validation passed:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew-pages`
+- `npm.cmd run review:matthew-session`

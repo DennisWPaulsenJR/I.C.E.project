@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Focused Study Views": "Display-only candidate views that group current-scope records around a focus.",
     "Study Exploration Paths": "Display-only study routes through current-scope focus, theme, journey, and timeline records.",
     "Study Scope Hierarchy": "Display-only context ladder for current focus, section, chapter, narrative block, book, and volume.",
+    "Scope Perspectives": "Display-only views of the same current-scope focus across character, event, principle, narrative, and book perspectives.",
     "Guided Study Journeys": "Display-only guided study journeys derived from current-scope exploration paths.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
@@ -12266,6 +12267,194 @@ createRevelationPartsSection(item.subEvents)
     filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createStudyScopeHierarchyCard(item)));
   }
 
+  function scopePerspectiveCharacterText(focus = "", view = {}) {
+    const label = normalizeText(focus);
+    if (/^mary$/i.test(label)) return "Mary is presented within the current scope as mother of JESUS CHRIST where the source and related records ground that role.";
+    if (/^joseph$/i.test(label)) return "Joseph is presented within the current scope as a recipient of instruction and obedient participant where current records support that role.";
+    if (/^jesus(?: christ)?$/i.test(label)) return `${label} is central to current-scope character and identity records where those records are present.`;
+    if (/angel of the lord|AngEL Of THE LORD/i.test(label)) return "AngEL Of THE LORD is presented as messenger where Context Lock and related records ground that role.";
+    if (view.relatedContextLocks?.length || view.relatedScenes?.length) return `${label} is connected to current-scope character/context records.`;
+    return "No distinct character perspective is available from current-scope records.";
+  }
+
+  function scopePerspectiveEventText(focus = "", view = {}) {
+    if (view.relatedTimelineEvents?.length) return `${focus} appears in or near ${view.relatedTimelineEvents.length} current-scope Timeline Event(s).`;
+    if (view.relatedTimelineRelationships?.length) return `${focus} is connected to current-scope Timeline Relationships.`;
+    return "No distinct event perspective is available from current-scope Timeline Events.";
+  }
+
+  function scopePerspectivePrincipleText(focus = "", view = {}) {
+    if (view.relatedPrinciples?.length) return `${focus} is connected to current-scope principle records: ${view.relatedPrinciples.slice(0, 3).join(", ")}.`;
+    if (/mercy/i.test(focus)) return "Mercy is studied as a principle where current-scope teachings explicitly support it.";
+    return "No distinct principle perspective is available from current-scope principle records.";
+  }
+
+  function scopePerspectiveNarrativeText(focus = "", hierarchy = {}) {
+    const block = hierarchy.currentNarrativeBlock || currentStudyScopeLabel();
+    if (/sermon on the mount/i.test(block)) return `${focus} is viewed inside the Sermon on the Mount narrative context.`;
+    if (/early life/i.test(block)) return `${focus} is viewed inside the early-life narrative context of JESUS.`;
+    if (/genealogy|birth/i.test(block)) return `${focus} is viewed inside the genealogy / birth narrative context.`;
+    return `${focus} is viewed inside ${block}.`;
+  }
+
+  function scopePerspectiveBookText(focus = "", hierarchy = {}) {
+    const book = hierarchy.currentBook || "current book";
+    const block = hierarchy.currentNarrativeBlock || "";
+    if (/matthew/i.test(book) && /sermon/i.test(block)) return `${focus} is viewed within Matthew's kingdom teaching context.`;
+    if (/matthew/i.test(book) && /early life|genealogy|birth/i.test(block)) return `${focus} is viewed within Matthew's messianic identity and fulfillment context.`;
+    if (/fulfillment/i.test(focus) && /matthew/i.test(book)) return "Fulfillment is viewed within Matthew's testimony of prophetic and covenant continuity.";
+    return `${focus} is viewed within ${book}.`;
+  }
+
+  function scopePerspectiveSupportingVerses(view = {}) {
+    return focusedStudyDisplayList([
+      view.verseRange,
+      view.scopePath,
+      view.relatedTimelineEvents,
+      view.relatedThemes
+    ], 8);
+  }
+
+  function scopePerspectiveRecords() {
+    const hierarchy = studyScopeHierarchyRecords()[0] || {};
+    return focusedStudyViewsRecords().map((view) => {
+      const focus = view.focusName || "Current focus";
+      return {
+        id: `scope-perspective-${view.id || focus}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+        focusItem: focus,
+        characterPerspective: scopePerspectiveCharacterText(focus, view),
+        eventPerspective: scopePerspectiveEventText(focus, view),
+        principlePerspective: scopePerspectivePrincipleText(focus, view),
+        narrativePerspective: scopePerspectiveNarrativeText(focus, hierarchy),
+        bookPerspective: scopePerspectiveBookText(focus, hierarchy),
+        currentScopeBoundary: hierarchy.currentStudyScopeBoundary || `Current Study Scope only: ${currentStudyScopeLabel()}.`,
+        supportingVerses: scopePerspectiveSupportingVerses(view),
+        relatedThemes: focusedStudyDisplayList(view.relatedThemes, 8),
+        relatedTimelineEvents: focusedStudyDisplayList(view.relatedTimelineEvents, 8),
+        relatedExplorationPaths: focusedStudyDisplayList(studyExplorationPathRecords()
+          .filter((path) => focusedStudyMatchesFocus({ record: path, label: path.pathName, layer: "Study Exploration Paths" }, focus))
+          .map((path) => path.pathName), 8),
+        supportingRecords: focusedStudyDisplayList(view.supportingRecords, 12),
+        sourcePhrase: view.sourcePhrase || "",
+        verseRange: view.verseRange || "",
+        scopePath: view.scopePath || "",
+        sourceContext: view.sourceContext || {},
+        sourceUrl: view.sourceUrl || "",
+        evidenceWeight: view.evidenceWeight || "Derived Semantic Evidence / Scope Perspective",
+        provenance: `I.C.E. Scope Perspectives derived from ${view.provenance || "Focused Study Views"} and ${hierarchy.provenance || "Study Scope Hierarchy"}`,
+        reasoningPath: uniqueStudyList([
+          "Focused Study View selected as the focus item",
+          "Study Scope Hierarchy supplied section, chapter, narrative block, book, and volume context",
+          "Current-scope themes, timeline events, and exploration paths attached without expanding scope",
+          "No navigation controls, automatic scope expansion, crawling, or automatic analysis added",
+          ...asArray(view.reasoningPath)
+        ]).slice(0, 12),
+        sourceGrounding: view.sourceGrounding || hierarchy.sourceGrounding || `Derived from current-scope records for ${focus}.`,
+        activeScope: currentStudyScopeLabel(),
+        confidence: view.confidence || "probable"
+      };
+    }).slice(0, 24);
+  }
+
+  function scopePerspectiveSearchText(item = {}) {
+    return [
+      item.focusItem,
+      item.characterPerspective,
+      item.eventPerspective,
+      item.principlePerspective,
+      item.narrativePerspective,
+      item.bookPerspective,
+      item.currentScopeBoundary,
+      item.supportingVerses,
+      item.relatedThemes,
+      item.relatedTimelineEvents,
+      item.relatedExplorationPaths,
+      item.supportingRecords,
+      item.sourcePhrase,
+      item.provenance,
+      item.reasoningPath,
+      item.sourceGrounding
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createScopePerspectiveCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card scope-perspective-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.focusItem, item.characterPerspective, item.bookPerspective, item.relatedThemes, item.relatedTimelineEvents]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.focusItem || "Scope Perspective", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_SCOPE_PERSPECTIVES", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Focus Item", item.focusItem || "Current focus", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Character Perspective", item.characterPerspective || "No character perspective recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Event Perspective", item.eventPerspective || "No event perspective recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Principle Perspective", item.principlePerspective || "No principle perspective recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Narrative Perspective", item.narrativePerspective || "No narrative perspective recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Book Perspective", item.bookPerspective || "No book perspective recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Scope Boundary", item.currentScopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Supporting Verses", item.supportingVerses.length ? "" : "No specific supporting verse list resolved for this perspective.", { list: item.supportingVerses, plainList: true, preserveExact: true }),
+      renderSourceVerseRef(item),
+      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for this perspective in the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for this perspective in the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Exploration Paths", item.relatedExplorationPaths.length ? "" : "No related Study Exploration Paths found for this perspective in the current Study Scope.", { list: item.relatedExplorationPaths, plainList: true, divineContext, preferHolySpirit: true }),
+      createEvidenceChainSection(item, {
+        recordLabel: `Scope Perspective: ${item.focusItem}`,
+        relatedRecords: item.supportingRecords,
+        conclusion: item.bookPerspective || item.narrativePerspective,
+        provenance: item.provenance
+      }),
+      createConfidenceChallengeSection(item, {
+        evidenceWeight: item.evidenceWeight,
+        relatedRecords: item.supportingRecords,
+        provenance: item.provenance
+      }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Scope Perspectives", { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "perspective derived from current-scope focused views and scope hierarchy only", sourceGrounding: item.sourceGrounding, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Reasoning Path" }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Scope Perspectives", label: item.focusItem || "Scope Perspective", layer: "Scope Perspectives / ICE_SCOPE_PERSPECTIVES", storageKey: "Not persisted in Phase 10.1b", scopePath: item.activeScope, rule: "Scope Perspectives are display-only presentations of existing current-scope records. They do not navigate, auto-expand scope, crawl, automatically analyze, or modify source records." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderScopePerspectives(term) {
+    const container = document.getElementById("scopePerspectivesCards");
+    const count = document.getElementById("scopePerspectivesCount");
+    if (!container || !count) return;
+    const records = scopePerspectiveRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(scopePerspectiveSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} perspective(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Scope Perspectives are available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Scope Perspectives",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_SCOPE_PERSPECTIVES",
+        "Purpose: show the same current-scope focus through character, event, principle, narrative, and book perspectives.",
+        "Boundary: display-only; no navigation controls, automatic scope expansion, crawling, or automatic analysis."
+      ].join("\n"),
+      "derived scope perspectives layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Scope Perspectives match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createScopePerspectiveCard(item)));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more perspective(s) hidden by the preview limit. Use panel search to focus an item.`);
+  }
+
   function guidedStudyJourneyName(item = {}) {
     const focus = normalizeText(item.startingPoint || item.focusName || item.pathName);
     if (/mercy/i.test(focus)) return "Understanding Mercy";
@@ -16251,6 +16440,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Focused Study Views", sectionId: "focusedStudyViewsSection", renderer: renderFocusedStudyViews },
       { label: "Study Exploration Paths", sectionId: "studyExplorationPathsSection", renderer: renderStudyExplorationPaths },
       { label: "Study Scope Hierarchy", sectionId: "studyScopeHierarchySection", renderer: renderStudyScopeHierarchy },
+      { label: "Scope Perspectives", sectionId: "scopePerspectivesSection", renderer: renderScopePerspectives },
       { label: "Guided Study Journeys", sectionId: "guidedStudyJourneysSection", renderer: renderGuidedStudyJourneys },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
@@ -16367,6 +16557,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Focused Study Views") return focusedStudyViewsRecords().length;
     if (label === "Study Exploration Paths") return studyExplorationPathRecords().length;
     if (label === "Study Scope Hierarchy") return studyScopeHierarchyRecords().length;
+    if (label === "Scope Perspectives") return scopePerspectiveRecords().length;
     if (label === "Guided Study Journeys") return guidedStudyJourneyRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;

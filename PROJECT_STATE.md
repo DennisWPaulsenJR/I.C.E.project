@@ -31,6 +31,13 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 10.1b Scope Perspective Foundation is implemented in this update as a derived display-only layer identified by `ICE_SCOPE_PERSPECTIVES`.
+- The Study Panel now includes a deferred `Scope Perspectives` section after Study Scope Hierarchy.
+- Scope Perspectives derive focus cards from Focused Study Views and Study Scope Hierarchy, showing Character Perspective, Event Perspective, Principle Perspective, Narrative Perspective, Book Perspective, Current Scope Boundary, Supporting Verses, Related Themes, Related Timeline Events, and Related Exploration Paths.
+- The layer supports current-scope perspectives such as Matthew 1 Mary/Joseph, Matthew 2 Fulfillment, and Matthew 5 Mercy/JESUS when those records are available.
+- The layer is display-only; it does not add navigation controls, auto-expand scope, crawl, automatically analyze, or modify source records.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: browser presentation smoke of Scope Perspectives for Matthew 1 Mary/Joseph, Matthew 2 Fulfillment, and Matthew 5 Mercy/JESUS before adding focus selectors or navigation.
 - Phase 10.1a Study Scope Hierarchy Foundation is implemented in this update as a derived display-only layer identified by `ICE_SCOPE_HIERARCHY`.
 - The Study Panel now includes a deferred `Study Scope Hierarchy` section after Study Exploration Paths.
 - Study Scope Hierarchy displays Current Focus, Current Section, Current Chapter, Current Narrative Block, Current Book, Current Volume/Testament, Current Study Scope Boundary, Analyzed Pages, Related Themes, Related Timeline Events, and Related Exploration Paths.
