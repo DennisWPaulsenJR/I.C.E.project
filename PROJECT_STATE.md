@@ -31,6 +31,13 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Phase 10.1a Study Scope Hierarchy Foundation is implemented in this update as a derived display-only layer identified by `ICE_SCOPE_HIERARCHY`.
+- The Study Panel now includes a deferred `Study Scope Hierarchy` section after Study Exploration Paths.
+- Study Scope Hierarchy displays Current Focus, Current Section, Current Chapter, Current Narrative Block, Current Book, Current Volume/Testament, Current Study Scope Boundary, Analyzed Pages, Related Themes, Related Timeline Events, and Related Exploration Paths.
+- Matthew context heuristics identify Matthew 1 as Genealogy / Birth Narrative, Matthew 2 as Early Life of JESUS, and Matthew 5 as Sermon on the Mount when those chapters are in the active Study Scope.
+- The layer is display-only; it does not auto-expand scope, crawl, automatically analyze, generate book-wide semantics, render graphs, or modify source records.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: browser presentation smoke of Study Scope Hierarchy in Matthew 1, Matthew 2, and Matthew 5 before adding any hierarchy navigation.
 - Ordered Events / Timeline Event classification refinement is implemented in this update.
 - Matthew 1 ordered source records now distinguish `Identity Statement`, `Genealogy / Lineage Record`, `Birth Event`, `Revelation / Messenger Event`, `Naming Instruction`, `Fulfillment Statement`, `Obedient Response`, `Travel Event`, `Teaching Event`, and `Healing Event`.
 - Genealogy / Lineage Records remain in source sequence before birth narrative, but they are displayed as information records instead of normal events.

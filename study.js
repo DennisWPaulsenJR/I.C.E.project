@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Meaning Staging": "Display-only inference ladder diagnostics showing which stage a derived record depends on.",
     "Focused Study Views": "Display-only candidate views that group current-scope records around a focus.",
     "Study Exploration Paths": "Display-only study routes through current-scope focus, theme, journey, and timeline records.",
+    "Study Scope Hierarchy": "Display-only context ladder for current focus, section, chapter, narrative block, book, and volume.",
     "Guided Study Journeys": "Display-only guided study journeys derived from current-scope exploration paths.",
     "Journey Nodes": "Grounded study destinations derived from current scoped semantic records.",
     "Journey Paths": "Grounded transitions between existing current-scope Journey Nodes.",
@@ -12104,6 +12105,167 @@ createRevelationPartsSection(item.subEvents)
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more exploration path(s) hidden by the preview limit. Use panel search to focus a path.`);
   }
 
+  function scopeHierarchyBookVolume(book = "") {
+    if (/matthew|mark|luke|john/i.test(book)) return "New Testament";
+    return "Current scripture volume";
+  }
+
+  function scopeHierarchyNarrativeBlock(pages = currentStudyScopePages()) {
+    const text = [
+      currentStudyScopeLabel(),
+      pages.map(volumePageLabel).join(" "),
+      timelineEventsRecords().map((item) => [item.eventName, item.eventType, item.sourcePhrase].join(" ")).join(" "),
+      studyThemeRecords().map((item) => item.themeName).join(" "),
+      studyExplorationPathRecords().map((item) => item.pathName).join(" ")
+    ].join(" ").toLowerCase();
+    const chapters = pages.map(pageChapterNumber).filter(Boolean);
+    if (/matthew/.test(text) && chapters.includes(5)) return "Sermon on the Mount";
+    if (/matthew/.test(text) && chapters.includes(2)) return "Early Life of JESUS";
+    if (/matthew/.test(text) && chapters.includes(1)) {
+      if (/genealogy|lineage|generation|begat/.test(text)) return "Genealogy / Birth Narrative";
+      return "Birth Narrative";
+    }
+    if (/sermon|beatitude|mount/.test(text)) return "Sermon on the Mount";
+    if (/fulfillment|egypt|herod|wise men|nazareth/.test(text)) return "Early Life of JESUS";
+    if (/genealogy|lineage|generation|birth/.test(text)) return "Genealogy / Birth Narrative";
+    return "Current analyzed narrative block";
+  }
+
+  function scopeHierarchySectionLabel(pages = currentStudyScopePages()) {
+    const chapters = pages.map(pageChapterNumber).filter(Boolean);
+    if (!chapters.length) return "Current section";
+    const block = scopeHierarchyNarrativeBlock(pages);
+    if (/sermon/i.test(block)) return "Teaching section";
+    if (/early life/i.test(block)) return "Event block";
+    if (/genealogy/i.test(block)) return "Genealogy / birth section";
+    return chapters.length === 1 ? "Chapter section" : "Selected chapter section";
+  }
+
+  function studyScopeHierarchyRecords() {
+    const pages = currentStudyScopePages();
+    const activePage = activeSourcePageRecord();
+    const firstPage = pages[0] || activePage || {};
+    const book = pageBookName(firstPage) || "Current book";
+    const chapters = uniqueStudyList(pages.map((page) => pageChapterNumber(page)).filter(Boolean).map(String));
+    const chapterLabel = chapters.length ? `${book} ${chapters.join(", ")}` : volumePageLabel(firstPage);
+    const themes = studyThemeRecords();
+    const events = timelineEventsRecords();
+    const paths = studyExplorationPathRecords();
+    const focus = currentSemanticFocus
+      ? semanticFocusValueLabel(currentSemanticFocus)
+      : (activePage ? volumePageLabel(activePage) : currentStudyScopeLabel());
+
+    return [{
+      id: "study-scope-hierarchy-current",
+      currentFocus: focus || "Current Study Scope",
+      currentSection: scopeHierarchySectionLabel(pages),
+      currentChapter: chapterLabel || "Current chapter",
+      currentNarrativeBlock: scopeHierarchyNarrativeBlock(pages),
+      currentBook: book,
+      currentVolume: scopeHierarchyBookVolume(book),
+      currentStudyScopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. This hierarchy does not auto-expand to book-wide records or unanalyzed pages.`,
+      relatedThemes: uniqueStudyList(themes.map((item) => item.themeName).filter(Boolean)).slice(0, 8),
+      relatedTimelineEvents: uniqueStudyList(events.map((item) => item.eventName).filter(Boolean)).slice(0, 8),
+      relatedExplorationPaths: uniqueStudyList(paths.map((item) => item.pathName).filter(Boolean)).slice(0, 8),
+      analyzedPages: pages.map(volumePageLabel).filter(Boolean),
+      evidenceWeight: "Derived Semantic Evidence / Scope Summary",
+      provenance: "I.C.E. Study Scope Hierarchy derived from Study Scope, Context Lock, Timeline Events, Timeline Sequence, Study Themes, Focused Study Views, and Study Exploration Paths.",
+      reasoningPath: [
+        "Current analyzed Study Scope pages read",
+        "Active focus, section, chapter, narrative block, book, and volume labels derived for display",
+        "Related themes, timeline events, and exploration paths collected from current-scope derived records",
+        "Scope boundary preserved; no auto-expansion, crawling, book-wide generation, graph rendering, or automatic analysis added"
+      ],
+      sourceGrounding: `Derived from existing current-scope records for ${currentStudyScopeLabel()}.`,
+      activeScope: currentStudyScopeLabel(),
+      confidence: pages.length ? "probable" : "possible"
+    }];
+  }
+
+  function studyScopeHierarchySearchText(item = {}) {
+    return [
+      item.currentFocus,
+      item.currentSection,
+      item.currentChapter,
+      item.currentNarrativeBlock,
+      item.currentBook,
+      item.currentVolume,
+      item.currentStudyScopeBoundary,
+      item.relatedThemes,
+      item.relatedTimelineEvents,
+      item.relatedExplorationPaths,
+      item.analyzedPages,
+      item.provenance,
+      item.reasoningPath,
+      item.sourceGrounding
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createStudyScopeHierarchyCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card study-scope-hierarchy-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const divineContext = hasDivineDisplayContext([item.currentFocus, item.currentNarrativeBlock, item.relatedThemes, item.relatedTimelineEvents, item.relatedExplorationPaths]);
+    heading.textContent = renderDerivedSemanticDisplayText(item.currentFocus || "Study Scope Hierarchy", divineContext);
+    const range = document.createElement("div");
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_SCOPE_HIERARCHY", item.currentNarrativeBlock, item.activeScope].filter(Boolean).join(" | ");
+    const body = document.createElement("div");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Current Focus", item.currentFocus || "Current Study Scope", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Section", item.currentSection || "Current section", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Chapter", item.currentChapter || "Current chapter", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Narrative Block", item.currentNarrativeBlock || "Current analyzed narrative block", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Book", item.currentBook || "Current book", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Volume / Testament", item.currentVolume || "Current scripture volume", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Current Study Scope Boundary", item.currentStudyScopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Analyzed Pages", "", { list: item.analyzedPages, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Themes", item.relatedThemes.length ? "" : "No related Study Themes found for the current Study Scope.", { list: item.relatedThemes, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Timeline Events", item.relatedTimelineEvents.length ? "" : "No related Timeline Events found for the current Study Scope.", { list: item.relatedTimelineEvents, plainList: true, divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Related Exploration Paths", item.relatedExplorationPaths.length ? "" : "No related Study Exploration Paths found for the current Study Scope.", { list: item.relatedExplorationPaths, plainList: true, divineContext, preferHolySpirit: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "hierarchy derived from existing current-scope records only", sourceGrounding: item.sourceGrounding, supportingRecords: [...asArray(item.relatedThemes), ...asArray(item.relatedTimelineEvents), ...asArray(item.relatedExplorationPaths)] }),
+      createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Study Scope Hierarchy", { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
+      createPassageFunctionSection("Reasoning Path", "", { list: item.reasoningPath, plainList: true, divineContext, preferHolySpirit: true, collapsed: true, summaryLabel: "Show Reasoning Path" }),
+      createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Study Scope Hierarchy", label: item.currentFocus || "Study Scope Hierarchy", layer: "Study Scope Hierarchy / ICE_SCOPE_HIERARCHY", storageKey: "Not persisted in Phase 10.1a", scopePath: item.activeScope, rule: "Study Scope Hierarchy is display-only. It does not auto-expand scope, crawl, automatically analyze, generate book-wide semantics, render graphs, or modify source records." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderStudyScopeHierarchy(term) {
+    const container = document.getElementById("studyScopeHierarchyCards");
+    const count = document.getElementById("studyScopeHierarchyCount");
+    if (!container || !count) return;
+    const records = studyScopeHierarchyRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(studyScopeHierarchySearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} hierarchy record(s)`;
+    if (!records.length) {
+      appendEmpty(container, "No Study Scope Hierarchy is available for the current Study Scope.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Study Scope Hierarchy",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_SCOPE_HIERARCHY",
+        "Purpose: show where the current Study Scope fits within section, chapter, narrative block, book, and volume context.",
+        "Boundary: display-only; no auto-expansion, crawling, automatic analysis, book-wide semantic generation, graph rendering, or scope modification."
+      ].join("\n"),
+      "derived scope hierarchy layer"
+    ));
+    if (!filtered.length) {
+      appendEmpty(container, "No Study Scope Hierarchy records match current filter.");
+      return;
+    }
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createStudyScopeHierarchyCard(item)));
+  }
+
   function guidedStudyJourneyName(item = {}) {
     const focus = normalizeText(item.startingPoint || item.focusName || item.pathName);
     if (/mercy/i.test(focus)) return "Understanding Mercy";
@@ -16088,6 +16250,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Meaning Staging", sectionId: "meaningStagingSection", renderer: renderMeaningStaging },
       { label: "Focused Study Views", sectionId: "focusedStudyViewsSection", renderer: renderFocusedStudyViews },
       { label: "Study Exploration Paths", sectionId: "studyExplorationPathsSection", renderer: renderStudyExplorationPaths },
+      { label: "Study Scope Hierarchy", sectionId: "studyScopeHierarchySection", renderer: renderStudyScopeHierarchy },
       { label: "Guided Study Journeys", sectionId: "guidedStudyJourneysSection", renderer: renderGuidedStudyJourneys },
       { label: "Journey Nodes", sectionId: "journeyNodesSection", renderer: renderJourneyNodes },
       { label: "Journey Paths", sectionId: "journeyPathsSection", renderer: renderJourneyPaths },
@@ -16203,6 +16366,7 @@ createRevelationPartsSection(item.subEvents)
     if (label === "Meaning Staging") return meaningStagingRecords().length;
     if (label === "Focused Study Views") return focusedStudyViewsRecords().length;
     if (label === "Study Exploration Paths") return studyExplorationPathRecords().length;
+    if (label === "Study Scope Hierarchy") return studyScopeHierarchyRecords().length;
     if (label === "Guided Study Journeys") return guidedStudyJourneyRecords().length;
     if (label === "Journey Nodes") return journeyNodesRecords().length;
     if (label === "Journey Paths") return journeyPathRecords().length;

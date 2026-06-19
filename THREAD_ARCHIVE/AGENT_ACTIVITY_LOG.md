@@ -4989,3 +4989,37 @@ Manual smoke note:
 Boundaries:
 - No crawling, automatic analysis, automatic queue processing, graph rendering, or visual timeline work was added.
 - Context Lock, Meaning Staging, Evidence Chains, Analysis Support, source phrase/source verse references, and scope isolation remain preserved.
+
+## 2026-06-19 - pcdx - Study Scope Hierarchy Foundation
+
+Task:
+- Add Phase 10.1a `ICE_SCOPE_HIERARCHY` so users can see where the current Study Scope fits in section, chapter, narrative block, book, and volume context.
+
+Files changed:
+- `study.html`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added a deferred Study Panel section titled `Study Scope Hierarchy`.
+- Added derived hierarchy records with Current Focus, Current Section, Current Chapter, Current Narrative Block, Current Book, Current Volume/Testament, Current Study Scope Boundary, Analyzed Pages, Related Themes, Related Timeline Events, and Related Exploration Paths.
+- Reused current Study Scope pages, Timeline Events, Study Themes, and Study Exploration Paths.
+- Added Matthew context labels for Matthew 1 Genealogy / Birth Narrative, Matthew 2 Early Life of JESUS, and Matthew 5 Sermon on the Mount.
+- Added provenance, evidence weighting, reasoning path, app accuracy, and scope-boundary wording.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Boundaries:
+- Display-only.
+- No auto-expansion, crawling, automatic analysis, book-wide semantic generation, graph rendering, navigation controls, queue execution, or source-record mutation.
+- Scope isolation, source references, provenance, and evidence weighting remain preserved.
+
+Next recommended step:
+- Browser presentation smoke for Matthew 1, Matthew 2, and Matthew 5 Study Scope Hierarchy before adding hierarchy navigation or selectors.

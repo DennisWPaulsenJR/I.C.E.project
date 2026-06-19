@@ -4737,3 +4737,37 @@ Validation passed:
 - `npm.cmd run qa:matthew1`
 - `npm.cmd run qa:matthew-pages`
 - `npm.cmd run review:matthew-session`
+
+## 2026-06-19 - Phase 10.1a Study Scope Hierarchy Foundation
+
+Implemented a derived display-only `ICE_SCOPE_HIERARCHY` layer in the Study Panel.
+
+The new deferred `Study Scope Hierarchy` section displays:
+- Current Focus
+- Current Section
+- Current Chapter
+- Current Narrative Block
+- Current Book
+- Current Volume / Testament
+- Current Study Scope Boundary
+- Analyzed Pages
+- Related Themes
+- Related Timeline Events
+- Related Exploration Paths
+
+The hierarchy is derived from existing current-scope Study Scope, Timeline Events, Study Themes, and Study Exploration Paths records. Matthew context labels identify Matthew 1 as Genealogy / Birth Narrative, Matthew 2 as Early Life of JESUS, and Matthew 5 as Sermon on the Mount when those chapters are in the active analyzed scope.
+
+Boundaries retained:
+- Display-only.
+- No auto-expansion.
+- No crawling.
+- No automatic analysis.
+- No book-wide semantic generation.
+- No graph rendering.
+- Scope isolation, source references, provenance, and evidence weighting remain preserved.
+
+Validation passed:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew-pages`
+- `npm.cmd run review:matthew-session`
