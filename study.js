@@ -13417,11 +13417,16 @@ createRevelationPartsSection(item.subEvents)
 
   function timelineEventTypeFromText(value = "") {
     const text = normalizeText(value).toLowerCase();
-    if (/dream|reveal|messenger|warn|angel|instruction/.test(text)) return "Revelation";
-    if (/teach|sermon|beatitude|disciple|command|principle/.test(text)) return "Teaching";
-    if (/heal|cleans|leper|sick|cast out|devil|spirit/.test(text)) return "Healing";
-    if (/travel|journey|depart|return|egypt|nazareth|galilee|mountain|came|went|flee|flight/.test(text)) return "Travel";
-    if (/fulfill|prophecy|prophet|spoken/.test(text)) return "Fulfillment";
+    if (/book of the generation|generation of jesus christ|son of david.*son of abraham/.test(text)) return "Identity Statement";
+    if (/lineage|genealogy|\bbegat\b|father_son|lineage_birth/.test(text)) return "Genealogy / Lineage Record";
+    if (/birth of jesus christ|found with child|brought forth (?:a )?son|birth_event/.test(text)) return "Birth Event";
+    if (/call (?:his|the child's)? name jesus|called his name jesus|name_revelation|naming_event|naming/.test(text)) return "Naming Instruction";
+    if (/dream|reveal|messenger|warn|angel|instruction/.test(text)) return "Revelation / Messenger Event";
+    if (/did as|took unto him|obey|obedient/.test(text)) return "Obedient Response";
+    if (/teach|sermon|beatitude|disciple|command|principle/.test(text)) return "Teaching Event";
+    if (/heal|cleans|leper|sick|cast out|devil|spirit/.test(text)) return "Healing Event";
+    if (/travel|journey|depart|return|egypt|nazareth|galilee|mountain|came|went|flee|flight/.test(text)) return "Travel Event";
+    if (/fulfill|prophecy|prophet|spoken/.test(text)) return "Fulfillment Statement";
     if (/prophes/.test(text)) return "Prophecy";
     if (/authority|command|rebuke|called|named/.test(text)) return "Authority Action";
     return "Encounter";
@@ -15262,6 +15267,64 @@ createRevelationPartsSection(item.subEvents)
     }, "No detected actors match.", "actor");
   }
 
+  function orderedEventDisplayType(eventItem = {}) {
+    return eventItem.eventClassification
+      || eventItem.eventDisplayLabel
+      || timelineEventTypeFromText(`${eventItem.eventType || ""} ${eventItem.eventText || ""}`);
+  }
+
+  function orderedEventTitle(eventItem = {}) {
+    const type = orderedEventDisplayType(eventItem);
+    const number = eventItem.sequenceOrder || "";
+    if (/^narrative event$/i.test(type)) return `Event ${number}`.trim();
+    return `${type}${number ? ` ${number}` : ""}`.trim();
+  }
+
+  function orderedLineageLines(eventItem = {}) {
+    const pairs = asArray(eventItem.lineagePairs);
+    const people = asArray(eventItem.lineagePersons);
+    const namedMothers = uniqueStudyList(pairs.map((pair) => pair.namedMother).filter(Boolean));
+    const links = pairs
+      .slice(0, 8)
+      .map((pair) => {
+        const mother = pair.namedMother ? `; ${pair.namedMother} named as mother/context participant` : "; mother not recorded in source phrase";
+        return `${pair.parent} -> father / begat -> ${pair.child}${mother}`;
+      });
+
+    return [
+      `Lineage function: ${eventItem.lineageFunction || "establishes identity / covenant lineage / Davidic-Abrahamic line"}`,
+      people.length ? `Lineage participants: ${people.slice(0, 12).join(", ")}${people.length > 12 ? `; ${people.length - 12} more` : ""}` : "",
+      links.length ? `Explicit father/child links: ${links.join(" | ")}${pairs.length > links.length ? ` | ${pairs.length - links.length} more explicit link(s)` : ""}` : "Explicit father/child links: not parsed from this source phrase.",
+      namedMothers.length ? `Named mother/context participant(s): ${namedMothers.join(", ")}` : "Named mother/context participant(s): not recorded in parsed source phrase.",
+      "Boundary: no firstborn assumption; unnamed mothers are not inferred; lineage remains an information record, not a normal event."
+    ].filter(Boolean);
+  }
+
+  function orderedEventBody(eventItem = {}) {
+    const type = orderedEventDisplayType(eventItem);
+    if (/identity statement/i.test(type)) {
+      return [
+        "Record kind: Identity Statement",
+        "Function: establishes source identity before the narrative sequence.",
+        `Source phrase: ${trimText(eventItem.eventText, 220)}`,
+        "Boundary: this is not treated as a normal narrative event."
+      ].join("\n");
+    }
+    if (/lineage/i.test(type)) {
+      return [
+        "Record kind: Genealogy / Lineage Record",
+        ...orderedLineageLines(eventItem),
+        `Source phrase: ${trimText(eventItem.eventText, 220)}`
+      ].join("\n");
+    }
+    return [
+      `Event type: ${type}`,
+      `Source phrase: ${trimText(eventItem.eventText, 220)}`,
+      eventItem.subEvents?.length ? `Grounded sub-event(s): ${eventItem.subEvents.slice(0, 4).map((item) => `${item.actor || item.narrator || "Source"} -> ${item.action || item.eventType || "event"}${item.target ? ` -> ${item.target}` : ""}`).join(" | ")}` : "",
+      eventItem.eventType ? `Stored type: ${eventItem.eventType}` : ""
+    ].filter(Boolean).join("\n");
+  }
+
   function renderOrderedEvents(term) {
     const container = document.getElementById("orderedEventCards");
     const count = document.getElementById("orderedEventCount");
@@ -15278,9 +15341,9 @@ createRevelationPartsSection(item.subEvents)
     );
 
     renderLimited(container, filtered, count, (eventItem) => createCard(
-      `Event ${eventItem.sequenceOrder || ""}`.trim(),
-      trimText(eventItem.eventText, 180),
-      eventItem.orderingReason || eventItem.sourceTitle || ""
+      orderedEventTitle(eventItem),
+      orderedEventBody(eventItem),
+      [orderedEventDisplayType(eventItem), eventItem.orderingReason || eventItem.sourceTitle || ""].filter(Boolean).join(" | ")
     ), "No ordered events match.");
   }
 

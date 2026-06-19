@@ -4704,3 +4704,36 @@ The chain exposes existing grounding in a readable order:
 Guided Study retains originating verse/scope/source metadata in memory so its existing source-verse modal remains available. Scene chains keep explicit facts, strongly implied supports, and possible inferences visibly distinct. No new semantic extraction, doctrine, persisted records, crawling, automatic analysis, or queue execution was added.
 
 Controlled Matthew 5 smoke found five Guided Study chains and confirmed `Matthew 5:1-2` opened captured verse text without leaving the Study Panel. Required Matthew QA and session review passed.
+
+## 2026-06-18 - Refine Timeline Event Classification
+
+Implemented a focused Ordered Events / Timeline Event classification refinement for Matthew 1 and related Study Panel display.
+
+Ordered source records now distinguish information records from narrative events:
+- Identity Statement
+- Genealogy / Lineage Record
+- Birth Event
+- Revelation / Messenger Event
+- Naming Instruction
+- Fulfillment Statement
+- Obedient Response
+- Travel Event
+- Teaching Event
+- Healing Event
+
+Genealogy / Lineage Records remain in source order before the birth narrative, but they no longer present as ordinary `Event N` cards. The renderer displays lineage participants, explicit father / begat / child links, named mother/context participants only when source wording records them, and a lineage function for identity / covenant lineage / Davidic-Abrahamic line.
+
+Boundary retained:
+- No firstborn assumption added.
+- No unnamed mothers inferred.
+- No grandchildren or biological relationships are overstated beyond explicit source wording.
+- Source verse/source phrase evidence remains available.
+- Context Lock, Meaning Staging, Evidence Chains, Analysis Support, and no-crawling/no-automatic-analysis rules remain intact.
+
+Validation passed:
+- `node --check background.js`
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew1`
+- `npm.cmd run qa:matthew-pages`
+- `npm.cmd run review:matthew-session`

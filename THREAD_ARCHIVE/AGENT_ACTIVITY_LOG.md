@@ -4951,3 +4951,41 @@ Validation:
 
 Next recommended step:
 - Review Evidence Chain presentation with the user, then expand only to cards with retained, inspectable source-to-conclusion grounding.
+
+## 2026-06-18 - pcdx - Refine Timeline Event Classification
+
+Task:
+- Refine Ordered Events / Timeline Event classification so broad Matthew 1 source records do not present as normal narrative events.
+
+Files changed:
+- `background.js`
+- `study.js`
+- `QA_REPORTS/latest-study-panel-report.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Implementation:
+- Added precise ordered-event classifications for Identity Statement, Genealogy / Lineage Record, Birth Event, Revelation / Messenger Event, Naming Instruction, Fulfillment Statement, Obedient Response, Travel Event, Teaching Event, and Healing Event.
+- Changed `generation of JESUS CHRIST` handling so the title/source identity statement is not collapsed into a generic genealogy event.
+- Kept genealogy in source sequence while displaying it as `Genealogy / Lineage Record`, not a normal event.
+- Preserved explicit lineage participants and father / begat / child links.
+- Captured named mother/context participants only when the source phrase records them, such as Thamar in `Judas begat Phares and Zara of Thamar`.
+- Added renderer wording that states unnamed mothers are not inferred and no firstborn assumption is added.
+- Updated Timeline Event type labels to match the new classification language.
+
+Validation:
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Manual smoke note:
+- Matthew 1 QA confirmed extraction remains stable after preserving lineage participants and links.
+- Browser presentation review of the Ordered Events cards is still recommended before adding visual timeline or genealogy navigation.
+
+Boundaries:
+- No crawling, automatic analysis, automatic queue processing, graph rendering, or visual timeline work was added.
+- Context Lock, Meaning Staging, Evidence Chains, Analysis Support, source phrase/source verse references, and scope isolation remain preserved.

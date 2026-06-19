@@ -4930,18 +4930,40 @@ function normalizeLineagePerson(name) {
 
 function extractLineagePairs(sentence) {
   const pairs = [];
-  const lineagePattern = /\b([A-Z][A-Za-z]+)\s+begat\s+([A-Z][A-Za-z]+)\b/g;
+  const seen = new Set();
+  const phrasePattern = /\b([A-Z][A-Za-z]+)\s+begat\s+([^.;:]+)/g;
   let match;
 
-  while ((match = lineagePattern.exec(sentence)) !== null) {
+  while ((match = phrasePattern.exec(sentence)) !== null) {
     const parent = normalizeLineagePerson(match[1]);
-    const child = normalizeLineagePerson(match[2]);
-    if (!parent || !child) continue;
-    pairs.push({
-      parent,
-      child,
-      confidence: "explicit"
-    });
+    const childPhrase = normalizeWhitespace(match[2]);
+    const motherMatch = childPhrase.match(/\bof\s+([A-Z][A-Za-z]+)\b/);
+    const namedMother = motherMatch ? normalizeLineagePerson(motherMatch[1]) : "";
+    const childSegment = childPhrase
+      .replace(/\bof\s+[A-Z][A-Za-z]+\b/g, "")
+      .replace(/\b(his|her|their)\s+brethren\b/gi, "")
+      .replace(/\bbrethren\b/gi, "");
+    const children = childSegment
+      .split(/\s+and\s+|,\s*/)
+      .map((value) => normalizeLineagePerson(value))
+      .filter(Boolean);
+
+    for (const child of children) {
+      if (!parent || !child) continue;
+      const key = `${parent.toLowerCase()}|${child.toLowerCase()}|${namedMother.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pairs.push({
+        parent,
+        child,
+        namedMother,
+        motherRecorded: Boolean(namedMother),
+        motherDisplay: namedMother || "not recorded in source phrase",
+        evidenceTier: "Explicit Source Statement",
+        relationshipType: "father / begat",
+        confidence: "explicit"
+      });
+    }
   }
 
   return pairs;
@@ -4952,7 +4974,7 @@ function extractLineagePersons(sentence) {
   const seen = new Set();
 
   for (const pair of extractLineagePairs(sentence)) {
-    for (const name of [pair.parent, pair.child]) {
+    for (const name of [pair.parent, pair.child, pair.namedMother]) {
       const key = name.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
@@ -4961,6 +4983,54 @@ function extractLineagePersons(sentence) {
   }
 
   return people;
+}
+
+function orderedEventClassification(eventText, subEvents = []) {
+  const text = normalizeWhitespace(eventText || "");
+  const typeText = `${text} ${(subEvents || []).map((item) => [item.eventType, item.anchorText, item.normalizedMeaning].join(" ")).join(" ")}`;
+  if (/\bbook of the generation of\b|\bgeneration of JESUS CHRIST\b|\bson of David\b.*\bson of Abraham\b/i.test(text)) {
+    return {
+      eventType: "identity_statement",
+      eventClassification: "Identity Statement",
+      eventDisplayLabel: "Identity Statement",
+      informationRecord: true,
+      lineageFunction: "establishes identity / covenant lineage / Davidic-Abrahamic line"
+    };
+  }
+  if (/\bbegat\b|\bgenealogy\b|\blineage\b/i.test(text)) {
+    return {
+      eventType: "lineage_record",
+      eventClassification: "Genealogy / Lineage Record",
+      eventDisplayLabel: "Lineage Record",
+      informationRecord: true,
+      lineageFunction: "establishes identity / covenant lineage / Davidic-Abrahamic line"
+    };
+  }
+  if (/\bbirth of JESUS CHRIST\b|\bfound with CHILD\b|\bbrought forth (?:a )?son\b/i.test(typeText)) {
+    return { eventType: "birth_event", eventClassification: "Birth Event", eventDisplayLabel: "Birth Event" };
+  }
+  if (/\bAngEL Of THE LORD\b|\bAngel of THE LORD\b|\bappeared unto\b|\bdream\b|\bfear not\b/i.test(typeText)) {
+    return { eventType: "revelation_messenger_event", eventClassification: "Revelation / Messenger Event", eventDisplayLabel: "Revelation / Messenger Event" };
+  }
+  if (/\bcall (?:his|HIS) name JESUS\b|\bcalled his name JESUS\b|\bname_revelation\b|\bnaming_event\b/i.test(typeText)) {
+    return { eventType: "naming_instruction", eventClassification: "Naming Instruction", eventDisplayLabel: "Naming Instruction" };
+  }
+  if (/\bfulfilled\b|\bspoken of THE LORD\b|\bspoken of the Lord\b|\bprophet\b/i.test(typeText)) {
+    return { eventType: "fulfillment_statement", eventClassification: "Fulfillment Statement", eventDisplayLabel: "Fulfillment Statement" };
+  }
+  if (/\bdid as\b|\btook unto him\b|\bobeyed\b|\barose\b/i.test(typeText)) {
+    return { eventType: "obedient_response", eventClassification: "Obedient Response", eventDisplayLabel: "Obedient Response" };
+  }
+  if (/\bdeparted\b|\breturned\b|\bflee\b|\bEgypt\b|\bNazareth\b|\bGalilee\b/i.test(typeText)) {
+    return { eventType: "travel_event", eventClassification: "Travel Event", eventDisplayLabel: "Travel Event" };
+  }
+  if (/\bteach\b|\btaught\b|\bmountain\b|\bdisciples\b|\bsermon\b/i.test(typeText)) {
+    return { eventType: "teaching_event", eventClassification: "Teaching Event", eventDisplayLabel: "Teaching Event" };
+  }
+  if (/\bheal\b|\bcleans\b|\bsick\b|\bdevils?\b|\bcast out\b/i.test(typeText)) {
+    return { eventType: "healing_event", eventClassification: "Healing Event", eventDisplayLabel: "Healing Event" };
+  }
+  return { eventType: "narrative_event", eventClassification: "Narrative Event", eventDisplayLabel: "Narrative Event" };
 }
 
 function inferVerseNumberFromText(text, fallback = "") {
@@ -5303,9 +5373,13 @@ function createEventItem(capture, sentence, sequenceIndex) {
   const date = findDateInSentence(sentence);
   const eventText = normalizeWhitespace(sentence);
   const sourceCaptureId = capture.id || "";
-  const isLineageRecord = GENEALOGY_PATTERN.test(eventText);
   const sourceContext = buildSourceContext(capture);
   const verseNumber = inferVerseNumberFromText(eventText);
+  const subEvents = createSemanticSubEvents(capture, eventText, sequenceIndex);
+  const classification = isSourceSummarySentence(eventText, sequenceIndex)
+    ? { eventType: "source_summary", eventClassification: "Source Summary", eventDisplayLabel: "Source Summary" }
+    : orderedEventClassification(eventText, subEvents);
+  const isLineageRecord = classification.eventType === "lineage_record";
   return {
     id: `${Date.now()}-${textHash(`${sourceCaptureId}|${sequenceIndex}|${eventText}`)}`,
     sourceCaptureId,
@@ -5313,11 +5387,11 @@ function createEventItem(capture, sentence, sequenceIndex) {
     sourceUrl: capture.url || "",
     sourceContext,
     eventText,
-    eventType: isSourceSummarySentence(eventText, sequenceIndex)
-      ? "source_summary"
-      : isLineageRecord
-        ? "lineage_record"
-        : "narrative_event",
+    eventType: classification.eventType,
+    eventClassification: classification.eventClassification,
+    eventDisplayLabel: classification.eventDisplayLabel,
+    informationRecord: Boolean(classification.informationRecord),
+    lineageFunction: classification.lineageFunction || "",
     sequenceIndex,
     detectedDateText: date.detectedDateText,
     normalizedYear: date.normalizedYear,
@@ -5330,7 +5404,7 @@ function createEventItem(capture, sentence, sequenceIndex) {
       : "",
     lineagePersons: isLineageRecord ? extractLineagePersons(eventText) : [],
     lineagePairs: isLineageRecord ? extractLineagePairs(eventText) : [],
-    subEvents: createSemanticSubEvents(capture, eventText, sequenceIndex),
+    subEvents,
     extractedAt: new Date().toISOString()
   };
 }

@@ -31,6 +31,13 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Ordered Events / Timeline Event classification refinement is implemented in this update.
+- Matthew 1 ordered source records now distinguish `Identity Statement`, `Genealogy / Lineage Record`, `Birth Event`, `Revelation / Messenger Event`, `Naming Instruction`, `Fulfillment Statement`, `Obedient Response`, `Travel Event`, `Teaching Event`, and `Healing Event`.
+- Genealogy / Lineage Records remain in source sequence before birth narrative, but they are displayed as information records instead of normal events.
+- Lineage records now preserve explicit father / begat / child links, named mother/context participants when the source phrase records them, and lineage function wording for identity / covenant lineage / Davidic-Abrahamic line.
+- The display boundary explicitly avoids firstborn assumptions, unnamed mother invention, and overstatement beyond source wording.
+- Validation passed: `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: browser presentation review of Matthew 1 Ordered Events and Timeline Events before adding visual timeline or genealogy navigation.
 - Actor Resolution & Classification Foundation is implemented in this update for `ICE_ACTOR_TIMELINES`.
 - Actor timelines now prefer explicit named entities, semantic sub-event participants, and lineage/genealogy actors before falling back to `Unknown actor`.
 - Actor timeline records now expose diagnostics: `resolvedActorName`, `actorCategory`, `actorFunction`, and `resolutionSource`.
