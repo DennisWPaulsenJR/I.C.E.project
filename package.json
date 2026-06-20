@@ -9,6 +9,7 @@
     "qa:matthew-pages": "npm run qa:matthew1 && npm run qa:matthew2 && npm run qa:matthew3",
     "qa:matthew3": "node qa/matthew3-extension-qa.js",
     "qa:matthew5": "node qa/matthew5-extension-qa.js",
+    "qa:entity-classification": "node qa/entity-classification-qa.js",
     "review:matthew5": "npm run qa:matthew5 && node qa/generate-study-panel-report.js qa-output/latest-matthew5-qa-bundle.json QA_REPORTS/latest-study-panel-report.md",
     "review:matthew1": "npm run qa:matthew1 && node qa/generate-study-panel-report.js qa-output/latest-qa-bundle.json QA_REPORTS/latest-study-panel-report.md",
     "review:matthew3": "npm run qa:matthew3 && node qa/generate-study-panel-report.js qa-output/latest-matthew3-qa-bundle.json QA_REPORTS/latest-study-panel-report.md",

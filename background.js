@@ -5112,8 +5112,9 @@ function uniqueSemanticValues(values = []) {
   return output;
 }
 
-function semanticActorParticipants(values = []) {
-  return uniqueSemanticValues(values).filter((value) => !isLocationEntityName(value));
+function semanticActorParticipants(values = [], actorName = "") {
+  const actorKey = canonicalEntityName(actorName).toLowerCase();
+  return uniqueSemanticValues(values).filter((value) => !isLocationEntityName(value) && canonicalEntityName(value).toLowerCase() !== actorKey);
 }
 
 function semanticLocationParticipants(values = []) {
@@ -5160,7 +5161,7 @@ function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
     target: config.target || "",
     recipient: recipientIsLocation ? "" : config.recipient || "",
     concerning: config.concerning || "",
-    participants: semanticActorParticipants(rawParticipants),
+    participants: semanticActorParticipants(rawParticipants, config.actor || ""),
     locations: locationValues,
     relationshipType: config.relationshipType || "",
     authorityChain: config.authorityChain || [],
@@ -5624,6 +5625,14 @@ function explicitContextActor(eventItem) {
     return "Spirit of GOD";
   }
 
+  if (/(?:^|\b)(?:Jesus|JESUS)\b.*\b(?:led|saith|said|answered|departed|began|preach|went|walking|called|taught)\b|\bwas\s+(?:Jesus|JESUS)\s+led\b/i.test(text)) {
+    return "JESUS";
+  }
+
+  if (/\bseeing the multitudes\b|\bhe opened his mouth\b|\bhis disciples came unto him\b/i.test(text)) {
+    return "JESUS";
+  }
+
   // Matthew 1 divine-message scene: the sentence may begin with Joseph's
   // internal action, but the main event is the angel appearing and speaking.
   // Future sub-event parsing should split Joseph thought / angel appeared /
@@ -5686,6 +5695,14 @@ function sourceActorOverride(eventItem) {
     return "Spirit of GOD";
   }
 
+  if (/(?:^|\b)(?:Jesus|JESUS)\b.*\b(?:led|saith|said|answered|departed|began|preach|went|walking|called|taught)\b|\bwas\s+(?:Jesus|JESUS)\s+led\b/i.test(text)) {
+    return "JESUS";
+  }
+
+  if (/\bseeing the multitudes\b|\bhe opened his mouth\b|\bhis disciples came unto him\b/i.test(text)) {
+    return "JESUS";
+  }
+
   return "";
 }
 
@@ -5724,7 +5741,7 @@ function actorForEvent(eventItem, actorMemory) {
   if (inferredActor) return inferredActor;
 
   const namedOrContextActor = explicitContextActor(eventItem) || leadingSubjectActor(text);
-  if (namedOrContextActor) return namedOrContextActor;
+  if (namedOrContextActor) return isLocationEntityName(namedOrContextActor) ? "scripture narrator" : namedOrContextActor;
 
   if (PLURAL_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
     return actorMemory.previousPluralActor || "Unknown actor";
@@ -5783,7 +5800,7 @@ function actorResolutionSource(actorName = "", eventItem = {}) {
 }
 
 function actorNamesFromSemanticSubEvent(subEvent = {}) {
-  return Array.from(new Set([
+  const actorValues = [
     subEvent.actor,
     subEvent.target,
     subEvent.recipient,
@@ -5793,7 +5810,10 @@ function actorNamesFromSemanticSubEvent(subEvent = {}) {
     subEvent.quotedProphet,
     ...(subEvent.authorityChain || []),
     ...(subEvent.participants || [])
-  ].map((value) => resolvedActorDisplayName(normalizeActorName(value || ""))).filter((value) => value && value !== "Unknown actor")));
+  ].filter((value) => !isLocationEntityName(value || ""));
+  return Array.from(new Set(actorValues
+    .map((value) => resolvedActorDisplayName(normalizeActorName(value || "")))
+    .filter((value) => value && value !== "Unknown actor")));
 }
 
 function actorDiagnostics(actorName = "", eventItem = {}, overrides = {}) {
@@ -7028,8 +7048,12 @@ function createSceneModels(orderedEvents, actorTimelines, interactions, principl
     scene.eventTexts.push(eventItem.eventText || "");
     scene.summarySnippet = trimText(scene.eventTexts.join(" "), 240);
 
-    for (const actor of eventActors) scene.participants.add(actor);
-    for (const actor of mentionedActors) scene.participants.add(actor);
+    for (const actor of eventActors) {
+      if (!isLocationEntityName(actor) && !/^scripture narrator$|^quoted prophet$/i.test(actor)) scene.participants.add(actor);
+    }
+    for (const actor of mentionedActors) {
+      if (!isLocationEntityName(actor) && !/^scripture narrator$|^quoted prophet$/i.test(actor)) scene.participants.add(actor);
+    }
     scene.eventActors.push(...eventActors);
 
     scenesByKey.set(key, scene);
@@ -7672,7 +7696,7 @@ function inferEntityType(name, roleTypes = []) {
   const locationClassification = entityLocationClassification(canonical);
   if (locationClassification) return `Location / ${locationClassification}`;
 
-  if (canonical === "THE LORD") return "divine_authority";
+  if (canonical === "THE LORD" || canonical === "GOD") return "divine_authority";
   if (canonical === "Angel of THE LORD") return "divine_messenger";
   if (canonical === "JESUS CHRIST" || canonical === "JESUS") return "divine";
   if (/narrator/i.test(canonical)) return "narrator";
@@ -7883,14 +7907,19 @@ function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChain
     }
   }
 
-  const records = Array.from(registry.values()).map((record) => ({
-    ...record,
-    entityType: inferEntityType(record.canonicalName, record.roleTypes),
-    roleTypes: record.roleTypes.sort((a, b) => a.localeCompare(b)),
-    aliases: record.aliases.sort((a, b) => a.localeCompare(b)),
-    sourceCaptureIds: record.sourceCaptureIds.sort((a, b) => a.localeCompare(b)),
-    confidence: record.confidence || "probable"
-  }));
+  const records = Array.from(registry.values()).map((record) => {
+    if (/^scripture narrator$/i.test(record.canonicalName || "")) {
+      record.roleTypes = record.roleTypes.filter((roleType) => !["participant", "sceneParticipant"].includes(roleType));
+    }
+    return {
+      ...record,
+      entityType: inferEntityType(record.canonicalName, record.roleTypes),
+      roleTypes: record.roleTypes.sort((a, b) => a.localeCompare(b)),
+      aliases: record.aliases.sort((a, b) => a.localeCompare(b)),
+      sourceCaptureIds: record.sourceCaptureIds.sort((a, b) => a.localeCompare(b)),
+      confidence: record.confidence || "probable"
+    };
+  });
 
   // Phase 6.0 foundation: registry nodes remain current-page derived for now.
   // Future work can merge cross-page identities, aliases, original-language
