@@ -128,7 +128,7 @@ const PLURAL_ACTOR_NAMES = new Set([
   "Pharisees and Sadducees",
   "People / multitudes"
 ]);
-const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|wise men|the wise men|the angel of the Lord|angel of the Lord|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
+const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Gabriel|Moses|Elias|Peter|James|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|wise men|the wise men|the angel of the Lord|angel of the Lord|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
 const LEADING_ACTOR_PATTERN = new RegExp(
   `^(?:\\d+[:.)]?\\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
   "i"
@@ -4937,7 +4937,8 @@ function extractLineagePairs(sentence) {
   while ((match = phrasePattern.exec(sentence)) !== null) {
     const parent = normalizeLineagePerson(match[1]);
     const childPhrase = normalizeWhitespace(match[2]);
-    const motherMatch = childPhrase.match(/\bof\s+([A-Z][A-Za-z]+)\b/);
+    const closingClausePattern = /\b(?:of whom was born|who is called|about the time|after they were|they were carried|were brought)\b/i;
+    const motherMatch = /\bhusband\s+of\b/i.test(childPhrase) ? null : childPhrase.match(/\bof\s+([A-Z][A-Za-z]+)\b/);
     const namedMother = motherMatch ? normalizeLineagePerson(motherMatch[1]) : "";
     const childSegment = childPhrase
       .replace(/\bof\s+[A-Z][A-Za-z]+\b/g, "")
@@ -4945,6 +4946,8 @@ function extractLineagePairs(sentence) {
       .replace(/\bbrethren\b/gi, "");
     const children = childSegment
       .split(/\s+and\s+|,\s*/)
+      .map((value) => normalizeWhitespace(value))
+      .filter((value) => value && !closingClausePattern.test(value))
       .map((value) => normalizeLineagePerson(value))
       .filter(Boolean);
 
@@ -5057,6 +5060,65 @@ function anchorHintsForPhrase(sourceSnippet, anchorText) {
   };
 }
 
+const ENTITY_LOCATION_CLASSIFICATIONS = new Map([
+  ["nazareth", "City"],
+  ["bethlehem", "City"],
+  ["jerusalem", "City"],
+  ["capernaum", "City"],
+  ["egypt", "Region"],
+  ["galilee", "Region"],
+  ["judaea", "Region"],
+  ["judæa", "Region"],
+  ["land of israel", "Region"],
+  ["israel", "Region"],
+  ["babylon", "Region"],
+  ["wilderness", "Location"],
+  ["jordan", "Body Of Water"],
+  ["sea", "Body Of Water"],
+  ["mountain", "Location"]
+]);
+
+function normalizedLocationEntityName(value = "") {
+  return normalizeWhitespace(value)
+    .replace(/^(?:the\s+)?(?:city|town|land|parts|region|coasts?)\s+(?:of\s+)?/i, "")
+    .toLowerCase();
+}
+
+function entityLocationClassification(value = "") {
+  const raw = normalizeWhitespace(value);
+  const normalized = normalizedLocationEntityName(raw);
+  if (ENTITY_LOCATION_CLASSIFICATIONS.has(normalized)) return ENTITY_LOCATION_CLASSIFICATIONS.get(normalized);
+  if (/\b(?:city|town|village)\b/i.test(raw) && /\b(?:Nazareth|Bethlehem|Jerusalem|Capernaum)\b/i.test(raw)) return "City";
+  if (/\b(?:land|region|wilderness|parts|coast|coasts)\b/i.test(raw) && /\b(?:Egypt|Galilee|Judaea|Judæa|Israel|Babylon|wilderness)\b/i.test(raw)) return "Region";
+  if (/\b(?:river|sea|water)\b/i.test(raw) && /\b(?:Jordan|sea)\b/i.test(raw)) return "Body Of Water";
+  return "";
+}
+
+function isLocationEntityName(value = "") {
+  return Boolean(entityLocationClassification(value));
+}
+
+function uniqueSemanticValues(values = []) {
+  const seen = new Set();
+  const output = [];
+  for (const value of values.flat(Infinity)) {
+    const normalized = normalizeWhitespace(value || "");
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(normalized);
+  }
+  return output;
+}
+
+function semanticActorParticipants(values = []) {
+  return uniqueSemanticValues(values).filter((value) => !isLocationEntityName(value));
+}
+
+function semanticLocationParticipants(values = []) {
+  return uniqueSemanticValues(values).filter(isLocationEntityName);
+}
 function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
   const sourceCaptureId = capture?.id || "";
   const originalText = normalizeWhitespace(config.originalText || sourceSnippet || "");
@@ -5064,6 +5126,14 @@ function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
   const anchorText = normalizeWhitespace(config.anchorText || originalText);
   const fullSourceSnippet = normalizeWhitespace(sourceSnippet || originalText);
   const anchorHints = anchorHintsForPhrase(fullSourceSnippet, anchorText);
+  const rawParticipants = Array.isArray(config.participants) ? config.participants : [];
+  const participantLocations = semanticLocationParticipants(rawParticipants);
+  const recipientIsLocation = isLocationEntityName(config.recipient || "");
+  const locationValues = uniqueSemanticValues([
+    ...(Array.isArray(config.locations) ? config.locations : []),
+    ...participantLocations,
+    recipientIsLocation ? config.recipient : ""
+  ]);
   const key = [
     sourceCaptureId,
     sequenceIndex,
@@ -5088,9 +5158,10 @@ function createSemanticSubEvent(capture, sequenceIndex, sourceSnippet, config) {
     actor: config.actor || "",
     action: config.action || "",
     target: config.target || "",
-    recipient: config.recipient || "",
+    recipient: recipientIsLocation ? "" : config.recipient || "",
     concerning: config.concerning || "",
-    participants: config.participants || [],
+    participants: semanticActorParticipants(rawParticipants),
+    locations: locationValues,
     relationshipType: config.relationshipType || "",
     authorityChain: config.authorityChain || [],
     narrator: config.narrator || "",
@@ -5525,6 +5596,10 @@ function leadingSubjectActor(sentence) {
 function explicitContextActor(eventItem) {
   const text = normalizeWhitespace(eventItem.eventText || "");
 
+  if (/\bbook of the generation of Jesus Christ\b|\bJesus Christ, the son of David, the son of Abraham\b/i.test(text)) {
+    return "JESUS CHRIST";
+  }
+
   if (/\bNow all this was done\b|\bthat it might be fulfilled\b/i.test(text)) {
     return "scripture narrator";
   }
@@ -5569,6 +5644,27 @@ function explicitContextActor(eventItem) {
 
   if (/\bPharisees\b/i.test(text) && /\bSadducees\b/i.test(text)) {
     return "Pharisees and Sadducees";
+  }
+
+
+  if (/\bGabriel\b/i.test(text)) {
+    return "Gabriel";
+  }
+
+  if (/\bMoses\b/i.test(text)) {
+    return "Moses";
+  }
+
+  if (/\bElias\b/i.test(text)) {
+    return "Elias";
+  }
+
+  if (/\bPeter\b/i.test(text)) {
+    return "Peter";
+  }
+
+  if (/\bJames\b/i.test(text)) {
+    return "James";
   }
 
   if (/\b(?:Jerusalem|Jud(?:a|\u00e6)ea|Jordan|people|multitudes)\b/i.test(text) &&
@@ -5627,7 +5723,7 @@ function actorForEvent(eventItem, actorMemory) {
   const inferredActor = inferredNarrativeContinuityActor(text, actorMemory);
   if (inferredActor) return inferredActor;
 
-  const namedOrContextActor = leadingSubjectActor(text) || explicitContextActor(eventItem);
+  const namedOrContextActor = explicitContextActor(eventItem) || leadingSubjectActor(text);
   if (namedOrContextActor) return namedOrContextActor;
 
   if (PLURAL_PRONOUN_SUBJECT_PATTERN.test(normalized)) {
@@ -5649,7 +5745,7 @@ function resolvedActorDisplayName(actorName = "") {
 
 function actorCategoryFor(actorName = "", eventItem = {}) {
   const name = resolvedActorDisplayName(actorName);
-  if (/^AngEL Of THE LORD$/i.test(name)) return "Messenger";
+  if (/^AngEL Of THE LORD$|^Gabriel$/i.test(name)) return "Messenger";
   if (/^THE LORD \/ GOD$|^Father$|^Spirit of GOD$/i.test(name)) return "Authority Source";
   if (/^scripture narrator$/i.test(name)) return "Narrator";
   if (/disciples|multitudes|people|wise men|chief priests|scribes|pharisees|sadducees/i.test(name)) return "Group";
@@ -5666,6 +5762,7 @@ function actorFunctionFor(actorName = "", eventItem = {}) {
   if (/^Joseph$/i.test(name)) return /angel|dream|fear not|bidden|called his name|took/i.test(text) ? "Recipient of instruction / obedient responder" : "Narrative participant";
   if (/^JESUS CHRIST$/i.test(name)) return "Messianic identity / central person";
   if (/^AngEL Of THE LORD$/i.test(name)) return "Messenger / instruction carrier";
+  if (/^Gabriel$/i.test(name)) return "Messenger / named angelic envoy";
   if (/^THE LORD \/ GOD$|^Father$|^Spirit of GOD$/i.test(name)) return "Source authority";
   if (/^scripture narrator$/i.test(name)) return "Narrator / fulfillment framer";
   if (/disciples/i.test(name)) return "Audience";
@@ -7572,6 +7669,8 @@ function entityRoleTypeFromGroup(roleGroup) {
 function inferEntityType(name, roleTypes = []) {
   const canonical = canonicalEntityName(name);
   const roleSet = new Set(roleTypes || []);
+  const locationClassification = entityLocationClassification(canonical);
+  if (locationClassification) return `Location / ${locationClassification}`;
 
   if (canonical === "THE LORD") return "divine_authority";
   if (canonical === "Angel of THE LORD") return "divine_messenger";
@@ -7699,6 +7798,19 @@ function createEntityRegistry(entityRoleItems, semanticEvents, semanticFlowChain
         sourceCaptureId: event.sourceCaptureId || "",
         roleType: name === event.actor ? "semanticActor" : "semanticParticipant",
         evidence: event.normalizedMeaning || event.eventType || "semantic event",
+        anchorText: event.anchorText || "",
+        semanticEventId: event.id || "",
+        confidence: event.confidence || "probable"
+      });
+    }
+    for (const locationName of event.locations || []) {
+      const record = registryRecordFor(registry, locationName, event.sourceContext || {});
+      if (!record) continue;
+      addRoleType(record, "location");
+      addEntityMention(record, {
+        sourceCaptureId: event.sourceCaptureId || "",
+        roleType: "location",
+        evidence: event.normalizedMeaning || event.eventType || "semantic event location",
         anchorText: event.anchorText || "",
         semanticEventId: event.id || "",
         confidence: event.confidence || "probable"

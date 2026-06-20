@@ -11150,8 +11150,34 @@ createRevelationPartsSection(item.subEvents)
     ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
   }
 
+  const CONTEXT_LOCK_PLACE_PATTERN = /^(?:Nazareth|Egypt|Jerusalem|Galilee|wilderness|Jordan|Capernaum|Bethlehem|Judaea|JudÃ¦a|land of Israel|Israel|Babylon|mountain|sea|river|city|village)$/i;
+
+  function isContextLockPlaceName(value = "") {
+    const normalized = normalizeText(value).replace(/^(?:the\s+)?(?:city|town|land|parts|region)\s+(?:of\s+)?/i, "");
+    if (!normalized) return false;
+    if (CONTEXT_LOCK_PLACE_PATTERN.test(normalized)) return true;
+    return /\b(?:city|town|village|land|region|wilderness|mountain|river|sea|coast|border|parts of)\b/i.test(value) &&
+      /\b(?:Nazareth|Egypt|Jerusalem|Galilee|Jordan|Capernaum|Bethlehem|Judaea|JudÃ¦a|Israel|Babylon)\b/i.test(value);
+  }
+
+  function isContextLockSourceLabel(value = "") {
+    return /^(?:Matthew|Mark|Luke|John)$/i.test(normalizeText(value));
+  }
+
+  function contextLockActorParticipants(values = []) {
+    return uniqueStudyList(asArray(values))
+      .filter((value) => value && !isContextLockPlaceName(value) && !isContextLockSourceLabel(value))
+      .slice(0, 12);
+  }
+
+  function contextLockLocationText(location = "", values = []) {
+    const places = uniqueStudyList(asArray(values).filter(isContextLockPlaceName));
+    return uniqueStudyList([location, ...places].filter(Boolean)).join("; ");
+  }
+
   function createContextLockRecord(candidate = {}) {
     const scope = currentStudyScopeLabel();
+    const participantCandidates = asArray(candidate.participants);
     return {
       schemaVersion: 1,
       layer: "ICE_CONTEXT_LOCK",
@@ -11161,8 +11187,8 @@ createRevelationPartsSection(item.subEvents)
       authoritySource: candidate.authoritySource || "",
       messenger: candidate.messenger || "",
       recipient: candidate.recipient || "",
-      participants: uniqueStudyList(asArray(candidate.participants)).slice(0, 12),
-      location: candidate.location || "",
+      participants: contextLockActorParticipants(participantCandidates),
+      location: contextLockLocationText(candidate.location || "", participantCandidates),
       eventScope: candidate.eventScope || scope,
       sourcePhrase: candidate.sourcePhrase || "",
       verseRange: candidate.verseRange || "",
@@ -11237,7 +11263,7 @@ createRevelationPartsSection(item.subEvents)
         authoritySource: "THE LORD / GOD where angelic warning is grounded",
         messenger: "AngEL Of THE LORD for protective dream instructions",
         recipient: "Joseph for protective warning; wise men for warning of GOD",
-        participants: ["Herod", "JESUS / young child", "Mary", "Joseph", "wise men", "AngEL Of THE LORD", "THE LORD / GOD", "Egypt"],
+        participants: ["Herod", "JESUS / young child", "Mary", "Joseph", "wise men", "AngEL Of THE LORD", "THE LORD / GOD"],
         location: "Judaea, Bethlehem, Egypt, land of Israel, Nazareth",
         eventScope: "Matthew 2",
         verseRange: "Matthew 2",
