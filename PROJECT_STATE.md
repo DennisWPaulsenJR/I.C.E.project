@@ -31,6 +31,11 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Bottom Study Panel scope-leak fix is implemented in this update.
+- Root cause: `currentStudyScopePages()` could fall back to all retained canonical analyzed pages when no active explicit selected range was valid, causing bottom derived sections such as Study Exploration Paths, Study Scope Hierarchy, Scope Perspectives, and Timeline Sequence to treat retained Matthew 1-3 history as active scope.
+- Fix: active/frozen/current source page now defines current Study Scope first unless an explicit selected range exists and contains the active/frozen page; retained analyzed pages remain retained context and do not redefine active scope.
+- Validation passed: `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Next recommended task: browser presentation smoke to confirm bottom sections no longer include retained Matthew 1-3 when the active Study Scope is another page or explicit matched range.
 - Phase 10.1b Scope Perspective Foundation is implemented in this update as a derived display-only layer identified by `ICE_SCOPE_PERSPECTIVES`.
 - The Study Panel now includes a deferred `Scope Perspectives` section after Study Scope Hierarchy.
 - Scope Perspectives derive focus cards from Focused Study Views and Study Scope Hierarchy, showing Character Perspective, Event Perspective, Principle Perspective, Narrative Perspective, Book Perspective, Current Scope Boundary, Supporting Verses, Related Themes, Related Timeline Events, and Related Exploration Paths.

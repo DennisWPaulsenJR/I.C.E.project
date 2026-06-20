@@ -4772,6 +4772,32 @@ Validation passed:
 - `npm.cmd run qa:matthew-pages`
 - `npm.cmd run review:matthew-session`
 
+## 2026-06-19 - Fix Bottom Study Panel Scope Leakage
+
+Audited bottom Study Panel sections after retained Matthew 1, Matthew 2, and Matthew 3 records appeared unexpectedly.
+
+Root cause:
+- `currentStudyScopePages()` used `selectedRangeFromAnalyzedPages()`, which falls back to all retained canonical analyzed pages when no explicit selected range is active.
+- Bottom derived layers that depend on current scope could therefore treat retained analyzed history as active Study Scope.
+
+Affected derived paths:
+- Study Exploration Paths
+- Study Scope Hierarchy
+- Scope Perspectives
+- Timeline Sequence
+- deferred section summary counts for derived scoped sections
+
+Fix:
+- Added explicit selected-range resolution separate from retained analyzed-history fallback.
+- Current active/frozen source page now defines current Study Scope unless an explicit selected range exists and contains that active/frozen page.
+- Retained analyzed pages remain retained context and no longer redefine active scope.
+
+Validation passed:
+- `node --check study.js`
+- `git diff --check`
+- `npm.cmd run qa:matthew-pages`
+- `npm.cmd run review:matthew-session`
+
 ## 2026-06-19 - Phase 10.1b Scope Perspective Foundation
 
 Implemented a derived display-only `ICE_SCOPE_PERSPECTIVES` layer in the Study Panel.

@@ -5056,3 +5056,28 @@ Boundaries:
 
 Next recommended step:
 - Browser presentation smoke for Matthew 1 Mary/Joseph, Matthew 2 Fulfillment, and Matthew 5 Mercy/JESUS perspectives before adding focus selectors or navigation.
+
+## 2026-06-19 - pcdx - Bottom Study Panel Scope Leakage Fix
+
+Task:
+- Audit and fix retained Matthew 1, Matthew 2, and Matthew 3 records leaking into bottom Study Panel sections.
+
+Findings:
+- Leaking sections: Study Exploration Paths, Study Scope Hierarchy, Scope Perspectives, Timeline Sequence, and related deferred derived-section summaries.
+- Raw retained count example: canonical analyzed pages can contain multiple retained pages such as Matthew 1, Matthew 2, and Matthew 3.
+- Scoped count expectation: bottom derived sections should use only the current active/frozen Study Scope page, or an explicit selected range that contains the active/frozen page.
+- Root cause: `currentStudyScopePages()` treated retained analyzed history as active scope through `selectedRangeFromAnalyzedPages()` fallback behavior.
+
+Implementation:
+- Added explicit selected range resolution separate from retained analyzed-history fallback.
+- Updated current Study Scope resolution so active/frozen/current source page wins unless an explicit selected range exists and contains that page.
+- Retained analyzed pages remain available as retained context but do not redefine active Study Scope.
+
+Validation:
+- `node --check study.js` passed.
+- `git diff --check` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed and refreshed `QA_REPORTS/latest-study-panel-report.md`.
+
+Next recommended step:
+- Browser presentation smoke to confirm bottom sections no longer show retained Matthew 1-3 when the active Study Scope is another page or a narrower explicit scope.

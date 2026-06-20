@@ -1425,37 +1425,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function selectedRangeFromAnalyzedPages(analyzedPages = []) {
+    return explicitSelectedRangeFromAnalyzedPages(analyzedPages) || selectedSessionScopeFromPages(sortedAnalyzedPages(analyzedPages));
+  }
+
+  function explicitSelectedRangeFromAnalyzedPages(analyzedPages = []) {
     const sorted = sortedAnalyzedPages(analyzedPages);
     const selected = studyData.selectedRange || null;
-    if (!selected?.start || !selected?.end) return selectedSessionScopeFromPages(sorted);
+    if (!selected?.start || !selected?.end) return null;
     const pagesByKey = new Map(sorted.map((page) => [pageRecordKey(page), page]));
     const start = pagesByKey.get(pageRecordKey(selected.start));
     const end = pagesByKey.get(pageRecordKey(selected.end));
-    if (!start || !end) return selectedSessionScopeFromPages(sorted);
+    if (!start || !end) return null;
     const book = pageBookName(start).toLowerCase();
     const startChapter = pageChapterNumber(start);
     const endChapter = pageChapterNumber(end);
-    if (!book || !startChapter || !endChapter || book !== pageBookName(end).toLowerCase()) return selectedSessionScopeFromPages(sorted);
+    if (!book || !startChapter || !endChapter || book !== pageBookName(end).toLowerCase()) return null;
     const min = Math.min(startChapter, endChapter);
     const max = Math.max(startChapter, endChapter);
     const selectedPages = sorted.filter((page) => pageBookName(page).toLowerCase() === book && pageChapterNumber(page) >= min && pageChapterNumber(page) <= max);
-    return selectedSessionScopeFromPages(selectedPages.length ? selectedPages : sorted);
+    return selectedPages.length ? selectedSessionScopeFromPages(selectedPages) : null;
+  }
+
+  function currentStudyScopeAnchorPage() {
+    return frozenAnalysisTargetRecord() ||
+      (validSourcePageRecord(studyData.activeSourcePage) ? studyData.activeSourcePage : null) ||
+      currentAnalyzedStatusRecord() ||
+      pageRecordFromStatus(studyData.analysisStatus || {}) ||
+      pageRecordFromCapture(studyData.latestCapture) ||
+      null;
   }
 
   function currentStudyScopePages() {
     const analyzedPages = analyzedPageHistory();
-    const range = selectedRangeFromAnalyzedPages(analyzedPages);
-    if (range?.pages?.length) return range.pages;
-    const activePage = activeSourcePageRecord();
-    if (activePage) return [activePage];
-    return analyzedPages;
+    const explicitRange = explicitSelectedRangeFromAnalyzedPages(analyzedPages);
+    const anchorPage = currentStudyScopeAnchorPage();
+    const anchorKey = pageRecordKey(anchorPage || {});
+    if (explicitRange?.pages?.length) {
+      if (!anchorKey) return explicitRange.pages;
+      const rangeHasAnchor = explicitRange.pages.some((page) => pageRecordKey(page) === anchorKey);
+      return rangeHasAnchor ? explicitRange.pages : [anchorPage];
+    }
+    if (anchorPage) return [anchorPage];
+    return [];
   }
 
   function currentStudyScopeLabel() {
-    const range = selectedRangeFromAnalyzedPages(analyzedPageHistory());
-    if (range?.sessionLabel) return range.sessionLabel;
     const pages = currentStudyScopePages();
-    return pages.length ? pages.map(volumePageLabel).join(" + ") : "current scope";
+    return selectedSessionScopeFromPages(pages)?.sessionLabel || "current scope";
   }
 
   function recordScopeSearchText(item = {}) {
