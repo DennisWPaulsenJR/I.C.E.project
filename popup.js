@@ -817,6 +817,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("extractPrinciples").disabled = count === 0;
   }
 
+  function compactLabelList(labels = []) {
+    const uniqueLabels = [...new Set(labels.map(normalizeWhitespace).filter(Boolean))];
+    if (!uniqueLabels.length) return "none";
+    const visible = uniqueLabels.slice(0, 5).join(", ");
+    return uniqueLabels.length > 5 ? `${visible}, +${uniqueLabels.length - 5} more` : visible;
+  }
+
+  function captureHistoryLabel(entry = {}) {
+    const match = sourceMatchFromUrl(entry.url || "") || sourceMatchFromTitle(entry.title || "");
+    if (match?.book && match?.chapter) return `${match.book} ${match.chapter}`;
+    return shortTitle(entry.title || entry.url || "Captured page");
+  }
+
+  function renderStudyStateSummary(history = [], canonicalMarkers = [], crossReferenceRecords = []) {
+    const capturedLabels = (Array.isArray(history) ? history : []).map(captureHistoryLabel);
+    const canonicalPages = Array.isArray(canonicalMarkers)
+      ? canonicalMarkers.map(pageRecordFromCanonicalMarker).filter(Boolean)
+      : [];
+    const sessionScope = selectedSessionScopeFromPages(canonicalPages);
+    const crossReferenceSet = normalizedCrossReferenceSet(crossReferenceRecords, canonicalPages);
+    const crossReferencePages = crossReferenceSet.map(pageRecordFromCrossReferenceRecord).filter(Boolean);
+
+    document.getElementById("capturedPagesLine").textContent = capturedLabels.length
+      ? `Raw captured page snapshots: ${compactLabelList(capturedLabels)}. Captures can be retained even when they are not part of the stored session.`
+      : "No raw captured page snapshots saved.";
+
+    document.getElementById("storedSessionPageCount").textContent = canonicalPages.length;
+    document.getElementById("storedSessionPagesLine").textContent = canonicalPages.length
+      ? `Analyzed/stored session pages: ${compactLabelList(canonicalPages.map(volumePageLabel))}.`
+      : "No analyzed pages are stored in the current session.";
+
+    document.getElementById("activeStudyScopeLine").textContent = sessionScope
+      ? `${sessionScope.sessionLabel} (${sessionScope.sessionType})`
+      : "No active analyzed scope";
+
+    document.getElementById("crossReferencePageCount").textContent = crossReferenceSet.length;
+    document.getElementById("crossReferencePagesLine").textContent = crossReferenceSet.length
+      ? `${compactLabelList(crossReferencePages.map(volumePageLabel))}. Cross-reference pages are selected separately and may be analyzed or not analyzed yet.`
+      : "No cross-reference pages selected.";
+  }
+
   function renderFormatterStatus(status) {
     document.getElementById("formatterMatchCount").textContent =
       status?.matchCount ?? 0;
@@ -984,7 +1025,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadCaptureHistory() {
-    renderHistoryCount(await getCaptureHistory());
+    const data = await chrome.storage.local.get([
+      CAPTURE_HISTORY_KEY,
+      CANONICAL_ANALYZED_PAGES_KEY,
+      CROSS_REFERENCE_SET_KEY
+    ]);
+    const history = Array.isArray(data[CAPTURE_HISTORY_KEY])
+      ? data[CAPTURE_HISTORY_KEY]
+      : [];
+    renderHistoryCount(history);
+    renderStudyStateSummary(
+      history,
+      data[CANONICAL_ANALYZED_PAGES_KEY],
+      data[CROSS_REFERENCE_SET_KEY]
+    );
   }
 
   async function loadFormatterStatus() {
@@ -1180,6 +1234,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Page data cleared.");
   }
 
+
+  async function clearAllIceData() {
+    const confirmed = window.confirm(
+      "Clear all I.C.E. stored study data and analyzed pages?\n\nThis cannot be undone."
+    );
+    if (!confirmed) return;
+
+    const localData = await chrome.storage.local.get(null);
+    const iceKeys = Object.keys(localData).filter((key) => key.startsWith("ICE_"));
+    if (iceKeys.length) {
+      await chrome.storage.local.remove(iceKeys);
+    }
+
+    await loadAllSummaries();
+    setCaptureStatus("All I.C.E. study data cleared.");
+  }
   function normalizeWhitespace(text) {
     return String(text ?? "").replace(/\s+/g, " ").trim();
   }
@@ -2315,6 +2385,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
+  document.getElementById("clearAllIceData")
+    .addEventListener("click", () => {
+      clearAllIceData().catch((error) => {
+        setCaptureStatus(error.message || "Failed to clear all I.C.E. data.");
+      });
+    });
   document.getElementById("capture")
     .addEventListener("click", () => {
       captureActivePage().catch((error) => {

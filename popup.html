@@ -65,6 +65,13 @@
       margin-top: 0;
       min-height: 36px;
     }
+
+    .summary-detail {
+      margin-top: -6px;
+      color: #5f6b7a;
+      font-size: .82rem;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body>
@@ -98,6 +105,7 @@
   <button id="runFullAnalysis">Run Full Analysis</button>
   <button id="openStudyPanel">Open Study Panel</button>
   <button id="clearPageData">Clear Page Data</button>
+  <button id="clearAllIceData">Clear All I.C.E. Data</button>
 
   <section class="page-workflow" aria-label="Page Workflow">
     <h4>Page Workflow</h4>
@@ -118,7 +126,13 @@
 
   <section class="analysis-summary">
     <p>Capture status: <span id="analysisStatus">Not run</span></p>
-    <p>Saved captures: <span id="historyCount">0</span></p>
+    <p>Captured Pages: <span id="historyCount">0</span></p>
+    <p id="capturedPagesLine" class="summary-detail">Raw capture snapshots saved for review.</p>
+    <p>Stored Session Pages: <span id="storedSessionPageCount">0</span></p>
+    <p id="storedSessionPagesLine" class="summary-detail">Analyzed pages stored for the current session.</p>
+    <p>Active Study Scope: <span id="activeStudyScopeLine">No active scope</span></p>
+    <p>Cross-reference Pages: <span id="crossReferencePageCount">0</span></p>
+    <p id="crossReferencePagesLine" class="summary-detail">Selected comparison pages are tracked separately.</p>
     <p>Timeline items: <span id="timelineCount">0</span></p>
     <p>Event candidates: <span id="eventCount">0</span></p>
     <p>Ordered events: <span id="orderedEventCount">0</span></p>
