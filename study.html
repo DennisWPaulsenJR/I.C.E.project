@@ -32,6 +32,19 @@
     </div>
   </header>
 
+  <section class="presentation-controls" aria-label="Study presentation modules">
+    <details id="presentationModuleDetails">
+      <summary>Study Display Modules</summary>
+      <p>Choose which prepared study modules are visible. This changes presentation only.</p>
+      <div class="presentation-module-presets" aria-label="Display presets">
+        <button id="showAllModules" class="refresh-button secondary-action" type="button">Full Technical View</button>
+        <button id="showStudyModules" class="refresh-button secondary-action" type="button">Study View</button>
+        <button id="showEvidenceModules" class="refresh-button secondary-action" type="button">Evidence View</button>
+      </div>
+      <div id="presentationModuleControls" class="presentation-module-controls"></div>
+    </details>
+  </section>
+
   <main class="study-shell">
 
     <section class="study-section volume-context-section" id="volumeContextSection">
@@ -47,6 +60,13 @@
         <span id="queueSummaryCount" class="count-label">0</span>
       </div>
       <div id="queueSummaryCards" class="card-grid queue-summary-grid"></div>
+    </section>
+    <section class="study-section" id="studyReferenceIndexSection">
+      <div class="section-heading">
+        <h2>Study Reference Index</h2>
+        <span id="studyReferenceIndexCount" class="count-label">0</span>
+      </div>
+      <div id="studyReferenceIndexCards" class="card-grid"></div>
     </section>
     <section class="study-section guided-study-section" id="guidedStudySection">
       <div class="section-heading">

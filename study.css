@@ -116,6 +116,52 @@ body {
   background: #1f4f7a;
 }
 
+.presentation-controls {
+  padding: 14px 24px;
+  background: #eef3f8;
+  border-bottom: 1px solid #d8dde6;
+}
+
+.presentation-controls details {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.presentation-controls summary {
+  color: #25364d;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.presentation-controls p {
+  margin: 8px 0 12px;
+  color: #445064;
+  font-size: .86rem;
+}
+
+.presentation-module-presets,
+.presentation-module-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presentation-module-controls {
+  margin-top: 10px;
+}
+
+.presentation-module-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid #c7d0dc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #25364d;
+  font-size: .84rem;
+}
+
 .header-actions .refresh-button {
   font-size: .86rem;
   max-width: 210px;

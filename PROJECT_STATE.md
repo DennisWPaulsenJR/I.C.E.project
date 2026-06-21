@@ -31,6 +31,24 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Modular Study Presentation Architecture is implemented in this update as a presentation-only module selector in the Study Panel.
+- The new `Study Display Modules` control lets the user show/hide module categories such as Character Study, Event Flow, Location Movement, Teaching / Themes, Inference Levels, Evidence / Provenance, Cross Reference, Journey Study, Study Guidance, Lenses, and Full Technical View.
+- Evaluation and presentation are explicitly separated: the evaluated record set, Context Lock, Meaning Staging, scope, semantic records, queues, and extraction behavior do not change when display modules are toggled.
+- Hidden modules remain backed by prepared storage/session records and can be shown again without re-analysis.
+- Architecture note added: `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`.
+- Validation passed: `git diff --check`, `node --check background.js`, `node --check study.js`, `node --check qa/entity-classification-qa.js`, `npm.cmd run qa:entity-classification`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Study Reference Index and Inference Ladder View is implemented in this update as a display-only current-scope reference layer identified in the UI as `ICE_STUDY_REFERENCE_INDEX`.
+- The Study Panel now includes a deferred `Study Reference Index` section after Queue Summary.
+- The section summarizes current-scope Characters / Actors, Entities, Locations, Events, Narrative Type Classification, Ordered Event Flow, and Inference Ladder lines from existing scoped records.
+- Actors, non-actor entities, and locations are separated before display; locations remain locations and do not merge into actor lists.
+- Inference levels display the Meaning Staging ladder from Level 0 Source Text through Level 6 Study Relationship and preserve the rule that possible meaning must not appear as grounded fact.
+- The view is informational only. It does not crawl, queue, analyze, advance study, mutate scope, or create a new inference engine.
+- Validation passed: `git diff --check`, `node --check background.js`, `node --check study.js`, `node --check qa/entity-classification-qa.js`, `npm.cmd run qa:entity-classification`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session`.
+- Semantic Promotion Architecture specification is documented in `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`.
+- The specification defines promotion flow from Source Text -> Context -> Grounded Observation -> Semantic Event -> Knowledge Graph -> Theme -> Relationship -> Journey.
+- Promotion now has documented entry criteria, layer boundaries, prohibited promotions, volume-neutral expectations, provenance requirements, and Analysis Support / Meaning Staging mappings.
+- The specification reinforces Context Lock, actor/location/authority/narrator stability, scope isolation, no inherited chapter semantics, and no relationship/journey layer rewriting lower context.
+- Next recommended task: use this specification to design targeted reusable semantic promotion families for Matthew 8-style healing, movement, dialogue, authority instruction, deliverance, and teaching records before implementing broad promotion changes.
 - Bottom Study Panel scope-leak fix is implemented in this update.
 - Root cause: `currentStudyScopePages()` could fall back to all retained canonical analyzed pages when no active explicit selected range was valid, causing bottom derived sections such as Study Exploration Paths, Study Scope Hierarchy, Scope Perspectives, and Timeline Sequence to treat retained Matthew 1-3 history as active scope.
 - Fix: active/frozen/current source page now defines current Study Scope first unless an explicit selected range exists and contains the active/frozen page; retained analyzed pages remain retained context and do not redefine active scope.

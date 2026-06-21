@@ -81,7 +81,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   ];
   const FULL_STORAGE_ALIASES = Object.keys(STORAGE_KEYS);
   const STARTUP_RENDERER_LABELS = new Set(["Study Scope", "Queue Summary"]);
+  const PRESENTATION_MODULES = [
+    { id: "overview", label: "Overview" },
+    { id: "character", label: "Character Study" },
+    { id: "entity", label: "Entities" },
+    { id: "location", label: "Location Movement" },
+    { id: "event", label: "Event Flow" },
+    { id: "narrative", label: "Narrative Types" },
+    { id: "inference", label: "Inference Levels" },
+    { id: "evidence", label: "Evidence / Provenance" },
+    { id: "theme", label: "Themes / Teaching" },
+    { id: "relationship", label: "Relationships" },
+    { id: "crossReference", label: "Cross Reference" },
+    { id: "journey", label: "Journey Study" },
+    { id: "guidance", label: "Study Guidance" },
+    { id: "lens", label: "Focus / Scope / Depth / View Lens" },
+    { id: "technical", label: "Full Technical View" }
+  ];
+  const PRESENTATION_MODULE_PRESETS = {
+    all: PRESENTATION_MODULES.map((item) => item.id),
+    study: ["overview", "character", "entity", "location", "event", "narrative", "inference", "theme", "relationship", "journey", "guidance", "lens"],
+    evidence: ["overview", "inference", "evidence", "crossReference", "technical"]
+  };
+  let selectedPresentationModules = new Set(PRESENTATION_MODULE_PRESETS.all);
   const DEFERRED_SECTION_SUMMARIES = {
+    "Study Reference Index": "Compact current-scope index of actors, entities, locations, events, narrative types, ordered flow, and inference levels.",
     "Guided Study": "Grounded next study paths from current semantic records.",
     "Study Progression": "Current focus, explored topics, related topics, and suggested next study direction.",
     "Focus Lens": "Current semantic focus inferred from the analyzed source.",
@@ -11628,6 +11652,298 @@ createRevelationPartsSection(item.subEvents)
     if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more staging record(s) hidden by the preview limit. Use panel search to focus a stage.`);
   }
 
+  function studyReferenceNormalizeLabel(value = "") {
+    return normalizeText(value).replace(/\s+/g, " ").trim();
+  }
+
+  function studyReferenceRoleLabel(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/authority|source authority|divine source/.test(text)) return "authority";
+    if (/messenger|angel/.test(text)) return "messenger";
+    if (/recipient|listener|audience|hearer/.test(text)) return "recipient";
+    if (/speaker|teacher/.test(text)) return "speaker";
+    if (/narrator|source/.test(text)) return "narrator";
+    if (/participant|actor|person|group|ruler|ancestor/.test(text)) return "participant";
+    return studyReferenceNormalizeLabel(value) || "participant";
+  }
+
+  function studyReferenceEntityKind(record = {}) {
+    const text = normalizeText([
+      record.entityType,
+      record.type,
+      record.category,
+      record.actorCategory,
+      record.roleType,
+      record.roleHint,
+      record.canonicalRole,
+      record.semanticRole,
+      record.entityClass,
+      record.entityName,
+      record.canonicalName,
+      record.displayName
+    ].join(" ")).toLowerCase();
+    const name = normalizeText(record.displayName || record.canonicalName || record.entityName || record.mentionText || record.actorName);
+    if (isContextLockPlaceName(name) || /\b(location|place|city|region|nation|wilderness|mountain|river|sea|body of water|geographic)\b/.test(text)) return "location";
+    if (/\b(authority|divine entity|god|the lord)\b/.test(text)) return "authority";
+    if (/\b(narrator|source label)\b/.test(text)) return "narrator";
+    if (/\b(messenger)\b/.test(text)) return "actor";
+    if (/\b(actor|person|group|ruler|ancestor|recipient|speaker|audience|participant)\b/.test(text)) return "actor";
+    return "entity";
+  }
+
+  function addStudyReferenceItem(map, name, detail = {}) {
+    const label = studyReferenceNormalizeLabel(name);
+    if (!label) return;
+    const key = label.toLowerCase();
+    const existing = map.get(key) || {
+      label,
+      roles: new Set(),
+      sources: new Set()
+    };
+    asArray(detail.roles).forEach((role) => {
+      const normalized = studyReferenceRoleLabel(role);
+      if (normalized) existing.roles.add(normalized);
+    });
+    asArray(detail.sources).forEach((source) => {
+      const normalized = studyReferenceNormalizeLabel(source);
+      if (normalized) existing.sources.add(normalized);
+    });
+    map.set(key, existing);
+  }
+
+  function studyReferenceListFromMap(map, limit = 14) {
+    return Array.from(map.values())
+      .sort((left, right) => left.label.localeCompare(right.label))
+      .slice(0, limit)
+      .map((item) => {
+        const roles = Array.from(item.roles).slice(0, 4);
+        const sources = Array.from(item.sources).slice(0, 2);
+        return `${item.label}${roles.length ? ` - ${roles.join(", ")}` : ""}${sources.length ? ` (${sources.join("; ")})` : ""}`;
+      });
+  }
+
+  function studyReferenceActors() {
+    const actors = new Map();
+    asArray(studyData.actorTimelines).map(dedupeActorActions).forEach((actor) => {
+      addStudyReferenceItem(actors, actor.resolvedActorName || actor.actorName, {
+        roles: [actor.actorFunction, actor.actorCategory, actor.resolutionSource],
+        sources: ["Actor Timelines"]
+      });
+    });
+    contextLockRecords().forEach((lock) => {
+      addStudyReferenceItem(actors, lock.authoritySource, { roles: ["authority"], sources: [lock.lockName] });
+      addStudyReferenceItem(actors, lock.messenger, { roles: ["messenger"], sources: [lock.lockName] });
+      addStudyReferenceItem(actors, lock.recipient, { roles: ["recipient"], sources: [lock.lockName] });
+      addStudyReferenceItem(actors, lock.speaker, { roles: ["speaker"], sources: [lock.lockName] });
+      asArray(lock.participants).forEach((participant) => addStudyReferenceItem(actors, participant, { roles: ["participant"], sources: [lock.lockName] }));
+    });
+    return actors;
+  }
+
+  function studyReferenceEntitiesAndLocations() {
+    const entities = new Map();
+    const locations = new Map();
+    const addEntity = (record = {}, source = "Entity Registry") => {
+      const name = record.displayName || record.canonicalName || record.entityName || record.mentionText || record.semanticItem || record.label;
+      if (!name) return;
+      const kind = studyReferenceEntityKind(record);
+      const target = kind === "location" ? locations : entities;
+      addStudyReferenceItem(target, name, {
+        roles: [kind === "location" ? "location / place" : (record.entityType || record.type || record.category || record.roleHint || kind)],
+        sources: [source]
+      });
+    };
+    scopedSemanticRecords(studyData.entityRegistry).forEach((record) => addEntity(record, "Entity Registry"));
+    scopedSemanticRecords(studyData.canonicalIdentities).forEach((record) => addEntity(record, "Canonical Identities"));
+    scopedSemanticRecords(studyData.mentionIndex).forEach((record) => addEntity(record, "Mention Index"));
+    contextLockRecords().forEach((lock) => {
+      asArray(String(lock.location || "").split(/;|,/)).forEach((place) => addStudyReferenceItem(locations, place, { roles: ["where / place reference"], sources: [lock.lockName] }));
+    });
+    return { entities, locations };
+  }
+
+  function studyReferenceNarrativeType(record = {}) {
+    const text = normalizeText([
+      record.eventType,
+      record.eventDisplayLabel,
+      record.eventClassification,
+      record.eventText,
+      record.sourcePhrase,
+      record.sceneType,
+      record.passageFunction,
+      record.teachingTopic,
+      record.relationshipType
+    ].join(" ")).toLowerCase();
+    if (/lineage|genealogy|generation|begat/.test(text)) return "Lineage Record";
+    if (/narrator|testimony|witness/.test(text)) return "Narrator Testimony";
+    if (/teach|discourse|sermon|beatitude|commandment|doctrine/.test(text)) return "Teaching / Discourse";
+    if (/heal|cleans|sick|leper|palsy|fever/.test(text)) return "Healing Account";
+    if (/came|went|depart|entered|ship|sea|mountain|wilderness|travel|movement/.test(text)) return "Movement Account";
+    if (/follow|call|disciple/.test(text)) return "Calling Account";
+    if (/fulfill|prophet|spoken/.test(text)) return "Fulfillment Statement";
+    if (/angel|dream|reveal|warn|messenger/.test(text)) return "Revelation / Messenger Event";
+    if (/miracle|marvel|devil|spirit|cast out|rebuke|storm|wind/.test(text)) return "Miracle Account";
+    if (/location|place|city|region|land/.test(text)) return "Location Account";
+    if (/dialogue|request|answer|said|saying|asked/.test(text)) return "Dialogue / Request Event";
+    return "Grounded Source Record";
+  }
+
+  function studyReferenceEvents() {
+    const events = [];
+    timelineSequenceRecords().slice(0, 20).forEach((item) => events.push({
+      label: `${item.sequenceNumber}. ${item.event}`,
+      type: item.eventType || studyReferenceNarrativeType(item),
+      source: item.verseRange || item.scopePath || item.activeScope,
+      grounding: item.sourcePhrase || item.sourceGrounding || item.derivedMeaning
+    }));
+    if (!events.length) {
+      asArray(studyData.orderedEvents).slice(0, 20).forEach((item) => events.push({
+        label: orderedEventTitle(item),
+        type: orderedEventDisplayType(item),
+        source: item.sourceTitle || item.scopePath || "Ordered Events",
+        grounding: item.eventText
+      }));
+    }
+    return events;
+  }
+
+  function studyReferenceNarrativeTypes(events = studyReferenceEvents()) {
+    const counts = new Map();
+    events.forEach((event) => counts.set(event.type || "Grounded Source Record", (counts.get(event.type || "Grounded Source Record") || 0) + 1));
+    if (!counts.size) {
+      scopedSemanticRecords(studyData.passageFunctions).forEach((item) => {
+        const type = studyReferenceNarrativeType(item);
+        counts.set(type, (counts.get(type) || 0) + 1);
+      });
+    }
+    return Array.from(counts.entries())
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .map(([type, value]) => `${type}: ${value}`);
+  }
+
+  function studyReferenceInferenceRecords() {
+    const staging = meaningStagingRecords();
+    if (staging.length) {
+      return staging.slice(0, 18).map((item) => `Level ${item.stageLevel} - ${item.stage}: ${trimText(item.recordLabel, 120)}`);
+    }
+    return [
+      "Level 0 - Source Text: source wording remains the starting point.",
+      "Level 1 - Context: speaker, audience, authority, participants, and locations are locked before meaning.",
+      "Level 2 - Grounded Observation: explicitly stated facts remain separate from interpretation.",
+      "Level 3 - Supported Meaning: directly supported conclusions may be shown with provenance.",
+      "Level 4 - Strongly Implied Meaning: highly supported implications must remain labeled.",
+      "Level 5 - Possible Meaning: plausible context must not be shown as fact.",
+      "Level 6 - Study Relationship: themes, journeys, timelines, and relationships cannot rewrite lower levels."
+    ];
+  }
+
+  function studyReferenceIndexRecords() {
+    const actors = studyReferenceActors();
+    const { entities, locations } = studyReferenceEntitiesAndLocations();
+    const events = studyReferenceEvents();
+    return [{
+      id: "study-reference-index-current",
+      activeScope: currentStudyScopeLabel(),
+      actors: studyReferenceListFromMap(actors),
+      entities: studyReferenceListFromMap(entities),
+      locations: studyReferenceListFromMap(locations),
+      events,
+      narrativeTypes: studyReferenceNarrativeTypes(events),
+      inferenceLevels: studyReferenceInferenceRecords(),
+      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Retained records do not redefine this index.`,
+      provenance: "I.C.E. Study Reference Index derived from current scoped Context Lock, Actor Timelines, Entity Registry, Timeline Events, Timeline Sequence, Ordered Events, Passage Functions, and Meaning Staging.",
+      evidenceWeight: "Derived Reference Index / Current Scope Summary",
+      confidence: "probable"
+    }];
+  }
+
+  function studyReferenceIndexSearchText(item = {}) {
+    return [
+      item.activeScope,
+      item.actors,
+      item.entities,
+      item.locations,
+      item.events.map((event) => [event.label, event.type, event.source, event.grounding].join(" ")),
+      item.narrativeTypes,
+      item.inferenceLevels,
+      item.scopeBoundary,
+      item.provenance
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createStudyReferenceIndexCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card study-reference-index-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    heading.textContent = "Current Scope Reference Index";
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_STUDY_REFERENCE_INDEX", item.activeScope, displayConfidence(item.confidence || "probable")].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    const eventLines = asArray(item.events).slice(0, 12).map((event) => [
+      `${event.label} - ${event.type}`,
+      event.source ? `Source: ${event.source}` : "",
+      event.grounding ? `Grounding: ${trimText(event.grounding, 100)}` : ""
+    ].filter(Boolean).join(" | "));
+    [
+      createPassageFunctionSection("Characters / Actors", item.actors.length ? "" : "No grounded actors found for the current Study Scope.", { list: item.actors, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Entities", item.entities.length ? "" : "No non-actor entities found for the current Study Scope.", { list: item.entities, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Locations", item.locations.length ? "" : "No grounded locations found for the current Study Scope.", { list: item.locations, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Events", eventLines.length ? "" : "No ordered events found for the current Study Scope.", { list: eventLines, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Narrative Type Classification", item.narrativeTypes.length ? "" : "No narrative type classification available for the current Study Scope.", { list: item.narrativeTypes, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Inference Ladder", "", { list: item.inferenceLevels, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Scope Boundary", item.scopeBoundary, { preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "reference index assembled from existing current-scope records only", sourceGrounding: item.scopeBoundary, supportingRecords: ["Context Lock", "Actor Timelines", "Entity Registry", "Timeline Sequence", "Meaning Staging"] }),
+      createPassageFunctionSection("Provenance", item.provenance, { preserveExact: true, collapsed: true, summaryLabel: "Show Provenance" }),
+      createPassageFunctionSection("Boundary Rules", "", {
+        list: [
+          "Context always wins.",
+          "Meaning never rewrites context.",
+          "Relationships never rewrite meaning.",
+          "Possible meaning is labeled and never shown as fact.",
+          "Actors, entities, locations, and narrative types remain distinct.",
+          "No crawling, queue processing, automatic study progression, or scope mutation is performed."
+        ],
+        plainList: true,
+        preserveExact: true,
+        collapsed: true,
+        summaryLabel: "Show boundary rules"
+      }),
+      createWordingProvenanceSection({ source: item.provenance, label: "Study Reference Index", layer: "Study Reference Index / ICE_STUDY_REFERENCE_INDEX", storageKey: "Not persisted in this phase", scopePath: item.activeScope, rule: "Study Reference Index is a display-only reference surface over existing current-scope records. It does not create a new inference engine, crawl, analyze, queue, navigate, or modify Study Scope." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderStudyReferenceIndex(term) {
+    const container = document.getElementById("studyReferenceIndexCards");
+    const count = document.getElementById("studyReferenceIndexCount");
+    if (!container || !count) return;
+    const records = studyReferenceIndexRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(studyReferenceIndexSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} reference item(s)`;
+    if (!filtered.length) {
+      appendEmpty(container, "No Study Reference Index records match current filter.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Study Reference Index",
+      [
+        `Derived records: ${records.length}`,
+        "Layer identifier: ICE_STUDY_REFERENCE_INDEX",
+        "Purpose: quick current-scope reference for actors, entities, locations, events, narrative types, ordered flow, and inference levels.",
+        "Boundary: display-only index; no crawling, queue processing, automatic study progression, scope mutation, or new inference engine."
+      ].join("\n"),
+      "derived reference index layer"
+    ));
+    filtered.forEach((item) => container.appendChild(createStudyReferenceIndexCard(item)));
+  }
+
   function focusedStudyRecordText(item = {}) {
     const record = item.record || item;
     return [
@@ -16471,6 +16787,7 @@ createRevelationPartsSection(item.subEvents)
     return [
       { label: "Study Scope", sectionId: "volumeContextSection", renderer: renderVolumeContext },
       { label: "Queue Summary", sectionId: "queueSummarySection", renderer: renderQueueSummary },
+      { label: "Study Reference Index", sectionId: "studyReferenceIndexSection", renderer: renderStudyReferenceIndex },
       { label: "Guided Study", sectionId: "guidedStudySection", renderer: renderGuidedStudy },
       { label: "Study Progression", sectionId: "studyProgressionSection", renderer: renderStudyProgression },
       { label: "Focus Lens", sectionId: "focusLensSection", renderer: renderFocusLens },
@@ -16585,6 +16902,7 @@ createRevelationPartsSection(item.subEvents)
 
   function deferredSectionRecordCount(label) {
     if (!fullStudyDataLoaded) return null;
+    if (label === "Study Reference Index") return studyReferenceIndexRecords().length;
     if (label === "Guided Study") return guidedStudyRecords().length;
     if (label === "Study Progression") return studyProgressionRecords().length;
     if (label === "Semantic Coverage") return semanticCoverageRows().length;
@@ -16723,6 +17041,139 @@ createRevelationPartsSection(item.subEvents)
     return details;
   }
 
+  function presentationModulesForSection(label = "") {
+    const map = {
+      "Study Scope": ["overview"],
+      "Queue Summary": ["overview"],
+      "Study Reference Index": ["overview", "character", "entity", "location", "event", "narrative", "inference"],
+      "Guided Study": ["guidance", "theme"],
+      "Study Progression": ["guidance", "journey"],
+      "Focus Lens": ["lens"],
+      "Scope Lens": ["lens"],
+      "Depth Lens": ["lens"],
+      "View Lens": ["lens"],
+      "Context Lock": ["inference", "evidence"],
+      "Meaning Staging": ["inference"],
+      "Focused Study Views": ["character", "theme", "journey"],
+      "Study Exploration Paths": ["journey", "guidance"],
+      "Study Scope Hierarchy": ["overview", "narrative"],
+      "Scope Perspectives": ["overview", "theme"],
+      "Guided Study Journeys": ["journey", "guidance"],
+      "Journey Nodes": ["journey"],
+      "Journey Paths": ["journey", "relationship"],
+      "Journey Hubs": ["journey"],
+      "Timeline Events": ["event"],
+      "Timeline Relationships": ["event", "relationship"],
+      "Timeline Sequence": ["event", "narrative"],
+      "Study Themes": ["theme"],
+      "Semantic Coverage": ["evidence", "technical"],
+      "Semantic Resolution Explanation": ["evidence", "inference"],
+      "Session Continuity Review": ["overview", "relationship"],
+      "Scripture Knowledge Graph": ["relationship", "theme"],
+      "Trust & Verification": ["evidence"],
+      "Semantic Questions": ["guidance"],
+      "Library Awareness": ["guidance", "theme"],
+      "Teaching / Discourse Structure": ["theme", "narrative"],
+      "Principle Relationships": ["theme", "relationship"],
+      "Principle Networks": ["theme", "relationship"],
+      "Passage Functions": ["narrative", "inference"],
+      "Revelation Patterns": ["event", "inference"],
+      "Reference Roles": ["crossReference", "evidence"],
+      "Semantic Distinctions": ["inference", "technical"],
+      "Ontology Roles": ["entity", "technical"],
+      "Semantic Ambiguities": ["inference", "evidence"],
+      "Origin Authority Paths": ["inference", "evidence"],
+      "Entity Relation Roles": ["entity", "relationship"],
+      "Semantic Continuity": ["relationship"],
+      "Movement Semantics": ["location", "event"],
+      "Semantic Causality": ["event", "relationship"],
+      "Narrative Timeline": ["event", "narrative"],
+      "Entity Scope Focus": ["entity", "lens"],
+      "Verse Scope Focus": ["crossReference", "lens"],
+      "Canonical Identities": ["entity", "technical"],
+      "Relationship Graph": ["relationship", "technical"],
+      "Semantic Events": ["event", "technical"],
+      "Semantic Flow Chains": ["event", "relationship"],
+      "Reference Graph": ["crossReference", "technical"],
+      "Source Discovery": ["crossReference", "technical"],
+      "DOM Semantic Hints": ["technical"],
+      "Focused Graph": ["relationship", "technical"],
+      "Current Page": ["technical"],
+      "Source Context": ["technical", "overview"],
+      "Source Adapter": ["technical"],
+      "Scope Integrity": ["technical", "evidence"],
+      "Entity Roles": ["entity", "technical"],
+      "Entity Registry": ["entity", "technical"],
+      "Mention Index": ["entity", "technical"],
+      "Actors": ["character"],
+      "Scenes": ["event", "narrative"],
+      "Ordered Events": ["event", "narrative"],
+      "Interactions": ["character", "relationship"],
+      "Principles": ["theme"],
+      "Prophecy Links": ["crossReference", "theme"],
+      "Timeline": ["event", "technical"],
+      "Diagnostics": ["technical"]
+    };
+    return map[label] || ["technical"];
+  }
+
+  function presentationModuleSelected(label = "") {
+    const moduleIds = presentationModulesForSection(label);
+    return moduleIds.some((id) => selectedPresentationModules.has(id));
+  }
+
+  function applyPresentationModuleVisibility() {
+    studySectionRenderers().forEach((entry) => {
+      const section = document.getElementById(entry.sectionId);
+      if (!section) return;
+      section.hidden = !presentationModuleSelected(entry.label);
+      section.dataset.presentationModules = presentationModulesForSection(entry.label).join(" ");
+    });
+    const diagnostics = document.getElementById("diagnosticPanel");
+    if (diagnostics) diagnostics.hidden = !selectedPresentationModules.has("technical");
+  }
+
+  function updatePresentationModuleControls() {
+    PRESENTATION_MODULES.forEach((module) => {
+      const checkbox = document.querySelector(`input[data-presentation-module="${module.id}"]`);
+      if (checkbox) checkbox.checked = selectedPresentationModules.has(module.id);
+    });
+  }
+
+  function setPresentationModules(moduleIds = []) {
+    selectedPresentationModules = new Set(moduleIds);
+    updatePresentationModuleControls();
+    applyPresentationModuleVisibility();
+  }
+
+  function initializePresentationModuleControls() {
+    const container = document.getElementById("presentationModuleControls");
+    if (!container) return;
+    clearElement(container);
+    PRESENTATION_MODULES.forEach((module) => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      const text = document.createElement("span");
+      label.className = "presentation-module-toggle";
+      checkbox.type = "checkbox";
+      checkbox.dataset.presentationModule = module.id;
+      checkbox.checked = selectedPresentationModules.has(module.id);
+      text.textContent = module.label;
+      label.append(checkbox, text);
+      container.appendChild(label);
+    });
+    container.addEventListener("change", (event) => {
+      const checkbox = event.target.closest("input[data-presentation-module]");
+      if (!checkbox) return;
+      if (checkbox.checked) selectedPresentationModules.add(checkbox.dataset.presentationModule);
+      else selectedPresentationModules.delete(checkbox.dataset.presentationModule);
+      applyPresentationModuleVisibility();
+    });
+    document.getElementById("showAllModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.all));
+    document.getElementById("showStudyModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.study));
+    document.getElementById("showEvidenceModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.evidence));
+  }
+
   function renderStudy() {
     const searchInput = document.getElementById("searchInput");
     const term = normalizeText(searchInput?.value || "").toLowerCase();
@@ -16741,6 +17192,7 @@ createRevelationPartsSection(item.subEvents)
     if (fullStudyDataLoaded) {
       safeRenderSection("Diagnostics", renderDiagnostics, term);
     }
+    applyPresentationModuleVisibility();
   }
 
   async function loadStudyData(options = {}) {
@@ -17047,6 +17499,7 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("sourceVerseDialog")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) event.currentTarget.close();
   });
+  initializePresentationModuleControls();
   window.addEventListener("focus", () => scheduleRefreshStudyData());
   window.addEventListener("pageshow", () => scheduleRefreshStudyData());
   chrome.storage.onChanged.addListener((changes, areaName) => {

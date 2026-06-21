@@ -1,3 +1,39 @@
+## 2026-06-21 - Modular Study Presentation Architecture
+
+Added Study Panel display module controls and documented the architecture in `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`.
+
+The Study Panel now has a `Study Display Modules` control above the main panel. Users can selectively show modules such as Character Study, Entities, Location Movement, Event Flow, Narrative Types, Inference Levels, Evidence / Provenance, Themes / Teaching, Relationships, Cross Reference, Journey Study, Study Guidance, Lenses, and Full Technical View.
+
+This separates evaluation from presentation. The app continues to evaluate and prepare records from the selected scope, while the user's module choices only change which existing Study Panel sections are visible.
+
+No source extraction, semantic record mutation, Context Lock mutation, queue execution, crawling, automatic progression, or scope mutation was added.
+
+## 2026-06-21 - Study Reference Index and Inference Ladder View
+
+Added a display-only Study Panel `Study Reference Index` section after Queue Summary.
+
+The reference index summarizes current-scope Characters / Actors, Entities, Locations, Events, Narrative Type Classification, Ordered Event Flow, and Inference Ladder records without creating new extraction, crawling, queue processing, automatic study progression, or scope mutation.
+
+Actors are collected from scoped Actor Timelines and Context Lock roles. Non-actor entities and locations are displayed separately so places remain locations and do not merge into actor lists.
+
+Events and narrative types reuse existing Timeline Sequence, Ordered Events, Passage Functions, and current-scope semantic records. Inference levels reuse Meaning Staging, preserving the ladder from Level 0 Source Text through Level 6 Study Relationship.
+
+The section is intended as a quick reference surface for current scope: who is present, what happened, where it happened, what kind of record it is, what is stated, what is supported, and what remains possible.
+
+## 2026-06-20 - Semantic Promotion Architecture Specification
+
+Documented the semantic promotion rules in `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`.
+
+The architecture defines the one-way ladder from Source Text to Context, Grounded Observation, Semantic Event, Knowledge Graph, Theme, Relationship, and Journey. It records entry criteria for healing, movement, dialogue, genealogy, authority statements, revelation, fulfillment statements, and teaching.
+
+Layer boundaries are explicit: Context may create actors, locations, authority, participants, source roles, and event scope; Semantic Events may create grounded event records; Knowledge Graph, Theme, Relationship, and Journey layers may organize existing records but may not rewrite context.
+
+The document prohibits inherited chapter semantics, role inversion, location-to-actor promotion, actor-to-location promotion, relationship rewriting of Context Lock, scope leakage, unsupported genealogy inference, and doctrine invention.
+
+The rules are volume-neutral across the Old Testament, New Testament, Book of Mormon, Doctrine and Covenants, and Pearl of Great Price. Matthew remains a validation corpus, not the architecture itself.
+
+Provenance requirements now state that every promoted record should expose source scope, source evidence, promotion rule, parent record, Meaning Staging level, evidence/support wording, storage/layer provenance, and active/retained/out-of-scope status.
+
 ## 2026-06-18 - Actor Resolution & Classification Foundation
 
 Improved `ICE_ACTOR_TIMELINES` actor identification, categorization, and display diagnostics.

@@ -21,6 +21,93 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-21 - pcdx - Modular Study Presentation Architecture
+Summary:
+- Added Study Panel `Study Display Modules` controls.
+- Added module categories for Overview, Character Study, Entities, Location Movement, Event Flow, Narrative Types, Inference Levels, Evidence / Provenance, Themes / Teaching, Relationships, Cross Reference, Journey Study, Study Guidance, Lenses, and Full Technical View.
+- Added presets for Full Technical View, Study View, and Evidence View.
+- Presentation module selection only hides/shows existing Study Panel sections; it does not re-analyze, crawl, queue, mutate scope, alter Context Lock, or change semantic records.
+- Added `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`.
+
+Files touched:
+- `study.html`
+- `study.css`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+- `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+
+Checks:
+- `git diff --check` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/entity-classification-qa.js` passed.
+- `npm.cmd run qa:entity-classification` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser presentation smoke remains recommended before committing/pushing the UI change.
+
+## 2026-06-21 - pcdx - Study Reference Index and Inference Ladder View
+Summary:
+- Added a deferred Study Panel `Study Reference Index` section after Queue Summary.
+- The view summarizes current-scope Characters / Actors, Entities, Locations, Events, Narrative Type Classification, Ordered Event Flow, and Inference Ladder lines.
+- Actors are collected separately from non-actor entities and locations; locations remain locations.
+- Inference levels reuse Meaning Staging so possible meaning remains visibly distinct from grounded fact.
+- The view is display-only and does not crawl, queue, auto-analyze, advance study, mutate scope, or create a new inference engine.
+
+Files touched:
+- `study.html`
+- `study.js`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `git diff --check` passed.
+- `node --check background.js` passed.
+- `node --check study.js` passed.
+- `node --check qa/entity-classification-qa.js` passed.
+- `npm.cmd run qa:entity-classification` passed.
+- `npm.cmd run qa:matthew1` passed.
+- `npm.cmd run qa:matthew-pages` passed.
+- `npm.cmd run review:matthew-session` passed.
+
+Commit:
+- Pending.
+
+Status:
+- Implemented and validated. Browser presentation smoke remains recommended before committing/pushing the UI change.
+
+## 2026-06-20 - pcdx - Semantic Promotion Architecture Specification
+Summary:
+- Added `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`.
+- Documented the promotion ladder from Source Text through Context, Grounded Observation, Semantic Event, Knowledge Graph, Theme, Relationship, and Journey.
+- Defined entry criteria for healing, movement, dialogue, genealogy, authority statements, revelation, fulfillment statements, and teaching.
+- Defined layer boundaries, forbidden promotions, volume-neutral rules, provenance requirements, and Analysis Support / Meaning Staging mappings.
+- Reinforced Context Lock, actor/location/authority/narrator stability, scope isolation, and no inherited chapter semantics.
+
+Files touched:
+- `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `git diff --check` passed.
+
+Commit:
+- Pending.
+
+Status:
+- Documentation-only architecture specification added. Next recommended task is targeted reusable promotion design for Matthew 8-style healing, movement, dialogue, authority instruction, deliverance, and teaching records.
+
 ## 2026-06-18 - pcdx - Actor Resolution and Classification Foundation
 Summary:
 - Improved `ICE_ACTOR_TIMELINES` actor identification and diagnostics.
