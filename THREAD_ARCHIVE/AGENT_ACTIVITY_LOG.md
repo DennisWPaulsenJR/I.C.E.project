@@ -21,6 +21,29 @@ Status:
 
 Keep this file concise. Use `PROJECT_LOG.md` for milestone summaries and `PROJECT_STATE.md` for current operational truth.
 
+## 2026-06-21 - pcdx - Full Context Evaluation Architecture
+Summary:
+- Added `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
+- Documented backend evaluation layers: Source, Context, Situation, Event, Inference, Relationship, Large Scope Comparison, and Presentation.
+- Recorded the trust rule: Context always wins; Meaning never rewrites Context; Relationships never rewrite Meaning; Journeys never rewrite Relationships; Study guidance never rewrites Evidence.
+- Confirmed the first lightweight UI target is Study Reference Index with Characters, Entities, Locations, Events, Narrative Types, Inference Ladder, Cross References, and Available Views.
+- Preserved the direction that large-volume processing must be explicit, queued, resumable, segmented, and lazy-rendered.
+
+Files touched:
+- `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
+- `PROJECT_STATE.md`
+- `PROJECT_LOG.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Checks:
+- `git diff --check` passed with line-ending warnings only.
+
+Commit:
+- Pending.
+
+Status:
+- Documentation-only architecture note added.
+
 ## 2026-06-21 - pcdx - Modular Study Presentation Architecture
 Summary:
 - Added Study Panel `Study Display Modules` controls.

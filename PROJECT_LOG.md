@@ -1,3 +1,15 @@
+## 2026-06-21 - Full Context Evaluation Architecture
+
+Documented the long-term Full Context Evaluation architecture in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
+
+The direction separates backend precision from frontend clarity. I.C.E. should fully evaluate selected scripture input across Source, Context, Situation, Event, Inference, Relationship, Large Scope Comparison, and Presentation layers while letting users choose clear frontend modules.
+
+The trust rule is explicit: Context always wins; Meaning never rewrites Context; Relationships never rewrite Meaning; Journeys never rewrite Relationships; Study guidance never rewrites Evidence.
+
+The architecture supports eventual growth from single verses and chapters toward selected ranges, full books, full volumes, all New Testament books, and all standard works, but large-volume processing must remain explicit, queued, resumable, segmented, and lazy-rendered.
+
+The first lightweight UI target is the Study Reference Index with Characters, Entities, Locations, Events, Narrative Types, Inference Ladder, Cross References, and Available Views.
+
 ## 2026-06-21 - Modular Study Presentation Architecture
 
 Added Study Panel display module controls and documented the architecture in `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`.

@@ -31,6 +31,11 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Full Context Evaluation Architecture is documented in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
+- The architecture formalizes the long-term direction: fully evaluate selected scripture input across Source, Context, Situation, Event, Inference, Relationship, Large Scope Comparison, and Presentation layers while keeping frontend views modular and clear.
+- Trust rule recorded: Context always wins; Meaning never rewrites Context; Relationships never rewrite Meaning; Journeys never rewrite Relationships; Study guidance never rewrites Evidence.
+- First lightweight UI target remains Study Reference Index, with sections for Characters, Entities, Locations, Events, Narrative Types, Inference Ladder, Cross References, and Available Views.
+- Do not build full New Testament or full-volume processing yet; first keep the model and presentation structure ready for explicit large-volume evaluation.
 - Modular Study Presentation Architecture is implemented in this update as a presentation-only module selector in the Study Panel.
 - The new `Study Display Modules` control lets the user show/hide module categories such as Character Study, Event Flow, Location Movement, Teaching / Themes, Inference Levels, Evidence / Provenance, Cross Reference, Journey Study, Study Guidance, Lenses, and Full Technical View.
 - Evaluation and presentation are explicitly separated: the evaluated record set, Context Lock, Meaning Staging, scope, semantic records, queues, and extraction behavior do not change when display modules are toggled.
