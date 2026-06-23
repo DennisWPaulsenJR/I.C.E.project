@@ -162,6 +162,16 @@ body {
   font-size: .84rem;
 }
 
+.editor-architect-section {
+  border-top: 1px solid #d8dde6;
+  padding-top: 8px;
+}
+
+.editor-architect-card {
+  border-color: #9aa7b8;
+  background: #fbfcfe;
+}
+
 .header-actions .refresh-button {
   font-size: .86rem;
   max-width: 210px;

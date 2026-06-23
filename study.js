@@ -96,16 +96,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     { id: "journey", label: "Journey Study" },
     { id: "guidance", label: "Study Guidance" },
     { id: "lens", label: "Focus / Scope / Depth / View Lens" },
+    { id: "editor", label: "Editor / Architect Inspection" },
     { id: "technical", label: "Full Technical View" }
   ];
   const PRESENTATION_MODULE_PRESETS = {
     all: PRESENTATION_MODULES.map((item) => item.id),
     study: ["overview", "character", "entity", "location", "event", "narrative", "inference", "theme", "relationship", "journey", "guidance", "lens"],
-    evidence: ["overview", "inference", "evidence", "crossReference", "technical"]
+    evidence: ["overview", "inference", "evidence", "crossReference", "technical"],
+    editor: ["overview", "editor", "inference", "evidence", "relationship", "technical"]
   };
   let selectedPresentationModules = new Set(PRESENTATION_MODULE_PRESETS.all);
   const DEFERRED_SECTION_SUMMARIES = {
     "Study Reference Index": "Compact current-scope index of actors, entities, locations, events, narrative types, ordered flow, and inference levels.",
+    "Editor / Architect Evaluation": "Inspection-only view for Context Lock, entity classification, promotion, inference, provenance, relationships, QA/trust signals, and collapsed technical detail.",
     "Guided Study": "Grounded next study paths from current semantic records.",
     "Study Progression": "Current focus, explored topics, related topics, and suggested next study direction.",
     "Focus Lens": "Current semantic focus inferred from the analyzed source.",
@@ -11944,6 +11947,235 @@ createRevelationPartsSection(item.subEvents)
     filtered.forEach((item) => container.appendChild(createStudyReferenceIndexCard(item)));
   }
 
+  function editorArchitectLayerCount(alias, label, options = {}) {
+    const raw = asArray(studyData[alias]);
+    const scoped = options.unscoped ? raw : scopedSemanticRecords(raw);
+    return {
+      alias,
+      label,
+      storageKey: STORAGE_KEYS[alias] || alias,
+      rawCount: raw.length,
+      scopedCount: scoped.length
+    };
+  }
+
+  function editorArchitectPromotionCounts() {
+    return [
+      editorArchitectLayerCount("sourceDiscoveryIndex", "Discovery records"),
+      editorArchitectLayerCount("mentionIndex", "Mention records"),
+      editorArchitectLayerCount("referenceGraph", "Reference graph records"),
+      editorArchitectLayerCount("semanticEvents", "Semantic events"),
+      editorArchitectLayerCount("sceneModels", "Scenes"),
+      editorArchitectLayerCount("timelineItems", "Timeline records"),
+      editorArchitectLayerCount("orderedEvents", "Ordered events"),
+      editorArchitectLayerCount("timelineItems", "Accepted timeline promotions"),
+      editorArchitectLayerCount("knowledgeGraph", "Knowledge graph records"),
+      editorArchitectLayerCount("principleRelationships", "Principle relationships"),
+      editorArchitectLayerCount("studyThemes", "Study themes", { unscoped: true })
+    ];
+  }
+
+  function editorArchitectPromotionLines() {
+    const counts = editorArchitectPromotionCounts();
+    return counts.map((item) => `${item.label}: ${item.scopedCount} scoped / ${item.rawCount} retained (${item.storageKey})`);
+  }
+
+  function editorArchitectContextLines() {
+    const active = activeSourcePageRecord();
+    const locks = contextLockRecords();
+    const lines = [
+      `Active Study Scope: ${currentStudyScopeLabel()}`,
+      active ? `Active source page: ${volumePageLabel(active)}${active.url ? ` | ${active.url}` : ""}` : "Active source page: not recorded."
+    ];
+    if (!locks.length) {
+      lines.push("Context Lock records: none available for current scope.");
+      return lines;
+    }
+    locks.slice(0, 6).forEach((lock) => {
+      lines.push([
+        lock.lockName || "Context Lock",
+        lock.authoritySource ? `authority=${lock.authoritySource}` : "",
+        lock.messenger ? `messenger=${lock.messenger}` : "",
+        lock.recipient ? `recipient=${lock.recipient}` : "",
+        lock.speaker ? `speaker=${lock.speaker}` : "",
+        lock.audience ? `audience=${lock.audience}` : "",
+        lock.location ? `where=${lock.location}` : "",
+        asArray(lock.participants).length ? `participants=${asArray(lock.participants).slice(0, 6).join(", ")}` : ""
+      ].filter(Boolean).join(" | "));
+    });
+    if (locks.length > 6) lines.push(`${locks.length - 6} additional Context Lock record(s) available in the Context Lock section.`);
+    return lines;
+  }
+
+  function editorArchitectEntityLines() {
+    const actors = studyReferenceListFromMap(studyReferenceActors(), 16);
+    const { entities, locations } = studyReferenceEntitiesAndLocations();
+    const entityLines = studyReferenceListFromMap(entities, 16);
+    const locationLines = studyReferenceListFromMap(locations, 16);
+    return {
+      actors: actors.length ? actors : ["No grounded actors found for the current Study Scope."],
+      entities: entityLines.length ? entityLines : ["No non-actor entities found for the current Study Scope."],
+      locations: locationLines.length ? locationLines : ["No grounded locations found for the current Study Scope."]
+    };
+  }
+
+  function editorArchitectInferenceLines() {
+    return studyReferenceInferenceRecords().slice(0, 24);
+  }
+
+  function editorArchitectProvenanceLines() {
+    const records = focusedStudySourceRecords()
+      .filter((item) => item.record)
+      .slice(0, 18)
+      .map((item) => {
+        const record = item.record || {};
+        const id = record.id || record.recordId || record.canonicalKey || record.scopePath || record.verseRange || "id not recorded";
+        const source = record.provenance || record.semanticSourceLayer || record.sourceLayer || item.layer;
+        const evidence = record.evidenceWeight || record.confidence || record.appAccuracy || "evidence not recorded";
+        return `${item.layer}: ${item.label || "record"} | ${id} | ${source} | ${evidence}`;
+      });
+    return records.length ? records : ["No scoped provenance records are available yet."];
+  }
+
+  function editorArchitectRelationshipLines() {
+    const relationshipGroups = [
+      ["Actor relationships", scopedSemanticRecords(studyData.characterInteractions), "interactionType"],
+      ["Authority paths", scopedSemanticRecords(studyData.originAuthorityPaths), "relationshipType"],
+      ["Movement relationships", scopedSemanticRecords(studyData.movementSemantics), "movementType"],
+      ["Timeline relationships", timelineRelationshipRecords(), "relationshipType"],
+      ["Theme relationships", studyThemeRecords(), "themeName"],
+      ["Journey paths", journeyPathRecords(), "relationshipType"],
+      ["Relationship graph", scopedSemanticRecords(studyData.relationshipGraph), "relationshipType"]
+    ];
+    const lines = [];
+    relationshipGroups.forEach(([label, records, key]) => {
+      lines.push(`${label}: ${asArray(records).length}`);
+      asArray(records).slice(0, 3).forEach((record) => {
+        lines.push(`- ${label}: ${normalizeText(record[key] || record.fromNode || record.sourceCharacter || record.themeName || record.label || record.id || "record")} | source=${normalizeText(record.scopePath || record.verseRange || record.sourceContext?.sourceTitle || currentStudyScopeLabel())}`);
+      });
+    });
+    return lines;
+  }
+
+  function editorArchitectQaLines() {
+    const trustText = [
+      ...asArray(studyData.trustVerification),
+      studyData.scopeIntegrity
+    ].map((item) => normalizeText(item)).join(" ").toLowerCase();
+    const issueTerms = [
+      ["Context Lock violations", /context lock violation|role inversion|authority inversion|participant inversion/.test(trustText)],
+      ["Entity classification violations", /location leakage|unknown actor|classification violation|actor collapse/.test(trustText)],
+      ["Scope leakage", /scope leakage|outside active study scope/.test(trustText)],
+      ["Promotion conflicts", /promotion conflict|rejected promotion|conflicting promotion/.test(trustText)]
+    ];
+    const lines = issueTerms.map(([label, found]) => `${label}: ${found ? "review trust records" : "none detected in loaded scoped records"}`);
+    lines.push("Editor View is inspection-only: switching views does not analyze, crawl, process queues, mutate Study Scope, alter Context Lock, or rewrite semantic records.");
+    return lines;
+  }
+
+  function editorArchitectRawTechnicalLines() {
+    return [
+      `Loaded storage mode: ${fullStudyDataLoaded ? "full" : "startup"}`,
+      `Startup aliases loaded: ${STARTUP_STORAGE_ALIASES.map((alias) => STORAGE_KEYS[alias]).join(", ")}`,
+      `Current scope pages: ${currentStudyScopePages().map(volumePageLabel).join(" | ") || "none"}`,
+      ...editorArchitectPromotionCounts().map((item) => `${item.storageKey}: raw=${item.rawCount}; scoped=${item.scopedCount}`)
+    ];
+  }
+
+  function editorArchitectEvaluationRecords() {
+    const entityLines = editorArchitectEntityLines();
+    return [{
+      id: "editor-architect-current-scope",
+      activeScope: currentStudyScopeLabel(),
+      contextLines: editorArchitectContextLines(),
+      actors: entityLines.actors,
+      entities: entityLines.entities,
+      locations: entityLines.locations,
+      promotionLines: editorArchitectPromotionLines(),
+      inferenceLines: editorArchitectInferenceLines(),
+      provenanceLines: editorArchitectProvenanceLines(),
+      relationshipLines: editorArchitectRelationshipLines(),
+      qaLines: editorArchitectQaLines(),
+      rawTechnicalLines: editorArchitectRawTechnicalLines(),
+      evidenceWeight: "Editor / Architect inspection over existing scoped records",
+      provenance: "I.C.E. Editor / Architect Evaluation display layer",
+      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Retained records may be counted for diagnostics but must not redefine active scope.`
+    }];
+  }
+
+  function editorArchitectSearchText(item = {}) {
+    return [
+      item.activeScope,
+      item.contextLines,
+      item.actors,
+      item.entities,
+      item.locations,
+      item.promotionLines,
+      item.inferenceLines,
+      item.provenanceLines,
+      item.relationshipLines,
+      item.qaLines,
+      item.rawTechnicalLines,
+      item.scopeBoundary
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createEditorArchitectEvaluationCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card editor-architect-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    heading.textContent = "Editor / Architect Current-Scope Inspector";
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_EDITOR_ARCHITECT_VIEW", item.activeScope, "inspection-only"].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Context Inspector", "", { list: item.contextLines, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Entity Classification Inspector - Actors", "", { list: item.actors, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Entity Classification Inspector - Entities", "", { list: item.entities, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Entity Classification Inspector - Locations", "", { list: item.locations, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Semantic Promotion Inspector", "", { list: item.promotionLines, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
+      createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("QA / Trust Inspector", "", { list: item.qaLines, plainList: true, preserveExact: true }),
+      createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "inspection view reuses existing scoped records without creating or mutating semantic data", sourceGrounding: item.scopeBoundary, supportingRecords: ["Context Lock", "Entity Classification", "Meaning Staging", "Evidence Chains", "Relationship layers", "Trust records"] }),
+      createPassageFunctionSection("Raw / Technical Section", "", { list: item.rawTechnicalLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show raw / technical details" }),
+      createWordingProvenanceSection({ source: item.provenance, label: "Editor / Architect Evaluation", layer: "Editor / Architect View / ICE_EDITOR_ARCHITECT_VIEW", storageKey: "Not persisted in this phase", scopePath: item.activeScope, rule: "Editor / Architect View is display-only. Switching views does not re-analyze, mutate scope, modify Context Lock, alter semantic records, crawl, or process queues." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderEditorArchitectEvaluation(term) {
+    const container = document.getElementById("editorArchitectCards");
+    const count = document.getElementById("editorArchitectCount");
+    if (!container || !count) return;
+    const records = editorArchitectEvaluationRecords();
+    const filtered = records.filter((item) => matchesSearchQuery(editorArchitectSearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} inspector item(s)`;
+    if (!filtered.length) {
+      appendEmpty(container, "No Editor / Architect Evaluation records match current filter.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Editor / Architect Evaluation",
+      [
+        `Derived inspector records: ${records.length}`,
+        "Layer identifier: ICE_EDITOR_ARCHITECT_VIEW",
+        "Purpose: expose deeper reasoning, provenance, classification, and validation detail without cluttering normal Study View.",
+        "Boundary: display-only; switching views does not mutate analysis, scope, storage, Context Lock, semantic records, queues, or navigation."
+      ].join("\n"),
+      "derived editor architect view"
+    ));
+    filtered.forEach((item) => container.appendChild(createEditorArchitectEvaluationCard(item)));
+  }
+
   function focusedStudyRecordText(item = {}) {
     const record = item.record || item;
     return [
@@ -16788,6 +17020,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Study Scope", sectionId: "volumeContextSection", renderer: renderVolumeContext },
       { label: "Queue Summary", sectionId: "queueSummarySection", renderer: renderQueueSummary },
       { label: "Study Reference Index", sectionId: "studyReferenceIndexSection", renderer: renderStudyReferenceIndex },
+      { label: "Editor / Architect Evaluation", sectionId: "editorArchitectSection", renderer: renderEditorArchitectEvaluation },
       { label: "Guided Study", sectionId: "guidedStudySection", renderer: renderGuidedStudy },
       { label: "Study Progression", sectionId: "studyProgressionSection", renderer: renderStudyProgression },
       { label: "Focus Lens", sectionId: "focusLensSection", renderer: renderFocusLens },
@@ -16903,6 +17136,7 @@ createRevelationPartsSection(item.subEvents)
   function deferredSectionRecordCount(label) {
     if (!fullStudyDataLoaded) return null;
     if (label === "Study Reference Index") return studyReferenceIndexRecords().length;
+    if (label === "Editor / Architect Evaluation") return editorArchitectEvaluationRecords().length;
     if (label === "Guided Study") return guidedStudyRecords().length;
     if (label === "Study Progression") return studyProgressionRecords().length;
     if (label === "Semantic Coverage") return semanticCoverageRows().length;
@@ -17046,6 +17280,7 @@ createRevelationPartsSection(item.subEvents)
       "Study Scope": ["overview"],
       "Queue Summary": ["overview"],
       "Study Reference Index": ["overview", "character", "entity", "location", "event", "narrative", "inference"],
+      "Editor / Architect Evaluation": ["editor"],
       "Guided Study": ["guidance", "theme"],
       "Study Progression": ["guidance", "journey"],
       "Focus Lens": ["lens"],
@@ -17172,6 +17407,7 @@ createRevelationPartsSection(item.subEvents)
     document.getElementById("showAllModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.all));
     document.getElementById("showStudyModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.study));
     document.getElementById("showEvidenceModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.evidence));
+    document.getElementById("showEditorModules")?.addEventListener("click", () => setPresentationModules(PRESENTATION_MODULE_PRESETS.editor));
   }
 
   function renderStudy() {
