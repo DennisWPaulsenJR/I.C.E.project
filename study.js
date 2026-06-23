@@ -11670,6 +11670,24 @@ createRevelationPartsSection(item.subEvents)
     return studyReferenceNormalizeLabel(value) || "participant";
   }
 
+  function studyReferenceIsTechnicalLabel(value = "") {
+    const label = studyReferenceNormalizeLabel(value).toLowerCase();
+    return !label
+      || /^(unknown actor|unknown|unresolved|current analyzed source|current source text|source reference unavailable|current source|current scope|not recorded)$/i.test(label)
+      || /^source\b/.test(label);
+  }
+
+  function studyReferenceIsSourceNarratorOnly(item = {}) {
+    const label = studyReferenceNormalizeLabel(item.label).toLowerCase();
+    const roles = Array.from(item.roles || []).map((role) => normalizeText(role).toLowerCase());
+    return ["scripture narrator", "matthew"].includes(label) && roles.every((role) => /narrator|source/.test(role));
+  }
+
+  function studyReferenceIsDivineAuthorityLabel(value = "") {
+    const label = normalizedEntityName(value);
+    return ["the lord", "god", "jesus christ", "jesus"].includes(label);
+  }
+
   function studyReferenceEntityKind(record = {}) {
     const text = normalizeText([
       record.entityType,
@@ -11697,16 +11715,19 @@ createRevelationPartsSection(item.subEvents)
   function addStudyReferenceItem(map, name, detail = {}) {
     const label = studyReferenceNormalizeLabel(name);
     if (!label) return;
+    if (!detail.includeTechnical && studyReferenceIsTechnicalLabel(label)) return;
     const key = label.toLowerCase();
     const existing = map.get(key) || {
       label,
       roles: new Set(),
       sources: new Set()
     };
+    if (studyReferenceIsDivineAuthorityLabel(label)) existing.roles.add("authority");
     asArray(detail.roles).forEach((role) => {
       const normalized = studyReferenceRoleLabel(role);
       if (normalized) existing.roles.add(normalized);
     });
+    if (existing.roles.has("authority")) existing.roles.delete("participant");
     asArray(detail.sources).forEach((source) => {
       const normalized = studyReferenceNormalizeLabel(source);
       if (normalized) existing.sources.add(normalized);
@@ -11714,8 +11735,9 @@ createRevelationPartsSection(item.subEvents)
     map.set(key, existing);
   }
 
-  function studyReferenceListFromMap(map, limit = 14) {
+  function studyReferenceListFromMap(map, limit = 14, options = {}) {
     return Array.from(map.values())
+      .filter((item) => options.includeTechnical || (!studyReferenceIsTechnicalLabel(item.label) && !studyReferenceIsSourceNarratorOnly(item)))
       .sort((left, right) => left.label.localeCompare(right.label))
       .slice(0, limit)
       .map((item) => {
@@ -11725,42 +11747,45 @@ createRevelationPartsSection(item.subEvents)
       });
   }
 
-  function studyReferenceActors() {
+  function studyReferenceActors(options = {}) {
     const actors = new Map();
     asArray(studyData.actorTimelines).map(dedupeActorActions).forEach((actor) => {
       addStudyReferenceItem(actors, actor.resolvedActorName || actor.actorName, {
         roles: [actor.actorFunction, actor.actorCategory, actor.resolutionSource],
-        sources: ["Actor Timelines"]
+        sources: ["Actor Timelines"],
+        includeTechnical: options.includeTechnical
       });
     });
     contextLockRecords().forEach((lock) => {
-      addStudyReferenceItem(actors, lock.authoritySource, { roles: ["authority"], sources: [lock.lockName] });
-      addStudyReferenceItem(actors, lock.messenger, { roles: ["messenger"], sources: [lock.lockName] });
-      addStudyReferenceItem(actors, lock.recipient, { roles: ["recipient"], sources: [lock.lockName] });
-      addStudyReferenceItem(actors, lock.speaker, { roles: ["speaker"], sources: [lock.lockName] });
-      asArray(lock.participants).forEach((participant) => addStudyReferenceItem(actors, participant, { roles: ["participant"], sources: [lock.lockName] }));
+      addStudyReferenceItem(actors, lock.authoritySource, { roles: ["authority"], sources: [lock.lockName], includeTechnical: options.includeTechnical });
+      addStudyReferenceItem(actors, lock.messenger, { roles: ["messenger"], sources: [lock.lockName], includeTechnical: options.includeTechnical });
+      addStudyReferenceItem(actors, lock.recipient, { roles: ["recipient"], sources: [lock.lockName], includeTechnical: options.includeTechnical });
+      addStudyReferenceItem(actors, lock.speaker, { roles: ["speaker"], sources: [lock.lockName], includeTechnical: options.includeTechnical });
+      asArray(lock.participants).forEach((participant) => addStudyReferenceItem(actors, participant, { roles: ["participant"], sources: [lock.lockName], includeTechnical: options.includeTechnical }));
     });
     return actors;
   }
 
-  function studyReferenceEntitiesAndLocations() {
+  function studyReferenceEntitiesAndLocations(options = {}) {
     const entities = new Map();
     const locations = new Map();
     const addEntity = (record = {}, source = "Entity Registry") => {
       const name = record.displayName || record.canonicalName || record.entityName || record.mentionText || record.semanticItem || record.label;
       if (!name) return;
+      if (!options.includeTechnical && studyReferenceIsTechnicalLabel(name)) return;
       const kind = studyReferenceEntityKind(record);
       const target = kind === "location" ? locations : entities;
       addStudyReferenceItem(target, name, {
         roles: [kind === "location" ? "location / place" : (record.entityType || record.type || record.category || record.roleHint || kind)],
-        sources: [source]
+        sources: [source],
+        includeTechnical: options.includeTechnical
       });
     };
     scopedSemanticRecords(studyData.entityRegistry).forEach((record) => addEntity(record, "Entity Registry"));
     scopedSemanticRecords(studyData.canonicalIdentities).forEach((record) => addEntity(record, "Canonical Identities"));
     scopedSemanticRecords(studyData.mentionIndex).forEach((record) => addEntity(record, "Mention Index"));
     contextLockRecords().forEach((lock) => {
-      asArray(String(lock.location || "").split(/;|,/)).forEach((place) => addStudyReferenceItem(locations, place, { roles: ["where / place reference"], sources: [lock.lockName] }));
+      asArray(String(lock.location || "").split(/;|,/)).forEach((place) => addStudyReferenceItem(locations, place, { roles: ["where / place reference"], sources: [lock.lockName], includeTechnical: options.includeTechnical }));
     });
     return { entities, locations };
   }
@@ -11779,7 +11804,7 @@ createRevelationPartsSection(item.subEvents)
     ].join(" ")).toLowerCase();
     if (/lineage|genealogy|generation|begat/.test(text)) return "Lineage Record";
     if (/narrator|testimony|witness/.test(text)) return "Narrator Testimony";
-    if (/teach|discourse|sermon|beatitude|commandment|doctrine/.test(text)) return "Teaching / Discourse";
+    if (/teach|discourse|sermon|beatitude|commandment|doctrine|these sayings|sayings of mine|heareth these sayings|whosoever heareth|doeth them|likened unto|wise man|foolish man/.test(text)) return "Teaching / Discourse";
     if (/heal|cleans|sick|leper|palsy|fever/.test(text)) return "Healing Account";
     if (/came|went|depart|entered|ship|sea|mountain|wilderness|travel|movement/.test(text)) return "Movement Account";
     if (/follow|call|disciple/.test(text)) return "Calling Account";
@@ -11791,11 +11816,18 @@ createRevelationPartsSection(item.subEvents)
     return "Grounded Source Record";
   }
 
+  function studyReferenceUserFacingEventType(record = {}) {
+    const inferred = studyReferenceNarrativeType(record);
+    const provided = normalizeText(record.eventType || record.eventDisplayLabel || record.eventClassification);
+    if (/travel|movement/i.test(provided) && /Teaching|Discourse|Instruction/i.test(inferred)) return inferred;
+    return provided || inferred;
+  }
+
   function studyReferenceEvents() {
     const events = [];
     timelineSequenceRecords().slice(0, 20).forEach((item) => events.push({
       label: `${item.sequenceNumber}. ${item.event}`,
-      type: item.eventType || studyReferenceNarrativeType(item),
+      type: studyReferenceUserFacingEventType(item),
       source: item.verseRange || item.scopePath || item.activeScope,
       grounding: item.sourcePhrase || item.sourceGrounding || item.derivedMeaning
     }));
@@ -12008,10 +12040,10 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function editorArchitectEntityLines() {
-    const actors = studyReferenceListFromMap(studyReferenceActors(), 16);
-    const { entities, locations } = studyReferenceEntitiesAndLocations();
-    const entityLines = studyReferenceListFromMap(entities, 16);
-    const locationLines = studyReferenceListFromMap(locations, 16);
+    const actors = studyReferenceListFromMap(studyReferenceActors({ includeTechnical: true }), 16, { includeTechnical: true });
+    const { entities, locations } = studyReferenceEntitiesAndLocations({ includeTechnical: true });
+    const entityLines = studyReferenceListFromMap(entities, 16, { includeTechnical: true });
+    const locationLines = studyReferenceListFromMap(locations, 16, { includeTechnical: true });
     return {
       actors: actors.length ? actors : ["No grounded actors found for the current Study Scope."],
       entities: entityLines.length ? entityLines : ["No non-actor entities found for the current Study Scope."],
@@ -14364,7 +14396,7 @@ createRevelationPartsSection(item.subEvents)
     if (/call (?:his|the child's)? name jesus|called his name jesus|name_revelation|naming_event|naming/.test(text)) return "Naming Instruction";
     if (/dream|reveal|messenger|warn|angel|instruction/.test(text)) return "Revelation / Messenger Event";
     if (/did as|took unto him|obey|obedient/.test(text)) return "Obedient Response";
-    if (/teach|sermon|beatitude|disciple|command|principle/.test(text)) return "Teaching Event";
+    if (/teach|sermon|beatitude|disciple|command|principle|these sayings|sayings of mine|heareth these sayings|whosoever heareth|doeth them|likened unto|wise man|foolish man/.test(text)) return "Teaching Event";
     if (/heal|cleans|leper|sick|cast out|devil|spirit/.test(text)) return "Healing Event";
     if (/travel|journey|depart|return|egypt|nazareth|galilee|mountain|came|went|flee|flight/.test(text)) return "Travel Event";
     if (/fulfill|prophecy|prophet|spoken/.test(text)) return "Fulfillment Statement";
@@ -16209,9 +16241,11 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function orderedEventDisplayType(eventItem = {}) {
-    return eventItem.eventClassification
-      || eventItem.eventDisplayLabel
-      || timelineEventTypeFromText(`${eventItem.eventType || ""} ${eventItem.eventText || ""}`);
+    const text = `${eventItem.eventType || ""} ${eventItem.eventDisplayLabel || ""} ${eventItem.eventClassification || ""} ${eventItem.eventText || ""}`;
+    const inferred = timelineEventTypeFromText(text);
+    const provided = eventItem.eventClassification || eventItem.eventDisplayLabel || "";
+    if (/travel|movement/i.test(provided) && /Teaching|Discourse|Instruction/i.test(inferred)) return inferred;
+    return provided || inferred;
   }
 
   function orderedEventTitle(eventItem = {}) {

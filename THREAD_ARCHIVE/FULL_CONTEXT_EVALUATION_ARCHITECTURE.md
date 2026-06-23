@@ -169,6 +169,36 @@ Supports cross-scope study across:
 
 Rule: later passages may illuminate earlier passages, but they may not redefine earlier source context.
 
+#### Prior / Current / Future Relativity
+
+For a selected expression, character, event, doctrine, place, theme, or phrase, I.C.E. should eventually expose relative cross-reference views:
+
+- Prior: earlier related teachings, prophecies, lineage, background, or setup.
+- Current: immediate source context, speaker, audience, event, location, and meaning stage.
+- Future: later fulfillment, repetition, continuation, contrast, or development.
+- Related / Projected: useful study relationships that remain visibly labeled by confidence and inference level.
+
+Future cross-reference relationship records should preserve:
+
+- Source reference
+- Target reference
+- Relationship type
+- Direction: prior, current, future, related, fulfillment, echo, character journey, theme journey, or location journey
+- Evidence strength
+- Inference level
+- Source phrase or entity
+- Reason for connection
+- Confidence
+- Provenance
+
+Trust rules:
+
+- Prior references may inform current understanding but may not rewrite current context.
+- Future references may illuminate later fulfillment or continuation but may not redefine earlier source meaning.
+- Projected relationships must remain labeled as possible or inferred.
+- Cross-reference relationships must preserve source scope and provenance.
+- Current Context Lock remains authoritative.
+
 ### 8. Presentation Layer
 
 Frontend views are selectable modules:
@@ -185,6 +215,7 @@ Frontend views are selectable modules:
 - Relationship Graph
 - Journey Study
 - Cross Reference View
+- Prior / Current / Future Reference View
 - Full Technical View
 
 Rule: presentation selection changes visibility only. It must not mutate extraction, scope, Context Lock, semantic records, queues, or stored analysis.
