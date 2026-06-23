@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     canonicalAnalyzedPages: "ICE_CANONICAL_ANALYZED_PAGES",
     canonicalAnalysisTarget: "ICE_CANONICAL_ANALYSIS_TARGET",
     crossReferenceSet: "ICE_CROSS_REFERENCE_SET",
+    crossReferenceRelationships: "ICE_CROSS_REFERENCE_RELATIONSHIPS",
     activeSourcePage: "ICE_ACTIVE_SOURCE_PAGE",
     selectedRange: "ICE_SELECTED_RANGE",
     analysisQueue: "ICE_ANALYSIS_QUEUE",
@@ -69,6 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "canonicalAnalysisTarget",
     "canonicalAnalyzedPages",
     "crossReferenceSet",
+    "crossReferenceRelationships",
     "activeSourcePage",
     "selectedRange",
     "analysisQueue",
@@ -108,6 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let selectedPresentationModules = new Set(PRESENTATION_MODULE_PRESETS.all);
   const DEFERRED_SECTION_SUMMARIES = {
     "Study Reference Index": "Compact current-scope index of actors, entities, locations, events, narrative types, ordered flow, and inference levels.",
+    "Cross-Reference Relationship Summary": "Counts Prior, Current, Future, and Related cross-reference relationship records for the current Study Scope.",
     "Editor / Architect Evaluation": "Inspection-only view for Context Lock, entity classification, promotion, inference, provenance, relationships, QA/trust signals, and collapsed technical detail.",
     "Guided Study": "Grounded next study paths from current semantic records.",
     "Study Progression": "Current focus, explored topics, related topics, and suggested next study direction.",
@@ -4776,6 +4779,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticFlowChains,
       STORAGE_KEYS.entityRegistry,
       STORAGE_KEYS.relationshipGraph,
+      STORAGE_KEYS.crossReferenceRelationships,
       STORAGE_KEYS.canonicalIdentities,
       STORAGE_KEYS.mentionIndex,
       STORAGE_KEYS.domSemanticHints,
@@ -4836,6 +4840,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.semanticFlowChains,
       STORAGE_KEYS.entityRegistry,
       STORAGE_KEYS.relationshipGraph,
+      STORAGE_KEYS.crossReferenceRelationships,
       STORAGE_KEYS.canonicalIdentities,
       STORAGE_KEYS.mentionIndex,
       STORAGE_KEYS.domSemanticHints,
@@ -11979,6 +11984,232 @@ createRevelationPartsSection(item.subEvents)
     filtered.forEach((item) => container.appendChild(createStudyReferenceIndexCard(item)));
   }
 
+  function crossReferenceRelationshipDirection(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/prior|before|earlier|setup|background|lineage|prophecy/.test(text)) return "prior";
+    if (/future|later|fulfill|continue|expand|repeat|clarif|development/.test(text)) return "future";
+    if (/related|echo|pattern|similar|theme|parallel|mirror/.test(text)) return "related";
+    return "current";
+  }
+
+  function crossReferenceRelationshipType(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/authority/.test(text)) return "authority relationship";
+    if (/speaker|audience|teach/.test(text)) return "speaker/audience relationship";
+    if (/movement|travel|came|went|depart|location/.test(text)) return "movement relationship";
+    if (/fulfill|prophecy/.test(text)) return "fulfillment relationship";
+    if (/theme|principle|doctrine/.test(text)) return "theme relationship";
+    if (/journey|path/.test(text)) return "journey relationship";
+    if (/reference|cross-reference|source/.test(text)) return "reference relationship";
+    return normalizeText(value) || "relationship";
+  }
+
+  function normalizeCrossReferenceRelationshipRecord(record = {}, fallback = {}) {
+    const sourceScope = normalizeText(record.sourceScope || record.sourceReference || record.scopePath || record.verseRange || record.activeScope || fallback.sourceScope || currentStudyScopeLabel());
+    const targetScope = normalizeText(record.targetScope || record.targetReference || record.toScope || record.toHref || record.toText || fallback.targetScope || "");
+    const sourceEntity = normalizeText(record.sourceEntity || record.fromEntity || record.sourceCharacter || record.fromNode || record.sourcePhrase || fallback.sourceEntity || "");
+    const targetEntity = normalizeText(record.targetEntity || record.toEntity || record.targetCharacter || record.toNode || record.targetPhrase || fallback.targetEntity || "");
+    const relationshipType = crossReferenceRelationshipType(record.relationshipType || record.type || fallback.relationshipType || "");
+    const relationshipDirection = crossReferenceRelationshipDirection(record.relationshipDirection || record.direction || fallback.relationshipDirection || relationshipType);
+    const id = normalizeText(record.id || record.recordId || fallback.id || `${relationshipDirection}:${relationshipType}:${sourceScope}:${targetScope}:${sourceEntity}:${targetEntity}`).slice(0, 220);
+    return {
+      schemaVersion: 1,
+      id,
+      sourceScope,
+      targetScope,
+      relationshipType,
+      relationshipDirection,
+      sourceEntityOrEventOrTheme: sourceEntity || "current scope",
+      targetEntityOrEventOrTheme: targetEntity || targetScope || "related record",
+      evidenceStrength: normalizeText(record.evidenceStrength || record.evidenceWeight || record.confidence || fallback.evidenceStrength || "existing scoped record"),
+      inferenceLevel: normalizeText(record.inferenceLevel || record.stage || fallback.inferenceLevel || "Study Relationship"),
+      provenance: normalizeText(record.provenance || record.semanticSourceLayer || fallback.provenance || "I.C.E. Cross-Reference Relationship Summary"),
+      confidence: normalizeText(record.confidence || record.appAccuracy || fallback.confidence || "supported")
+    };
+  }
+
+  function storedCrossReferenceRelationshipRecords() {
+    return asArray(studyData.crossReferenceRelationships)
+      .map((record) => normalizeCrossReferenceRelationshipRecord(record))
+      .filter((record) => recordMatchesCurrentStudyScope(record) || !record.sourceScope || record.sourceScope === currentStudyScopeLabel());
+  }
+
+  function derivedCurrentCrossReferenceRelationships() {
+    const records = [];
+    scopedSemanticRecords(studyData.relationshipGraph).slice(0, 12).forEach((edge, index) => {
+      records.push(normalizeCrossReferenceRelationshipRecord(edge, {
+        id: `current-relationship-graph-${index}`,
+        relationshipDirection: "current",
+        relationshipType: edge.relationshipType || "relationship graph edge",
+        sourceEntity: edge.fromEntity,
+        targetEntity: edge.toEntity,
+        provenance: "ICE_RELATIONSHIP_GRAPH current-scope edge"
+      }));
+    });
+    scopedSemanticRecords(studyData.characterInteractions).slice(0, 8).forEach((item, index) => {
+      records.push(normalizeCrossReferenceRelationshipRecord(item, {
+        id: `current-character-interaction-${index}`,
+        relationshipDirection: "current",
+        relationshipType: item.interactionType || "actor relationship",
+        sourceEntity: item.sourceCharacter,
+        targetEntity: item.targetCharacter,
+        provenance: "ICE_CHARACTER_INTERACTIONS current-scope relationship"
+      }));
+    });
+    return records;
+  }
+
+  function derivedRelatedCrossReferenceRelationships() {
+    const records = [];
+    scopedSemanticRecords(studyData.referenceRoles).slice(0, 10).forEach((item, index) => {
+      records.push(normalizeCrossReferenceRelationshipRecord(item, {
+        id: `related-reference-role-${index}`,
+        relationshipDirection: "related",
+        relationshipType: item.role || item.referenceRole || "reference relationship",
+        sourceEntity: item.sourceText || item.label,
+        targetEntity: item.resolvedRole || item.toText,
+        targetScope: item.toHref || item.reference || "",
+        provenance: "ICE_REFERENCE_ROLES related reference candidate",
+        inferenceLevel: "Study Relationship"
+      }));
+    });
+    scopedSemanticRecords(studyData.referenceGraph).slice(0, 10).forEach((edge, index) => {
+      records.push(normalizeCrossReferenceRelationshipRecord(edge, {
+        id: `related-reference-graph-${index}`,
+        relationshipDirection: "related",
+        relationshipType: edge.relationshipType || "reference relationship",
+        sourceEntity: edge.fromText || edge.sourceText,
+        targetEntity: edge.toText || edge.targetText,
+        targetScope: edge.toHref || edge.targetHref || "",
+        provenance: "ICE_REFERENCE_GRAPH related reference candidate",
+        inferenceLevel: "Study Relationship"
+      }));
+    });
+    return records;
+  }
+
+  function crossReferenceRelationshipRecords() {
+    const records = [
+      ...storedCrossReferenceRelationshipRecords(),
+      ...derivedCurrentCrossReferenceRelationships(),
+      ...derivedRelatedCrossReferenceRelationships()
+    ];
+    const seen = new Set();
+    return records.filter((record) => {
+      const key = normalizeText(record.id).toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function crossReferenceRelationshipSummaryRecord() {
+    const records = crossReferenceRelationshipRecords();
+    const counts = records.reduce((memo, record) => {
+      const direction = crossReferenceRelationshipDirection(record.relationshipDirection);
+      memo[direction] = (memo[direction] || 0) + 1;
+      return memo;
+    }, { prior: 0, current: 0, future: 0, related: 0 });
+    return {
+      id: "cross-reference-relationship-summary-current",
+      activeScope: currentStudyScopeLabel(),
+      storageKey: STORAGE_KEYS.crossReferenceRelationships,
+      relationshipRecordShape: [
+        "sourceScope",
+        "targetScope",
+        "relationshipType",
+        "relationshipDirection",
+        "sourceEntityOrEventOrTheme",
+        "targetEntityOrEventOrTheme",
+        "evidenceStrength",
+        "inferenceLevel",
+        "provenance",
+        "confidence"
+      ],
+      counts,
+      records,
+      trustRules: [
+        "Prior may inform Current but may not rewrite Current context.",
+        "Future may illuminate Current but may not redefine earlier source meaning.",
+        "Related may connect but may not redefine source meaning.",
+        "Context Lock remains authoritative.",
+        "This summary does not crawl, navigate, process queues, or mutate scope."
+      ]
+    };
+  }
+
+  function crossReferenceRelationshipSummarySearchText(item = {}) {
+    return [
+      item.activeScope,
+      item.storageKey,
+      Object.entries(item.counts || {}).map(([key, value]) => `${key} ${value}`),
+      item.records.map((record) => [record.relationshipDirection, record.relationshipType, record.sourceScope, record.targetScope, record.sourceEntityOrEventOrTheme, record.targetEntityOrEventOrTheme, record.provenance].join(" ")),
+      item.trustRules
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function createCrossReferenceRelationshipSummaryCard(item = {}) {
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card cross-reference-relationship-summary-card";
+    const header = document.createElement("header");
+    header.className = "semantic-card-header";
+    const heading = document.createElement("h3");
+    const range = document.createElement("div");
+    const body = document.createElement("div");
+    const counts = item.counts || {};
+    const recordLines = asArray(item.records).slice(0, 12).map((record) => [
+      `${record.relationshipDirection}: ${record.relationshipType}`,
+      `${record.sourceEntityOrEventOrTheme} -> ${record.targetEntityOrEventOrTheme}`,
+      record.targetScope ? `Target: ${record.targetScope}` : "",
+      `Evidence: ${record.evidenceStrength}`,
+      `Inference: ${record.inferenceLevel}`,
+      `Provenance: ${record.provenance}`
+    ].filter(Boolean).join(" | "));
+    heading.textContent = "Cross-Reference Relationship Summary";
+    range.className = "semantic-card-range";
+    range.textContent = ["ICE_CROSS_REFERENCE_RELATIONSHIPS", item.activeScope, "foundation"].filter(Boolean).join(" | ");
+    body.className = "semantic-card-body";
+    header.append(heading, range);
+    [
+      createPassageFunctionSection("Prior", `${counts.prior || 0}`, { preserveExact: true }),
+      createPassageFunctionSection("Current", `${counts.current || 0}`, { preserveExact: true }),
+      createPassageFunctionSection("Future", `${counts.future || 0}`, { preserveExact: true }),
+      createPassageFunctionSection("Related", `${counts.related || 0}`, { preserveExact: true }),
+      createPassageFunctionSection("Relationship Record Structure", "", { list: item.relationshipRecordShape, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show record shape" }),
+      createPassageFunctionSection("Scoped Relationship Records", recordLines.length ? "" : "No scoped cross-reference relationship records are available yet.", { list: recordLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show scoped relationship records" }),
+      createPassageFunctionSection("Trust Rules", "", { list: item.trustRules, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show trust rules" }),
+      createWordingProvenanceSection({ source: "I.C.E. Cross-Reference Relationship Summary", label: "Cross-Reference Relationship Summary", layer: "Cross-Reference Relationship Summary / ICE_CROSS_REFERENCE_RELATIONSHIPS", storageKey: item.storageKey, scopePath: item.activeScope, rule: "Cross-reference relationship records are foundation records only. They summarize prior/current/future/related directions without crawling, automatic queue processing, automatic study progression, navigation, or scope mutation." })
+    ].filter(Boolean).forEach((section) => body.appendChild(section));
+    card.append(header, body);
+    return card;
+  }
+
+  function renderCrossReferenceRelationshipSummary(term) {
+    const container = document.getElementById("crossReferenceRelationshipSummaryCards");
+    const count = document.getElementById("crossReferenceRelationshipSummaryCount");
+    if (!container || !count) return;
+    const record = crossReferenceRelationshipSummaryRecord();
+    const records = [record];
+    const filtered = records.filter((item) => matchesSearchQuery(crossReferenceRelationshipSummarySearchText(item), term));
+    clearElement(container);
+    count.textContent = `${filtered.length} summary item(s)`;
+    if (!filtered.length) {
+      appendEmpty(container, "No Cross-Reference Relationship Summary records match current filter.");
+      return;
+    }
+    container.appendChild(createCard(
+      "Cross-Reference Relationship Summary",
+      [
+        `Scoped relationship records: ${record.records.length}`,
+        "Storage key: ICE_CROSS_REFERENCE_RELATIONSHIPS",
+        "Directions: Prior, Current, Future, Related.",
+        "Boundary: foundation summary only; no broad cross-reference generation, crawling, queue processing, navigation, or scope mutation."
+      ].join("\n"),
+      "cross-reference relationship foundation"
+    ));
+    filtered.forEach((item) => container.appendChild(createCrossReferenceRelationshipSummaryCard(item)));
+  }
+
   function editorArchitectLayerCount(alias, label, options = {}) {
     const raw = asArray(studyData[alias]);
     const scoped = options.unscoped ? raw : scopedSemanticRecords(raw);
@@ -17039,6 +17270,7 @@ createRevelationPartsSection(item.subEvents)
       "analysisQueue",
       "analysisQueueHistory",
       "analysisQueuePageSummaries",
+      "crossReferenceRelationships",
       "journeyPageSnapshots",
       "canonicalAnalysisTarget"
     ];
@@ -17054,6 +17286,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Study Scope", sectionId: "volumeContextSection", renderer: renderVolumeContext },
       { label: "Queue Summary", sectionId: "queueSummarySection", renderer: renderQueueSummary },
       { label: "Study Reference Index", sectionId: "studyReferenceIndexSection", renderer: renderStudyReferenceIndex },
+      { label: "Cross-Reference Relationship Summary", sectionId: "crossReferenceRelationshipSummarySection", renderer: renderCrossReferenceRelationshipSummary },
       { label: "Editor / Architect Evaluation", sectionId: "editorArchitectSection", renderer: renderEditorArchitectEvaluation },
       { label: "Guided Study", sectionId: "guidedStudySection", renderer: renderGuidedStudy },
       { label: "Study Progression", sectionId: "studyProgressionSection", renderer: renderStudyProgression },
@@ -17170,6 +17403,7 @@ createRevelationPartsSection(item.subEvents)
   function deferredSectionRecordCount(label) {
     if (!fullStudyDataLoaded) return null;
     if (label === "Study Reference Index") return studyReferenceIndexRecords().length;
+    if (label === "Cross-Reference Relationship Summary") return 1;
     if (label === "Editor / Architect Evaluation") return editorArchitectEvaluationRecords().length;
     if (label === "Guided Study") return guidedStudyRecords().length;
     if (label === "Study Progression") return studyProgressionRecords().length;
@@ -17314,6 +17548,7 @@ createRevelationPartsSection(item.subEvents)
       "Study Scope": ["overview"],
       "Queue Summary": ["overview"],
       "Study Reference Index": ["overview", "character", "entity", "location", "event", "narrative", "inference"],
+      "Cross-Reference Relationship Summary": ["crossReference", "relationship", "overview"],
       "Editor / Architect Evaluation": ["editor"],
       "Guided Study": ["guidance", "theme"],
       "Study Progression": ["guidance", "journey"],
