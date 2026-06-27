@@ -12339,7 +12339,20 @@ createRevelationPartsSection(item.subEvents)
         rawCount: relationshipPromotionCandidates().length,
         scopedCount: promotedRelationshipRecords().length
       },
-      editorArchitectLayerCount("studyThemes", "Study themes", { unscoped: true })
+      {
+        alias: "themePromotions",
+        label: "Accepted theme promotions",
+        storageKey: "ICE_STUDY_THEMES / derived from Context Lock, Timeline, Scene, Relationship, Teaching, and Principle records",
+        rawCount: themePromotionCandidates().length,
+        scopedCount: promotedThemeRecords().length
+      },
+      {
+        alias: "literaryPromotions",
+        label: "Accepted literary structure promotions",
+        storageKey: "ICE_LITERARY_STRUCTURES / derived from source organization, Context, Timeline, Scene, Relationship, and Theme records",
+        rawCount: literaryPromotionCandidates().length,
+        scopedCount: promotedLiteraryRecords().length
+      }
     ];
   }
 
@@ -12374,10 +12387,7 @@ createRevelationPartsSection(item.subEvents)
       ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding].join(" ")))),
       ...timelineRelationshipRecords().filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.whyConnected, item.sourcePhrase].join(" "))))
     ];
-    const literaryRecords = [
-      ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /parallel|chiasm|inclusio|repetition|genre|narrative|sermon|parable|genealogy|poetry|wisdom|law|prayer|lament|praise/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.sourceGrounding].join(" ")))),
-      ...scopedSemanticRecords(studyData.orderedEvents).filter((item) => /lineage|genealogy|teaching|discourse|narrative|fulfillment statement|identity statement/i.test(normalizeText([item.eventType, item.narrativeType, item.recordType, item.title, item.description].join(" "))))
-    ];
+
     const categories = [
       { label: "Source Discovery Records", records: scopedSemanticRecords(studyData.sourceDiscoveryIndex), discoveredFallback: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length },
       { label: "Mention Records", records: scopedSemanticRecords(studyData.mentionIndex), discoveredFallback: scopedSemanticRecords(studyData.mentionIndex).length },
@@ -12386,9 +12396,9 @@ createRevelationPartsSection(item.subEvents)
       { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
       { label: "Knowledge Graph Promotions", records: knowledgeGraphRecords(), discoveredFallback: scopedSemanticRecords(studyData.knowledgeGraph).length },
       { label: "Relationship Promotions", records: promotedRelationshipRecords(), discoveredFallback: relationshipPromotionCandidates().length || scopedRelationshipGraph.length },
-      { label: "Theme Promotions", records: studyThemeRecords(), discoveredFallback: studyThemeRecords().length },
+      { label: "Theme Promotions", records: promotedThemeRecords(), discoveredFallback: themePromotionCandidates().length || promotedThemeRecords().length },
       { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
-      { label: "Literary Structure Promotions", records: literaryRecords, discoveredFallback: literaryRecords.length }
+      { label: "Literary Structure Promotions", records: promotedLiteraryRecords(), discoveredFallback: literaryPromotionCandidates().length || promotedLiteraryRecords().length }
     ];
     return categories.map((category) => {
       const records = asArray(category.records);
@@ -12582,6 +12592,8 @@ createRevelationPartsSection(item.subEvents)
       timelinePromotionLines: timelinePromotionInspectorLines(),
       scenePromotionLines: scenePromotionInspectorLines(),
       relationshipPromotionLines: relationshipPromotionInspectorLines(),
+      themePromotionLines: themePromotionInspectorLines(),
+      literaryPromotionLines: literaryPromotionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12606,6 +12618,8 @@ createRevelationPartsSection(item.subEvents)
       item.timelinePromotionLines,
       item.scenePromotionLines,
       item.relationshipPromotionLines,
+      item.themePromotionLines,
+      item.literaryPromotionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12639,6 +12653,8 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Timeline Promotion Inspector", "", { list: item.timelinePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Timeline Promotion Inspector" }),
       createPassageFunctionSection("Scene Promotion Inspector", "", { list: item.scenePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Scene Promotion Inspector" }),
       createPassageFunctionSection("Relationship Promotion Inspector", "", { list: item.relationshipPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Relationship Promotion Inspector" }),
+      createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
+      createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
@@ -15655,15 +15671,23 @@ createRevelationPartsSection(item.subEvents)
 
   function studyThemeCatalog() {
     return [
-      { name: "Redemption", pattern: /redeem|redemption|save|saviour|deliver|aton/i },
-      { name: "Mercy", pattern: /mercy|merciful|forgive|compassion/i },
-      { name: "Kingdom of Heaven", pattern: /kingdom of heaven|kingdom|poor in spirit|persecuted|righteousness/i },
       { name: "Faith", pattern: /\bfaith\b|believ|trust/i },
-      { name: "Covenant", pattern: /covenant|promise|fulfil(?:l)?|fulfillment|prophet|spoken/i },
       { name: "Obedience", pattern: /obey|obedien|command|arise|took|did as|observe/i },
       { name: "Revelation", pattern: /reveal|dream|angel|messenger|warn|instruction/i },
       { name: "Discipleship", pattern: /disciple|follow|come unto|learn|teach/i },
+      { name: "Teaching", pattern: /teach|teacher|sermon|discourse|sayings|instruction|doctrine/i },
       { name: "Healing", pattern: /heal|healed|sick|leper|cleanse|devil|spirit/i },
+      { name: "Mercy", pattern: /mercy|merciful|forgive|compassion/i },
+      { name: "Judgment", pattern: /judge|judgment|condemn|wrath|destroy|punish|tempt/i },
+      { name: "Authority", pattern: /authority|command|power|lord|god|source authority|messenger|recipient/i },
+      { name: "Covenant", pattern: /covenant|promise|fulfil(?:l)?|fulfillment|prophet|spoken|abraham|david/i },
+      { name: "Prayer", pattern: /pray|prayer|ask|seek|knock/i },
+      { name: "Worship", pattern: /worship|serve|glorif|praise/i },
+      { name: "Charity", pattern: /charity|love|neighbor|enemy|kindness/i },
+      { name: "Repentance", pattern: /repent|confess|baptiz|turn/i },
+      { name: "Deliverance", pattern: /deliver|save|rescue|preserve|protect|flee/i },
+      { name: "Redemption", pattern: /redeem|redemption|save|saviour|deliver|aton/i },
+      { name: "Kingdom of Heaven", pattern: /kingdom of heaven|kingdom|poor in spirit|persecuted|righteousness/i },
       { name: "Fulfillment", pattern: /fulfill|fulfilled|prophecy|prophet|egypt|nazareth|spoken/i },
       { name: "Righteousness", pattern: /righteous|law|commandment|reconciliation|pure in heart/i },
       { name: "Peacemaking", pattern: /peace|peacemaker|reconcile|enemy/i }
@@ -15674,21 +15698,18 @@ createRevelationPartsSection(item.subEvents)
     const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
       layer,
       record,
-      label: normalizeText(record?.[labelKey] || record?.eventName || record?.nodeName || record?.corePrinciple || record?.teachingTopic || record?.sceneTitle || record?.node || record?.principle || record?.relationshipType || layer)
+      label: normalizeText(record?.[labelKey] || record?.themeName || record?.eventName || record?.sceneTitle || record?.sourceEntity || record?.targetEntity || record?.corePrinciple || record?.teachingTopic || record?.principle || record?.relationshipType || record?.lockName || layer)
     }));
     return [
-      ...wrap("Principle Networks", journeyRetainedSemanticRecords("principleNetworks"), "corePrinciple"),
+      ...wrap("Context Lock", contextLockRecords(), "lockName"),
+      ...wrap("Timeline Promotions", promotedTimelineRecords(), "eventName"),
       ...wrap("Timeline Events", timelineEventsRecords(), "eventName"),
-      ...wrap("Journey Nodes", journeyNodesRecords(), "nodeName"),
-      ...wrap("Journey Paths", journeyPathRecords(), "relationshipType"),
-      ...wrap("Knowledge Graph", journeyKnowledgeGraphRecords(), "node"),
-      ...wrap("Teaching Semantics", journeyRetainedSemanticRecords("teachingSemantics"), "teachingTopic"),
-      ...wrap("Principle Relationships", journeyRetainedSemanticRecords("principleRelationships"), "principle"),
-      ...wrap("Semantic Causality", scopedSemanticRecords(studyData.semanticCausality), "sequenceType"),
-      ...wrap("Trust & Verification", scopedSemanticRecords(studyData.trustVerification), "result"),
-      ...wrap("Scene Intelligence", journeyRetainedSemanticRecords("sceneModels"), "sceneTitle"),
-      ...wrap("Character Interactions", journeyRetainedSemanticRecords("characterInteractions"), "interactionType"),
-      ...wrap("Focus Lens", journeyRetainedSemanticRecords("focusLens"), "currentFocus")
+      ...wrap("Scene Promotions", promotedSceneRecords(), "sceneTitle"),
+      ...wrap("Relationship Promotions", promotedRelationshipRecords(), "relationshipType"),
+      ...wrap("Teaching Semantics", scopedSemanticRecords(studyData.teachingSemantics), "teachingTopic"),
+      ...wrap("Principle Networks", scopedSemanticRecords(studyData.principleNetworks), "corePrinciple"),
+      ...wrap("Principle Relationships", scopedSemanticRecords(studyData.principleRelationships), "principle"),
+      ...wrap("Semantic Causality", scopedSemanticRecords(studyData.semanticCausality), "sequenceType")
     ];
   }
 
@@ -15738,59 +15759,345 @@ createRevelationPartsSection(item.subEvents)
     return normalizeText(record.verseRange || record.scopePath || record.sourceContext?.sourceTitle || record.sourceUrl || "");
   }
 
-  function studyThemeRecords() {
-    const sources = studyThemeSourceRecords();
-    const themes = [];
-    studyThemeCatalog().forEach((theme) => {
-      const matches = sources.filter((item) => theme.pattern.test(studyThemeRecordText(item)));
-      if (!matches.length) return;
-      const first = matches[0].record || {};
-      const relatedTimelineEvents = uniqueStudyList(matches
-        .filter((item) => item.layer === "Timeline Events")
-        .map((item) => item.record.eventName || item.label)).slice(0, 8);
-      const relatedJourneyNodes = uniqueStudyList(matches
-        .filter((item) => item.layer === "Journey Nodes")
-        .map((item) => item.record.nodeName || item.label)).slice(0, 8);
-      const relatedPrinciples = uniqueStudyList(matches
-        .flatMap((item) => [item.record.corePrinciple, item.record.principle, item.record.teachingTopic, ...asArray(item.record.relatedPrinciples)])
-        .map((value) => normalizeText(value))
-        .filter(Boolean)).slice(0, 10);
-      const supportingVerses = uniqueStudyList(matches.map(studyThemeReferenceLabel).filter(Boolean)).slice(0, 10);
-      const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
-      const sourcePhrases = uniqueStudyList(matches.map((item) => item.record.sourcePhrase || item.record.summarySnippet || item.record.derivedMeaning).filter(Boolean)).slice(0, 5);
-      themes.push({
-        id: `study-theme-${theme.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-        themeName: theme.name,
-        whyThisThemeExists: `${theme.name} appears across ${matches.length} current-scope semantic record(s).`,
-        supportingRecords,
-        supportingVerses,
-        relatedTimelineEvents,
-        relatedJourneyNodes,
-        relatedPrinciples,
-        sourcePhrase: first.sourcePhrase || sourcePhrases[0] || "",
-        derivedMeaning: `${theme.name} is a derived current-scope study grouping based only on existing semantic records.`,
-        verseRange: first.verseRange || "",
-        scopePath: first.scopePath || "",
-        sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
-        sourceContext: first.sourceContext || {},
-        evidenceWeight: matches.some((item) => item.record.sourcePhrase) ? "Direct Source Evidence / Thematic Grouping" : "Derived Semantic Evidence / Thematic Grouping",
-        provenance: `I.C.E. Study Themes derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ")}`,
-        reasoningPath: [
-          "Approved theme label selected from Study Themes catalog",
-          "Current-scope semantic records searched for grounded theme wording",
-          `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
-          "Supporting verses, timeline events, journey nodes, and principles collected from matched records",
-          "No doctrine generation, crawling, or automatic analysis added"
-        ],
-        sourceGrounding: sourcePhrases.join(" ") || `Derived from existing current-scope records that mention ${theme.name}.`,
-        confidence: matches.some((item) => item.record.sourcePhrase || item.record.verseRange) ? "probable" : "possible",
-        activeScope: currentStudyScopeLabel(),
-        scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. No theme discovery outside analyzed scope.`
-      });
-    });
-    return themes.slice(0, 24);
+  function themePromotionSourceScope(record = {}) {
+    return normalizeText(record.sourceScope || record.scopePath || record.verseRange || record.activeScope || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
   }
 
+  function themePromotionSourceReference(record = {}) {
+    return normalizeText(record.sourceReference || record.verseRange || record.sourceVerse || record.sourceRef || record.scopePath || record.sourceScope || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function themePromotionEvidence(item = {}) {
+    const record = item.record || item;
+    return normalizeText([
+      record.evidence,
+      record.sourcePhrase,
+      record.sourceSnippet,
+      record.summarySnippet,
+      record.sourceGrounding,
+      record.derivedMeaning,
+      record.whyThisThemeExists,
+      record.whyRelated,
+      record.whyConnected,
+      record.teachingTopic,
+      record.corePrinciple,
+      record.principle,
+      record.relationshipType,
+      record.eventName,
+      record.sceneTitle,
+      item.label
+    ].flat(Infinity).filter(Boolean).join(" "));
+  }
+
+  function themePromotionSupportLevel(matches = []) {
+    const explicitCount = matches.filter((item) => {
+      const record = item.record || {};
+      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel].flat(Infinity).join(" ")).toLowerCase();
+      return /explicit|direct source|grounded observation|matthew \d|scripture\./.test(text);
+    }).length;
+    const layers = new Set(matches.map((item) => item.layer).filter(Boolean));
+    if (explicitCount >= 1 && (matches.length >= 2 || layers.size >= 2)) return { label: "High", confidence: "explicit", reason: "explicit teaching/source evidence or repeated direct references across grounded records" };
+    if (matches.length >= 2 || layers.size >= 2) return { label: "Medium", confidence: "probable", reason: "multiple independent supporting records in the current scope" };
+    return { label: "Low", confidence: "possible", reason: "single supporting semantic signal in the current scope" };
+  }
+
+  function themePromotionCandidate(theme = {}, matches = []) {
+    const first = matches[0]?.record || {};
+    const relatedTimelineEvents = uniqueStudyList(matches
+      .filter((item) => /Timeline/.test(item.layer))
+      .map((item) => item.record.eventName || item.label)).slice(0, 8);
+    const supportingScenes = uniqueStudyList(matches
+      .filter((item) => /Scene/.test(item.layer))
+      .map((item) => item.record.sceneTitle || item.record.sceneId || item.label)).slice(0, 8);
+    const supportingRelationships = uniqueStudyList(matches
+      .filter((item) => /Relationship/.test(item.layer))
+      .map((item) => `${item.record.sourceEntity || item.record.eventA || "source"} -> ${item.record.targetEntity || item.record.eventB || "target"} | ${item.record.relationshipType || item.label}`)).slice(0, 10);
+    const relatedPrinciples = uniqueStudyList(matches
+      .flatMap((item) => [item.record.corePrinciple, item.record.principle, item.record.teachingTopic, ...asArray(item.record.relatedPrinciples)])
+      .map((value) => normalizeText(value))
+      .filter(Boolean)).slice(0, 10);
+    const supportingVerses = uniqueStudyList(matches.map((item) => themePromotionSourceReference(item.record)).filter(Boolean)).slice(0, 10);
+    const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
+    const evidenceItems = uniqueStudyList(matches.map(themePromotionEvidence).filter(Boolean)).slice(0, 8);
+    const support = themePromotionSupportLevel(matches);
+    const sourceScope = themePromotionSourceScope(first);
+    const sourceReference = themePromotionSourceReference(first);
+    const promotionStatus = matches.length && evidenceItems.length && sourceScope ? "promoted" : "unresolved";
+    return {
+      schemaVersion: 1,
+      layer: "ICE_STUDY_THEMES",
+      themeId: `theme-promotion-${theme.name || "unresolved"}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+      id: `study-theme-${normalizeText(theme.name || "unresolved").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      sourceScope,
+      sourceReference,
+      themeName: theme.name,
+      supportingEvents: relatedTimelineEvents,
+      supportingScenes,
+      supportingRelationships,
+      supportingRecords,
+      supportingVerses,
+      relatedTimelineEvents,
+      relatedJourneyNodes: [],
+      relatedPrinciples,
+      evidence: evidenceItems,
+      sourcePhrase: first.sourcePhrase || evidenceItems[0] || "",
+      derivedMeaning: promotionStatus === "promoted" ? `${theme.name} is a promoted current-scope theme based only on grounded semantic records.` : `${theme.name} has no grounded current-scope promotion support yet.`,
+      whyThisThemeExists: promotionStatus === "promoted" ? `${theme.name} appears across ${matches.length} current-scope grounded record(s).` : `${theme.name} is in the approved theme catalog but has no grounded current-scope support yet.`,
+      verseRange: first.verseRange || first.sourceReference || "",
+      scopePath: first.scopePath || first.sourceScope || "",
+      sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
+      sourceContext: first.sourceContext || {},
+      confidence: support.confidence,
+      themeConfidence: support.label,
+      promotionStatus,
+      promotionReason: promotionStatus === "promoted" ? support.reason : "No current-scope grounded record matched this theme category.",
+      provenance: `I.C.E. Theme Promotion derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ") || "approved theme catalog"}`,
+      inferenceLevel: support.confidence === "explicit" ? "Supported Meaning" : "Possible Meaning",
+      evidenceWeight: promotionStatus === "promoted" ? `${support.label} Theme Support` : "Unresolved Theme Candidate",
+      reasoningPath: [
+        "Approved theme label selected from Theme Promotion catalog",
+        "Current-scope grounded records searched: Context Lock, Timeline, Scene, Relationship, Teaching, Principle, and Causality records",
+        `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
+        "No doctrine generation, crawling, automatic analysis, or out-of-scope theme discovery added"
+      ],
+      sourceGrounding: evidenceItems.join(" ") || `No current-scope source evidence matched ${theme.name}.`,
+      activeScope: currentStudyScopeLabel(),
+      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Themes summarize lower-layer records and may not rewrite Context Lock, source meaning, or doctrine.`
+    };
+  }
+
+  function themePromotionCandidates() {
+    const sources = studyThemeSourceRecords();
+    return studyThemeCatalog().map((theme) => {
+      const matches = sources.filter((item) => theme.pattern.test(studyThemeRecordText(item)));
+      return themePromotionCandidate(theme, matches);
+    });
+  }
+
+  function promotedThemeRecords() {
+    return themePromotionCandidates()
+      .filter((item) => item.promotionStatus === "promoted")
+      .filter((item) => recordMatchesCurrentStudyScope(item))
+      .slice(0, 24);
+  }
+
+  function themePromotionInspectorLines() {
+    const candidates = themePromotionCandidates();
+    const promoted = promotedThemeRecords();
+    const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
+    const rejected = [];
+    const coverage = candidates.length ? Math.round((promoted.length / candidates.length) * 100) : 0;
+    return [
+      `Discovered themes: ${candidates.length}`,
+      `Promoted themes: ${promoted.length}`,
+      `Rejected themes: ${rejected.length}`,
+      `Unresolved themes: ${unresolved.length}`,
+      `Coverage: ${coverage}%`,
+      promoted.length ? `Promoted examples: ${promoted.slice(0, 6).map((item) => `${item.themeName} | ${item.themeConfidence} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
+      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((item) => `${item.themeName} (${item.promotionReason})`).join(" | ")}` : "Unresolved examples: none",
+      "Boundary: Theme promotions summarize grounded lower-layer records only. They may not rewrite context, replace source meaning, create doctrine, infer theology without evidence, crawl, or process queues.",
+      "Layer: ICE_STUDY_THEMES promoted from Context Lock, Timeline, Scene, Relationship, Teaching, and Principle records"
+    ];
+  }
+  function literaryStructureCatalog() {
+    return [
+      { name: "Genealogy", pattern: /genealogy|lineage|generation|begat|son of david|son of abraham/i },
+      { name: "Teaching Discourse", pattern: /teaching discourse|teach|teacher|discourse|sayings|instruction|doctrine/i },
+      { name: "Sermon", pattern: /sermon|mount|beatitude|disciples came unto him|opened his mouth/i },
+      { name: "Narrative Testimony", pattern: /narrative testimony|testimony|narrator|witness|record|book of the generation/i },
+      { name: "Dialogue", pattern: /dialogue|said unto|saying|answered|asked|besought|spake/i },
+      { name: "Prayer", pattern: /pray|prayer|after this manner|our father/i },
+      { name: "Fulfillment Quotation", pattern: /fulfilled|spoken of the lord|spoken by the prophet|that it might be fulfilled/i },
+      { name: "Prophecy Citation", pattern: /prophet|prophecy|written|spoken by|citation/i },
+      { name: "Beatitude Pattern", pattern: /blessed are|beatitude|poor in spirit|merciful|peacemakers|pure in heart/i },
+      { name: "Repeated Formula", pattern: /again|verily|ye have heard|but i say unto you|blessed are|begat/i },
+      { name: "Blessing Declaration", pattern: /blessed are|blessing|theirs is|they shall/i },
+      { name: "Woe Declaration", pattern: /\bwoe\b|hypocrites|condemn/i },
+      { name: "Miracle Narrative", pattern: /miracle|heal|healed|cleanse|cast out|devil|spirit|leper|sick/i },
+      { name: "Calling Narrative", pattern: /follow me|called|calling|disciple|come after/i },
+      { name: "Travel Narrative", pattern: /travel|journey|depart|return|came|went|flee|ship|sea|mountain|wilderness/i }
+    ];
+  }
+
+  function literaryPromotionSourceRecords() {
+    const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
+      layer,
+      record,
+      label: normalizeText(record?.[labelKey] || record?.structureType || record?.themeName || record?.eventName || record?.sceneTitle || record?.relationshipType || record?.lockName || record?.passageFunction || record?.functionType || layer)
+    }));
+    return [
+      ...wrap("Context Lock", contextLockRecords(), "lockName"),
+      ...wrap("Timeline Promotions", promotedTimelineRecords(), "eventType"),
+      ...wrap("Ordered Events", scopedSemanticRecords(studyData.orderedEvents), "eventType"),
+      ...wrap("Scene Promotions", promotedSceneRecords(), "sceneType"),
+      ...wrap("Relationship Promotions", promotedRelationshipRecords(), "relationshipType"),
+      ...wrap("Theme Promotions", promotedThemeRecords(), "themeName"),
+      ...wrap("Passage Functions", scopedSemanticRecords(studyData.passageFunctions), "passageFunction"),
+      ...wrap("Teaching Semantics", scopedSemanticRecords(studyData.teachingSemantics), "teachingBlock"),
+      ...wrap("Source Discovery", scopedSemanticRecords(studyData.sourceDiscoveryIndex), "sourcePhrase")
+    ];
+  }
+
+  function literaryPromotionRecordText(item = {}) {
+    const record = item.record || {};
+    return [
+      item.layer,
+      item.label,
+      record.structureType,
+      record.eventType,
+      record.eventName,
+      record.sceneType,
+      record.sceneTitle,
+      record.relationshipType,
+      record.themeName,
+      record.passageFunction,
+      record.functionType,
+      record.plainMeaning,
+      record.teachingBlock,
+      record.teachingTopic,
+      record.sourcePhrase,
+      record.evidence,
+      record.summarySnippet,
+      record.sourceGrounding,
+      record.derivedMeaning,
+      record.reasoningPath,
+      record.verseRange,
+      record.scopePath
+    ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
+  }
+
+  function literaryPromotionSourceScope(record = {}) {
+    return normalizeText(record.sourceScope || record.scopePath || record.verseRange || record.activeScope || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function literaryPromotionSourceReference(record = {}) {
+    return normalizeText(record.sourceReference || record.verseRange || record.sourceVerse || record.sourceRef || record.scopePath || record.sourceScope || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function literaryPromotionEvidence(item = {}) {
+    const record = item.record || item;
+    return normalizeText([
+      record.evidence,
+      record.sourcePhrase,
+      record.sourceSnippet,
+      record.summarySnippet,
+      record.sourceGrounding,
+      record.derivedMeaning,
+      record.plainMeaning,
+      record.passageFunction,
+      record.functionType,
+      record.eventName,
+      record.sceneTitle,
+      record.themeName,
+      item.label
+    ].flat(Infinity).filter(Boolean).join(" "));
+  }
+
+  function literaryPromotionSupport(matches = []) {
+    const explicitCount = matches.filter((item) => {
+      const record = item.record || {};
+      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel, record.passageFunction, record.eventType].flat(Infinity).join(" ")).toLowerCase();
+      return /explicit|direct source|grounded observation|matthew \d|scripture\.|genealogy|teaching|fulfill|spoken|blessed are/.test(text);
+    }).length;
+    const layers = new Set(matches.map((item) => item.layer).filter(Boolean));
+    if (explicitCount >= 1 && (matches.length >= 2 || layers.size >= 2)) return { label: "High", confidence: "explicit", inferenceLevel: "Grounded Observation", reason: "explicit source organization or repeated direct pattern evidence" };
+    if (matches.length >= 2 || layers.size >= 2) return { label: "Medium", confidence: "probable", inferenceLevel: "Supported Meaning", reason: "multiple current-scope lower-layer records support the structure" };
+    return { label: "Low", confidence: "possible", inferenceLevel: "Possible Meaning", reason: "single grounded structure signal in the current scope" };
+  }
+
+  function literaryPromotionCandidate(structure = {}, matches = []) {
+    const first = matches[0]?.record || {};
+    const supportingEvents = uniqueStudyList(matches
+      .filter((item) => /Timeline|Ordered Events/.test(item.layer))
+      .map((item) => item.record.eventName || item.record.eventType || item.label)).slice(0, 8);
+    const supportingScenes = uniqueStudyList(matches
+      .filter((item) => /Scene/.test(item.layer))
+      .map((item) => item.record.sceneTitle || item.record.sceneType || item.label)).slice(0, 8);
+    const supportingRelationships = uniqueStudyList(matches
+      .filter((item) => /Relationship/.test(item.layer))
+      .map((item) => `${item.record.sourceEntity || item.record.eventA || "source"} -> ${item.record.targetEntity || item.record.eventB || "target"} | ${item.record.relationshipType || item.label}`)).slice(0, 8);
+    const supportingThemes = uniqueStudyList(matches
+      .filter((item) => /Theme/.test(item.layer))
+      .map((item) => item.record.themeName || item.label)).slice(0, 8);
+    const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
+    const evidenceItems = uniqueStudyList(matches.map(literaryPromotionEvidence).filter(Boolean)).slice(0, 8);
+    const support = literaryPromotionSupport(matches);
+    const sourceScope = literaryPromotionSourceScope(first);
+    const sourceReference = literaryPromotionSourceReference(first);
+    const promotionStatus = matches.length && evidenceItems.length && sourceScope ? "promoted" : "unresolved";
+    return {
+      schemaVersion: 1,
+      layer: "ICE_LITERARY_STRUCTURES",
+      literaryId: `literary-promotion-${structure.name || "unresolved"}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+      sourceScope,
+      sourceReference,
+      structureType: structure.name,
+      supportingEvents,
+      supportingScenes,
+      supportingRelationships,
+      supportingThemes,
+      supportingRecords,
+      evidence: evidenceItems,
+      confidence: support.confidence,
+      literaryConfidence: support.label,
+      provenance: `I.C.E. Literary Structure Promotion derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ") || "approved literary structure catalog"}`,
+      inferenceLevel: support.inferenceLevel,
+      promotionStatus,
+      promotionReason: promotionStatus === "promoted" ? support.reason : "No current-scope grounded record matched this literary structure category.",
+      sourcePhrase: first.sourcePhrase || evidenceItems[0] || "",
+      verseRange: first.verseRange || first.sourceReference || "",
+      scopePath: first.scopePath || first.sourceScope || "",
+      sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
+      sourceContext: first.sourceContext || {},
+      activeScope: currentStudyScopeLabel(),
+      evidenceWeight: promotionStatus === "promoted" ? `${support.label} Literary Structure Support` : "Unresolved Literary Structure Candidate",
+      reasoningPath: [
+        "Approved literary structure selected from low-risk catalog",
+        "Current-scope grounded records searched for explicit source organization, discourse, genealogy, quotation, formula, or narrative markers",
+        `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
+        "No inferred chiasmus, symbolism, typology, doctrine, crawling, or automatic analysis added"
+      ],
+      sourceGrounding: evidenceItems.join(" ") || `No current-scope source evidence matched ${structure.name}.`,
+      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Literary structures summarize source organization and may not rewrite source meaning, create fulfillment, or create doctrine.`
+    };
+  }
+
+  function literaryPromotionCandidates() {
+    const sources = literaryPromotionSourceRecords();
+    return literaryStructureCatalog().map((structure) => {
+      const matches = sources.filter((item) => structure.pattern.test(literaryPromotionRecordText(item)));
+      return literaryPromotionCandidate(structure, matches);
+    });
+  }
+
+  function promotedLiteraryRecords() {
+    return literaryPromotionCandidates()
+      .filter((item) => item.promotionStatus === "promoted")
+      .filter((item) => recordMatchesCurrentStudyScope(item))
+      .slice(0, 24);
+  }
+
+  function literaryPromotionInspectorLines() {
+    const candidates = literaryPromotionCandidates();
+    const promoted = promotedLiteraryRecords();
+    const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
+    const rejected = [];
+    const coverage = candidates.length ? Math.round((promoted.length / candidates.length) * 100) : 0;
+    return [
+      `Discovered structures: ${candidates.length}`,
+      `Promoted structures: ${promoted.length}`,
+      `Rejected structures: ${rejected.length}`,
+      `Unresolved structures: ${unresolved.length}`,
+      `Coverage: ${coverage}%`,
+      promoted.length ? `Promoted examples: ${promoted.slice(0, 6).map((item) => `${item.structureType} | ${item.literaryConfidence} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
+      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((item) => `${item.structureType} (${item.promotionReason})`).join(" | ")}` : "Unresolved examples: none",
+      "Boundary: Literary promotions summarize explicit source organization only. They may not infer chiasmus, symbolism, typology, fulfillment, doctrine, or broad canonical structure without evidence.",
+      "Layer: ICE_LITERARY_STRUCTURES promoted from Context, Timeline, Scene, Relationship, Theme, Passage Function, Teaching, Ordered Event, and Source Discovery records"
+    ];
+  }
+  function studyThemeRecords() {
+    return promotedThemeRecords();
+  }
   function studyThemeSearchText(item = {}) {
     return [
       item.themeName,
@@ -15837,11 +16144,12 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Scope Boundary", item.scopeBoundary || "Current Study Scope only.", { divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("Source Phrase", item.sourcePhrase || "Not recorded.", { divineContext, sourceQuote: true }),
       createPassageFunctionSection("Derived Meaning", item.derivedMeaning || "Not recorded.", { divineContext, preferHolySpirit: true }),
+      createPassageFunctionSection("Theme Confidence", item.themeConfidence || "Not recorded.", { preserveExact: true }),
       createPassageFunctionSection("Provenance", item.provenance || "I.C.E. Study Themes", { preserveExact: true }),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight || "Derived Semantic Evidence / Thematic Grouping", evidenceStrength: "theme emitted only when current-scope records contain matching grounded wording", sourceGrounding: item.sourceGrounding || item.sourcePhrase, supportingRecords: item.supportingRecords, sourcePhrase: item.sourcePhrase }),
       createPassageFunctionSection("Reasoning Path", "", { list: asArray(item.reasoningPath), plainList: true, divineContext, preferHolySpirit: true }),
       createPassageFunctionSection("App accuracy", displayConfidence(item.confidence || "probable")),
-      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Study Themes", label: item.themeName || "Study Theme", layer: "Study Themes / ICE_STUDY_THEMES", storageKey: "Not persisted in Phase 9.7a", scopePath: item.activeScope, rule: "Study Themes group existing current-scope semantic records only. They do not generate doctrine, search outside analyzed scope, crawl, or automatically analyze." }),
+      createWordingProvenanceSection({ source: item.provenance || "I.C.E. Study Themes", label: item.themeName || "Study Theme", layer: "Study Themes / ICE_STUDY_THEMES", storageKey: "ICE_STUDY_THEMES / derived display promotion", scopePath: item.activeScope, rule: "Study Themes group existing current-scope semantic records only. They do not generate doctrine, search outside analyzed scope, crawl, or automatically analyze." }),
       createEvidenceChainSection(item, {
         recordLabel: `Study Theme: ${item.themeName || "Theme"}`,
         relatedRecords: item.supportingRecords,
