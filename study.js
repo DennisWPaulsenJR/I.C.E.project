@@ -12314,7 +12314,13 @@ createRevelationPartsSection(item.subEvents)
       editorArchitectLayerCount("mentionIndex", "Mention records"),
       editorArchitectLayerCount("referenceGraph", "Reference graph records"),
       editorArchitectLayerCount("semanticEvents", "Semantic events"),
-      editorArchitectLayerCount("sceneModels", "Scenes"),
+      {
+        alias: "scenePromotions",
+        label: "Scenes",
+        storageKey: "ICE_SCENE_MODELS / derived from ICE_CONTEXT_LOCK + ICE_TIMELINE_ITEMS",
+        rawCount: promotedSceneRecords().length,
+        scopedCount: promotedSceneRecords().length
+      },
       editorArchitectLayerCount("timelineItems", "Timeline records"),
       editorArchitectLayerCount("orderedEvents", "Ordered events"),
       {
@@ -12326,6 +12332,13 @@ createRevelationPartsSection(item.subEvents)
       },
       editorArchitectLayerCount("knowledgeGraph", "Knowledge graph records"),
       editorArchitectLayerCount("principleRelationships", "Principle relationships"),
+      {
+        alias: "relationshipPromotions",
+        label: "Accepted relationship promotions",
+        storageKey: "ICE_RELATIONSHIP_PROMOTIONS / derived from Context Lock, Entity Relation Roles, Timeline, Scene, Ordered Events, and Relationship Graph",
+        rawCount: relationshipPromotionCandidates().length,
+        scopedCount: promotedRelationshipRecords().length
+      },
       editorArchitectLayerCount("studyThemes", "Study themes", { unscoped: true })
     ];
   }
@@ -12369,10 +12382,10 @@ createRevelationPartsSection(item.subEvents)
       { label: "Source Discovery Records", records: scopedSemanticRecords(studyData.sourceDiscoveryIndex), discoveredFallback: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length },
       { label: "Mention Records", records: scopedSemanticRecords(studyData.mentionIndex), discoveredFallback: scopedSemanticRecords(studyData.mentionIndex).length },
       { label: "Semantic Events", records: scopedSemanticRecords(studyData.semanticEvents), discoveredFallback: scopedSemanticRecords(studyData.semanticEvents).length },
-      { label: "Scene Models", records: scopedSemanticRecords(studyData.sceneModels), discoveredFallback: scopedSemanticRecords(studyData.sceneModels).length },
+      { label: "Scene Models", records: promotedSceneRecords(), discoveredFallback: Math.max(contextLockRecords().length, promotedTimelineRecords().length, scopedSemanticRecords(studyData.sceneModels).length) },
       { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
       { label: "Knowledge Graph Promotions", records: knowledgeGraphRecords(), discoveredFallback: scopedSemanticRecords(studyData.knowledgeGraph).length },
-      { label: "Relationship Promotions", records: scopedRelationshipGraph, discoveredFallback: scopedSemanticRecords(studyData.relationshipGraph).length },
+      { label: "Relationship Promotions", records: promotedRelationshipRecords(), discoveredFallback: relationshipPromotionCandidates().length || scopedRelationshipGraph.length },
       { label: "Theme Promotions", records: studyThemeRecords(), discoveredFallback: studyThemeRecords().length },
       { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
       { label: "Literary Structure Promotions", records: literaryRecords, discoveredFallback: literaryRecords.length }
@@ -12420,6 +12433,29 @@ createRevelationPartsSection(item.subEvents)
       unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 4).map((item) => `${item.sequenceNumber || "?"}. ${item.eventType || "Unknown"} (${item.sourceScope || "no source scope"})`).join(" | ")}` : "Unresolved examples: none",
       "Boundary: Timeline promotions summarize accepted Ordered Events in source order only. They do not infer missing chronology, reorder events, create implied events, crawl, navigate, or process queues.",
       "Layer: ICE_TIMELINE_ITEMS promoted from ICE_ORDERED_EVENTS"
+    ];
+  }
+
+  function scenePromotionInspectorLines() {
+    const discovered = uniqueStudyList([
+      ...contextLockRecords().map((item) => item.lockName || item.eventScope),
+      ...promotedTimelineRecords().map((item) => item.timelineId || item.eventName),
+      ...scopedSemanticRecords(studyData.sceneModels).map((item) => item.id || item.sceneId || item.sceneTitle)
+    ].filter(Boolean));
+    const promoted = promotedSceneRecords();
+    const unresolved = promoted.filter((item) => item.promotionStatus !== "promoted");
+    const rejected = [];
+    const coverage = discovered.length ? Math.round(((promoted.length - unresolved.length) / discovered.length) * 100) : 0;
+    return [
+      `Discovered scenes: ${discovered.length}`,
+      `Promoted scenes: ${Math.max(0, promoted.length - unresolved.length)}`,
+      `Rejected scenes: ${rejected.length}`,
+      `Unresolved scenes: ${unresolved.length}`,
+      `Coverage: ${coverage}%`,
+      promoted.length ? `Promoted examples: ${promoted.slice(0, 4).map((item) => `${item.sceneType}: ${item.sceneTitle || item.sceneId} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
+      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 4).map((item) => `${item.sceneType || "Scene"}: ${item.sceneTitle || item.sceneId || "unresolved"} (${item.sourceScope || "no source scope"})`).join(" | ")}` : "Unresolved examples: none",
+      "Boundary: Scene promotions summarize explicit Context Lock, Entity Registry, accepted Timeline, Ordered Event, and source-reference records only. They do not infer participants, authority, locations, movement, audience, or chronology.",
+      "Layer: ICE_SCENE_MODELS promoted from ICE_CONTEXT_LOCK and ICE_TIMELINE_ITEMS"
     ];
   }
 
@@ -12487,6 +12523,7 @@ createRevelationPartsSection(item.subEvents)
 
   function editorArchitectRelationshipLines() {
     const relationshipGroups = [
+      ["Promoted relationships", promotedRelationshipRecords(), "relationshipType"],
       ["Actor relationships", scopedSemanticRecords(studyData.characterInteractions), "interactionType"],
       ["Authority paths", scopedSemanticRecords(studyData.originAuthorityPaths), "relationshipType"],
       ["Movement relationships", scopedSemanticRecords(studyData.movementSemantics), "movementType"],
@@ -12543,6 +12580,8 @@ createRevelationPartsSection(item.subEvents)
       promotionLines: editorArchitectPromotionLines(),
       promotionCoverageLines: editorArchitectPromotionCoverageLines(),
       timelinePromotionLines: timelinePromotionInspectorLines(),
+      scenePromotionLines: scenePromotionInspectorLines(),
+      relationshipPromotionLines: relationshipPromotionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12565,6 +12604,8 @@ createRevelationPartsSection(item.subEvents)
       item.promotionLines,
       item.promotionCoverageLines,
       item.timelinePromotionLines,
+      item.scenePromotionLines,
+      item.relationshipPromotionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12596,6 +12637,8 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Semantic Promotion Inspector", "", { list: item.promotionLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Promotion Coverage Inspector", "", { list: item.promotionCoverageLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Promotion Coverage Inspector" }),
       createPassageFunctionSection("Timeline Promotion Inspector", "", { list: item.timelinePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Timeline Promotion Inspector" }),
+      createPassageFunctionSection("Scene Promotion Inspector", "", { list: item.scenePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Scene Promotion Inspector" }),
+      createPassageFunctionSection("Relationship Promotion Inspector", "", { list: item.relationshipPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Relationship Promotion Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
@@ -15039,7 +15082,7 @@ createRevelationPartsSection(item.subEvents)
         eventType: timelineEventTypeFromText(`${item.nodeName} ${item.nodeType} ${item.whyItMatters}`),
         whyItMatters: item.whyItMatters
       }));
-    scopedSemanticRecords(studyData.sceneModels).forEach((item) => addEvent(item, {
+    promotedSceneRecords().forEach((item) => addEvent(item, {
       sourceLayer: "Scene Intelligence",
       fallbackName: item.sceneTitle || "Scene event",
       eventType: timelineEventTypeFromText(`${item.sceneTitle} ${item.sceneType} ${item.summarySnippet}`),
@@ -16989,6 +17032,453 @@ createRevelationPartsSection(item.subEvents)
     return wrapper;
   }
 
+  function relationshipPromotionSourceScope(record = {}) {
+    return normalizeText(record.sourceScope || record.scopePath || record.verseRange || record.activeScope || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function relationshipPromotionSourceReference(record = {}) {
+    return normalizeText(record.sourceReference || record.verseRange || record.sourceVerse || record.sourceRef || record.scopePath || record.sourceScope || currentStudyScopeLabel());
+  }
+
+  function relationshipPromotionEvidence(record = {}) {
+    return normalizeText([
+      record.evidence,
+      record.sourcePhrase,
+      record.sourceSnippet,
+      record.contextSnippet,
+      record.sourceGrounding,
+      record.derivedMeaning,
+      record.whyRelated,
+      record.whyConnected,
+      record.summarySnippet
+    ].flat(Infinity).filter(Boolean).join(" "));
+  }
+
+  function relationshipPromotionTypeFromText(value = "", fallback = "explicit relationship") {
+    const text = normalizeText(value).toLowerCase();
+    if (/authority|source authority|divine authority|the lord|\bgod\b/.test(text)) return "authority relationship";
+    if (/speaker|audience|teach|teacher|disciple|multitude|sermon|discourse/.test(text)) return /teach|teacher|disciple/.test(text) ? "teacher -> audience" : "speaker -> audience";
+    if (/messenger|angel|recipient|reveal|dream|warn|instruction/.test(text)) return "messenger -> recipient";
+    if (/lineage|genealogy|begat|father|son of|parent|child|ancestor|descendant/.test(text)) return "lineage relationship";
+    if (/sequence|ordered event|timeline|next|previous|before|after/.test(text)) return "event sequence";
+    if (/location|where|place|city|region|wilderness|mountain|sea|river|jordan|galilee|jerusalem|bethlehem|nazareth|egypt/.test(text)) return "event -> location";
+    if (/fulfill|prophec|spoken/.test(text)) return "prophecy -> fulfillment";
+    if (/command|obey|response|respond/.test(text)) return "command -> response";
+    if (/request|asked|besought|answer/.test(text)) return "request -> response";
+    if (/heal|cleans|sick|leper|devil|spirit/.test(text)) return "healing agent -> recipient";
+    if (/oppos|conflict|tempt|accus|destroy/.test(text)) return "opposition / conflict";
+    return fallback;
+  }
+
+  function relationshipPromotionDirection(type = "", source = "source", target = "target") {
+    const normalized = normalizeText(type).toLowerCase();
+    if (/event -> location/.test(normalized)) return "event -> location";
+    if (/actor -> location/.test(normalized)) return "actor -> location";
+    if (/speaker -> audience|teacher -> audience/.test(normalized)) return "speaker -> audience";
+    if (/messenger -> recipient/.test(normalized)) return "messenger -> recipient";
+    if (/authority/.test(normalized)) return "authority -> target";
+    if (/lineage|parent|ancestor/.test(normalized)) return "parent/ancestor -> child/descendant";
+    if (/sequence/.test(normalized)) return "source order -> next event";
+    if (/fulfill|prophec/.test(normalized)) return "prophecy -> fulfillment";
+    if (/command/.test(normalized)) return "command -> response";
+    if (/request/.test(normalized)) return "request -> response";
+    return `${normalizeText(source) || "source"} -> ${normalizeText(target) || "target"}`;
+  }
+
+  function relationshipPromotionEndpointAllowed(value = "", options = {}) {
+    const label = studyReferenceNormalizeLabel(value);
+    if (!label) return false;
+    if (options.allowTechnical) return true;
+    return !studyReferenceIsTechnicalLabel(label);
+  }
+
+  function relationshipPromotionRecord(candidate = {}, index = 0) {
+    const sourceEntity = studyReferenceNormalizeLabel(candidate.sourceEntity || candidate.source || candidate.from || candidate.eventA || candidate.actor || "");
+    const targetEntity = studyReferenceNormalizeLabel(candidate.targetEntity || candidate.target || candidate.to || candidate.eventB || candidate.location || "");
+    const relationshipType = relationshipPromotionTypeFromText(candidate.relationshipType || candidate.type || candidate.semanticCategory || candidate.relationshipLabel || candidate.evidence, candidate.relationshipType || "explicit relationship");
+    const sourceScope = relationshipPromotionSourceScope(candidate);
+    const sourceReference = relationshipPromotionSourceReference(candidate);
+    const evidence = relationshipPromotionEvidence(candidate) || normalizeText(candidate.evidence || sourceReference);
+    const sourceAllowed = relationshipPromotionEndpointAllowed(sourceEntity, { allowTechnical: /narrator/.test(relationshipType) });
+    const targetAllowed = relationshipPromotionEndpointAllowed(targetEntity, { allowTechnical: /narrated event/.test(relationshipType) });
+    const promotionStatus = sourceAllowed && targetAllowed && evidence && sourceScope ? "promoted" : "unresolved";
+    const relationshipId = normalizeText(candidate.relationshipId || candidate.id || `relationship-promotion-${relationshipType}-${sourceEntity}-${targetEntity}-${sourceScope}-${index + 1}`).replace(/[^a-z0-9-]+/gi, "-").toLowerCase();
+    return {
+      schemaVersion: 1,
+      layer: "ICE_RELATIONSHIP_PROMOTIONS",
+      relationshipId,
+      sourceScope,
+      sourceReference,
+      relationshipType,
+      direction: candidate.direction || relationshipPromotionDirection(relationshipType, sourceEntity, targetEntity),
+      sourceRecord: candidate.sourceRecord || candidate.sourceRecordId || candidate.sourceId || "",
+      targetRecord: candidate.targetRecord || candidate.targetRecordId || candidate.targetId || "",
+      sourceEntity,
+      targetEntity,
+      relatedEvent: candidate.relatedEvent || candidate.eventName || candidate.eventId || "",
+      relatedScene: candidate.relatedScene || candidate.sceneTitle || candidate.sceneId || "",
+      evidence,
+      confidence: candidate.confidence || candidate.appAccuracy || "grounded",
+      provenance: candidate.provenance || "I.C.E. Relationship Promotion derived from explicit lower-layer records",
+      inferenceLevel: candidate.inferenceLevel || "Grounded Observation",
+      promotionStatus,
+      promotionReason: candidate.promotionReason || "Endpoint, source scope, and evidence required before promotion.",
+      sourcePhrase: evidence,
+      scopePath: candidate.scopePath || candidate.sourceScope || "",
+      sourceUrl: candidate.sourceUrl || candidate.sourceContext?.sourceUrl || "",
+      sourceContext: candidate.sourceContext || {},
+      scopeBoundary: "Relationship promotion summarizes explicit lower-layer records only; it does not rewrite Context Lock, create actors, create locations, infer motives, infer chronology, or infer fulfillment."
+    };
+  }
+
+  function relationshipPromotionLineagePairsFromEvent(eventItem = {}) {
+    const pairs = asArray(eventItem.lineagePairs).map((pair) => ({
+      parent: studyReferenceNormalizeLabel(pair.parent),
+      child: studyReferenceNormalizeLabel(pair.child),
+      evidence: normalizeText(pair.sourcePhrase || eventItem.eventText || eventItem.sourcePhrase || "")
+    })).filter((pair) => pair.parent && pair.child);
+    if (pairs.length) return pairs;
+    const text = normalizeText(eventItem.eventText || eventItem.sourcePhrase || "");
+    const parsed = [];
+    for (const match of text.matchAll(/\b([A-Z][A-Za-z]+)\s+begat\s+([A-Z][A-Za-z]+)\b/g)) {
+      parsed.push({ parent: match[1], child: match[2], evidence: match[0] });
+    }
+    return parsed;
+  }
+
+  function relationshipPromotionCandidates() {
+    const candidates = [];
+    const add = (candidate = {}) => candidates.push(candidate);
+
+    contextLockRecords().forEach((lock, index) => {
+      const base = {
+        sourceScope: lock.scopePath || lock.verseRange || lock.eventScope || currentStudyScopeLabel(),
+        sourceReference: lock.verseRange || lock.eventScope || currentStudyScopeLabel(),
+        evidence: lock.sourcePhrase || asArray(lock.groundedObservations)[0] || lock.eventScope,
+        confidence: lock.confidence || "explicit",
+        inferenceLevel: "Grounded Observation",
+        sourceContext: lock.sourceContext || {},
+        provenance: "I.C.E. Relationship Promotion derived from Context Lock",
+        sourceRecord: lock.lockName || `context-lock-${index + 1}`
+      };
+      if (lock.authoritySource && lock.messenger) add({ ...base, relationshipType: "authority relationship", sourceEntity: lock.authoritySource, targetEntity: lock.messenger, targetRecord: lock.messenger });
+      if (lock.authoritySource && lock.recipient) add({ ...base, relationshipType: "authority relationship", sourceEntity: lock.authoritySource, targetEntity: lock.recipient, targetRecord: lock.recipient });
+      if (lock.messenger && lock.recipient) add({ ...base, relationshipType: "messenger -> recipient", sourceEntity: lock.messenger, targetEntity: lock.recipient, targetRecord: lock.recipient });
+      if (lock.speaker && lock.audience) add({ ...base, relationshipType: /teach|disciple|multitude|sermon/i.test(`${lock.sourcePhrase} ${lock.eventScope}`) ? "teacher -> audience" : "speaker -> audience", sourceEntity: lock.speaker, targetEntity: lock.audience, targetRecord: lock.audience });
+      const places = splitSceneLocations(lock.location);
+      contextLockActorParticipants(lock.participants).forEach((participant) => {
+        places.forEach((place) => add({ ...base, relationshipType: "actor -> location", sourceEntity: participant, targetEntity: place, targetRecord: place }));
+      });
+    });
+
+    promotedTimelineRecords().forEach((item) => {
+      asArray(item.locations).forEach((place) => add({
+        sourceScope: item.sourceScope,
+        sourceReference: item.sourceReference,
+        relationshipType: "event -> location",
+        sourceEntity: item.eventName || item.eventType,
+        targetEntity: place,
+        relatedEvent: item.eventName,
+        sourceRecord: item.timelineId,
+        targetRecord: place,
+        evidence: item.evidence || item.sourcePhrase,
+        confidence: item.confidence || "grounded",
+        inferenceLevel: item.inferenceLevel || "Grounded Observation",
+        sourceContext: item.sourceContext || {},
+        provenance: "I.C.E. Relationship Promotion derived from accepted Timeline record"
+      }));
+    });
+
+    promotedTimelineRecords()
+      .slice()
+      .sort((left, right) => Number(left.sequenceNumber || 0) - Number(right.sequenceNumber || 0))
+      .forEach((item, index, records) => {
+        const next = records[index + 1];
+        if (!next) return;
+        add({
+          sourceScope: item.sourceScope || next.sourceScope,
+          sourceReference: item.sourceReference || next.sourceReference,
+          relationshipType: "event sequence",
+          sourceEntity: item.eventName,
+          targetEntity: next.eventName,
+          relatedEvent: item.eventName,
+          sourceRecord: item.timelineId,
+          targetRecord: next.timelineId,
+          evidence: `${item.eventName} precedes ${next.eventName} in explicit source order.`,
+          confidence: "grounded",
+          inferenceLevel: "Grounded Observation",
+          sourceContext: item.sourceContext || next.sourceContext || {},
+          provenance: "I.C.E. Relationship Promotion derived from Timeline source sequence"
+        });
+      });
+
+    promotedSceneRecords().forEach((scene) => {
+      const base = {
+        sourceScope: scene.sourceScope,
+        sourceReference: scene.sourceReference,
+        evidence: scene.evidence || scene.sourcePhrase || scene.summarySnippet,
+        confidence: scene.confidence || "grounded",
+        inferenceLevel: scene.inferenceLevel || "Grounded Observation",
+        sourceContext: scene.sourceContext || {},
+        relatedScene: scene.sceneTitle || scene.sceneId,
+        sourceRecord: scene.sceneId,
+        provenance: "I.C.E. Relationship Promotion derived from promoted Scene record"
+      };
+      if (scene.speaker && scene.audience) add({ ...base, relationshipType: "speaker -> audience", sourceEntity: scene.speaker, targetEntity: scene.audience, targetRecord: scene.audience });
+      if (scene.authority && scene.sceneTitle) add({ ...base, relationshipType: "authority relationship", sourceEntity: scene.authority, targetEntity: scene.sceneTitle, targetRecord: scene.sceneId });
+      asArray(scene.participants).forEach((participant) => {
+        asArray(scene.locations).forEach((place) => add({ ...base, relationshipType: "actor -> location", sourceEntity: participant, targetEntity: place, targetRecord: place }));
+      });
+    });
+
+    scopedSemanticRecords(studyData.orderedEvents).forEach((eventItem) => {
+      if (!/lineage|genealogy|begat/i.test(orderedEventDisplayType(eventItem) || eventItem.eventText || "")) return;
+      relationshipPromotionLineagePairsFromEvent(eventItem).forEach((pair) => add({
+        sourceScope: eventItem.scopePath || eventItem.verseRange || currentStudyScopeLabel(),
+        sourceReference: eventItem.verseRange || eventItem.scopePath || currentStudyScopeLabel(),
+        relationshipType: "lineage relationship",
+        sourceEntity: pair.parent,
+        targetEntity: pair.child,
+        relatedEvent: orderedEventTitle(eventItem),
+        sourceRecord: eventItem.id || eventItem.scopePath || orderedEventTitle(eventItem),
+        targetRecord: pair.child,
+        evidence: pair.evidence || eventItem.eventText || eventItem.sourcePhrase,
+        confidence: "explicit",
+        inferenceLevel: "Grounded Observation",
+        sourceContext: eventItem.sourceContext || {},
+        provenance: "I.C.E. Relationship Promotion derived from explicit Ordered Event lineage pair",
+        promotionReason: "Only explicit begat / lineagePairs source wording is promoted; no firstborn, unnamed mother, or unsupported descendant expansion is inferred."
+      }));
+    });
+
+    scopedSemanticRecords(studyData.entityRelationRoles).forEach((record, index) => {
+      add({
+        ...record,
+        relationshipType: record.relationshipType || record.semanticRole || record.ontologyClassPath || "explicit entity relationship role",
+        sourceEntity: record.sourceEntity || asArray(record.relatedEntities)[0],
+        targetEntity: record.targetEntity || asArray(record.relatedEntities)[1],
+        sourceRecord: record.id || record.scopePath || `entity-relation-role-${index + 1}`,
+        targetRecord: record.targetEntity || asArray(record.relatedEntities)[1],
+        evidence: relationshipPromotionEvidence(record) || asArray(record.evidence)[0] || record.sourceGrounding,
+        provenance: record.provenance || "I.C.E. Relationship Promotion derived from explicit Entity Relation Role"
+      });
+    });
+    scopedSemanticRecords(studyData.relationshipGraph)
+      .filter((record) => relationshipGraphRecordAllowedInCurrentScope(record))
+      .forEach((record, index) => {
+        add({
+          ...record,
+          relationshipType: record.relationshipType || record.type || record.semanticCategory || "explicit relationship graph record",
+          sourceEntity: record.sourceEntity || record.sourceCharacter || record.fromNode || record.source || record.subject || record.node,
+          targetEntity: record.targetEntity || record.targetCharacter || record.toNode || record.target || record.object || asArray(record.relatedNodes)[0],
+          relatedEvent: record.relatedEvent || record.eventName,
+          sourceRecord: record.id || record.recordId || `relationship-graph-${index + 1}`,
+          evidence: relationshipPromotionEvidence(record) || record.sourcePhrase || record.sourceGrounding,
+          provenance: record.provenance || "I.C.E. Relationship Promotion derived from explicit Relationship Graph record"
+        });
+      });
+
+    return candidates.map(relationshipPromotionRecord);
+  }
+
+  function promotedRelationshipRecords() {
+    const seen = new Set();
+    return relationshipPromotionCandidates()
+      .filter((item) => item.promotionStatus === "promoted")
+      .filter((item) => recordMatchesCurrentStudyScope(item))
+      .filter((item) => {
+        const key = normalizeText([item.relationshipType, item.sourceEntity, item.targetEntity, item.sourceScope, item.evidence].join("|")).toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 180);
+  }
+
+  function relationshipPromotionInspectorLines() {
+    const candidates = relationshipPromotionCandidates();
+    const promoted = promotedRelationshipRecords();
+    const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
+    const rejected = [];
+    const coverage = candidates.length ? Math.round((promoted.length / candidates.length) * 100) : 0;
+    return [
+      `Discovered relationships: ${candidates.length}`,
+      `Promoted relationships: ${promoted.length}`,
+      `Rejected relationships: ${rejected.length}`,
+      `Unresolved relationships: ${unresolved.length}`,
+      `Coverage: ${coverage}%`,
+      promoted.length ? `Promoted examples: ${promoted.slice(0, 5).map((item) => `${item.sourceEntity} -> ${item.targetEntity} | ${item.relationshipType} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
+      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((item) => `${item.sourceEntity || "source missing"} -> ${item.targetEntity || "target missing"} | ${item.relationshipType || "relationship"} (${item.sourceScope || "no source scope"})`).join(" | ")}` : "Unresolved examples: none",
+      "Boundary: Relationship promotions summarize explicit lower-layer records only. They may not rewrite Context Lock, create actors, create locations, infer motives, infer chronology, or infer ungrounded fulfillment.",
+      "Layer: ICE_RELATIONSHIP_PROMOTIONS derived from Context Lock, Entity Relation Roles, Timeline, Scene, Ordered Events, and Relationship Graph"
+    ];
+  }
+  function sceneTypeFromText(value = "") {
+    const text = normalizeText(value).toLowerCase();
+    if (/teach|sermon|discourse|beatitude|sayings|disciples|audience/.test(text)) return "Teaching Scene";
+    if (/dialogue|saying|asked|answered|said unto|spake/.test(text)) return "Dialogue Scene";
+    if (/heal|cleans|sick|leper|cast out|devil|spirit/.test(text)) return "Healing Scene";
+    if (/called|follow me|disciple|calling/.test(text)) return "Calling Scene";
+    if (/herod|tempt|conflict|oppos|destroy|wroth|accus/.test(text)) return "Conflict Scene";
+    if (/fulfill|fulfilled|prophet|spoken|nazarene|egypt/.test(text)) return "Fulfillment Scene";
+    if (/angel|dream|reveal|messenger|warn|instruction|revelation/.test(text)) return "Revelation Scene";
+    return "Narrative Scene";
+  }
+
+  function splitSceneLocations(value = "") {
+    return uniqueStudyList(String(value || "")
+      .split(/;|,/)
+      .map((item) => normalizeText(item))
+      .filter(Boolean)
+      .filter((item) => !studyReferenceIsTechnicalLabel(item)));
+  }
+
+  function sceneContextFromEvidence(scene = {}) {
+    const facts = [];
+    if (scene.evidence) {
+      facts.push({
+        tier: "explicit",
+        statement: scene.evidence,
+        sourcePhrase: scene.evidence,
+        evidenceWeight: "Direct Source Evidence",
+        provenance: scene.provenance,
+        confidence: scene.confidence || "explicit",
+        reasoningPath: ["Scene fact copied from explicit Context Lock, Timeline, or Ordered Event evidence."]
+      });
+    }
+    asArray(scene.contextLock?.groundedObservations).forEach((statement) => {
+      facts.push({
+        tier: "explicit",
+        statement,
+        sourcePhrase: scene.contextLock?.sourcePhrase || scene.evidence,
+        evidenceWeight: "Context Lock / Direct Source Evidence",
+        provenance: "I.C.E. Context Lock",
+        confidence: scene.confidence || "explicit",
+        reasoningPath: ["Grounded observation copied from Context Lock without adding inferred participants, locations, audience, movement, or chronology."]
+      });
+    });
+    return {
+      explicitFacts: facts.slice(0, 8),
+      stronglyImplied: [],
+      possibleInferences: []
+    };
+  }
+
+  function promotedSceneFromContextLock(lock = {}, index = 0) {
+    const sourceScope = normalizeText(lock.scopePath || lock.verseRange || lock.eventScope || currentStudyScopeLabel());
+    const sourceReference = normalizeText(lock.verseRange || lock.eventScope || lock.sourceContext?.sourceTitle || currentStudyScopeLabel());
+    const participants = contextLockActorParticipants(lock.participants);
+    const locations = splitSceneLocations(lock.location);
+    const sceneType = sceneTypeFromText([lock.lockName, lock.sourcePhrase, lock.eventScope, lock.groundedObservations].flat(Infinity).join(" "));
+    const evidence = normalizeText(lock.sourcePhrase || asArray(lock.groundedObservations)[0] || sourceReference);
+    const scene = {
+      schemaVersion: 1,
+      layer: "ICE_SCENE_MODELS",
+      sceneId: `scene-context-lock-${index + 1}-${sourceScope}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+      sourceScope,
+      sourceReference,
+      sceneTitle: lock.lockName || `${sourceReference} Scene`,
+      sceneType,
+      participants,
+      authority: normalizeText(lock.authoritySource || ""),
+      speaker: normalizeText(lock.speaker || ""),
+      audience: normalizeText(lock.audience || ""),
+      locations,
+      timelineReferences: promotedTimelineRecords()
+        .filter((item) => item.sourceScope && sourceScope && (item.sourceScope.includes(sourceScope) || sourceScope.includes(item.sourceScope) || item.sourceReference === sourceReference))
+        .map((item) => item.timelineId || item.eventName)
+        .slice(0, 8),
+      evidence,
+      confidence: lock.confidence || "explicit",
+      provenance: "I.C.E. Scene Promotion derived from Context Lock",
+      inferenceLevel: "Grounded Observation",
+      sourcePhrase: evidence,
+      summarySnippet: normalizeText(asArray(lock.groundedObservations)[0] || lock.supportedMeaning?.[0] || evidence || "Context scene promoted from explicit Context Lock record."),
+      sourceUrl: lock.sourceContext?.sourceUrl || "",
+      scopePath: lock.scopePath || "",
+      sourceContext: lock.sourceContext || {},
+      contextLock: lock,
+      promotionStatus: participants.length || evidence ? "promoted" : "unresolved",
+      scopeBoundary: "Scene promotion summarizes Context Lock only; it does not infer participants, authority, locations, movement, audience, or chronology."
+    };
+    scene.sceneContext = sceneContextFromEvidence(scene);
+    return scene;
+  }
+
+  function promotedSceneFromTimelineRecord(item = {}, index = 0) {
+    const participants = contextLockActorParticipants(item.participants);
+    const locations = uniqueStudyList(asArray(item.locations).map((value) => normalizeText(value)).filter(Boolean));
+    const evidence = normalizeText(item.evidence || item.sourcePhrase || item.eventName || "");
+    const scene = {
+      schemaVersion: 1,
+      layer: "ICE_SCENE_MODELS",
+      sceneId: `scene-timeline-${item.timelineId || item.eventId || index + 1}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+      sourceScope: item.sourceScope || item.scopePath || currentStudyScopeLabel(),
+      sourceReference: item.sourceReference || item.sourceScope || currentStudyScopeLabel(),
+      sceneTitle: item.eventName || item.eventType || "Timeline Scene",
+      sceneType: sceneTypeFromText([item.eventType, item.eventName, evidence].join(" ")),
+      participants,
+      authority: normalizeText(item.authority || ""),
+      speaker: "",
+      audience: "",
+      locations,
+      timelineReferences: [item.timelineId || item.eventId || item.eventName].filter(Boolean),
+      evidence,
+      confidence: item.confidence || "grounded",
+      provenance: "I.C.E. Scene Promotion derived from accepted Timeline record",
+      inferenceLevel: item.inferenceLevel || "Grounded Observation",
+      sourcePhrase: evidence,
+      summarySnippet: evidence || `${item.eventName || "Timeline record"} promoted as a grounded scene.`,
+      sourceUrl: item.sourceUrl || "",
+      scopePath: item.scopePath || item.sourceScope || "",
+      sourceContext: item.sourceContext || {},
+      promotionStatus: evidence && item.sourceScope ? "promoted" : "unresolved",
+      scopeBoundary: "Timeline scene promotion preserves source order and explicit record fields only; it does not infer participants, locations, movement, audience, or chronology."
+    };
+    scene.sceneContext = sceneContextFromEvidence(scene);
+    return scene;
+  }
+
+  function normalizeStoredSceneRecord(scene = {}, index = 0) {
+    const evidence = normalizeText(scene.evidence || scene.sourcePhrase || scene.summarySnippet || "");
+    return {
+      ...scene,
+      schemaVersion: scene.schemaVersion || 1,
+      layer: "ICE_SCENE_MODELS",
+      sceneId: scene.sceneId || scene.id || `stored-scene-${index + 1}`,
+      sourceScope: scene.sourceScope || scene.scopePath || scene.verseRange || currentStudyScopeLabel(),
+      sourceReference: scene.sourceReference || scene.verseRange || scene.scopePath || currentStudyScopeLabel(),
+      sceneType: scene.sceneType || sceneTypeFromText([scene.sceneTitle, scene.summarySnippet, evidence].join(" ")),
+      participants: contextLockActorParticipants(scene.participants),
+      locations: uniqueStudyList(asArray(scene.locations || scene.location).map((value) => normalizeText(value)).filter(Boolean)),
+      timelineReferences: asArray(scene.timelineReferences),
+      evidence,
+      confidence: scene.confidence || "possible",
+      provenance: scene.provenance || "ICE_SCENE_MODELS stored scene record",
+      inferenceLevel: scene.inferenceLevel || "Grounded Observation",
+      promotionStatus: scene.promotionStatus || "promoted",
+      sceneContext: scene.sceneContext || sceneContextFromEvidence({ ...scene, evidence })
+    };
+  }
+
+  function promotedSceneRecords() {
+    const records = [
+      ...scopedSemanticRecords(studyData.sceneModels).map(normalizeStoredSceneRecord),
+      ...contextLockRecords().map(promotedSceneFromContextLock),
+      ...promotedTimelineRecords().map(promotedSceneFromTimelineRecord)
+    ];
+    const seen = new Set();
+    return records
+      .filter((item) => recordMatchesCurrentStudyScope(item))
+      .filter((item) => {
+        const key = normalizeText([item.sceneTitle, item.sceneType, item.sourceScope, item.evidence].join("|")).toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 120);
+  }
+
   function sceneEvidenceChainRecords(scene = {}) {
     const context = scene.sceneContext || {};
     return uniqueStudyList([
@@ -17055,9 +17545,7 @@ createRevelationPartsSection(item.subEvents)
   function renderScenes(term) {
     const container = document.getElementById("sceneCards");
     const count = document.getElementById("sceneCount");
-    const scenes = Array.isArray(studyData.sceneModels)
-      ? studyData.sceneModels
-      : [];
+    const scenes = promotedSceneRecords();
     const filtered = scenes.filter((scene) =>
       includesTerm([
         scene.sceneTitle,
@@ -18025,7 +18513,7 @@ createRevelationPartsSection(item.subEvents)
     const orderedCount = countItems(studyData.orderedEvents);
     const actorCount = countItems(studyData.actorTimelines);
     const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
-    const sceneCount = countItems(studyData.sceneModels);
+    const sceneCount = countItems(promotedSceneRecords());
     const semanticEventCount = countItems(studyData.semanticEvents);
     const semanticFlowChainCount = countItems(studyData.semanticFlowChains);
     const entityRegistryCount = countItems(studyData.entityRegistry);
