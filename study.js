@@ -6332,7 +6332,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function filteredRelationshipGraph(term) {
-    return sortRelationshipGraphForDisplay(asArray(studyData.relationshipGraph)
+    return sortRelationshipGraphForDisplay(scopedSemanticRecords(studyData.relationshipGraph)
+      .filter((edge) => relationshipGraphRecordAllowedInCurrentScope(edge))
       .filter((edge) => matchesSearchQuery(relationshipSearchText(edge), term)));
   }
 
@@ -11207,6 +11208,21 @@ createRevelationPartsSection(item.subEvents)
     return uniqueStudyList([location, ...places].filter(Boolean)).join("; ");
   }
 
+  function contextLockFallbackParticipants() {
+    const participants = [];
+    asArray(studyData.actorTimelines).map(dedupeActorActions).forEach((actor) => {
+      participants.push(actor.resolvedActorName || actor.actorName);
+    });
+    scopedSemanticRecords(studyData.entityRegistry).forEach((item) => {
+      const name = item.displayName || item.canonicalName || item.entityName;
+      const kind = studyReferenceEntityKind(item);
+      if (kind === "actor" || kind === "authority") participants.push(name);
+    });
+    return contextLockActorParticipants(participants)
+      .filter((participant) => !studyReferenceIsTechnicalLabel(participant))
+      .slice(0, 8);
+  }
+
   function createContextLockRecord(candidate = {}) {
     const scope = currentStudyScopeLabel();
     const participantCandidates = asArray(candidate.participants);
@@ -11370,10 +11386,8 @@ createRevelationPartsSection(item.subEvents)
         add({
           lockName: `${volumePageLabel(active)} Source Context Lock`,
           eventScope: volumePageLabel(active),
-          participants: uniqueStudyList([
-            ...asArray(studyData.entityRegistry).map((item) => item.displayName || item.canonicalName || item.entityName).slice(0, 8)
-          ]).filter(Boolean),
-          location: "Current analyzed source",
+          participants: contextLockFallbackParticipants(),
+          location: "",
           sourceContext: {
             sourceTitle: active.sourceTitle,
             sourceUrl: active.activeUrl,
@@ -11693,6 +11707,62 @@ createRevelationPartsSection(item.subEvents)
     return ["the lord", "god", "jesus christ", "jesus"].includes(label);
   }
 
+  function currentScopeEvidenceText() {
+    return normalizeText([
+      currentStudyScopeLabel(),
+      studyData.latestCapture,
+      studyData.analysisStatus,
+      studyData.activeSourcePage,
+      studyData.canonicalAnalysisTarget
+    ].map((value) => {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value);
+      } catch (_error) {
+        return String(value);
+      }
+    }).join(" "));
+  }
+
+  function locationGroundedInCurrentScope(name = "", record = {}) {
+    const label = studyReferenceNormalizeLabel(name);
+    if (studyReferenceIsTechnicalLabel(label)) return false;
+    const recordEvidence = normalizeText([
+      record.sourcePhrase,
+      record.sourceSnippet,
+      record.evidence,
+      record.sourceGrounding,
+      record.verseRange,
+      record.scopePath,
+      record.sourceContext?.sourceTitle,
+      record.sourceContext?.sourceUrl
+    ].flat(Infinity).join(" "));
+    if (recordEvidence && new RegExp(`\\b${escapeRegExp(label)}\\b`, "i").test(recordEvidence)) return true;
+    return new RegExp(`\\b${escapeRegExp(label)}\\b`, "i").test(currentScopeEvidenceText());
+  }
+
+  function relationshipGraphRecordAllowedInCurrentScope(record = {}) {
+    if (!recordMatchesCurrentStudyScope(record)) return false;
+    const relationshipText = normalizeText([
+      record.relationshipType,
+      record.semanticCategory,
+      record.eventType,
+      record.passageFunction
+    ].join(" ")).toLowerCase();
+    if (!/messianic_location_fulfillment|location_fulfillment/.test(relationshipText)) return true;
+    const evidenceText = normalizeText([
+      record.sourcePhrase,
+      record.evidencePhrase,
+      record.sourceGrounding,
+      record.verseRange,
+      record.scopePath,
+      record.sourceContext?.sourceTitle,
+      record.sourceContext?.sourceUrl
+    ].flat(Infinity).join(" "));
+    return /\b(?:egypt|nazareth|nazarene)\b/i.test(evidenceText);
+  }
+
   function studyReferenceEntityKind(record = {}) {
     const text = normalizeText([
       record.entityType,
@@ -11740,8 +11810,8 @@ createRevelationPartsSection(item.subEvents)
     map.set(key, existing);
   }
 
-  function studyReferenceListFromMap(map, limit = 14, options = {}) {
-    return Array.from(map.values())
+  function studyReferenceListFromItems(items = [], limit = 14, options = {}) {
+    return asArray(items)
       .filter((item) => options.includeTechnical || (!studyReferenceIsTechnicalLabel(item.label) && !studyReferenceIsSourceNarratorOnly(item)))
       .sort((left, right) => left.label.localeCompare(right.label))
       .slice(0, limit)
@@ -11750,6 +11820,18 @@ createRevelationPartsSection(item.subEvents)
         const sources = Array.from(item.sources).slice(0, 2);
         return `${item.label}${roles.length ? ` - ${roles.join(", ")}` : ""}${sources.length ? ` (${sources.join("; ")})` : ""}`;
       });
+  }
+
+  function studyReferenceListFromMap(map, limit = 14, options = {}) {
+    return studyReferenceListFromItems(Array.from(map.values()), limit, options);
+  }
+
+  function studyReferenceIsTechnicalActorItem(item = {}) {
+    const label = studyReferenceNormalizeLabel(item.label).toLowerCase();
+    const roles = Array.from(item.roles || []).map((role) => normalizeText(role).toLowerCase());
+    if (studyReferenceIsTechnicalLabel(label)) return true;
+    if (["scripture narrator", "quoted prophet", "matthew"].includes(label)) return true;
+    return roles.some((role) => /narrator|unresolved|source/.test(role));
   }
 
   function studyReferenceActors(options = {}) {
@@ -11779,6 +11861,7 @@ createRevelationPartsSection(item.subEvents)
       if (!name) return;
       if (!options.includeTechnical && studyReferenceIsTechnicalLabel(name)) return;
       const kind = studyReferenceEntityKind(record);
+      if (kind === "location" && !locationGroundedInCurrentScope(name, record)) return;
       const target = kind === "location" ? locations : entities;
       addStudyReferenceItem(target, name, {
         roles: [kind === "location" ? "location / place" : (record.entityType || record.type || record.category || record.roleHint || kind)],
@@ -11790,7 +11873,10 @@ createRevelationPartsSection(item.subEvents)
     scopedSemanticRecords(studyData.canonicalIdentities).forEach((record) => addEntity(record, "Canonical Identities"));
     scopedSemanticRecords(studyData.mentionIndex).forEach((record) => addEntity(record, "Mention Index"));
     contextLockRecords().forEach((lock) => {
-      asArray(String(lock.location || "").split(/;|,/)).forEach((place) => addStudyReferenceItem(locations, place, { roles: ["where / place reference"], sources: [lock.lockName], includeTechnical: options.includeTechnical }));
+      asArray(String(lock.location || "").split(/;|,/)).forEach((place) => {
+        if (!locationGroundedInCurrentScope(place, lock)) return;
+        addStudyReferenceItem(locations, place, { roles: ["where / place reference"], sources: [lock.lockName], includeTechnical: options.includeTechnical });
+      });
     });
     return { entities, locations };
   }
@@ -12036,7 +12122,7 @@ createRevelationPartsSection(item.subEvents)
 
   function derivedCurrentCrossReferenceRelationships() {
     const records = [];
-    scopedSemanticRecords(studyData.relationshipGraph).slice(0, 12).forEach((edge, index) => {
+    scopedSemanticRecords(studyData.relationshipGraph).filter((edge) => relationshipGraphRecordAllowedInCurrentScope(edge)).slice(0, 12).forEach((edge, index) => {
       records.push(normalizeCrossReferenceRelationshipRecord(edge, {
         id: `current-relationship-graph-${index}`,
         relationshipDirection: "current",
@@ -12231,7 +12317,13 @@ createRevelationPartsSection(item.subEvents)
       editorArchitectLayerCount("sceneModels", "Scenes"),
       editorArchitectLayerCount("timelineItems", "Timeline records"),
       editorArchitectLayerCount("orderedEvents", "Ordered events"),
-      editorArchitectLayerCount("timelineItems", "Accepted timeline promotions"),
+      {
+        alias: "timelinePromotions",
+        label: "Accepted timeline promotions",
+        storageKey: "ICE_TIMELINE_ITEMS / derived from ICE_ORDERED_EVENTS",
+        rawCount: promotedTimelineRecords().length,
+        scopedCount: promotedTimelineRecords().length
+      },
       editorArchitectLayerCount("knowledgeGraph", "Knowledge graph records"),
       editorArchitectLayerCount("principleRelationships", "Principle relationships"),
       editorArchitectLayerCount("studyThemes", "Study themes", { unscoped: true })
@@ -12241,6 +12333,94 @@ createRevelationPartsSection(item.subEvents)
   function editorArchitectPromotionLines() {
     const counts = editorArchitectPromotionCounts();
     return counts.map((item) => `${item.label}: ${item.scopedCount} scoped / ${item.rawCount} retained (${item.storageKey})`);
+  }
+
+  function promotionCoverageDisposition(record = {}) {
+    const text = normalizeText([
+      record.status,
+      record.promotionStatus,
+      record.validationStatus,
+      record.resolutionStatus,
+      record.appAccuracy,
+      record.confidence,
+      record.evidenceWeight,
+      record.reason,
+      record.rejectionReason,
+      record.error,
+      record.note
+    ].join(" ")).toLowerCase();
+    if (/reject|rejected|suppressed|excluded|out[-\s]?of[-\s]?scope|failed|failure|invalid|error/.test(text)) return "rejected";
+    if (/unresolved|unknown|pending|ambiguous|needs review|not promoted|no promotion|missing/.test(text)) return "unresolved";
+    return "promoted";
+  }
+
+  function promotionCoverageRows() {
+    const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
+    const fulfillmentRecords = [
+      ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.fulfillmentMeaning, item.sourceGrounding].join(" ")))),
+      ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding].join(" ")))),
+      ...timelineRelationshipRecords().filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.whyConnected, item.sourcePhrase].join(" "))))
+    ];
+    const literaryRecords = [
+      ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /parallel|chiasm|inclusio|repetition|genre|narrative|sermon|parable|genealogy|poetry|wisdom|law|prayer|lament|praise/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.sourceGrounding].join(" ")))),
+      ...scopedSemanticRecords(studyData.orderedEvents).filter((item) => /lineage|genealogy|teaching|discourse|narrative|fulfillment statement|identity statement/i.test(normalizeText([item.eventType, item.narrativeType, item.recordType, item.title, item.description].join(" "))))
+    ];
+    const categories = [
+      { label: "Source Discovery Records", records: scopedSemanticRecords(studyData.sourceDiscoveryIndex), discoveredFallback: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length },
+      { label: "Mention Records", records: scopedSemanticRecords(studyData.mentionIndex), discoveredFallback: scopedSemanticRecords(studyData.mentionIndex).length },
+      { label: "Semantic Events", records: scopedSemanticRecords(studyData.semanticEvents), discoveredFallback: scopedSemanticRecords(studyData.semanticEvents).length },
+      { label: "Scene Models", records: scopedSemanticRecords(studyData.sceneModels), discoveredFallback: scopedSemanticRecords(studyData.sceneModels).length },
+      { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
+      { label: "Knowledge Graph Promotions", records: knowledgeGraphRecords(), discoveredFallback: scopedSemanticRecords(studyData.knowledgeGraph).length },
+      { label: "Relationship Promotions", records: scopedRelationshipGraph, discoveredFallback: scopedSemanticRecords(studyData.relationshipGraph).length },
+      { label: "Theme Promotions", records: studyThemeRecords(), discoveredFallback: studyThemeRecords().length },
+      { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
+      { label: "Literary Structure Promotions", records: literaryRecords, discoveredFallback: literaryRecords.length }
+    ];
+    return categories.map((category) => {
+      const records = asArray(category.records);
+      const discovered = Math.max(Number(category.discoveredFallback) || 0, records.length);
+      const rejected = records.filter((record) => promotionCoverageDisposition(record) === "rejected").length;
+      const unresolved = records.filter((record) => promotionCoverageDisposition(record) === "unresolved").length;
+      const promoted = Math.max(0, records.length - rejected - unresolved);
+      const coverage = discovered ? Math.round((promoted / discovered) * 100) : 0;
+      return {
+        label: category.label,
+        discovered,
+        promoted,
+        rejected,
+        unresolved,
+        coverage
+      };
+    });
+  }
+
+  function editorArchitectPromotionCoverageLines() {
+    const rows = promotionCoverageRows();
+    const lines = rows.map((item) => `${item.label}: discovered=${item.discovered}; promoted=${item.promoted}; rejected=${item.rejected}; unresolved=${item.unresolved}; coverage=${item.coverage}%`);
+    lines.push("Boundary: coverage metrics are visibility diagnostics, not quality scores. Higher coverage is not automatically better; false promotions are worse than missing promotions.");
+    lines.push("Layer: ICE_PROMOTION_COVERAGE");
+    return lines;
+  }
+
+  function timelinePromotionInspectorLines() {
+    const ordered = scopedSemanticRecords(studyData.orderedEvents);
+    const attempted = ordered.map(promotedTimelineRecordFromOrderedEvent);
+    const accepted = attempted.filter((item) => item.promotionStatus === "promoted");
+    const unresolved = attempted.filter((item) => item.promotionStatus !== "promoted");
+    const rejected = [];
+    const coverage = ordered.length ? Math.round((accepted.length / ordered.length) * 100) : 0;
+    return [
+      `Ordered Events: ${ordered.length}`,
+      `Accepted Promotions: ${accepted.length}`,
+      `Rejected Promotions: ${rejected.length}`,
+      `Unresolved Promotions: ${unresolved.length}`,
+      `Coverage: ${coverage}%`,
+      accepted.length ? `Accepted examples: ${accepted.slice(0, 4).map((item) => `${item.sequenceNumber}. ${item.eventType} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Accepted examples: none",
+      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 4).map((item) => `${item.sequenceNumber || "?"}. ${item.eventType || "Unknown"} (${item.sourceScope || "no source scope"})`).join(" | ")}` : "Unresolved examples: none",
+      "Boundary: Timeline promotions summarize accepted Ordered Events in source order only. They do not infer missing chronology, reorder events, create implied events, crawl, navigate, or process queues.",
+      "Layer: ICE_TIMELINE_ITEMS promoted from ICE_ORDERED_EVENTS"
+    ];
   }
 
   function editorArchitectContextLines() {
@@ -12271,12 +12451,17 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function editorArchitectEntityLines() {
-    const actors = studyReferenceListFromMap(studyReferenceActors({ includeTechnical: true }), 16, { includeTechnical: true });
+    const actorItems = Array.from(studyReferenceActors({ includeTechnical: true }).values());
+    const groundedActors = actorItems.filter((item) => !studyReferenceIsTechnicalActorItem(item));
+    const technicalActors = actorItems.filter((item) => studyReferenceIsTechnicalActorItem(item));
+    const actors = studyReferenceListFromItems(groundedActors, 16, { includeTechnical: true });
+    const technicalActorLines = studyReferenceListFromItems(technicalActors, 16, { includeTechnical: true });
     const { entities, locations } = studyReferenceEntitiesAndLocations({ includeTechnical: true });
     const entityLines = studyReferenceListFromMap(entities, 16, { includeTechnical: true });
     const locationLines = studyReferenceListFromMap(locations, 16, { includeTechnical: true });
     return {
       actors: actors.length ? actors : ["No grounded actors found for the current Study Scope."],
+      technicalActors: technicalActorLines.length ? technicalActorLines : ["No narration, source-label, or unresolved actor records found for the current Study Scope."],
       entities: entityLines.length ? entityLines : ["No non-actor entities found for the current Study Scope."],
       locations: locationLines.length ? locationLines : ["No grounded locations found for the current Study Scope."]
     };
@@ -12308,7 +12493,7 @@ createRevelationPartsSection(item.subEvents)
       ["Timeline relationships", timelineRelationshipRecords(), "relationshipType"],
       ["Theme relationships", studyThemeRecords(), "themeName"],
       ["Journey paths", journeyPathRecords(), "relationshipType"],
-      ["Relationship graph", scopedSemanticRecords(studyData.relationshipGraph), "relationshipType"]
+      ["Relationship graph", scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record)), "relationshipType"]
     ];
     const lines = [];
     relationshipGroups.forEach(([label, records, key]) => {
@@ -12352,9 +12537,12 @@ createRevelationPartsSection(item.subEvents)
       activeScope: currentStudyScopeLabel(),
       contextLines: editorArchitectContextLines(),
       actors: entityLines.actors,
+      technicalActors: entityLines.technicalActors,
       entities: entityLines.entities,
       locations: entityLines.locations,
       promotionLines: editorArchitectPromotionLines(),
+      promotionCoverageLines: editorArchitectPromotionCoverageLines(),
+      timelinePromotionLines: timelinePromotionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12371,9 +12559,12 @@ createRevelationPartsSection(item.subEvents)
       item.activeScope,
       item.contextLines,
       item.actors,
+      item.technicalActors,
       item.entities,
       item.locations,
       item.promotionLines,
+      item.promotionCoverageLines,
+      item.timelinePromotionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12399,9 +12590,12 @@ createRevelationPartsSection(item.subEvents)
     [
       createPassageFunctionSection("Context Inspector", "", { list: item.contextLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Entity Classification Inspector - Actors", "", { list: item.actors, plainList: true, divineContext: true, preferHolySpirit: true }),
+      createPassageFunctionSection("Entity Classification Inspector - Narration / Source / Unresolved", "", { list: item.technicalActors, plainList: true, divineContext: true, preferHolySpirit: true, collapsed: true, summaryLabel: "Show narration / source / unresolved records" }),
       createPassageFunctionSection("Entity Classification Inspector - Entities", "", { list: item.entities, plainList: true, divineContext: true, preferHolySpirit: true }),
       createPassageFunctionSection("Entity Classification Inspector - Locations", "", { list: item.locations, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Semantic Promotion Inspector", "", { list: item.promotionLines, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Promotion Coverage Inspector", "", { list: item.promotionCoverageLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Promotion Coverage Inspector" }),
+      createPassageFunctionSection("Timeline Promotion Inspector", "", { list: item.timelinePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Timeline Promotion Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
@@ -14667,11 +14861,97 @@ createRevelationPartsSection(item.subEvents)
     ].map((value) => normalizeText(value)).filter(Boolean)).slice(0, 8);
   }
 
+  function timelinePromotionSourceReference(record = {}) {
+    const source = normalizeText([
+      record.sourceReference,
+      record.verseRange,
+      record.verseRef,
+      record.sourceContext?.verseRef
+    ].filter(Boolean).join(" "));
+    if (source) return source;
+    const scope = normalizeText(record.scopePath || record.sourceScopePath || "");
+    const match = scope.match(/scripture\.nt\.([a-z]+)\.(\d+)\.verse\.(\d+)/i);
+    if (match) return `${scopeBookTitle(match[1])} ${match[2]}:${match[3]}`;
+    return normalizeText(record.sourceTitle || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function timelinePromotionSourceScope(record = {}) {
+    return normalizeText(record.scopePath || record.sourceScopePath || record.verseRange || record.verseRef || record.sourceTitle || record.sourceContext?.sourceTitle || currentStudyScopeLabel());
+  }
+
+  function promotedTimelineRecordFromOrderedEvent(eventItem = {}, index = 0) {
+    const sourceReference = timelinePromotionSourceReference(eventItem);
+    const sourceScope = timelinePromotionSourceScope(eventItem);
+    const evidence = narrativeTextFromOrderedEvent(eventItem);
+    const eventType = orderedEventDisplayType(eventItem);
+    const sequenceNumber = Number(eventItem.sequenceOrder || eventItem.sourceSequence || eventItem.order || index + 1);
+    const eventId = normalizeText(eventItem.id || eventItem.eventId || `ordered-event-${index + 1}`);
+    return {
+      schemaVersion: 1,
+      layer: "ICE_TIMELINE_ITEMS",
+      timelineId: `timeline-promotion-${eventId}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
+      sourceScope,
+      sourceReference,
+      sequenceNumber,
+      eventId,
+      eventType,
+      eventName: orderedEventTitle(eventItem) || eventType,
+      participants: timelineEventParticipants(eventItem),
+      locations: uniqueStudyList([
+        ...asArray(eventItem.locations),
+        eventItem.location,
+        eventItem.place
+      ].map((value) => normalizeText(value)).filter(Boolean)),
+      authority: normalizeText(eventItem.authority || eventItem.authoritySource || eventItem.sourceAuthority || ""),
+      evidence,
+      sourcePhrase: evidence,
+      confidence: eventItem.confidence || eventItem.appAccuracy || "grounded",
+      provenance: "I.C.E. Timeline Promotion derived from accepted Ordered Events",
+      inferenceLevel: "Grounded Observation",
+      sourceUrl: eventItem.sourceUrl || eventItem.sourceContext?.sourceUrl || "",
+      scopePath: eventItem.scopePath || "",
+      sourceContext: eventItem.sourceContext || {},
+      originalRecord: eventItem,
+      promotionStatus: evidence && sourceScope ? "promoted" : "unresolved",
+      promotionReason: "Accepted Ordered Event with source order preserved",
+      scopeBoundary: "Timeline promotion summarizes existing source order only; it does not infer missing chronology, reorder events, create implied events, crawl, navigate, or process queues."
+    };
+  }
+
+  function promotedTimelineRecords() {
+    const stored = scopedSemanticRecords(studyData.timelineItems).map((item, index) => ({
+      ...item,
+      timelineId: item.timelineId || item.id || `stored-timeline-${index + 1}`,
+      sequenceNumber: Number(item.sequenceNumber || item.sequenceOrder || index + 1),
+      sourceScope: timelinePromotionSourceScope(item),
+      sourceReference: timelinePromotionSourceReference(item),
+      eventType: item.eventType || item.timelineType || timelineEventTypeFromText([item.detectedDateText, item.contextSnippet, item.sourcePhrase].join(" ")),
+      eventName: item.eventName || item.detectedDateText || item.timelineLabel || "Timeline item",
+      evidence: item.evidence || item.contextSnippet || item.sourcePhrase || "",
+      provenance: item.provenance || "ICE_TIMELINE_ITEMS stored timeline record",
+      inferenceLevel: item.inferenceLevel || "Grounded Observation",
+      promotionStatus: item.promotionStatus || "promoted"
+    }));
+    const promoted = scopedSemanticRecords(studyData.orderedEvents)
+      .map(promotedTimelineRecordFromOrderedEvent)
+      .filter((item) => item.promotionStatus === "promoted")
+      .sort((left, right) => Number(left.sequenceNumber || 0) - Number(right.sequenceNumber || 0));
+    const seen = new Set();
+    return [...stored, ...promoted]
+      .filter((item) => {
+        const key = normalizeText([item.sourceScope, item.sequenceNumber, item.eventType, item.evidence].join("|")).toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 120);
+  }
+
   function timelineEventSourceFields(record = {}) {
     return {
-      verseRange: record.verseRange || record.sourceVerse || record.sourceRef || "",
-      scopePath: record.scopePath || record.sourceScopePath || "",
-      sourcePhrase: record.sourcePhrase || record.anchorText || record.sourceSnippet || record.summarySnippet || "",
+      verseRange: record.verseRange || record.sourceReference || record.sourceVerse || record.sourceRef || "",
+      scopePath: record.scopePath || record.sourceScope || record.sourceScopePath || "",
+      sourcePhrase: record.sourcePhrase || record.evidence || record.anchorText || record.sourceSnippet || record.summarySnippet || "",
       sourceUrl: record.sourceUrl || record.sourceContext?.sourceUrl || "",
       sourceContext: record.sourceContext || {}
     };
@@ -14776,6 +15056,13 @@ createRevelationPartsSection(item.subEvents)
       fallbackName: `${item.actor || item.narrator || "Source"} ${item.action || item.eventType || "event"}`,
       eventType: timelineEventTypeFromText(`${item.eventType} ${item.action} ${item.semanticCategory}`),
       whyItMatters: item.normalizedMeaning || item.sourceGrounding || item.sourceSnippet
+    }));
+    promotedTimelineRecords().forEach((item) => addEvent(item, {
+      sourceLayer: "Timeline Promotions / Ordered Events",
+      fallbackName: item.eventName,
+      eventType: item.eventType,
+      whyItMatters: item.evidence || item.eventName,
+      evidenceWeight: "Grounded Ordered Event Promotion"
     }));
     journeyHubRecords()
       .filter((item) => /event|teaching|fulfillment|revelation/i.test(item.hubType || ""))
@@ -15153,6 +15440,8 @@ createRevelationPartsSection(item.subEvents)
 
   function timelineSequencePosition(item = {}, fallback = 0) {
     const source = normalizeText([item.verseRange, item.scopePath, item.sourcePhrase, item.eventName].filter(Boolean).join(" "));
+    const ntScope = source.match(/scripture\.nt\.[a-z]+\.(\d+)\.verse\.(\d+)/i);
+    if (ntScope) return (Number(ntScope[1]) * 1000) + Number(ntScope[2]);
     const chapterVerse = source.match(/\b(?:Matthew|Mark|Luke|John)?\s*(\d+)\s*[:.]\s*(\d+)/i);
     if (chapterVerse) return (Number(chapterVerse[1]) * 1000) + Number(chapterVerse[2]);
     const scopeVerse = source.match(/\bverse:(\d+):(\d+)/i);
@@ -16888,22 +17177,28 @@ createRevelationPartsSection(item.subEvents)
   function renderTimeline(term) {
     const container = document.getElementById("timelineCards");
     const count = document.getElementById("timelineCount");
-    const timeline = Array.isArray(studyData.timelineItems)
-      ? studyData.timelineItems
-      : [];
+    const timeline = promotedTimelineRecords();
     const filtered = timeline.filter((item) =>
-      itemMatches(item, [
-        "detectedDateText",
-        "contextSnippet",
-        "sourceTitle",
-        "sourceUrl"
-      ], term)
+      matchesSearchQuery([
+        item.eventName,
+        item.eventType,
+        item.sourceReference,
+        item.sourceScope,
+        item.evidence,
+        item.provenance
+      ].join(" "), term)
     );
 
     renderLimited(container, filtered, count, (item) => createCard(
-      item.detectedDateText || "Undated",
-      trimText(item.contextSnippet, 180),
-      item.sourceTitle || ""
+      `${item.sequenceNumber || ""}. ${item.eventName || item.eventType || "Timeline item"}`.trim(),
+      [
+        `Event type: ${item.eventType || "Not classified"}`,
+        `Source: ${item.sourceReference || item.sourceScope || "Not recorded"}`,
+        `Evidence: ${trimText(item.evidence, 180) || "Not recorded"}`,
+        `Inference: ${item.inferenceLevel || "Grounded Observation"}`,
+        `Boundary: ${item.scopeBoundary || "Timeline promotion preserves source order only."}`
+      ].join("\n"),
+      [item.provenance || "ICE_TIMELINE_ITEMS", item.confidence || ""].filter(Boolean).join(" | ")
     ), "No timeline items match.");
   }
 
