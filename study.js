@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     domSemanticHints: "ICE_DOM_SEMANTIC_HINTS",
     sourceAdapters: "ICE_SOURCE_ADAPTERS",
     activeAdapter: "ICE_ACTIVE_ADAPTER",
+    languageAdapters: "ICE_LANGUAGE_ADAPTERS",
+    languageRecords: "ICE_LANGUAGE_RECORDS",
     scopeIntegrity: "ICE_SCOPE_INTEGRITY",
     sourceDiscoveryIndex: "ICE_SOURCE_DISCOVERY_INDEX",
     referenceGraph: "ICE_REFERENCE_GRAPH",
@@ -12469,6 +12471,57 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function registeredLanguageAdapters() {
+    return [{
+      adapterId: "english_surface_v1",
+      sourceLanguage: "English",
+      targetLanguage: "English",
+      tokenizationRules: ["basic whitespace and punctuation tokenization pending implementation"],
+      quoteRules: ["quote boundary support pending"],
+      divineTitleRules: ["existing I.C.E. divine title display rules pending adapter integration"],
+      pronounRules: ["pronoun support pending"],
+      morphologySupportLevel: "none / pending",
+      confidenceModel: "explicit / pending",
+      partOfSpeechSupport: "pending",
+      recordAuthority: "support record only",
+      provenance: "I.C.E. Language Adapter Registry foundation",
+      storageKey: STORAGE_KEYS.languageAdapters,
+      trustBoundary: "Language adapters support future grammar and translation evaluation; they do not rewrite source text, Context Lock, semantic records, Study Scope, or current extraction behavior."
+    }];
+  }
+
+  function generatedLanguageRecords() {
+    return [];
+  }
+
+  function languageAdapterInspectorLines() {
+    const adapters = registeredLanguageAdapters();
+    const records = generatedLanguageRecords();
+    const activeAdapterName = studyData.activeAdapter?.adapterName || studyData.activeAdapter?.adapterId || studyData.analysisStatus?.activeAdapterName || "not recorded";
+    const lines = [
+      `Registered language adapters: ${adapters.length}`,
+      `Generated language records: ${records.length}`,
+      `Storage keys reserved: ${STORAGE_KEYS.languageAdapters}; ${STORAGE_KEYS.languageRecords}`,
+      `Active source adapter: ${activeAdapterName}`
+    ];
+    adapters.forEach((adapter) => {
+      lines.push([
+        adapter.adapterId,
+        `source=${adapter.sourceLanguage}`,
+        `target=${adapter.targetLanguage}`,
+        `tokenization=${adapter.tokenizationRules.join("; ")}`,
+        `POS=${adapter.partOfSpeechSupport}`,
+        `morphology=${adapter.morphologySupportLevel}`,
+        `quotes=${adapter.quoteRules.join("; ")}`,
+        `pronouns=${adapter.pronounRules.join("; ")}`,
+        `divine titles=${adapter.divineTitleRules.join("; ")}`,
+        `confidence=${adapter.confidenceModel}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: registry-only foundation. No Greek, Hebrew, Aramaic, Strong's, lexicon, grammar, morphology, POS, translation comparison, or language-record generation is implemented yet.");
+    lines.push("Trust: language adapter records are support records only; they do not rewrite source text, Context Lock, semantic records, Study View results, queues, or scope.");
+    return lines;
+  }
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -12594,6 +12647,7 @@ createRevelationPartsSection(item.subEvents)
       relationshipPromotionLines: relationshipPromotionInspectorLines(),
       themePromotionLines: themePromotionInspectorLines(),
       literaryPromotionLines: literaryPromotionInspectorLines(),
+      languageAdapterLines: languageAdapterInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12620,6 +12674,7 @@ createRevelationPartsSection(item.subEvents)
       item.relationshipPromotionLines,
       item.themePromotionLines,
       item.literaryPromotionLines,
+      item.languageAdapterLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12655,6 +12710,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Relationship Promotion Inspector", "", { list: item.relationshipPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Relationship Promotion Inspector" }),
       createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
+      createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
