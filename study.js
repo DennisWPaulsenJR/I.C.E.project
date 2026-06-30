@@ -12482,7 +12482,7 @@ createRevelationPartsSection(item.subEvents)
       pronounRules: ["pronoun support pending"],
       morphologySupportLevel: "none / pending",
       confidenceModel: "explicit / pending",
-      partOfSpeechSupport: "pending",
+      partOfSpeechSupport: "safe English surface preview",
       recordAuthority: "support record only",
       provenance: "I.C.E. Language Adapter Registry foundation",
       storageKey: STORAGE_KEYS.languageAdapters,
@@ -12505,6 +12505,23 @@ createRevelationPartsSection(item.subEvents)
     return "word";
   }
 
+  function languagePreviewPartOfSpeech(token = "") {
+    const value = normalizeText(token);
+    const lower = value.toLowerCase();
+    if (!value) return { partOfSpeech: "unresolved", confidence: "unresolved" };
+    if (/^\d+$/.test(value)) return { partOfSpeech: "number", confidence: "strong / surface numeric token" };
+    if (/^[^A-Za-z\d]+$/.test(value)) return { partOfSpeech: "punctuation", confidence: "strong / punctuation token" };
+    if (/^(he|him|his|she|her|hers|they|them|their|theirs|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|ye)$/i.test(value)) return { partOfSpeech: "pronoun", confidence: "strong / closed pronoun list" };
+    if (/^(a|an|the)$/i.test(value)) return { partOfSpeech: "article", confidence: "strong / closed article list" };
+    if (/^(and|but|or|nor|for|yet|so|because|if|when|while|therefore|wherefore)$/i.test(value)) return { partOfSpeech: "conjunction", confidence: "strong / closed conjunction list" };
+    if (/^(of|to|in|into|unto|on|upon|with|from|by|for|through|under|over|before|after|among|against|beside|between|within|without|out)$/i.test(value)) return { partOfSpeech: "preposition", confidence: "strong / closed preposition list" };
+    if (/^(is|are|was|were|be|being|been|am|have|has|had|do|does|did|went|came|come|go|bring|brought|said|say|saying|spake|speak|heard|hear|saw|see|followed|follow|called|call|taught|teach|healed|heal|cast|made|make|took|take|gave|give|sent|send|departed|depart|entered|enter|arose|rise|arise|worshipped|worship|answered|answer|asked|ask|commanded|command|fulfilled|fulfill)$/i.test(value)) return { partOfSpeech: "verb", confidence: "supported / closed high-frequency verb list" };
+    if (/^(holy|good|great|many|few|poor|meek|merciful|pure|righteous|evil|false|wise|young|old|first|last|other)$/i.test(value)) return { partOfSpeech: "adjective", confidence: "supported / closed adjective list" };
+    if (/^(not|now|then|again|there|here|forth|away|straightway|immediately|verily|also)$/i.test(value) || /ly$/i.test(value)) return { partOfSpeech: "adverb", confidence: "supported / surface adverb heuristic" };
+    if (/^[A-Z][A-Za-z'-]*$/.test(value) || /^(jesus|christ|god|lord|spirit|mary|joseph|abraham|david|moses|john|peter|galilee|jerusalem|bethlehem|nazareth|egypt)$/i.test(value)) return { partOfSpeech: "proper_noun", confidence: "supported / capitalization or known-name surface list" };
+    if (/^(mountain|sea|ship|city|house|synagogue|wilderness|disciple|disciples|multitude|multitudes|kingdom|heaven|earth|father|mother|son|daughter|servant|people|word|words|law|prophet|prophets|angel|child|man|men|woman|faith|mercy|peace|righteousness|sick|leper|centurion)$/i.test(value)) return { partOfSpeech: "noun", confidence: "supported / closed noun list" };
+    return { partOfSpeech: "unresolved", confidence: "unresolved / safe fallback" };
+  }
   function languagePreviewSourceEntries() {
     const entries = [];
     scopedSemanticRecords(studyData.domSemanticHints).forEach((hint, index) => {
@@ -12544,7 +12561,7 @@ createRevelationPartsSection(item.subEvents)
           language: "English",
           adapterId,
           label: languagePreviewTokenLabel(token),
-          partOfSpeech: "pending/unknown",
+          ...languagePreviewPartOfSpeech(token),
           grammaticalRole: "pending/unknown",
           quoteBoundary: "pending/unknown",
           confidence: "preview / surface token only",
@@ -12563,18 +12580,46 @@ createRevelationPartsSection(item.subEvents)
     }, {});
   }
 
+  function languageRecordPartOfSpeechCounts(records = []) {
+    return asArray(records).reduce((counts, record) => {
+      const partOfSpeech = normalizeText(record.partOfSpeech || "unresolved") || "unresolved";
+      counts[partOfSpeech] = (counts[partOfSpeech] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function languageRecordConfidenceCounts(records = []) {
+    return asArray(records).reduce((counts, record) => {
+      const confidence = normalizeText(record.confidence || "unresolved") || "unresolved";
+      const bucket = confidence.split("/")[0].trim() || confidence;
+      counts[bucket] = (counts[bucket] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function languageCountLine(counts = {}) {
+    return Object.keys(counts).length ? Object.entries(counts).map(([label, count]) => `${label}=${count}`).join("; ") : "none";
+  }
+
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
     const labelCounts = languageRecordLabelCounts(records);
+    const posCounts = languageRecordPartOfSpeechCounts(records);
+    const confidenceCounts = languageRecordConfidenceCounts(records);
     const activeAdapterName = studyData.activeAdapter?.adapterName || studyData.activeAdapter?.adapterId || studyData.analysisStatus?.activeAdapterName || "not recorded";
     const unresolvedCount = records.filter((record) => /pending\/unknown|unresolved/i.test(`${record.partOfSpeech} ${record.grammaticalRole} ${record.quoteBoundary} ${record.label}`)).length;
+    const unresolvedPosCount = Number(posCounts.unresolved || 0);
+    const unresolvedPercentage = records.length ? Math.round((unresolvedPosCount / records.length) * 100) : 0;
     const lines = [
       `Registered language adapters: ${adapters.length}`,
       `Generated language records: ${records.length}`,
       `Token count: ${records.length}`,
-      `Safe label counts: ${Object.keys(labelCounts).length ? Object.entries(labelCounts).map(([label, count]) => `${label}=${count}`).join("; ") : "none"}`,
+      `Safe label counts: ${languageCountLine(labelCounts)}`,
+      `POS counts: ${languageCountLine(posCounts)}`,
+      `Confidence counts: ${languageCountLine(confidenceCounts)}`,
       `Unresolved count: ${unresolvedCount}`,
+      `Unresolved POS: ${unresolvedPosCount} (${unresolvedPercentage}%)`,
       `Storage keys reserved: ${STORAGE_KEYS.languageAdapters}; ${STORAGE_KEYS.languageRecords}`,
       "Storage mode: preview-only in Editor / Architect View; ICE_LANGUAGE_RECORDS is reserved but not written by this foundation.",
       `Active source adapter: ${activeAdapterName}`
@@ -12593,7 +12638,7 @@ createRevelationPartsSection(item.subEvents)
         `confidence=${adapter.confidenceModel}`
       ].join(" | "));
     });
-    lines.push("Boundary: preview-only English surface records. No Greek, Hebrew, Aramaic, Strong's, lexicon, grammar, morphology, POS, translation comparison, pronoun resolution, subject/object inference, or semantic promotion is implemented yet.");
+    lines.push("Boundary: preview-only English surface POS records. No Greek, Hebrew, Aramaic, Strong's, lexicon, grammar, morphology, translation comparison, pronoun resolution, subject/object inference, speaker/audience inference, or semantic promotion is implemented yet.");
     lines.push("Trust: language adapter records are support records only; they do not rewrite source text, Context Lock, semantic records, Study View results, queues, or scope.");
     return lines;
   }
