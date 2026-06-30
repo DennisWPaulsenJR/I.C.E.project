@@ -12564,7 +12564,8 @@ createRevelationPartsSection(item.subEvents)
           ...languagePreviewPartOfSpeech(token),
           grammaticalRole: "pending/unknown",
           quoteBoundary: "pending/unknown",
-          confidence: "preview / surface token only",
+          sourceIndex: entry.sourceIndex,
+          tokenIndex,
           provenance: "I.C.E. English Surface Adapter preview generated in Editor / Architect View only"
         });
       });
@@ -12601,6 +12602,145 @@ createRevelationPartsSection(item.subEvents)
     return Object.keys(counts).length ? Object.entries(counts).map(([label, count]) => `${label}=${count}`).join("; ") : "none";
   }
 
+  function pronounResolutionSupportedPronoun(token = "") {
+    return /^(he|him|his|they|them|their|we|us|our|i|me|my|you|your)$/i.test(normalizeText(token));
+  }
+
+  function pronounResolutionRoleForToken(token = "") {
+    const lower = normalizeText(token).toLowerCase();
+    if (/^(i|me|my)$/.test(lower)) return "speaker";
+    if (/^(you|your)$/.test(lower)) return "audience";
+    if (/^(we|us|our|they|them|their)$/.test(lower)) return "plural_or_group";
+    if (/^(he|him|his)$/.test(lower)) return "singular_actor";
+    return "unsupported";
+  }
+
+  function pronounResolutionCleanCandidate(value = "") {
+    return normalizeText(value).replace(/\s+\/\s+/g, " / ");
+  }
+
+  function pronounResolutionCandidateAllowed(candidate = "", role = "") {
+    const value = pronounResolutionCleanCandidate(candidate);
+    if (!value || /unknown|narrator|source|current analyzed/i.test(value)) return false;
+    if (role === "plural_or_group") return /disciples|multitudes|people|brethren|scribes|pharisees|they|group|audience/i.test(value);
+    if (role === "singular_actor") return /^(JESUS|JESUS CHRIST|Joseph|John the Baptist|Peter|Abraham|David|Moses|AngEL Of THE LORD|THE LORD|GOD)$/i.test(value);
+    return true;
+  }
+
+  function pronounResolutionMatchingContextLocks(record = {}) {
+    const sourceReference = normalizeText(record.sourceReference || "").toLowerCase();
+    const sourceScope = normalizeText(record.sourceScope || "").toLowerCase();
+    return contextLockRecords().filter((lock) => {
+      const verseRange = normalizeText(lock.verseRange || "").toLowerCase();
+      const lockText = [lock.verseRange, lock.eventScope, lock.scopePath, lock.sourceContext?.sourceTitle].map((value) => normalizeText(value).toLowerCase()).filter(Boolean).join(" ");
+      if (!sourceReference && !sourceScope) return true;
+      if (!lockText) return false;
+      return (sourceReference && lockText.includes(sourceReference)) || (sourceReference && verseRange && sourceReference.includes(verseRange)) || (sourceScope && lockText.includes(sourceScope));
+    });
+  }
+
+  function pronounResolutionContextCandidates(record = {}) {
+    const role = pronounResolutionRoleForToken(record.token);
+    const locks = pronounResolutionMatchingContextLocks(record);
+    const candidates = [];
+    locks.forEach((lock) => {
+      if (role === "speaker") candidates.push({ value: lock.speaker, type: "current speaker" });
+      else if (role === "audience") candidates.push({ value: lock.audience || lock.recipient, type: "current audience" });
+      else if (role === "plural_or_group") {
+        asArray(lock.participants).forEach((participant) => candidates.push({ value: participant, type: "Context Lock participant" }));
+        if (lock.audience) candidates.push({ value: lock.audience, type: "Context Lock audience" });
+      } else if (role === "singular_actor") {
+        [lock.speaker, lock.audience, lock.recipient, lock.messenger, lock.authoritySource, ...asArray(lock.participants)].forEach((value) => candidates.push({ value, type: "Context Lock actor" }));
+      }
+    });
+    const seen = new Set();
+    return candidates
+      .map((candidate) => ({ ...candidate, value: pronounResolutionCleanCandidate(candidate.value) }))
+      .filter((candidate) => pronounResolutionCandidateAllowed(candidate.value, role))
+      .filter((candidate) => {
+        const key = candidate.value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function pronounResolutionNearbyCandidates(record = {}, records = []) {
+    const role = pronounResolutionRoleForToken(record.token);
+    if (role !== "singular_actor" && role !== "plural_or_group") return [];
+    const candidates = records
+      .filter((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex < record.tokenIndex && record.tokenIndex - item.tokenIndex <= 8)
+      .filter((item) => item.partOfSpeech === "proper_noun" || item.label === "possible proper noun")
+      .map((item) => ({ value: pronounResolutionCleanCandidate(item.token), type: "nearby explicit actor token" }))
+      .filter((candidate) => pronounResolutionCandidateAllowed(candidate.value, role));
+    const seen = new Set();
+    return candidates.filter((candidate) => {
+      const key = candidate.value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function pronounResolutionPreviewRecords() {
+    const records = generatedLanguageRecords();
+    const pronouns = records.filter((record) => record.partOfSpeech === "pronoun" && pronounResolutionSupportedPronoun(record.token));
+    return pronouns.map((record) => {
+      const contextCandidates = pronounResolutionContextCandidates(record);
+      const nearbyCandidates = pronounResolutionNearbyCandidates(record, records);
+      const candidates = contextCandidates.length ? contextCandidates : nearbyCandidates;
+      const uniqueCandidates = candidates.map((candidate) => candidate.value);
+      let status = "unresolved";
+      let resolvedEntity = "";
+      let resolutionType = "not resolved";
+      let evidence = "No single grounded candidate met conservative resolution rules.";
+      let confidence = "unresolved";
+      if (uniqueCandidates.length === 1) {
+        status = "resolved";
+        resolvedEntity = uniqueCandidates[0];
+        resolutionType = candidates[0].type;
+        evidence = `${record.token} linked to ${resolvedEntity} by ${resolutionType} within ${record.sourceReference || currentStudyScopeLabel()}.`;
+        confidence = "strong / single grounded candidate";
+      } else if (uniqueCandidates.length > 1) {
+        status = "ambiguous";
+        evidence = `Multiple plausible candidates: ${uniqueCandidates.slice(0, 5).join(", ")}.`;
+        confidence = "ambiguous / multiple grounded candidates";
+      }
+      return {
+        pronoun: record.token,
+        sourceScope: record.sourceScope || currentStudyScopeLabel(),
+        sourceReference: record.sourceReference || currentStudyScopeLabel(),
+        tokenId: record.tokenId,
+        resolvedEntity,
+        resolutionType,
+        evidence,
+        confidence,
+        provenance: "I.C.E. conservative pronoun resolution preview from english_surface_v1 and current-scope Context Lock records",
+        inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+        status
+      };
+    });
+  }
+
+  function pronounResolutionInspectorLines() {
+    const records = pronounResolutionPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Pronouns found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Resolution confidence: ${resolved.length ? "strong only" : "no strong resolutions in current preview"}`,
+      "Supported pronouns: he, him, his, they, them, their, we, us, our, I, me, my, you, your",
+      "Boundary: preview-only. Pronoun resolution does not rewrite source text, Context Lock, entity classification, semantic records, Study View output, queues, or scope."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.pronoun} -> ${record.resolvedEntity} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.pronoun} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.pronoun}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
@@ -12768,6 +12908,7 @@ createRevelationPartsSection(item.subEvents)
       themePromotionLines: themePromotionInspectorLines(),
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
+      pronounResolutionLines: pronounResolutionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12795,6 +12936,7 @@ createRevelationPartsSection(item.subEvents)
       item.themePromotionLines,
       item.literaryPromotionLines,
       item.languageAdapterLines,
+      item.pronounResolutionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12831,6 +12973,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
+      createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
