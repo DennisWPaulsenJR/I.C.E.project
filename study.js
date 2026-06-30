@@ -12741,6 +12741,124 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.pronoun}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+  function quotationBoundaryIsQuoteMarker(token = "") {
+    return /^["'“”‘’]+$/.test(normalizeText(token));
+  }
+
+  function quotationBoundarySegmentText(records = []) {
+    return records.map((record) => record.token).join(" ").replace(/\s+([,.;:!?])/g, "$1").replace(/\s+/g, " ").trim();
+  }
+
+  function quotationBoundaryRecord({ sourceIndex, sourceScope, sourceReference, startRecord, endRecord, quoteType, confidence, inferenceLevel, segmentRecords = [] } = {}) {
+    const startToken = startRecord?.tokenId || "";
+    const endToken = endRecord?.tokenId || startToken;
+    return {
+      quoteId: `english_surface_v1.quote.${sourceIndex}.${startRecord?.tokenIndex ?? 0}.${endRecord?.tokenIndex ?? startRecord?.tokenIndex ?? 0}`,
+      sourceScope: sourceScope || currentStudyScopeLabel(),
+      sourceReference: sourceReference || currentStudyScopeLabel(),
+      quoteStartToken: startToken,
+      quoteEndToken: endToken,
+      quoteType,
+      segmentPreview: quotationBoundarySegmentText(segmentRecords).slice(0, 180),
+      confidence,
+      provenance: "I.C.E. quotation boundary preview from explicit english_surface_v1 punctuation tokens only",
+      inferenceLevel
+    };
+  }
+
+  function quotationBoundaryPreviewRecords() {
+    const records = generatedLanguageRecords();
+    const grouped = records.reduce((groups, record) => {
+      const key = String(record.sourceIndex ?? "source");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(record);
+      return groups;
+    }, new Map());
+    const previewRecords = [];
+    grouped.forEach((items, key) => {
+      const sorted = items.slice().sort((left, right) => Number(left.tokenIndex || 0) - Number(right.tokenIndex || 0));
+      if (!sorted.length) return;
+      let openQuote = null;
+      let narrationStart = sorted[0];
+      const pushNarration = (endRecord) => {
+        if (!narrationStart || !endRecord || Number(endRecord.tokenIndex) < Number(narrationStart.tokenIndex)) return;
+        const segment = sorted.filter((record) => record.tokenIndex >= narrationStart.tokenIndex && record.tokenIndex <= endRecord.tokenIndex);
+        if (!segment.some((record) => !quotationBoundaryIsQuoteMarker(record.token))) return;
+        previewRecords.push(quotationBoundaryRecord({
+          sourceIndex: key,
+          sourceScope: narrationStart.sourceScope,
+          sourceReference: narrationStart.sourceReference,
+          startRecord: narrationStart,
+          endRecord,
+          quoteType: "narration",
+          confidence: "strong / explicit absence of quote markers in segment",
+          inferenceLevel: "Source Text / punctuation preview only",
+          segmentRecords: segment
+        }));
+      };
+      sorted.forEach((record, index) => {
+        if (!quotationBoundaryIsQuoteMarker(record.token)) return;
+        if (!openQuote) {
+          const previous = sorted[index - 1];
+          if (previous) pushNarration(previous);
+          openQuote = record;
+          narrationStart = null;
+        } else {
+          const segment = sorted.filter((item) => item.tokenIndex >= openQuote.tokenIndex && item.tokenIndex <= record.tokenIndex);
+          previewRecords.push(quotationBoundaryRecord({
+            sourceIndex: key,
+            sourceScope: openQuote.sourceScope,
+            sourceReference: openQuote.sourceReference,
+            startRecord: openQuote,
+            endRecord: record,
+            quoteType: "direct quotation",
+            confidence: "strong / explicit paired quote markers",
+            inferenceLevel: "Source Text / punctuation preview only",
+            segmentRecords: segment
+          }));
+          openQuote = null;
+          narrationStart = sorted[index + 1] || null;
+        }
+      });
+      if (openQuote) {
+        previewRecords.push(quotationBoundaryRecord({
+          sourceIndex: key,
+          sourceScope: openQuote.sourceScope,
+          sourceReference: openQuote.sourceReference,
+          startRecord: openQuote,
+          endRecord: sorted[sorted.length - 1],
+          quoteType: "unresolved",
+          confidence: "unresolved / unmatched quote marker",
+          inferenceLevel: "Unresolved / punctuation preview only",
+          segmentRecords: sorted.filter((record) => record.tokenIndex >= openQuote.tokenIndex)
+        }));
+      } else if (narrationStart) {
+        pushNarration(sorted[sorted.length - 1]);
+      }
+    });
+    return previewRecords.slice(0, 120);
+  }
+
+  function quotationBoundaryInspectorLines() {
+    const records = quotationBoundaryPreviewRecords();
+    const quotations = records.filter((record) => record.quoteType === "direct quotation");
+    const narrations = records.filter((record) => record.quoteType === "narration");
+    const mixed = records.filter((record) => record.quoteType === "mixed quotation");
+    const unresolved = records.filter((record) => record.quoteType === "unresolved");
+    const lines = [
+      `Quotation records: ${records.length}`,
+      `Quotation count: ${quotations.length}`,
+      `Narration count: ${narrations.length}`,
+      `Mixed quotation count: ${mixed.length}`,
+      `Unresolved count: ${unresolved.length}`,
+      "Quote types: direct quotation, narration, mixed quotation, unresolved",
+      "Boundary: preview-only. Quotation boundaries use explicit visible quote markers only; they do not infer speakers, audience, missing quotations, discourse structure, or semantic meaning."
+    ];
+    lines.push(quotations.length ? `Sample quote ranges: ${quotations.slice(0, 5).map((record) => `${record.sourceReference}: ${record.quoteStartToken} -> ${record.quoteEndToken}`).join(" | ")}` : "Sample quote ranges: none");
+    lines.push(narrations.length ? `Sample narration segments: ${narrations.slice(0, 3).map((record) => `${record.sourceReference}: ${record.segmentPreview || "narration segment"}`).join(" | ")}` : "Sample narration segments: none");
+    if (unresolved.length) lines.push(`Unresolved quote markers: ${unresolved.slice(0, 5).map((record) => `${record.sourceReference}: ${record.quoteStartToken}`).join(" | ")}`);
+    return lines;
+  }
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
@@ -12909,6 +13027,7 @@ createRevelationPartsSection(item.subEvents)
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
       pronounResolutionLines: pronounResolutionInspectorLines(),
+      quotationBoundaryLines: quotationBoundaryInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -12937,6 +13056,7 @@ createRevelationPartsSection(item.subEvents)
       item.literaryPromotionLines,
       item.languageAdapterLines,
       item.pronounResolutionLines,
+      item.quotationBoundaryLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -12974,6 +13094,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
+      createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
