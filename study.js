@@ -12490,18 +12490,93 @@ createRevelationPartsSection(item.subEvents)
     }];
   }
 
+  function languagePreviewTokenParts(text = "") {
+    return normalizeText(text).match(/[A-Za-z]+(?:'[A-Za-z]+)?|\d+|[^\sA-Za-z\d]/g) || [];
+  }
+
+  function languagePreviewTokenLabel(token = "") {
+    const value = normalizeText(token);
+    if (!value) return "unresolved";
+    if (/^\d+$/.test(value)) return "number";
+    if (/^[^A-Za-z\d]+$/.test(value)) return "punctuation";
+    if (/^(he|him|his|she|her|hers|they|them|their|theirs|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|ye)$/i.test(value)) return "possible pronoun";
+    if (/^(god|lord|jesus|christ|holy|spirit|father|son|messiah|savior|saviour|jehovah)$/i.test(value)) return "possible divine title";
+    if (/^[A-Z][A-Za-z'-]*$/.test(value)) return "possible proper noun";
+    return "word";
+  }
+
+  function languagePreviewSourceEntries() {
+    const entries = [];
+    scopedSemanticRecords(studyData.domSemanticHints).forEach((hint, index) => {
+      const text = normalizeText(hint.text || hint.sourcePhrase || hint.label || "");
+      if (!text || /^(chapter_heading|source_description|meta_description|page_description)$/i.test(hint.hintType || "")) return;
+      const context = hint.sourceContext || {};
+      const activePage = activeSourcePageRecord();
+      const chapter = Number(hint.chapter || hint.verseChapter || context.chapter || activePage?.sourceCaptureChapter || 0);
+      const book = hint.book || context.book || activePage?.sourceCaptureBook || "";
+      const verseNumber = Number(hint.verseNumber || hint.verse || 0);
+      const sourceReference = book && chapter && verseNumber
+        ? sourceVerseLabel({ book: sourceVerseBookTitle(book), chapter, verses: [verseNumber] })
+        : normalizeText(hint.scopePath || hint.verseRange || hint.sourceContext?.sourceTitle || currentStudyScopeLabel());
+      entries.push({ text, sourceReference, sourceScope: normalizeText(hint.scopePath || hint.sourceContext?.sourceTitle || currentStudyScopeLabel()), sourceIndex: index });
+    });
+    if (!entries.length) {
+      const capture = studyData.latestCapture || {};
+      const text = normalizeText(capture.text || capture.sourceText || capture.contentText || capture.pageText || capture.title || activeSourcePageRecord()?.sourceTitle || "");
+      if (text) entries.push({ text, sourceReference: currentStudyScopeLabel(), sourceScope: currentStudyScopeLabel(), sourceIndex: 0 });
+    }
+    return entries;
+  }
+
   function generatedLanguageRecords() {
-    return [];
+    const adapterId = "english_surface_v1";
+    const maxRecords = 750;
+    const records = [];
+    languagePreviewSourceEntries().forEach((entry) => {
+      languagePreviewTokenParts(entry.text).forEach((token, tokenIndex) => {
+        if (records.length >= maxRecords) return;
+        records.push({
+          tokenId: `${adapterId}.${entry.sourceIndex}.${tokenIndex}.${records.length}`,
+          sourceScope: entry.sourceScope || currentStudyScopeLabel(),
+          sourceReference: entry.sourceReference || currentStudyScopeLabel(),
+          token,
+          surfaceForm: token,
+          language: "English",
+          adapterId,
+          label: languagePreviewTokenLabel(token),
+          partOfSpeech: "pending/unknown",
+          grammaticalRole: "pending/unknown",
+          quoteBoundary: "pending/unknown",
+          confidence: "preview / surface token only",
+          provenance: "I.C.E. English Surface Adapter preview generated in Editor / Architect View only"
+        });
+      });
+    });
+    return records;
+  }
+
+  function languageRecordLabelCounts(records = []) {
+    return asArray(records).reduce((counts, record) => {
+      const label = normalizeText(record.label || "unresolved") || "unresolved";
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
   }
 
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
+    const labelCounts = languageRecordLabelCounts(records);
     const activeAdapterName = studyData.activeAdapter?.adapterName || studyData.activeAdapter?.adapterId || studyData.analysisStatus?.activeAdapterName || "not recorded";
+    const unresolvedCount = records.filter((record) => /pending\/unknown|unresolved/i.test(`${record.partOfSpeech} ${record.grammaticalRole} ${record.quoteBoundary} ${record.label}`)).length;
     const lines = [
       `Registered language adapters: ${adapters.length}`,
       `Generated language records: ${records.length}`,
+      `Token count: ${records.length}`,
+      `Safe label counts: ${Object.keys(labelCounts).length ? Object.entries(labelCounts).map(([label, count]) => `${label}=${count}`).join("; ") : "none"}`,
+      `Unresolved count: ${unresolvedCount}`,
       `Storage keys reserved: ${STORAGE_KEYS.languageAdapters}; ${STORAGE_KEYS.languageRecords}`,
+      "Storage mode: preview-only in Editor / Architect View; ICE_LANGUAGE_RECORDS is reserved but not written by this foundation.",
       `Active source adapter: ${activeAdapterName}`
     ];
     adapters.forEach((adapter) => {
@@ -12518,7 +12593,7 @@ createRevelationPartsSection(item.subEvents)
         `confidence=${adapter.confidenceModel}`
       ].join(" | "));
     });
-    lines.push("Boundary: registry-only foundation. No Greek, Hebrew, Aramaic, Strong's, lexicon, grammar, morphology, POS, translation comparison, or language-record generation is implemented yet.");
+    lines.push("Boundary: preview-only English surface records. No Greek, Hebrew, Aramaic, Strong's, lexicon, grammar, morphology, POS, translation comparison, pronoun resolution, subject/object inference, or semantic promotion is implemented yet.");
     lines.push("Trust: language adapter records are support records only; they do not rewrite source text, Context Lock, semantic records, Study View results, queues, or scope.");
     return lines;
   }
