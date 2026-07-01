@@ -12975,6 +12975,165 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+  function audienceDetectionRecord({ audienceLevel, detectedAudience, evidence, confidence, inferenceLevel, status = "resolved", sourceScope, sourceReference, quoteId = "" } = {}) {
+    const safeLevel = normalizeText(audienceLevel || "Unresolved Audience");
+    const safeAudience = normalizeText(detectedAudience || "");
+    return {
+      audienceRecordId: `english_surface_v1.audience.${safeLevel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${safeAudience.toLowerCase().replace(/[^a-z0-9]+/g, "-") || status}.${Math.abs(String(evidence || quoteId || safeLevel).split("").reduce((sum, char) => sum + char.charCodeAt(0), 0))}`,
+      sourceScope: sourceScope || currentStudyScopeLabel(),
+      sourceReference: sourceReference || currentStudyScopeLabel(),
+      quoteId,
+      audienceLevel: safeLevel,
+      detectedAudience: safeAudience,
+      evidence: evidence || "No grounded audience evidence recorded.",
+      confidence: confidence || "unresolved",
+      provenance: "I.C.E. audience detection preview from english_surface_v1, quotation boundaries, and current-scope Context Lock records",
+      inferenceLevel: inferenceLevel || "Unresolved / preview only",
+      status
+    };
+  }
+
+  function audienceDetectionAddUnique(records = [], record = {}) {
+    const key = [record.audienceLevel, record.detectedAudience, record.sourceReference, record.quoteId, record.status].map((value) => normalizeText(value).toLowerCase()).join("|");
+    if (!key || records.some((item) => [item.audienceLevel, item.detectedAudience, item.sourceReference, item.quoteId, item.status].map((value) => normalizeText(value).toLowerCase()).join("|") === key)) return;
+    records.push(record);
+  }
+
+  function audienceDetectionContextRecords() {
+    const records = [];
+    contextLockRecords().forEach((lock) => {
+      const sourceScope = lock.scopePath || lock.eventScope || currentStudyScopeLabel();
+      const sourceReference = lock.verseRange || lock.eventScope || currentStudyScopeLabel();
+      const immediate = asArray(lock.participants).map(normalizeText).filter(Boolean).filter((item) => !/unknown|narrator|source/i.test(item));
+      immediate.forEach((participant) => audienceDetectionAddUnique(records, audienceDetectionRecord({
+        audienceLevel: "Immediate Physical Audience",
+        detectedAudience: participant,
+        evidence: `Context Lock participant present in ${sourceReference}.`,
+        confidence: "supported / Context Lock participant",
+        inferenceLevel: "Context / preview only",
+        sourceScope,
+        sourceReference
+      })));
+      const audience = normalizeText(lock.audience || lock.recipient || "");
+      if (audience && !/unknown|narrator|source/i.test(audience)) audienceDetectionAddUnique(records, audienceDetectionRecord({
+        audienceLevel: "Direct Address Audience",
+        detectedAudience: audience,
+        evidence: `Context Lock audience or recipient for ${sourceReference}.`,
+        confidence: "strong / Context Lock audience",
+        inferenceLevel: "Context / preview only",
+        sourceScope,
+        sourceReference
+      }));
+      const narratorAudience = normalizeText(lock.sourceContext?.sourceTitle || lock.eventScope || "");
+      if (narratorAudience) audienceDetectionAddUnique(records, audienceDetectionRecord({
+        audienceLevel: "Narrative Audience",
+        detectedAudience: narratorAudience,
+        evidence: `Narrative frame identifies source scope ${narratorAudience}.`,
+        confidence: "supported / narrative source frame",
+        inferenceLevel: "Context / preview only",
+        sourceScope,
+        sourceReference
+      }));
+    });
+    return records;
+  }
+
+  function audienceDetectionDirectAddressRecords() {
+    const records = [];
+    const languageRecords = generatedLanguageRecords();
+    const quotes = quotationBoundaryPreviewRecords();
+    const directTokens = languageRecords.filter((record) => /^(you|your|ye|thee|thou|thy|thine)$/i.test(normalizeText(record.token)));
+    directTokens.forEach((token) => {
+      const quote = quotes.find((item) => String(item.sourceIndex) === String(token.sourceIndex) && Number(token.tokenIndex) >= Number(item.startTokenIndex || 0) && Number(token.tokenIndex) <= Number(item.endTokenIndex || 0));
+      audienceDetectionAddUnique(records, audienceDetectionRecord({
+        audienceLevel: "Direct Address Audience",
+        detectedAudience: "directly addressed hearer(s)",
+        evidence: `Direct-address token "${token.token}" appears in ${token.sourceReference || currentStudyScopeLabel()}.`,
+        confidence: "supported / explicit direct-address pronoun",
+        inferenceLevel: "Grounded Observation / preview only",
+        sourceScope: token.sourceScope,
+        sourceReference: token.sourceReference,
+        quoteId: quote?.quoteId || ""
+      }));
+    });
+    return records;
+  }
+
+  function audienceDetectionIntendedHearerRecords() {
+    const records = [];
+    languagePreviewSourceEntries().forEach((entry) => {
+      const text = normalizeText(entry.text);
+      if (/he that hath ears to hear/i.test(text) || /hear(?:eth)?\b.*\blet him hear/i.test(text)) {
+        audienceDetectionAddUnique(records, audienceDetectionRecord({
+          audienceLevel: "Intended Hearers",
+          detectedAudience: "those who have ears to hear",
+          evidence: "Explicit hearing invitation appears in source text.",
+          confidence: "strong / explicit invitation formula",
+          inferenceLevel: "Grounded Observation / preview only",
+          sourceScope: entry.sourceScope,
+          sourceReference: entry.sourceReference
+        }));
+      }
+      if (/\b(whosoever|every one|he that|they that)\b/i.test(text)) {
+        audienceDetectionAddUnique(records, audienceDetectionRecord({
+          audienceLevel: "Universal / General Application",
+          detectedAudience: "general hearer/reader category named by source wording",
+          evidence: `Generalizing source phrase found in ${entry.sourceReference || currentStudyScopeLabel()}.`,
+          confidence: "supported / generalizing source phrase",
+          inferenceLevel: "Supported Meaning / preview only",
+          sourceScope: entry.sourceScope,
+          sourceReference: entry.sourceReference
+        }));
+      }
+    });
+    return records;
+  }
+
+  function audienceDetectionPreviewRecords() {
+    const records = [];
+    [
+      ...audienceDetectionContextRecords(),
+      ...audienceDetectionDirectAddressRecords(),
+      ...audienceDetectionIntendedHearerRecords()
+    ].forEach((record) => audienceDetectionAddUnique(records, record));
+    if (!records.length) records.push(audienceDetectionRecord({
+      audienceLevel: "Unresolved Audience",
+      detectedAudience: "",
+      evidence: "No grounded audience signal found in current scoped preview records.",
+      confidence: "unresolved",
+      inferenceLevel: "Unresolved / preview only",
+      status: "unresolved"
+    }));
+    return records.slice(0, 120);
+  }
+
+  function audienceDetectionInspectorLines() {
+    const records = audienceDetectionPreviewRecords();
+    const byLevel = records.reduce((counts, record) => {
+      const key = normalizeText(record.audienceLevel || "Unresolved Audience") || "Unresolved Audience";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Audience records: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Audience levels: ${languageCountLine(byLevel)}`,
+      "Levels kept distinct: Immediate Physical Audience; Direct Address Audience; Narrative Audience; Reader Audience; Intended Hearers; Universal / General Application.",
+      "Parable caution: spoken audience, story characters, figurative referents, later readers, and possible application must remain distinct unless explicitly grounded.",
+      "Boundary: preview-only. Audience detection does not rewrite Context Lock, create audiences, infer doctrine, assign parable referents, or alter Study View output."
+    ];
+    ["Immediate Physical Audience", "Direct Address Audience", "Narrative Audience", "Intended Hearers", "Reader Audience", "Universal / General Application"].forEach((level) => {
+      const examples = records.filter((record) => record.audienceLevel === level).slice(0, 4);
+      lines.push(examples.length ? `${level}: ${examples.map((record) => record.detectedAudience || record.status).join(" | ")}` : `${level}: none detected`);
+    });
+    if (unresolved.length) lines.push(`Unresolved examples: ${unresolved.slice(0, 5).map((record) => record.evidence).join(" | ")}`);
+    return lines;
+  }
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
@@ -13145,6 +13304,7 @@ createRevelationPartsSection(item.subEvents)
       pronounResolutionLines: pronounResolutionInspectorLines(),
       quotationBoundaryLines: quotationBoundaryInspectorLines(),
       speakerDetectionLines: speakerDetectionInspectorLines(),
+      audienceDetectionLines: audienceDetectionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -13175,6 +13335,7 @@ createRevelationPartsSection(item.subEvents)
       item.pronounResolutionLines,
       item.quotationBoundaryLines,
       item.speakerDetectionLines,
+      item.audienceDetectionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -13214,6 +13375,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
       createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
       createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
+      createPassageFunctionSection("Audience Detection Inspector", "", { list: item.audienceDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Audience Detection Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
