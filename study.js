@@ -12742,7 +12742,8 @@ createRevelationPartsSection(item.subEvents)
     return lines;
   }
   function quotationBoundaryIsQuoteMarker(token = "") {
-    return /^["'“”‘’]+$/.test(normalizeText(token));
+    const value = normalizeText(token);
+    return value.length > 0 && Array.from(value).every((char) => ["\"", "'", String.fromCharCode(8220), String.fromCharCode(8221), String.fromCharCode(8216), String.fromCharCode(8217)].includes(char));
   }
 
   function quotationBoundarySegmentText(records = []) {
@@ -12857,6 +12858,121 @@ createRevelationPartsSection(item.subEvents)
     lines.push(quotations.length ? `Sample quote ranges: ${quotations.slice(0, 5).map((record) => `${record.sourceReference}: ${record.quoteStartToken} -> ${record.quoteEndToken}`).join(" | ")}` : "Sample quote ranges: none");
     lines.push(narrations.length ? `Sample narration segments: ${narrations.slice(0, 3).map((record) => `${record.sourceReference}: ${record.segmentPreview || "narration segment"}`).join(" | ")}` : "Sample narration segments: none");
     if (unresolved.length) lines.push(`Unresolved quote markers: ${unresolved.slice(0, 5).map((record) => `${record.sourceReference}: ${record.quoteStartToken}`).join(" | ")}`);
+    return lines;
+  }
+  function speakerDetectionAttributionVerbs() {
+    return new Set(["said", "say", "saying", "answered", "answer", "spake", "speak", "commanded", "command", "called", "cried", "asked", "ask", "taught", "teach"]);
+  }
+
+  function speakerDetectionNameFromTokens(tokens = []) {
+    const words = tokens.map((record) => normalizeText(record.token)).filter(Boolean);
+    if (!words.length) return "";
+    const joined = words.join(" ");
+    const known = [
+      "JESUS CHRIST",
+      "JESUS",
+      "John the Baptist",
+      "John",
+      "Joseph",
+      "Mary",
+      "Peter",
+      "THE LORD",
+      "GOD",
+      "AngEL Of THE LORD",
+      "prophet"
+    ];
+    return known.find((name) => new RegExp(`\\b${escapeRegExp(name)}\\b`, "i").test(joined)) || "";
+  }
+
+  function speakerDetectionExplicitAttribution(quote = {}, records = []) {
+    const verbs = speakerDetectionAttributionVerbs();
+    const before = records
+      .filter((record) => String(record.sourceIndex) === String(quote.sourceIndex) && Number(record.tokenIndex) < Number(quote.startTokenIndex))
+      .sort((left, right) => Number(right.tokenIndex || 0) - Number(left.tokenIndex || 0))
+      .slice(0, 12)
+      .reverse();
+    if (!before.length) return null;
+    const verbIndex = before.findIndex((record) => verbs.has(normalizeText(record.token).toLowerCase()));
+    if (verbIndex < 0) return null;
+    const candidate = speakerDetectionNameFromTokens(before.slice(Math.max(0, verbIndex - 5), verbIndex));
+    if (!candidate) return null;
+    return {
+      detectedSpeaker: candidate,
+      attributionType: "explicit narrative attribution",
+      evidence: `${candidate} ${before[verbIndex].token} before quotation boundary in ${quote.sourceReference || currentStudyScopeLabel()}.`,
+      confidence: "strong / explicit narrative attribution"
+    };
+  }
+
+  function speakerDetectionContextLockAttribution(quote = {}) {
+    const locks = pronounResolutionMatchingContextLocks({ sourceReference: quote.sourceReference, sourceScope: quote.sourceScope });
+    const speakers = uniqueStudyList(locks.map((lock) => normalizeText(lock.speaker)).filter(Boolean)).filter((speaker) => !/unknown|narrator|source/i.test(speaker));
+    if (speakers.length === 1) {
+      return {
+        detectedSpeaker: speakers[0],
+        attributionType: "Context Lock speaker",
+        evidence: `Single Context Lock speaker for ${quote.sourceReference || currentStudyScopeLabel()}: ${speakers[0]}.`,
+        confidence: "strong / single Context Lock speaker"
+      };
+    }
+    if (speakers.length > 1) {
+      return {
+        detectedSpeaker: "",
+        attributionType: "Context Lock speaker",
+        evidence: `Multiple Context Lock speakers: ${speakers.slice(0, 5).join(", ")}.`,
+        confidence: "ambiguous / multiple Context Lock speakers",
+        status: "ambiguous"
+      };
+    }
+    return null;
+  }
+
+  function speakerDetectionPreviewRecords() {
+    const languageRecords = generatedLanguageRecords();
+    const quotes = quotationBoundaryPreviewRecords().filter((record) => record.quoteType === "direct quotation" || record.quoteType === "unresolved");
+    return quotes.map((quote, index) => {
+      const explicit = speakerDetectionExplicitAttribution(quote, languageRecords);
+      const context = explicit ? null : speakerDetectionContextLockAttribution(quote);
+      const attribution = explicit || context;
+      const status = attribution?.status || (attribution?.detectedSpeaker ? "resolved" : "unresolved");
+      return {
+        speakerRecordId: `english_surface_v1.speaker.${index}.${quote.quoteId}`,
+        sourceScope: quote.sourceScope || currentStudyScopeLabel(),
+        sourceReference: quote.sourceReference || currentStudyScopeLabel(),
+        quoteId: quote.quoteId,
+        detectedSpeaker: attribution?.detectedSpeaker || "",
+        attributionType: attribution?.attributionType || "not resolved",
+        evidence: attribution?.evidence || "No explicit narrative attribution or single grounded Context Lock speaker found for this quotation boundary.",
+        confidence: attribution?.confidence || "unresolved",
+        provenance: "I.C.E. speaker detection preview from explicit source attribution, quotation boundaries, and current-scope Context Lock records",
+        inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+        status
+      };
+    });
+  }
+
+  function speakerDetectionInspectorLines() {
+    const records = speakerDetectionPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const attributionCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.attributionType || "not resolved") || "not resolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Quotations found: ${records.length}`,
+      `Resolved speakers: ${resolved.length}`,
+      `Unresolved speakers: ${unresolved.length}`,
+      `Ambiguous speakers: ${ambiguous.length}`,
+      `Attribution counts: ${languageCountLine(attributionCounts)}`,
+      "Attribution types supported: explicit narrative attribution; Context Lock speaker; explicit quotation attribution (reserved for explicit quote metadata).",
+      "Boundary: preview-only. Speaker detection does not rewrite source text, create speakers, infer unnamed speakers, infer audience, override Context Lock, or alter Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.detectedSpeaker} -> ${record.quoteId} (${record.attributionType})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.quoteId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
   function languageAdapterInspectorLines() {
@@ -13028,6 +13144,7 @@ createRevelationPartsSection(item.subEvents)
       languageAdapterLines: languageAdapterInspectorLines(),
       pronounResolutionLines: pronounResolutionInspectorLines(),
       quotationBoundaryLines: quotationBoundaryInspectorLines(),
+      speakerDetectionLines: speakerDetectionInspectorLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -13057,6 +13174,7 @@ createRevelationPartsSection(item.subEvents)
       item.languageAdapterLines,
       item.pronounResolutionLines,
       item.quotationBoundaryLines,
+      item.speakerDetectionLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -13095,6 +13213,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
       createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
+      createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
