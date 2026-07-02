@@ -13138,6 +13138,7 @@ createRevelationPartsSection(item.subEvents)
     const text = normalizeText(quote.segmentPreview || "");
     if (!text) return "speaker -> audience";
     if (/\?$/.test(text) || /\b(ask|asked|question)\b/i.test(text)) return "question -> audience";
+    if (/\b(request|requested|beseech|beseeched|pray thee|prayed|desire|desired)\b/i.test(text)) return "request -> recipient";
     if (/\b(command|commanded|go|come|follow|hear|repent|beware|take heed|pray|seek|ask|knock)\b/i.test(text)) return "command -> audience";
     if (/\b(blessed|bless)\b/i.test(text)) return "blessing -> audience";
     if (/\b(woe)\b/i.test(text)) return "woe declaration -> audience";
@@ -13197,6 +13198,7 @@ createRevelationPartsSection(item.subEvents)
         confidence,
         provenance: "I.C.E. dialogue relationship preview from quotation boundaries, speaker preview, audience preview, Context Lock, and explicit source wording",
         inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+        hierarchyBoundary: "Dialogue relationships may support future class-of-being, authority, and Exaltation lenses, but may not flatten entity hierarchy, redefine entity ontology, alter Context Lock roles, or turn claimed/figurative entities into established divine beings.",
         status
       };
     });
@@ -13220,7 +13222,8 @@ createRevelationPartsSection(item.subEvents)
       `Relationship type counts: ${languageCountLine(typeCounts)}`,
       "Supported relationship types: speaker -> audience; teacher -> hearers; command -> audience; question -> audience; request -> recipient; warning -> audience; explanation -> audience; blessing -> audience; woe declaration -> audience.",
       "Explicit-only future types reserved: request -> response; command -> response; prophecy -> hearers; healing statement -> recipient.",
-      "Boundary: preview-only. Dialogue relationships do not rewrite source text, create speakers, create audiences, create doctrine, process queues, crawl, or alter Study View output."
+      "Hierarchy boundary: dialogue relationships may support future class-of-being, authority, and Exaltation lenses, but may not flatten entity hierarchy or redefine entity ontology.",
+      "Boundary: preview-only. Dialogue relationships do not rewrite source text, create speakers, create audiences, create doctrine, override Context Lock, write storage, process queues, crawl, or alter Study View output."
     ];
     lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.speaker} -> ${record.audience} | ${record.relationshipType} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
     lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.quoteId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
