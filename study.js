@@ -13227,6 +13227,178 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+
+  function grammaticalRoleEntityToken(record = {}) {
+    return ["proper_noun", "noun", "pronoun"].includes(record.partOfSpeech);
+  }
+
+  function grammaticalRolePreviousEntity(records = [], verbIndex = 0) {
+    for (let index = verbIndex - 1; index >= Math.max(0, verbIndex - 5); index -= 1) {
+      const record = records[index];
+      if (grammaticalRoleEntityToken(record)) return record;
+    }
+    return null;
+  }
+
+  function grammaticalRoleNextEntity(records = [], startIndex = 0, limit = 5) {
+    for (let index = startIndex + 1; index <= Math.min(records.length - 1, startIndex + limit); index += 1) {
+      const record = records[index];
+      if (grammaticalRoleEntityToken(record)) return record;
+    }
+    return null;
+  }
+
+  function grammaticalRolePreviewRecord(tokenRecord = {}, grammaticalRole = "unresolved", options = {}) {
+    const status = options.status || (grammaticalRole === "unresolved" ? "unresolved" : "resolved");
+    const relatedEntity = normalizeText(options.relatedEntity || tokenRecord.token || "");
+    return {
+      roleRecordId: `english_surface_v1.grammar.${tokenRecord.tokenId || `${tokenRecord.sourceIndex || 0}.${tokenRecord.tokenIndex || 0}`}.${grammaticalRole}`,
+      sourceScope: tokenRecord.sourceScope || currentStudyScopeLabel(),
+      sourceReference: tokenRecord.sourceReference || currentStudyScopeLabel(),
+      tokenId: tokenRecord.tokenId || "",
+      grammaticalRole,
+      relatedEntity,
+      evidence: options.evidence || (status === "resolved" ? `${tokenRecord.token} assigned ${grammaticalRole} by conservative English surface preview.` : `${tokenRecord.token || "Token"} has no high-confidence grammatical role assignment.`),
+      confidence: options.confidence || (status === "resolved" ? "supported / conservative surface pattern" : "unresolved"),
+      provenance: "I.C.E. grammatical role preview from english_surface_v1 language records, POS preview, quotation boundaries, speaker preview, audience preview, and current-scope Context Lock records",
+      inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+      hierarchyBoundary: "Grammar/POS may support later hierarchy or Exaltation / Class of Being lenses, but may not flatten or override grounded entity class, Context Lock, divine/human distinction, false deity status, symbolic/literary status, or source-grounded ontology.",
+      status
+    };
+  }
+
+  function grammaticalRolePreviewRecords() {
+    const languageRecords = generatedLanguageRecords();
+    const records = [];
+    const usedTokenRoles = new Set();
+    const addRole = (tokenRecord, role, options = {}) => {
+      if (!tokenRecord) return;
+      const key = `${tokenRecord.tokenId}.${role}`;
+      if (usedTokenRoles.has(key)) return;
+      usedTokenRoles.add(key);
+      records.push(grammaticalRolePreviewRecord(tokenRecord, role, options));
+    };
+
+    const bySource = languageRecords.reduce((groups, record) => {
+      const key = `${record.sourceIndex}.${record.sourceReference || record.sourceScope || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(record);
+      return groups;
+    }, {});
+
+    Object.values(bySource).forEach((sourceRecords) => {
+      const ordered = sourceRecords.slice().sort((a, b) => Number(a.tokenIndex || 0) - Number(b.tokenIndex || 0));
+      ordered.forEach((record, index) => {
+        if (record.partOfSpeech !== "verb") return;
+        const verb = normalizeText(record.token).toLowerCase();
+        const subject = grammaticalRolePreviousEntity(ordered, index);
+        const object = grammaticalRoleNextEntity(ordered, index, 4);
+        addRole(record, "possible_predicate", {
+          relatedEntity: record.token,
+          evidence: `${record.token} is a high-confidence verb token in ${record.sourceReference || currentStudyScopeLabel()}.`,
+          confidence: "supported / closed verb list"
+        });
+        if (subject) {
+          addRole(subject, "possible_subject", {
+            relatedEntity: subject.token,
+            evidence: `${subject.token} appears as the nearest grounded noun/pronoun before predicate ${record.token}.`,
+            confidence: "supported / nearby explicit actor before predicate"
+          });
+        }
+        if (/^(said|say|saying|spake|speak|answered|answer|asked|ask|commanded|command|taught|teach)$/i.test(verb) && subject) {
+          addRole(subject, "possible_speaker", {
+            relatedEntity: subject.token,
+            evidence: `${subject.token} appears before explicit speech predicate ${record.token}.`,
+            confidence: "supported / explicit speech predicate"
+          });
+        }
+        const nextPrep = ordered.slice(index + 1, index + 4).find((item) => /^(unto|to)$/i.test(item.token || ""));
+        const indirect = nextPrep ? grammaticalRoleNextEntity(ordered, ordered.indexOf(nextPrep), 3) : null;
+        if (indirect) {
+          addRole(indirect, "possible_indirect_object", {
+            relatedEntity: indirect.token,
+            evidence: `${indirect.token} follows ${nextPrep.token} after predicate ${record.token}.`,
+            confidence: "supported / explicit preposition after predicate"
+          });
+          if (/^(said|say|saying|spake|speak|answered|answer|asked|ask|commanded|command|taught|teach)$/i.test(verb)) {
+            addRole(indirect, "possible_audience", {
+              relatedEntity: indirect.token,
+              evidence: `${indirect.token} follows ${nextPrep.token} after explicit speech predicate ${record.token}.`,
+              confidence: "supported / speech predicate with direct-address preposition"
+            });
+          }
+        } else if (object && object !== subject) {
+          addRole(object, "possible_object", {
+            relatedEntity: object.token,
+            evidence: `${object.token} appears after predicate ${record.token} without a stronger indirect-object pattern.`,
+            confidence: "supported / nearby explicit entity after predicate"
+          });
+        }
+      });
+      ordered.forEach((record) => {
+        if (record.partOfSpeech === "adjective" || record.partOfSpeech === "adverb") {
+          addRole(record, "possible_modifier", {
+            relatedEntity: record.token,
+            evidence: `${record.token} is classified as ${record.partOfSpeech} by the English surface POS preview.`,
+            confidence: "supported / POS modifier category"
+          });
+        }
+      });
+    });
+
+    speakerDetectionPreviewRecords().filter((record) => record.status === "resolved" && record.quoteId && record.detectedSpeaker).slice(0, 80).forEach((speaker) => {
+      const tokenRecord = languageRecords.find((record) => normalizeText(record.sourceReference).toLowerCase() === normalizeText(speaker.sourceReference).toLowerCase() && normalizeText(speaker.detectedSpeaker).toLowerCase().includes(normalizeText(record.token).toLowerCase()) && grammaticalRoleEntityToken(record));
+      addRole(tokenRecord || { tokenId: speaker.speakerRecordId, token: speaker.detectedSpeaker, sourceScope: speaker.sourceScope, sourceReference: speaker.sourceReference }, "possible_quotation_source", {
+        relatedEntity: speaker.detectedSpeaker,
+        evidence: `${speaker.detectedSpeaker} is the resolved preview speaker for ${speaker.quoteId}.`,
+        confidence: "supported / resolved speaker preview"
+      });
+    });
+
+    audienceDetectionPreviewRecords().filter((record) => record.status === "resolved" && record.quoteId && record.detectedAudience).slice(0, 80).forEach((audience) => {
+      const tokenRecord = languageRecords.find((record) => normalizeText(record.sourceReference).toLowerCase() === normalizeText(audience.sourceReference).toLowerCase() && normalizeText(audience.detectedAudience).toLowerCase().includes(normalizeText(record.token).toLowerCase()) && grammaticalRoleEntityToken(record));
+      addRole(tokenRecord || { tokenId: audience.audienceRecordId, token: audience.detectedAudience, sourceScope: audience.sourceScope, sourceReference: audience.sourceReference }, "possible_quotation_target", {
+        relatedEntity: audience.detectedAudience,
+        evidence: `${audience.detectedAudience} is the resolved preview audience for ${audience.quoteId}.`,
+        confidence: "supported / resolved audience preview"
+      });
+    });
+
+    languageRecords
+      .filter((record) => record.partOfSpeech !== "punctuation" && record.partOfSpeech !== "number")
+      .slice(0, 200)
+      .forEach((record) => {
+        const hasRole = records.some((roleRecord) => roleRecord.tokenId === record.tokenId);
+        if (!hasRole) addRole(record, "unresolved", { status: "unresolved", relatedEntity: record.token });
+      });
+    return records;
+  }
+
+  function grammaticalRoleInspectorLines() {
+    const records = grammaticalRolePreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const roleCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.grammaticalRole || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Grammatical records found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Role type counts: ${languageCountLine(roleCounts)}`,
+      "Supported roles: possible_subject; possible_object; possible_indirect_object; possible_predicate; possible_modifier; possible_speaker; possible_audience; possible_quotation_source; possible_quotation_target.",
+      "Hierarchy readiness: grammar/POS can later feed an Exaltation / Class of Being lens, but must preserve Being -> Divine Being, Being -> Human, Messenger, Group, False Deity Claim, Idol / Crafted Object, Symbolic Being, Parable Figure, Unknown / Unresolved, and other grounded hierarchy distinctions.",
+      "Boundary: preview-only. Grammatical roles do not rewrite source text, Context Lock, semantic layers, hierarchy/entity class, Study View output, queues, storage, or scope."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 6).map((record) => `${record.grammaticalRole}: ${record.relatedEntity || record.tokenId} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((record) => `${record.relatedEntity || record.tokenId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.relatedEntity}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13258,6 +13430,7 @@ createRevelationPartsSection(item.subEvents)
     const speakers = speakerDetectionPreviewRecords();
     const audiences = audienceDetectionPreviewRecords();
     const dialogue = dialogueRelationshipPreviewRecords();
+    const grammar = grammaticalRolePreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13275,7 +13448,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Quotations", quotations),
       qaDashboardLayerLine("Speakers", speakers),
       qaDashboardLayerLine("Audiences", audiences),
-      qaDashboardLayerLine("Dialogue Relationships", dialogue)
+      qaDashboardLayerLine("Dialogue Relationships", dialogue),
+      qaDashboardLayerLine("Grammatical Roles", grammar)
     ];
   }
 
@@ -13309,6 +13483,7 @@ createRevelationPartsSection(item.subEvents)
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -13317,7 +13492,8 @@ createRevelationPartsSection(item.subEvents)
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
       `Quotations found: ${quotations.length}`,
       `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
-      `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`
+      `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
+      `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`
     ];
   }
 
@@ -13517,6 +13693,7 @@ createRevelationPartsSection(item.subEvents)
       speakerDetectionLines: speakerDetectionInspectorLines(),
       audienceDetectionLines: audienceDetectionInspectorLines(),
       dialogueRelationshipLines: dialogueRelationshipInspectorLines(),
+      grammaticalRoleLines: grammaticalRoleInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -13550,6 +13727,7 @@ createRevelationPartsSection(item.subEvents)
       item.speakerDetectionLines,
       item.audienceDetectionLines,
       item.dialogueRelationshipLines,
+      item.grammaticalRoleLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -13597,6 +13775,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
       createPassageFunctionSection("Audience Detection Inspector", "", { list: item.audienceDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Audience Detection Inspector" }),
       createPassageFunctionSection("Dialogue Relationship Inspector", "", { list: item.dialogueRelationshipLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Dialogue Relationship Inspector" }),
+      createPassageFunctionSection("Grammatical Role Inspector", "", { list: item.grammaticalRoleLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Grammatical Role Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
