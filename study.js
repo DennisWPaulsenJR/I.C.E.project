@@ -13134,6 +13134,217 @@ createRevelationPartsSection(item.subEvents)
     if (unresolved.length) lines.push(`Unresolved examples: ${unresolved.slice(0, 5).map((record) => record.evidence).join(" | ")}`);
     return lines;
   }
+  function dialogueRelationshipTypeFromQuote(quote = {}) {
+    const text = normalizeText(quote.segmentPreview || "");
+    if (!text) return "speaker -> audience";
+    if (/\?$/.test(text) || /\b(ask|asked|question)\b/i.test(text)) return "question -> audience";
+    if (/\b(command|commanded|go|come|follow|hear|repent|beware|take heed|pray|seek|ask|knock)\b/i.test(text)) return "command -> audience";
+    if (/\b(blessed|bless)\b/i.test(text)) return "blessing -> audience";
+    if (/\b(woe)\b/i.test(text)) return "woe declaration -> audience";
+    if (/\b(warn|beware|take heed)\b/i.test(text)) return "warning -> audience";
+    if (/\b(for|because|therefore|wherefore|this means|signifieth)\b/i.test(text)) return "explanation -> audience";
+    if (/\b(teach|taught|saying)\b/i.test(text)) return "teacher -> hearers";
+    return "speaker -> audience";
+  }
+
+  function dialogueRelationshipAudienceForQuote(quote = {}, audiences = []) {
+    const direct = audiences.filter((record) => record.status === "resolved" && record.quoteId && record.quoteId === quote.quoteId && record.detectedAudience);
+    if (direct.length === 1) return direct[0];
+    if (direct.length > 1) return { status: "ambiguous", evidence: `Multiple direct-address audiences for ${quote.quoteId}: ${direct.map((item) => item.detectedAudience).slice(0, 5).join(", ")}.` };
+    const scoped = audiences.filter((record) => record.status === "resolved" && !record.quoteId && record.detectedAudience && normalizeText(record.sourceReference || "").toLowerCase() === normalizeText(quote.sourceReference || "").toLowerCase());
+    const preferred = scoped.filter((record) => record.audienceLevel === "Direct Address Audience" || record.audienceLevel === "Immediate Physical Audience");
+    const candidates = preferred.length ? preferred : scoped;
+    const unique = uniqueStudyList(candidates.map((record) => normalizeText(record.detectedAudience)).filter(Boolean));
+    if (unique.length === 1) return candidates.find((record) => normalizeText(record.detectedAudience) === unique[0]);
+    if (unique.length > 1) return { status: "ambiguous", evidence: `Multiple scoped audience candidates for ${quote.sourceReference}: ${unique.slice(0, 5).join(", ")}.` };
+    return null;
+  }
+
+  function dialogueRelationshipPreviewRecords() {
+    const quotes = quotationBoundaryPreviewRecords().filter((record) => record.quoteType === "direct quotation" || record.quoteType === "unresolved");
+    const speakers = speakerDetectionPreviewRecords();
+    const audiences = audienceDetectionPreviewRecords();
+    return quotes.map((quote, index) => {
+      const speaker = speakers.find((record) => record.quoteId === quote.quoteId);
+      const audience = dialogueRelationshipAudienceForQuote(quote, audiences);
+      let status = "unresolved";
+      let relationshipType = "speaker -> audience";
+      let speakerName = "";
+      let audienceName = "";
+      let evidence = "No single grounded speaker and audience pair found for this quotation boundary.";
+      let confidence = "unresolved";
+      if (speaker?.status === "ambiguous" || audience?.status === "ambiguous") {
+        status = "ambiguous";
+        evidence = [speaker?.status === "ambiguous" ? speaker.evidence : "", audience?.status === "ambiguous" ? audience.evidence : ""].filter(Boolean).join(" ") || "Speaker or audience candidates are ambiguous.";
+        confidence = "ambiguous / multiple grounded candidates";
+      } else if (speaker?.status === "resolved" && audience?.status === "resolved") {
+        status = "resolved";
+        relationshipType = dialogueRelationshipTypeFromQuote(quote);
+        speakerName = speaker.detectedSpeaker;
+        audienceName = audience.detectedAudience;
+        evidence = `${speakerName} -> ${audienceName}; ${relationshipType}; ${quote.segmentPreview || quote.sourceReference || currentStudyScopeLabel()}`;
+        confidence = relationshipType === "speaker -> audience" ? "supported / resolved speaker and audience" : "supported / explicit quote wording plus resolved speaker and audience";
+      }
+      return {
+        dialogueRecordId: `english_surface_v1.dialogue.${index}.${quote.quoteId}`,
+        sourceScope: quote.sourceScope || currentStudyScopeLabel(),
+        sourceReference: quote.sourceReference || currentStudyScopeLabel(),
+        quoteId: quote.quoteId,
+        relationshipType,
+        speaker: speakerName,
+        audience: audienceName,
+        evidence,
+        confidence,
+        provenance: "I.C.E. dialogue relationship preview from quotation boundaries, speaker preview, audience preview, Context Lock, and explicit source wording",
+        inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+        status
+      };
+    });
+  }
+
+  function dialogueRelationshipInspectorLines() {
+    const records = dialogueRelationshipPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const typeCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.relationshipType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Dialogue records found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Relationship type counts: ${languageCountLine(typeCounts)}`,
+      "Supported relationship types: speaker -> audience; teacher -> hearers; command -> audience; question -> audience; request -> recipient; warning -> audience; explanation -> audience; blessing -> audience; woe declaration -> audience.",
+      "Explicit-only future types reserved: request -> response; command -> response; prophecy -> hearers; healing statement -> recipient.",
+      "Boundary: preview-only. Dialogue relationships do not rewrite source text, create speakers, create audiences, create doctrine, process queues, crawl, or alter Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.speaker} -> ${record.audience} | ${record.relationshipType} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.quoteId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
+  function qaDashboardResolutionCounts(records = []) {
+    const list = asArray(records);
+    return {
+      total: list.length,
+      resolved: list.filter((record) => record.status === "resolved" || record.promotionStatus === "promoted").length,
+      unresolved: list.filter((record) => /unresolved|pending|unknown/i.test(normalizeText(record.status || record.promotionStatus || record.confidence || record.evidenceWeight))).length,
+      ambiguous: list.filter((record) => /ambiguous/i.test(normalizeText(record.status || record.confidence || record.evidenceWeight))).length
+    };
+  }
+
+  function qaDashboardLayerLine(label, records = [], options = {}) {
+    const list = asArray(records);
+    const counts = qaDashboardResolutionCounts(list);
+    const coverage = typeof options.coverage === "number" ? `; coverage=${options.coverage}%` : "";
+    const active = options.active ?? list.length > 0;
+    return `${label}: ${active ? "active" : "inactive"}; records=${counts.total}; unresolved=${counts.unresolved}; ambiguous=${counts.ambiguous}${coverage}`;
+  }
+
+  function qaDashboardArchitectureLayerLines() {
+    const timelineRows = timelinePromotionInspectorLines();
+    const sceneRows = scenePromotionInspectorLines();
+    const relationshipRows = relationshipPromotionInspectorLines();
+    const themeRows = themePromotionInspectorLines();
+    const literaryRows = literaryPromotionInspectorLines();
+    const languageRecords = generatedLanguageRecords();
+    const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
+    const pronouns = pronounResolutionPreviewRecords();
+    const quotations = quotationBoundaryPreviewRecords();
+    const speakers = speakerDetectionPreviewRecords();
+    const audiences = audienceDetectionPreviewRecords();
+    const dialogue = dialogueRelationshipPreviewRecords();
+    const coverageFromLines = (lines) => {
+      const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
+      return match ? Number(match[1]) : null;
+    };
+    return [
+      "Architecture Layer Status",
+      qaDashboardLayerLine("Timeline", promotedTimelineRecords(), { coverage: coverageFromLines(timelineRows) }),
+      qaDashboardLayerLine("Scenes", promotedSceneRecords(), { coverage: coverageFromLines(sceneRows) }),
+      qaDashboardLayerLine("Relationships", promotedRelationshipRecords(), { coverage: coverageFromLines(relationshipRows) }),
+      qaDashboardLayerLine("Themes", promotedThemeRecords(), { coverage: coverageFromLines(themeRows) }),
+      qaDashboardLayerLine("Literary Structures", promotedLiteraryRecords(), { coverage: coverageFromLines(literaryRows) }),
+      qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
+      `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
+      qaDashboardLayerLine("Pronouns", pronouns),
+      qaDashboardLayerLine("Quotations", quotations),
+      qaDashboardLayerLine("Speakers", speakers),
+      qaDashboardLayerLine("Audiences", audiences),
+      qaDashboardLayerLine("Dialogue Relationships", dialogue)
+    ];
+  }
+
+  function qaDashboardCurrentScopeLines() {
+    const active = activeSourcePageRecord();
+    const analyzed = analyzedPageHistory();
+    const status = studyData.analysisStatus || {};
+    return [
+      "Current Scope Summary",
+      `Active source page: ${active ? volumePageLabel(active) : "not recorded"}`,
+      `Selected scope: ${currentStudyScopeLabel()}`,
+      `Analyzed pages: ${analyzed.length ? analyzed.map(volumePageLabel).join(" | ") : "none"}`,
+      `Current adapter: ${studyData.activeAdapter?.adapterName || studyData.activeAdapter?.adapterId || status.activeAdapterName || active?.activeAdapterName || "not recorded"}`,
+      `Last analyzed time: ${status.analyzedAt || active?.analyzedAt || active?.updatedAt || "not recorded"}`
+    ];
+  }
+
+  function qaDashboardPromotionLines() {
+    return [
+      "Promotion Summary",
+      ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${row.coverage}%`)
+    ];
+  }
+
+  function qaDashboardLanguageLines() {
+    const languageRecords = generatedLanguageRecords();
+    const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
+    const unresolvedPos = Number(posCounts.unresolved || 0);
+    const unresolvedPosPercent = languageRecords.length ? Math.round((unresolvedPos / languageRecords.length) * 100) : 0;
+    const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
+    const quotations = quotationBoundaryPreviewRecords();
+    const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
+    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    return [
+      "Language Preview Summary",
+      `Language adapter name: english_surface_v1`,
+      `Language records generated: ${languageRecords.length}`,
+      `POS unresolved: ${unresolvedPos} (${unresolvedPosPercent}%)`,
+      `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
+      `Quotations found: ${quotations.length}`,
+      `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
+      `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`
+    ];
+  }
+
+  function qaDashboardTrustLines() {
+    const qaLines = editorArchitectQaLines();
+    const issues = qaLines.filter((line) => /review trust records/i.test(line));
+    const queue = analysisQueueStatus();
+    return [
+      "Trust / QA Summary",
+      ...qaLines,
+      `Storage authority changes: none in QA dashboard; display-only summary`,
+      `Queue/crawling status: queue=${queue.state}; dashboard does not crawl, analyze, navigate, process queues, mutate scope, or write storage`,
+      issues.length ? `Trust review needed: ${issues.join(" | ")}` : "No trust violations detected in loaded scoped records."
+    ];
+  }
+
+  function qaArchitectureDashboardLines() {
+    return [
+      "QA Architecture Results Dashboard",
+      ...qaDashboardCurrentScopeLines(),
+      ...qaDashboardArchitectureLayerLines(),
+      ...qaDashboardPromotionLines(),
+      ...qaDashboardLanguageLines(),
+      ...qaDashboardTrustLines(),
+      "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
+    ];
+  }
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
     const records = generatedLanguageRecords();
@@ -13305,6 +13516,8 @@ createRevelationPartsSection(item.subEvents)
       quotationBoundaryLines: quotationBoundaryInspectorLines(),
       speakerDetectionLines: speakerDetectionInspectorLines(),
       audienceDetectionLines: audienceDetectionInspectorLines(),
+      dialogueRelationshipLines: dialogueRelationshipInspectorLines(),
+      qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
       relationshipLines: editorArchitectRelationshipLines(),
@@ -13336,6 +13549,8 @@ createRevelationPartsSection(item.subEvents)
       item.quotationBoundaryLines,
       item.speakerDetectionLines,
       item.audienceDetectionLines,
+      item.dialogueRelationshipLines,
+      item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
       item.relationshipLines,
@@ -13358,7 +13573,12 @@ createRevelationPartsSection(item.subEvents)
     range.textContent = ["ICE_EDITOR_ARCHITECT_VIEW", item.activeScope, "inspection-only"].filter(Boolean).join(" | ");
     body.className = "semantic-card-body";
     header.append(heading, range);
+    const copyDashboardButton = document.createElement("button");
+    copyDashboardButton.type = "button";
+    copyDashboardButton.textContent = "Copy QA Dashboard";
+    copyDashboardButton.addEventListener("click", () => copyPlainTextReport("QA Architecture Dashboard", asArray(item.qaDashboardLines).join("\n")).catch((error) => showDiagnosticMessage(`QA dashboard copy failed: ${error.message}`)));
     [
+      createPassageFunctionSection("QA Architecture Results Dashboard", "", { list: item.qaDashboardLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Context Inspector", "", { list: item.contextLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Entity Classification Inspector - Actors", "", { list: item.actors, plainList: true, divineContext: true, preferHolySpirit: true }),
       createPassageFunctionSection("Entity Classification Inspector - Narration / Source / Unresolved", "", { list: item.technicalActors, plainList: true, divineContext: true, preferHolySpirit: true, collapsed: true, summaryLabel: "Show narration / source / unresolved records" }),
@@ -13376,6 +13596,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
       createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
       createPassageFunctionSection("Audience Detection Inspector", "", { list: item.audienceDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Audience Detection Inspector" }),
+      createPassageFunctionSection("Dialogue Relationship Inspector", "", { list: item.dialogueRelationshipLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Dialogue Relationship Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
@@ -13384,6 +13605,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Raw / Technical Section", "", { list: item.rawTechnicalLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show raw / technical details" }),
       createWordingProvenanceSection({ source: item.provenance, label: "Editor / Architect Evaluation", layer: "Editor / Architect View / ICE_EDITOR_ARCHITECT_VIEW", storageKey: "Not persisted in this phase", scopePath: item.activeScope, rule: "Editor / Architect View is display-only. Switching views does not re-analyze, mutate scope, modify Context Lock, alter semantic records, crawl, or process queues." })
     ].filter(Boolean).forEach((section) => body.appendChild(section));
+    body.insertBefore(copyDashboardButton, body.firstChild);
     card.append(header, body);
     return card;
   }
