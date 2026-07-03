@@ -1,6 +1,6 @@
 # Modular Study Presentation Architecture
 
-Purpose: separate I.C.E. evaluation from Study Panel presentation so the same selected scope can support multiple user-facing views without reprocessing, scope mutation, or lower-layer rewrites.
+Purpose: separate I.C.E. evaluation from Study Panel presentation so the same selected scope can support multiple user-facing views without reprocessing, scope mutation, or primary-evidence rewrites.
 
 ## Core Separation
 
@@ -52,7 +52,7 @@ User-facing presets:
 - User selection must not change source extraction.
 - User selection must not mutate Context Lock.
 - User selection must not alter semantic records.
-- Higher layers may not rewrite lower-layer data.
+- Derived presentation layers may not rewrite primary evidence data.
 - Scope boundaries remain controlled by current Study Scope, not display selection.
 
 ## Current Implementation

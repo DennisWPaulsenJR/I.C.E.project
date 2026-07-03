@@ -56,7 +56,7 @@ Rule: source text is never rewritten by derived layers.
 
 Stores who, what, where, when, speaker, audience, authority, participants, narrator/source roles, messenger, recipient, and location.
 
-Rule: Context Lock controls later meaning. Higher layers may depend on context but may not redefine it.
+Rule: Context Lock controls later meaning. Derived layers may depend on context but may not redefine it.
 
 ### 3. Situation Layer
 
@@ -151,7 +151,7 @@ Stores:
 - Theme relationships
 - Narrative relationships
 
-Rule: relationships may connect lower-layer records but may not rewrite meaning or context.
+Rule: relationships may connect primary or nearer evidence records but may not rewrite meaning or context.
 
 ### 7. Large Scope Comparison Layer
 
@@ -197,7 +197,7 @@ Trust rules:
 - Future references may illuminate later fulfillment or continuation but may not redefine earlier source meaning.
 - Projected relationships must remain labeled as possible or inferred.
 - Cross-reference relationships must preserve source scope and provenance.
-- Current Context Lock remains authoritative.
+- Current Context Lock remains primary evidence for current context.
 
 ### 8. Presentation Layer
 

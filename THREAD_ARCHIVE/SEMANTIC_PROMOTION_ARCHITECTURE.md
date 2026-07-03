@@ -1,6 +1,6 @@
 # Semantic Promotion Architecture
 
-Purpose: define the rules that allow I.C.E. records to move from source text into higher study layers without losing source grounding, Context Lock, Meaning Staging, actor classification, scope isolation, or provenance.
+Purpose: define the rules that allow I.C.E. records to move from source text into derived study layers without losing source grounding, Context Lock, Meaning Staging, actor classification, scope isolation, or provenance.
 
 This document is architecture guidance. It does not implement new extraction, crawling, automatic analysis, queue execution, or scope expansion.
 
@@ -19,7 +19,7 @@ Source Text
 -> Journey
 ```
 
-Higher layers may depend on lower layers. Higher layers may not rewrite, invert, or replace lower-layer facts.
+Derived layers may depend on primary and nearer evidence layers. Derived layers may not rewrite, invert, or replace primary evidence facts.
 
 ## Entry Criteria
 
@@ -27,7 +27,7 @@ Every promotion requires:
 
 - A source scope: book, chapter, verse/range, canonical key, page key, or scope path.
 - Source evidence: source phrase, verse text, DOM reference, capture evidence, or retained page snapshot.
-- A parent record: the lower-layer record that justified promotion.
+- A parent record: the primary or nearer evidence record that justified promotion.
 - A promotion rule: the named rule that explains why the record moved upward.
 - A Meaning Staging level: Grounded, Supported, Strongly Implied, or Possible.
 - Provenance: generated/source-provided state, storage key or layer name, and confidence/support wording.
@@ -120,7 +120,7 @@ Knowledge Graph may create:
 
 Knowledge Graph may not:
 
-- Create new actors without lower-layer grounding
+- Create new actors without primary evidence grounding
 - Rewrite authority, messenger, recipient, speaker, or audience
 - Convert place references into actors
 - Treat retained out-of-scope records as active scope
@@ -141,7 +141,7 @@ Themes may not:
 Relationships may create:
 
 - Grounded links between existing records
-- Directional relationship labels when lower-layer evidence supports direction
+- Directional relationship labels when primary or nearer evidence supports direction
 - Evidence chains that explain the link
 
 Relationships may not:
@@ -211,7 +211,7 @@ When a promoted record is rejected, diagnostics should record:
 - Raw candidate count
 - Scoped accepted count
 - Rejection reason
-- Conflicting lower-layer value, if any
+- Conflicting primary evidence value, if any
 - Source record id/key when available
 
 ## Confidence And Meaning Staging
@@ -221,7 +221,7 @@ I.C.E. user-facing confidence wording is Analysis Support, not a judgment on scr
 Meaning Staging maps as follows:
 
 - Grounded: direct source text or explicit Context Lock fact.
-- Supported: directly supported by source context and lower-layer records.
+- Supported: directly supported by source context and primary or nearer evidence records.
 - Strongly Implied: required or highly supported by the source action/context, but not directly stated.
 - Possible: plausible from context, but not established.
 
@@ -238,7 +238,7 @@ Promotion level expectations:
 
 This specification is consistent with:
 
-- Context Lock: lower-layer context roles are authoritative for higher layers.
+- Context Lock: primary context roles are authoritative for derived layers.
 - Meaning Staging: each promoted record declares its staging level and may not collapse possible meaning into grounded fact.
 - Actor Architecture: named actors remain actors, locations remain locations, authority remains authority, narrators remain source/narrator roles.
 - Timeline Architecture: events, relationships, and sequences derive from scoped records and do not add visual timeline, dates, traversal, crawling, or automatic navigation.

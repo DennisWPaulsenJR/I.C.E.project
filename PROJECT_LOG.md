@@ -112,7 +112,7 @@ Implemented derived display-only `ICE_CONTEXT_LOCK` and `ICE_MEANING_STAGING` di
 
 The Study Panel now has deferred `Context Lock` and `Meaning Staging` sections after View Lens. Context Lock captures speaker, audience, authority source, messenger, recipient, participants, location, event scope, grounded observations, supported meaning, validation checks, and rejected inversions.
 
-Meaning Staging displays the ladder from Source Text through Context, Grounded Observation, Supported Meaning, Strongly Implied Meaning, Possible Meaning, and Study Relationships. It explains which lower stage(s) each diagnostic depends on and reinforces that higher stages may depend on lower stages but may not rewrite them.
+Meaning Staging displays the ladder from Source Text through Context, Grounded Observation, Supported Meaning, Strongly Implied Meaning, Possible Meaning, and Study Relationships. It explains which primary or nearer evidence stage(s) each diagnostic depends on and reinforces that derived stages may depend on primary stages but may not rewrite them.
 
 Matthew 1 now explicitly locks THE LORD / GOD as source authority, AngEL Of THE LORD as messenger, and Joseph as recipient, rejecting `AngEL Of THE LORD receives revelation`. Matthew 2 and Matthew 5 locks preserve Herod/JESUS participant roles and JESUS/disciples/multitudes teacher/audience context.
 
