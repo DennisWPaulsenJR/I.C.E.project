@@ -12651,6 +12651,92 @@ createRevelationPartsSection(item.subEvents)
     return Object.keys(counts).length ? Object.entries(counts).map(([label, count]) => `${label}=${count}`).join("; ") : "none";
   }
 
+  function languagePreviewLemmaCandidate(token = "") {
+    const value = normalizeText(token);
+    const lower = value.toLowerCase();
+    if (!value || /^[^A-Za-z\d]+$/.test(value)) return "";
+    if (/^\d+$/.test(value)) return lower;
+    if (/'s$/i.test(value)) return lower.replace(/'s$/i, "");
+    if (/ies$/i.test(value) && value.length > 4) return lower.replace(/ies$/i, "y");
+    if (/sses$/i.test(value)) return lower.replace(/es$/i, "");
+    if (/s$/i.test(value) && !/ss$/i.test(value) && value.length > 3) return lower.replace(/s$/i, "");
+    if (/ied$/i.test(value) && value.length > 4) return lower.replace(/ied$/i, "y");
+    if (/ed$/i.test(value) && value.length > 4) return lower.replace(/ed$/i, "");
+    if (/ing$/i.test(value) && value.length > 5) return lower.replace(/ing$/i, "");
+    return lower;
+  }
+
+  function morphologyPreviewForRecord(record = {}, records = []) {
+    const token = normalizeText(record.token);
+    const lower = token.toLowerCase();
+    const previous = records.find((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex === record.tokenIndex - 1);
+    const next = records.find((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex === record.tokenIndex + 1);
+    if (!token) return { morphologyType: "unresolved", morphologyValue: "unresolved", confidence: "unresolved", status: "unresolved", evidence: "No token available." };
+    if (/^[^A-Za-z\d]+$/.test(token)) return { morphologyType: "punctuation", morphologyValue: "punctuation", confidence: "strong / surface punctuation", status: "resolved", evidence: `${token} is punctuation.` };
+    if (/^\d+$/.test(token)) return { morphologyType: "number", morphologyValue: "numeric", confidence: "strong / surface numeric token", status: "resolved", evidence: `${token} is a numeric token.` };
+    if (/^(shall|shalt|will|wilt)$/i.test(token) && next && next.partOfSpeech === "verb") return { morphologyType: "tense", morphologyValue: "future marker", confidence: "strong / explicit English future marker before verb", status: "resolved", evidence: `${token} marks future orientation for ${next.token}.` };
+    if (/^(shall|shalt|will|wilt)$/i.test(token)) return { morphologyType: "tense", morphologyValue: "future marker", confidence: "supported / explicit English future marker", status: "resolved", evidence: `${token} is a surface future marker.` };
+    if (/'s$/i.test(token)) return { morphologyType: "case", morphologyValue: "possessive", confidence: "strong / possessive apostrophe marker", status: "resolved", evidence: `${token} has possessive apostrophe-s marking.` };
+    if (/^(greater|lesser|better|worse|more)$/i.test(token) || (/er$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 4)) return { morphologyType: "degree", morphologyValue: "comparative", confidence: "supported / conservative comparative surface form", status: "resolved", evidence: `${token} is recognized as comparative surface morphology.` };
+    if (/^(greatest|least|best|worst|most)$/i.test(token) || (/est$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 5)) return { morphologyType: "degree", morphologyValue: "superlative", confidence: "supported / conservative superlative surface form", status: "resolved", evidence: `${token} is recognized as superlative surface morphology.` };
+    if (/^(went|came|brought|said|spake|heard|saw|took|gave|sent|arose|begat|was|were|had|did)$/i.test(token) || (/ed$/i.test(token) && record.partOfSpeech === "verb" && token.length > 4)) return { morphologyType: "tense", morphologyValue: "past tense", confidence: "supported / conservative English past-tense surface form", status: "resolved", evidence: `${token} is recognized as past-tense surface morphology.` };
+    if (/^(is|are|am|art|hath|doth|saith)$/i.test(token) || (/s$/i.test(token) && record.partOfSpeech === "verb" && token.length > 3)) return { morphologyType: "tense", morphologyValue: "present tense", confidence: "supported / conservative English present-tense surface form", status: "resolved", evidence: `${token} is recognized as present-tense surface morphology.` };
+    if ((record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") && (/ies$/i.test(token) || (/s$/i.test(token) && !/ss$/i.test(token) && token.length > 3))) return { morphologyType: "number", morphologyValue: "plural", confidence: "supported / conservative English plural surface form", status: "resolved", evidence: `${token} is recognized as plural surface morphology.` };
+    if (record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") return { morphologyType: "number", morphologyValue: "singular", confidence: "limited / no plural or possessive marker detected", status: "resolved", evidence: `${token} has no conservative plural or possessive surface marker.` };
+    if (previous && /^(shall|shalt|will|wilt)$/i.test(previous.token) && record.partOfSpeech === "verb") return { morphologyType: "tense", morphologyValue: "future marker", confidence: "strong / previous token is explicit future marker", status: "resolved", evidence: `${record.token} is governed by previous future marker ${previous.token}.` };
+    return { morphologyType: "unresolved", morphologyValue: "unresolved", confidence: "unresolved / safe morphology fallback", status: "unresolved", evidence: "No conservative English surface morphology marker was detected." };
+  }
+
+  function morphologyPreviewRecords() {
+    const records = generatedLanguageRecords();
+    return records.map((record, index) => {
+      const morphology = morphologyPreviewForRecord(record, records);
+      return {
+        morphologyRecordId: `english_surface_v1.morphology.${index}`,
+        sourceScope: record.sourceScope || currentStudyScopeLabel(),
+        sourceReference: record.sourceReference || currentStudyScopeLabel(),
+        tokenId: record.tokenId,
+        token: record.token,
+        lemmaCandidate: languagePreviewLemmaCandidate(record.token),
+        morphologyType: morphology.morphologyType,
+        morphologyValue: morphology.morphologyValue,
+        evidence: morphology.evidence,
+        confidence: morphology.confidence,
+        provenance: "I.C.E. English Surface Morphology preview from english_surface_v1 language and POS records",
+        evidenceDistance: "Distance 1: preview language morphology derived from source token surface forms only",
+        status: morphology.status
+      };
+    });
+  }
+
+  function morphologyTypeCounts(records = []) {
+    return asArray(records).reduce((counts, record) => {
+      const key = normalizeText(record.morphologyValue || record.morphologyType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function morphologyInspectorLines() {
+    const records = morphologyPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Morphology records found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Morphology type counts: ${languageCountLine(morphologyTypeCounts(records))}`,
+      "Supported morphology: singular; plural; possessive; past tense; present tense; future marker; comparative; superlative; unresolved.",
+      "Boundary: preview-only English surface morphology. No Greek, Hebrew, Aramaic, Strong's, lexicon, subject/object inference, theological meaning, storage writes, Context Lock changes, or Study View changes."
+    ];
+    lines.push(resolved.length ? `Sample resolved: ${resolved.slice(0, 8).map((record) => `${record.token}=${record.morphologyValue} (${record.sourceReference})`).join(" | ")}` : "Sample resolved: none");
+    lines.push(unresolved.length ? `Sample unresolved: ${unresolved.slice(0, 8).map((record) => `${record.token} (${record.sourceReference})`).join(" | ")}` : "Sample unresolved: none");
+    if (ambiguous.length) lines.push(`Sample ambiguous: ${ambiguous.slice(0, 5).map((record) => `${record.token}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
+
   function pronounResolutionSupportedPronoun(token = "") {
     return /^(he|him|his|they|them|their|we|us|our|i|me|my|you|your)$/i.test(normalizeText(token));
   }
@@ -13957,6 +14043,7 @@ createRevelationPartsSection(item.subEvents)
     const literaryRows = literaryPromotionInspectorLines();
     const languageRecords = generatedLanguageRecords();
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
+    const morphology = morphologyPreviewRecords();
     const pronouns = pronounResolutionPreviewRecords();
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = speakerDetectionPreviewRecords();
@@ -13981,6 +14068,7 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Literary Structures", promotedLiteraryRecords(), { coverage: coverageFromLines(literaryRows) }),
       qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
+      qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Pronouns", pronouns),
       qaDashboardLayerLine("Quotations", quotations),
       qaDashboardLayerLine("Speakers", speakers),
@@ -14021,6 +14109,8 @@ createRevelationPartsSection(item.subEvents)
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const unresolvedPos = Number(posCounts.unresolved || 0);
     const unresolvedPosPercent = languageRecords.length ? Math.round((unresolvedPos / languageRecords.length) * 100) : 0;
+    const morphology = qaDashboardResolutionCounts(morphologyPreviewRecords());
+    const morphologyUnresolvedPercent = morphology.total ? Math.round((morphology.unresolved / morphology.total) * 100) : 0;
     const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
@@ -14035,6 +14125,7 @@ createRevelationPartsSection(item.subEvents)
       `Language adapter name: english_surface_v1`,
       `Language records generated: ${languageRecords.length}`,
       `POS unresolved: ${unresolvedPos} (${unresolvedPosPercent}%)`,
+      `Morphology: found=${morphology.total}; resolved=${morphology.resolved}; unresolved=${morphology.unresolved} (${morphologyUnresolvedPercent}%); ambiguous=${morphology.ambiguous}`,
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
       `Quotations found: ${quotations.length}`,
       `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
@@ -14238,6 +14329,7 @@ createRevelationPartsSection(item.subEvents)
       themePromotionLines: themePromotionInspectorLines(),
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
+      morphologyLines: morphologyInspectorLines(),
       pronounResolutionLines: pronounResolutionInspectorLines(),
       quotationBoundaryLines: quotationBoundaryInspectorLines(),
       speakerDetectionLines: speakerDetectionInspectorLines(),
@@ -14277,6 +14369,7 @@ createRevelationPartsSection(item.subEvents)
       item.themePromotionLines,
       item.literaryPromotionLines,
       item.languageAdapterLines,
+      item.morphologyLines,
       item.pronounResolutionLines,
       item.quotationBoundaryLines,
       item.speakerDetectionLines,
@@ -14330,6 +14423,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
+      createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
       createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
       createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
