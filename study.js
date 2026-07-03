@@ -13651,6 +13651,114 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.action}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+
+  function causalityMarkerInfo(text = "") {
+    const value = normalizeText(text).toLowerCase();
+    if (!value) return null;
+    if (/\b(therefore|wherefore|because|for this cause|because of this|as a result|so that|in order that|thus)\b/.test(value)) return { marker: RegExp.lastMatch || "explicit causal marker", type: "action -> consequence" };
+    if (/\b(after this|afterward|after these things)\b/.test(value)) return { marker: RegExp.lastMatch || "explicit sequence marker", type: "explicit sequence" };
+    if (/\b(arise|take|go|flee|depart|follow)\b/.test(value) && /\b(command|commanded|saying|said|saith)\b/.test(value)) return { marker: "explicit command/action wording", type: "command -> response" };
+    if (/\b(warn|warning|beware|take heed)\b/.test(value)) return { marker: "explicit warning wording", type: "warning -> response" };
+    return null;
+  }
+
+  function causalityTypeFromRecords(cause = {}, effect = {}, marker = {}) {
+    const text = normalizeText([cause.action, effect.action, cause.evidence, effect.evidence, marker.type].join(" ")).toLowerCase();
+    if (/warning|warn|beware|take heed/.test(text)) return "warning -> response";
+    if (/command|instruct|saying|said|saith/.test(text) && /obey|obedient|took|depart|flee|went|go/.test(text)) return "command -> obedience";
+    if (/command|instruct|saying|said|saith/.test(text)) return "command -> response";
+    if (/request|beseech|pray thee|asked/.test(text)) return "request -> response";
+    if (/revelation|dream|angel|messenger|warns_to_instructs/.test(text) && /took|depart|flee|went|arose|action/.test(text)) return "revelation -> action";
+    if (/tempt|temptation/.test(text) && /answer|answered|response/.test(text)) return "temptation -> response";
+    if (/teach|teaching|teacher|hearers|audience/.test(text)) return "teaching -> audience response";
+    if (/move|travel|flee|depart|went|came|entered/.test(text)) return "action -> movement";
+    return marker.type || "action -> consequence";
+  }
+
+  function causalityRecord(input = {}, index = 0) {
+    const cause = input.causeRecord || {};
+    const effect = input.effectRecord || {};
+    const marker = input.marker || {};
+    const status = input.status || (cause.status === "resolved" && effect.status === "resolved" && marker ? "resolved" : "unresolved");
+    return {
+      causalityId: `english_surface_v1.causality.${index}`,
+      sourceScope: input.sourceScope || effect.sourceScope || cause.sourceScope || currentStudyScopeLabel(),
+      sourceReference: input.sourceReference || effect.sourceReference || cause.sourceReference || currentStudyScopeLabel(),
+      causeRecord: cause.actionId || cause.roleId || cause.dialogueRecordId || normalizeText(cause.action || cause.evidence || ""),
+      effectRecord: effect.actionId || effect.roleId || effect.dialogueRecordId || normalizeText(effect.action || effect.evidence || ""),
+      causalityType: input.causalityType || causalityTypeFromRecords(cause, effect, marker),
+      evidence: input.evidence || (status === "resolved" ? `${marker.marker || "Explicit causal marker"} links ${cause.actor || cause.subject || "cause"} -> ${effect.actor || effect.subject || "effect"} within ${input.sourceReference || effect.sourceReference || cause.sourceReference || currentStudyScopeLabel()}.` : "No explicit source causality marker was available for this preview pair."),
+      confidence: input.confidence || (status === "resolved" ? "supported / explicit source wording plus preview records" : "unresolved"),
+      provenance: input.provenance || "I.C.E. Causality preview from Action Chain, Subject/Object, Dialogue, Timeline, Scene, Context Lock, and explicit source wording",
+      evidenceDistance: input.evidenceDistance || "Distance 5: derived causality relationship from Distance 4 action/event/scene records and explicit source wording",
+      status
+    };
+  }
+
+  function causalityPreviewRecords() {
+    const actionChains = actionChainPreviewRecords();
+    const sourceEntries = languagePreviewSourceEntries();
+    const sourceTextFor = (record = {}) => {
+      const reference = normalizeText(record.sourceReference || "").toLowerCase();
+      const scope = normalizeText(record.sourceScope || "").toLowerCase();
+      const matching = sourceEntries.filter((entry) => {
+        const entryReference = normalizeText(entry.sourceReference || "").toLowerCase();
+        const entryScope = normalizeText(entry.sourceScope || "").toLowerCase();
+        return (reference && (entryReference.includes(reference) || reference.includes(entryReference))) || (scope && (entryScope.includes(scope) || scope.includes(entryScope)));
+      });
+      return normalizeText([record.evidence, ...matching.map((entry) => entry.text)].join(" "));
+    };
+    const groups = actionChains.reduce((bucket, record) => {
+      const key = normalizeText(record.sourceReference || record.sourceScope || currentStudyScopeLabel());
+      if (!bucket[key]) bucket[key] = [];
+      bucket[key].push(record);
+      return bucket;
+    }, {});
+    const records = [];
+    Object.entries(groups).forEach(([sourceReference, group]) => {
+      const ordered = group.slice(0, 8);
+      for (let index = 0; index < ordered.length - 1; index += 1) {
+        const cause = ordered[index];
+        const effect = ordered[index + 1];
+        const marker = causalityMarkerInfo([sourceTextFor(cause), sourceTextFor(effect)].join(" "));
+        records.push(causalityRecord({
+          sourceScope: effect.sourceScope || cause.sourceScope,
+          sourceReference,
+          causeRecord: cause,
+          effectRecord: effect,
+          marker,
+          status: marker && cause.status === "resolved" && effect.status === "resolved" ? "resolved" : "unresolved"
+        }, records.length));
+      }
+    });
+    return records.slice(0, 500);
+  }
+
+  function causalityInspectorLines() {
+    const records = causalityPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const typeCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.causalityType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Causal records found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      `Causality type counts: ${languageCountLine(typeCounts)}`,
+      "Evidence distance: causality records are farther from primary evidence than action chains and require explicit source wording plus provenance.",
+      "Hierarchy protection: causality may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology.",
+      "Boundary: preview-only. Causality records do not rewrite source text, mutate Context Lock, infer doctrine, infer fulfillment, infer motive, write storage, process queues, crawl, or change Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 6).map((record) => `${record.causalityType}: ${record.causeRecord} -> ${record.effectRecord} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((record) => `${record.causalityType || "unresolved"} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.causalityType}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13685,6 +13793,7 @@ createRevelationPartsSection(item.subEvents)
     const grammar = grammaticalRolePreviewRecords();
     const subjectObject = subjectObjectPreviewRecords();
     const actionChains = actionChainPreviewRecords();
+    const causality = causalityPreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13705,7 +13814,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Dialogue Relationships", dialogue),
       qaDashboardLayerLine("Grammatical Roles", grammar),
       qaDashboardLayerLine("Subject/Object", subjectObject),
-      qaDashboardLayerLine("Action Chains", actionChains)
+      qaDashboardLayerLine("Action Chains", actionChains),
+      qaDashboardLayerLine("Causality", causality)
     ];
   }
 
@@ -13742,6 +13852,7 @@ createRevelationPartsSection(item.subEvents)
     const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
+    const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -13753,7 +13864,8 @@ createRevelationPartsSection(item.subEvents)
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
       `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
-      `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`
+      `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`,
+      `Causality: found=${causality.total}; resolved=${causality.resolved}; unresolved=${causality.unresolved}; ambiguous=${causality.ambiguous}`
     ];
   }
 
@@ -13956,6 +14068,7 @@ createRevelationPartsSection(item.subEvents)
       grammaticalRoleLines: grammaticalRoleInspectorLines(),
       subjectObjectLines: subjectObjectInspectorLines(),
       actionChainLines: actionChainInspectorLines(),
+      causalityLines: causalityInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -13992,6 +14105,7 @@ createRevelationPartsSection(item.subEvents)
       item.grammaticalRoleLines,
       item.subjectObjectLines,
       item.actionChainLines,
+      item.causalityLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -14042,6 +14156,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Grammatical Role Inspector", "", { list: item.grammaticalRoleLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Grammatical Role Inspector" }),
       createPassageFunctionSection("Subject/Object Inspector", "", { list: item.subjectObjectLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Subject/Object Inspector" }),
       createPassageFunctionSection("Action Chain Inspector", "", { list: item.actionChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Action Chain Inspector" }),
+      createPassageFunctionSection("Causality Inspector", "", { list: item.causalityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Causality Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
