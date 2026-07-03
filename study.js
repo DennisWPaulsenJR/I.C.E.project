@@ -13826,6 +13826,111 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.originatingCause}: ${record.resultingConsequence}`).join(" | ")}`);
     return lines;
   }
+
+  function fulfillmentConfidenceSourceRecords() {
+    const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
+    const records = [
+      ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /fulfill|prophec|messianic|spoken by|spoken of|as it is written/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.fulfillmentMeaning, item.sourceGrounding, item.sourcePhrase].join(" ")))).map((item) => ({ item, sourceType: "passageFunction" })),
+      ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic|spoken by|spoken of|as it is written/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding, item.evidence].join(" ")))).map((item) => ({ item, sourceType: "relationshipGraph" })),
+      ...timelineRelationshipRecords().filter((item) => /fulfill|prophec|messianic|spoken by|spoken of|as it is written/i.test(normalizeText([item.relationshipType, item.whyConnected, item.sourcePhrase, item.evidence].join(" ")))).map((item) => ({ item, sourceType: "timelineRelationship" })),
+      ...scopedSemanticRecords(studyData.prophecyLinks).map((item) => ({ item, sourceType: "prophecyLink" }))
+    ];
+    const seen = new Set();
+    return records.filter(({ item, sourceType }) => {
+      const key = [sourceType, item.id, item.recordId, item.relationshipId, item.sourceReference, item.verseRange, item.sourcePhrase, item.relationshipType, item.linkType].map((value) => normalizeText(value).toLowerCase()).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function fulfillmentConfidenceCategory(item = {}, sourceType = "") {
+    const text = normalizeText([
+      sourceType,
+      item.status,
+      item.linkType,
+      item.relationshipType,
+      item.semanticCategory,
+      item.passageFunction,
+      item.functionType,
+      item.prophecyText,
+      item.fulfillmentText,
+      item.plainMeaning,
+      item.fulfillmentMeaning,
+      item.whyConnected,
+      item.sourcePhrase,
+      item.sourceGrounding,
+      item.evidence,
+      item.provenance,
+      item.perspectiveModel
+    ].join(" ")).toLowerCase();
+    if (/tradition|commentary|conference talk|talk|model-recognized|tradition-recognized/.test(text)) return { category: "Tradition-Recognized Fulfillment", status: "tradition_recognized", confidence: "attributed / tradition-recognized" };
+    if (/typolog|foreshadow|type of|patterned after|prefigure/.test(text)) return { category: "Typological Pattern", status: "typological", confidence: "possible typological pattern / attributed preview" };
+    if (/this scripture is fulfilled|that it might be fulfilled|might be fulfilled|was fulfilled|is fulfilled|fulfilled which was spoken|fulfilled.*prophet|fulfil(?:l)?ed/i.test(text)) return { category: "Explicit Fulfillment", status: "explicit", confidence: "strong / explicit source wording" };
+    if (/as it is written|spoken by the prophet|spoken of the lord|spoken by|written by|prophet|scripture says|scripture saith/.test(text)) return { category: "Quoted / Referenced Fulfillment", status: "supported", confidence: "supported / quoted or referenced source" };
+    if (/shared phrase|shared actor|shared title|shared prophecy|shared promise|shared event|shared location|shared covenant|prophecy\s*->\s*fulfillment|messianic/.test(text)) return { category: "Strongly Supported Fulfillment Candidate", status: "supported", confidence: "supported / multiple grounded links required" };
+    if (/possible|candidate|may|might|could|related/.test(text)) return { category: "Possible Fulfillment Relationship", status: "possible", confidence: "limited / possible relationship" };
+    return { category: "Unresolved", status: "unresolved", confidence: "unresolved / insufficient fulfillment evidence" };
+  }
+
+  function fulfillmentConfidenceRecord(source = {}, index = 0) {
+    const item = source.item || {};
+    const classification = fulfillmentConfidenceCategory(item, source.sourceType);
+    const sourceReference = item.sourceReference || item.verseRange || item.scopePath || item.sourceScope || currentStudyScopeLabel();
+    const earlierReference = item.earlierReference || item.prophecyReference || item.sourceProphecyReference || item.sourceReference || item.prophecyText || "";
+    const laterReference = item.laterReference || item.fulfillmentReference || item.targetReference || item.fulfillmentText || item.sourceReference || "";
+    const evidence = item.evidence || item.sourcePhrase || item.sourceGrounding || item.whyConnected || item.fulfillmentMeaning || item.prophecyText || item.fulfillmentText || "";
+    return {
+      fulfillmentId: `ice.fulfillment_confidence.${source.sourceType || "record"}.${index}`,
+      sourceScope: item.sourceScope || item.scopePath || currentStudyScopeLabel(),
+      sourceReference,
+      earlierReference,
+      laterReference,
+      fulfillmentCategory: classification.category,
+      evidence: evidence || "Fulfillment-style source record exists, but explicit support text was not available in the loaded scoped record.",
+      evidenceLinks: asArray(item.evidenceLinks || item.supportingRecords || item.relatedRecords || item.relatedSemanticCausality).slice(0, 8),
+      confidence: classification.confidence,
+      evidenceDistance: "Distance 7: fulfillment confidence is a derived guardrail over source/context/relationship records and cannot rewrite current context",
+      provenance: item.provenance || `I.C.E. Fulfillment Confidence Framework from existing scoped ${source.sourceType || "semantic"} record`,
+      perspectiveModel: item.perspectiveModel || item.model || "current scoped source model",
+      status: classification.status
+    };
+  }
+
+  function fulfillmentConfidencePreviewRecords() {
+    return fulfillmentConfidenceSourceRecords().map((source, index) => fulfillmentConfidenceRecord(source, index)).slice(0, 500);
+  }
+
+  function fulfillmentConfidenceInspectorLines() {
+    const records = fulfillmentConfidencePreviewRecords();
+    const categoryCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.fulfillmentCategory || "Unresolved") || "Unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const explicit = records.filter((record) => record.status === "explicit");
+    const referenced = records.filter((record) => record.fulfillmentCategory === "Quoted / Referenced Fulfillment");
+    const stronglySupported = records.filter((record) => record.fulfillmentCategory === "Strongly Supported Fulfillment Candidate");
+    const possible = records.filter((record) => record.status === "possible");
+    const traditionRecognized = records.filter((record) => record.status === "tradition_recognized");
+    const typological = records.filter((record) => record.status === "typological");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const lines = [
+      `Fulfillment records found: ${records.length}`,
+      `Explicit count: ${explicit.length}`,
+      `Referenced count: ${referenced.length}`,
+      `Strongly supported count: ${stronglySupported.length}`,
+      `Possible count: ${possible.length}`,
+      `Tradition-recognized count: ${traditionRecognized.length}`,
+      `Typological count: ${typological.length}`,
+      `Unresolved count: ${unresolved.length}`,
+      `Category counts: ${languageCountLine(categoryCounts)}`,
+      "Boundary: framework-only. No broad implicit fulfillment detection, canon-wide matching, crawling, doctrine creation, Context Lock override, storage authority change, or Study View change is performed.",
+      "Trust: explicit fulfillment is only explicit when source wording says so; possible, typological, and tradition-recognized records remain labeled and attributed."
+    ];
+    lines.push(records.length ? `Sample records: ${records.slice(0, 6).map((record) => `${record.fulfillmentCategory}: ${trimText(record.evidence, 80)} (${record.sourceReference})`).join(" | ")}` : "Sample records: none");
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13862,6 +13967,7 @@ createRevelationPartsSection(item.subEvents)
     const actionChains = actionChainPreviewRecords();
     const causality = causalityPreviewRecords();
     const consequenceChains = consequenceChainPreviewRecords();
+    const fulfillmentConfidence = fulfillmentConfidencePreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13884,7 +13990,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Subject/Object", subjectObject),
       qaDashboardLayerLine("Action Chains", actionChains),
       qaDashboardLayerLine("Causality", causality),
-      qaDashboardLayerLine("Consequence Chains", consequenceChains)
+      qaDashboardLayerLine("Consequence Chains", consequenceChains),
+      qaDashboardLayerLine("Fulfillment Confidence", fulfillmentConfidence)
     ];
   }
 
@@ -14141,6 +14248,7 @@ createRevelationPartsSection(item.subEvents)
       actionChainLines: actionChainInspectorLines(),
       causalityLines: causalityInspectorLines(),
       consequenceChainLines: consequenceChainInspectorLines(),
+      fulfillmentConfidenceLines: fulfillmentConfidenceInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -14179,6 +14287,7 @@ createRevelationPartsSection(item.subEvents)
       item.actionChainLines,
       item.causalityLines,
       item.consequenceChainLines,
+      item.fulfillmentConfidenceLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -14231,6 +14340,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Action Chain Inspector", "", { list: item.actionChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Action Chain Inspector" }),
       createPassageFunctionSection("Causality Inspector", "", { list: item.causalityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Causality Inspector" }),
       createPassageFunctionSection("Consequence Chain Inspector", "", { list: item.consequenceChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Consequence Chain Inspector" }),
+      createPassageFunctionSection("Fulfillment Confidence Inspector", "", { list: item.fulfillmentConfidenceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Fulfillment Confidence Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
