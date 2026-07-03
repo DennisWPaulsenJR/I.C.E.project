@@ -12547,7 +12547,7 @@ createRevelationPartsSection(item.subEvents)
     if (!value) return "unresolved";
     if (/^\d+$/.test(value)) return "number";
     if (/^[^A-Za-z\d]+$/.test(value)) return "punctuation";
-    if (/^(he|him|his|she|her|hers|they|them|their|theirs|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|ye)$/i.test(value)) return "possible pronoun";
+    if (/^(he|him|his|himself|she|her|hers|herself|they|them|their|theirs|themselves|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|thyself|ye|whosoever|whatsoever)$/i.test(value)) return "possible pronoun";
     if (/^(god|lord|jesus|christ|holy|spirit|father|son|messiah|savior|saviour|jehovah)$/i.test(value)) return "possible divine title";
     if (/^[A-Z][A-Za-z'-]*$/.test(value)) return "possible proper noun";
     return "word";
@@ -12559,13 +12559,14 @@ createRevelationPartsSection(item.subEvents)
     if (!value) return { partOfSpeech: "unresolved", confidence: "unresolved" };
     if (/^\d+$/.test(value)) return { partOfSpeech: "number", confidence: "strong / surface numeric token" };
     if (/^[^A-Za-z\d]+$/.test(value)) return { partOfSpeech: "punctuation", confidence: "strong / punctuation token" };
-    if (/^(he|him|his|she|her|hers|they|them|their|theirs|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|ye)$/i.test(value)) return { partOfSpeech: "pronoun", confidence: "strong / closed pronoun list" };
-    if (/^(a|an|the)$/i.test(value)) return { partOfSpeech: "article", confidence: "strong / closed article list" };
-    if (/^(and|but|or|nor|for|yet|so|because|if|when|while|therefore|wherefore)$/i.test(value)) return { partOfSpeech: "conjunction", confidence: "strong / closed conjunction list" };
+    if (/^(he|him|his|himself|she|her|hers|herself|they|them|their|theirs|themselves|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|thyself|ye|whosoever|whatsoever)$/i.test(value)) return { partOfSpeech: "pronoun", confidence: "strong / closed pronoun list with scripture English supplement" };
+    if (/^(a|an|the|this|that|these|those)$/i.test(value)) return { partOfSpeech: "article", confidence: "strong / closed article/determiner list" };
+    if (/^(and|but|or|nor|for|yet|so|because|if|when|while|therefore|wherefore|lest)$/i.test(value)) return { partOfSpeech: "conjunction", confidence: "strong / closed conjunction/discourse list" };
     if (/^(of|to|in|into|unto|on|upon|with|from|by|for|through|under|over|before|after|among|against|beside|between|within|without|out)$/i.test(value)) return { partOfSpeech: "preposition", confidence: "strong / closed preposition list" };
-    if (/^(is|are|was|were|be|being|been|am|have|has|had|do|does|did|went|came|come|go|bring|brought|said|say|saying|spake|speak|heard|hear|saw|see|followed|follow|called|call|taught|teach|healed|heal|cast|made|make|took|take|gave|give|sent|send|departed|depart|entered|enter|arose|rise|arise|worshipped|worship|answered|answer|asked|ask|commanded|command|fulfilled|fulfill)$/i.test(value)) return { partOfSpeech: "verb", confidence: "supported / closed high-frequency verb list" };
+    if (/^(is|are|was|were|be|being|been|am|art|wast|wert|have|has|had|hath|do|does|did|doth|shalt|wilt|went|came|come|go|bring|brought|said|say|saith|saying|spake|speak|heard|hear|saw|see|followed|follow|called|call|taught|teach|healed|heal|cast|made|make|took|take|gave|give|sent|send|departed|depart|entered|enter|arose|rise|arise|worshipped|worship|answered|answer|asked|ask|commanded|command|fulfilled|fulfill|begat)$/i.test(value)) return { partOfSpeech: "verb", confidence: "supported / closed high-frequency verb list with scripture English supplement" };
     if (/^(holy|good|great|many|few|poor|meek|merciful|pure|righteous|evil|false|wise|young|old|first|last|other)$/i.test(value)) return { partOfSpeech: "adjective", confidence: "supported / closed adjective list" };
-    if (/^(not|now|then|again|there|here|forth|away|straightway|immediately|verily|also)$/i.test(value) || /ly$/i.test(value)) return { partOfSpeech: "adverb", confidence: "supported / surface adverb heuristic" };
+    if (/^(behold|lo|yea|nay)$/i.test(value)) return { partOfSpeech: "interjection", confidence: "supported / closed scripture discourse marker list" };
+    if (/^(not|now|then|again|there|here|forth|away|straightway|immediately|verily|therefore|wherefore|also)$/i.test(value) || /ly$/i.test(value)) return { partOfSpeech: "adverb", confidence: "supported / surface adverb or discourse signal heuristic" };
     if (/^[A-Z][A-Za-z'-]*$/.test(value) || /^(jesus|christ|god|lord|spirit|mary|joseph|abraham|david|moses|john|peter|galilee|jerusalem|bethlehem|nazareth|egypt)$/i.test(value)) return { partOfSpeech: "proper_noun", confidence: "supported / capitalization or known-name surface list" };
     if (/^(mountain|sea|ship|city|house|synagogue|wilderness|disciple|disciples|multitude|multitudes|kingdom|heaven|earth|father|mother|son|daughter|servant|people|word|words|law|prophet|prophets|angel|child|man|men|woman|faith|mercy|peace|righteousness|sick|leper|centurion)$/i.test(value)) return { partOfSpeech: "noun", confidence: "supported / closed noun list" };
     return { partOfSpeech: "unresolved", confidence: "unresolved / safe fallback" };
@@ -13450,6 +13451,87 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.relatedEntity}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+
+  function subjectObjectPreviewRecords() {
+    const languageRecords = generatedLanguageRecords();
+    const records = [];
+    const bySource = languageRecords.reduce((groups, record) => {
+      const key = `${record.sourceIndex}.${record.sourceReference || record.sourceScope || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(record);
+      return groups;
+    }, {});
+    Object.values(bySource).forEach((sourceRecords) => {
+      const ordered = sourceRecords.slice().sort((a, b) => Number(a.tokenIndex || 0) - Number(b.tokenIndex || 0));
+      ordered.forEach((record, index) => {
+        if (record.partOfSpeech !== "verb") return;
+        const predicate = record.token;
+        const subjectRecord = grammaticalRolePreviousEntity(ordered, index);
+        const nextPrep = ordered.slice(index + 1, index + 4).find((item) => /^(unto|to)$/i.test(item.token || ""));
+        const indirectRecord = nextPrep ? grammaticalRoleNextEntity(ordered, ordered.indexOf(nextPrep), 3) : null;
+        const objectRecord = indirectRecord ? null : grammaticalRoleNextEntity(ordered, index, 4);
+        const subject = subjectRecord?.token || "";
+        const object = objectRecord && objectRecord !== subjectRecord ? objectRecord.token : "";
+        const indirectObject = indirectRecord?.token || "";
+        const status = subject && (object || indirectObject) ? "resolved" : "unresolved";
+        records.push({
+          roleId: `english_surface_v1.subject_object.${record.tokenId || `${record.sourceIndex || 0}.${record.tokenIndex || 0}`}`,
+          sourceScope: record.sourceScope || currentStudyScopeLabel(),
+          sourceReference: record.sourceReference || currentStudyScopeLabel(),
+          subject,
+          predicate,
+          object,
+          indirectObject,
+          evidence: status === "resolved"
+            ? `${subject} -> ${predicate}${object ? ` -> ${object}` : ""}${indirectObject ? ` -> ${indirectObject}` : ""} by conservative English surface ordering.`
+            : `${predicate} has no high-confidence subject plus object/indirect-object pairing in this preview.`,
+          confidence: status === "resolved" ? "supported / explicit sentence ordering plus POS preview" : "unresolved",
+          provenance: "I.C.E. Subject/Object preview from POS preview, grammatical role preview, pronoun/speaker/audience previews, dialogue relationships, Context Lock, and explicit sentence ordering",
+          inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+          hierarchyBoundary: "Subject/Object detection may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology, redefine entity class, override Context Lock, or create semantic authority.",
+          status
+        });
+      });
+    });
+    dialogueRelationshipPreviewRecords().filter((record) => record.status === "resolved" && record.speaker && record.audience).slice(0, 80).forEach((dialogue, index) => {
+      records.push({
+        roleId: `english_surface_v1.subject_object.dialogue.${index}.${dialogue.quoteId}`,
+        sourceScope: dialogue.sourceScope || currentStudyScopeLabel(),
+        sourceReference: dialogue.sourceReference || currentStudyScopeLabel(),
+        subject: dialogue.speaker,
+        predicate: dialogue.relationshipType,
+        object: "",
+        indirectObject: dialogue.audience,
+        evidence: `${dialogue.speaker} -> ${dialogue.relationshipType} -> ${dialogue.audience} from resolved dialogue relationship preview.`,
+        confidence: "supported / resolved dialogue relationship",
+        provenance: "I.C.E. Subject/Object preview from resolved dialogue relationship records",
+        inferenceLevel: "Supported Meaning / preview only",
+        hierarchyBoundary: "Subject/Object detection may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology, redefine entity class, override Context Lock, or create semantic authority.",
+        status: "resolved"
+      });
+    });
+    return records.slice(0, 500);
+  }
+
+  function subjectObjectInspectorLines() {
+    const records = subjectObjectPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Subject/Object records found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      "Supported types: subject; object; indirect object; unresolved; ambiguous.",
+      "Hierarchy protection: subject/object detection may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology, redefine entity class, or override Context Lock.",
+      "Boundary: preview-only. Subject/Object records do not rewrite source text, create actors, infer doctrine, create causality, write storage, mutate scope, alter semantic records, or change Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 6).map((record) => `${record.subject || "?"} | ${record.predicate || "?"} | ${record.object || record.indirectObject || "?"} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((record) => `${record.predicate || "?"} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.predicate}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13482,6 +13564,7 @@ createRevelationPartsSection(item.subEvents)
     const audiences = audienceDetectionPreviewRecords();
     const dialogue = dialogueRelationshipPreviewRecords();
     const grammar = grammaticalRolePreviewRecords();
+    const subjectObject = subjectObjectPreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13500,7 +13583,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Speakers", speakers),
       qaDashboardLayerLine("Audiences", audiences),
       qaDashboardLayerLine("Dialogue Relationships", dialogue),
-      qaDashboardLayerLine("Grammatical Roles", grammar)
+      qaDashboardLayerLine("Grammatical Roles", grammar),
+      qaDashboardLayerLine("Subject/Object", subjectObject)
     ];
   }
 
@@ -13535,6 +13619,7 @@ createRevelationPartsSection(item.subEvents)
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
+    const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -13544,7 +13629,8 @@ createRevelationPartsSection(item.subEvents)
       `Quotations found: ${quotations.length}`,
       `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
-      `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`
+      `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
+      `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`
     ];
   }
 
@@ -13745,6 +13831,7 @@ createRevelationPartsSection(item.subEvents)
       audienceDetectionLines: audienceDetectionInspectorLines(),
       dialogueRelationshipLines: dialogueRelationshipInspectorLines(),
       grammaticalRoleLines: grammaticalRoleInspectorLines(),
+      subjectObjectLines: subjectObjectInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -13779,6 +13866,7 @@ createRevelationPartsSection(item.subEvents)
       item.audienceDetectionLines,
       item.dialogueRelationshipLines,
       item.grammaticalRoleLines,
+      item.subjectObjectLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -13827,6 +13915,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Audience Detection Inspector", "", { list: item.audienceDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Audience Detection Inspector" }),
       createPassageFunctionSection("Dialogue Relationship Inspector", "", { list: item.dialogueRelationshipLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Dialogue Relationship Inspector" }),
       createPassageFunctionSection("Grammatical Role Inspector", "", { list: item.grammaticalRoleLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Grammatical Role Inspector" }),
+      createPassageFunctionSection("Subject/Object Inspector", "", { list: item.subjectObjectLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Subject/Object Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
