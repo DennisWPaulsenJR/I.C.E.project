@@ -13532,6 +13532,125 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.predicate}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+
+  function actionChainCleanAction(value = "") {
+    return normalizeText(value).replace(/^possible_/, "").replace(/\s*->\s*/g, "_to_").replace(/\s+/g, "_").toLowerCase();
+  }
+
+  function actionChainRecord(input = {}, index = 0, source = "preview") {
+    const actor = studyReferenceNormalizeLabel(input.actor || input.subject || input.speaker || "");
+    const action = actionChainCleanAction(input.action || input.predicate || input.relationshipType || input.eventType || "");
+    const recipient = studyReferenceNormalizeLabel(input.recipient || input.object || input.indirectObject || input.audience || "");
+    const location = studyReferenceNormalizeLabel(input.location || input.where || "");
+    const status = input.status || (actor && action && (recipient || location) ? "resolved" : "unresolved");
+    return {
+      actionId: `english_surface_v1.action_chain.${source}.${index}`,
+      sourceScope: input.sourceScope || currentStudyScopeLabel(),
+      sourceReference: input.sourceReference || input.verseRange || currentStudyScopeLabel(),
+      actor,
+      action,
+      recipient,
+      location,
+      evidence: input.evidence || (status === "resolved" ? `${actor} -> ${action}${recipient ? ` -> ${recipient}` : ""}${location ? ` -> ${location}` : ""}.` : "No high-confidence actor/action target pairing found for this preview record."),
+      confidence: input.confidence || (status === "resolved" ? "supported / preview source record" : "unresolved"),
+      provenance: input.provenance || "I.C.E. Action Chain preview from Subject/Object, Dialogue Relationship, Timeline, Scene, Context Lock, and Grammatical Role preview records",
+      inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+      hierarchyBoundary: "Action chains may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology, redefine entity class, infer causality, infer fulfillment, or override Context Lock.",
+      status
+    };
+  }
+
+  function actionChainPreviewRecords() {
+    const records = [];
+    subjectObjectPreviewRecords().forEach((item, index) => {
+      records.push(actionChainRecord({
+        ...item,
+        actor: item.subject,
+        action: item.predicate,
+        recipient: item.object || item.indirectObject,
+        status: item.status === "resolved" && item.subject && item.predicate && (item.object || item.indirectObject) ? "resolved" : "unresolved",
+        provenance: "I.C.E. Action Chain preview from Subject/Object preview records"
+      }, index, "subject_object"));
+    });
+    dialogueRelationshipPreviewRecords().filter((item) => item.status === "resolved").forEach((item, index) => {
+      records.push(actionChainRecord({
+        ...item,
+        actor: item.speaker,
+        action: item.relationshipType,
+        recipient: item.audience,
+        provenance: "I.C.E. Action Chain preview from resolved Dialogue Relationship preview records"
+      }, index, "dialogue"));
+    });
+    promotedTimelineRecords().slice(0, 80).forEach((item, index) => {
+      records.push(actionChainRecord({
+        sourceScope: item.sourceScope,
+        sourceReference: item.sourceReference,
+        actor: asArray(item.participants || item.actors)[0] || item.actor || item.speaker,
+        action: item.eventType || item.eventName,
+        recipient: item.recipient || asArray(item.participants || item.actors)[1],
+        location: asArray(item.locations)[0] || item.location,
+        evidence: item.evidence || item.sourcePhrase || item.eventName,
+        confidence: item.confidence || item.evidenceWeight,
+        provenance: "I.C.E. Action Chain preview from promoted Timeline records",
+        status: "resolved"
+      }, index, "timeline"));
+    });
+    promotedSceneRecords().slice(0, 80).forEach((item, index) => {
+      records.push(actionChainRecord({
+        sourceScope: item.sourceScope,
+        sourceReference: item.sourceReference,
+        actor: item.speaker || asArray(item.participants)[0],
+        action: item.sceneType || item.sceneTitle,
+        recipient: item.audience || asArray(item.participants)[1],
+        location: asArray(item.locations)[0] || item.location,
+        evidence: item.evidence || item.sourcePhrase || item.sceneTitle,
+        confidence: item.confidence || item.evidenceWeight,
+        provenance: "I.C.E. Action Chain preview from promoted Scene records",
+        status: "resolved"
+      }, index, "scene"));
+    });
+    contextLockRecords().slice(0, 80).forEach((lock, index) => {
+      records.push(actionChainRecord({
+        sourceScope: lock.scopePath || lock.eventScope,
+        sourceReference: lock.verseRange || lock.eventScope,
+        actor: lock.messenger || lock.speaker || lock.authoritySource,
+        action: lock.messenger ? "warns / instructs" : lock.speaker ? "speaks" : "authorizes",
+        recipient: lock.recipient || lock.audience,
+        location: lock.location,
+        evidence: lock.sourcePhrase || lock.eventScope || lock.lockName,
+        confidence: lock.evidenceWeight || "supported / Context Lock preview",
+        provenance: "I.C.E. Action Chain preview from current-scope Context Lock records",
+        status: "resolved"
+      }, index, "context_lock"));
+    });
+    const seen = new Set();
+    return records.filter((record) => {
+      const key = [record.actor, record.action, record.recipient, record.location, record.sourceReference].map((value) => normalizeText(value).toLowerCase()).join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 500);
+  }
+
+  function actionChainInspectorLines() {
+    const records = actionChainPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Action chains found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      "Supported chain shape: actor -> action -> recipient/location.",
+      "Hierarchy protection: action chains may support authority, Exaltation, and class-of-being lenses, but may not flatten ontology.",
+      "Boundary: preview-only. Action chains do not rewrite source text, mutate Context Lock, create doctrine, infer causality, infer fulfillment, write storage, process queues, crawl, or change Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 6).map((record) => `${record.actor || "?"} -> ${record.action || "?"} -> ${record.recipient || record.location || "?"} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((record) => `${record.action || "?"} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.action}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13565,6 +13684,7 @@ createRevelationPartsSection(item.subEvents)
     const dialogue = dialogueRelationshipPreviewRecords();
     const grammar = grammaticalRolePreviewRecords();
     const subjectObject = subjectObjectPreviewRecords();
+    const actionChains = actionChainPreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13584,7 +13704,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Audiences", audiences),
       qaDashboardLayerLine("Dialogue Relationships", dialogue),
       qaDashboardLayerLine("Grammatical Roles", grammar),
-      qaDashboardLayerLine("Subject/Object", subjectObject)
+      qaDashboardLayerLine("Subject/Object", subjectObject),
+      qaDashboardLayerLine("Action Chains", actionChains)
     ];
   }
 
@@ -13620,6 +13741,7 @@ createRevelationPartsSection(item.subEvents)
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
+    const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -13630,7 +13752,8 @@ createRevelationPartsSection(item.subEvents)
       `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
-      `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`
+      `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
+      `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`
     ];
   }
 
@@ -13832,6 +13955,7 @@ createRevelationPartsSection(item.subEvents)
       dialogueRelationshipLines: dialogueRelationshipInspectorLines(),
       grammaticalRoleLines: grammaticalRoleInspectorLines(),
       subjectObjectLines: subjectObjectInspectorLines(),
+      actionChainLines: actionChainInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -13867,6 +13991,7 @@ createRevelationPartsSection(item.subEvents)
       item.dialogueRelationshipLines,
       item.grammaticalRoleLines,
       item.subjectObjectLines,
+      item.actionChainLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -13916,6 +14041,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Dialogue Relationship Inspector", "", { list: item.dialogueRelationshipLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Dialogue Relationship Inspector" }),
       createPassageFunctionSection("Grammatical Role Inspector", "", { list: item.grammaticalRoleLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Grammatical Role Inspector" }),
       createPassageFunctionSection("Subject/Object Inspector", "", { list: item.subjectObjectLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Subject/Object Inspector" }),
+      createPassageFunctionSection("Action Chain Inspector", "", { list: item.actionChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Action Chain Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
