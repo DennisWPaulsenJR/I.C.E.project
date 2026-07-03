@@ -11789,8 +11789,55 @@ createRevelationPartsSection(item.subEvents)
     return "entity";
   }
 
-  function addStudyReferenceItem(map, name, detail = {}) {
+  function studyReferenceStripDisplayQualifier(value = "") {
+    return studyReferenceNormalizeLabel(value)
+      .replace(/\s+by scene$/i, "")
+      .replace(/\s+where\b.*$/i, "")
+      .replace(/\s+for\b.*$/i, "")
+      .trim();
+  }
+
+  function studyReferenceCanonicalDisplayLabel(value = "") {
+    const label = studyReferenceStripDisplayQualifier(value);
+    if (!label) return "";
+    if (/^the lord\s*\/\s*god$/i.test(label)) return "THE LORD / GOD";
+    if (/^jesus\s*\/\s*young child$/i.test(label)) return "JESUS / young CHILD";
+    if (/^angel of the lord$/i.test(label) || /^angel of the lord$/i.test(label.replace(/AngEL/i, "Angel"))) return "AngEL Of THE LORD";
+    if (/^wise men$/i.test(label)) return "wise men";
+    if (/^herod$/i.test(label)) return "Herod";
+    if (/^joseph$/i.test(label)) return "Joseph";
+    if (/^mary$/i.test(label)) return "Mary";
+    return label;
+  }
+
+  function studyReferenceCanonicalDisplayEntries(name = "", detail = {}) {
     const label = studyReferenceNormalizeLabel(name);
+    if (!label) return [];
+    if (detail.includeTechnical) return [{ label, roles: detail.roles }];
+    const sourceRoles = asArray(detail.roles);
+    const pieces = label.split(/\s*;\s*/).flatMap((piece) => {
+      const clean = studyReferenceStripDisplayQualifier(piece);
+      if (/^the lord\s*\/\s*god\b/i.test(clean)) return ["THE LORD / GOD"];
+      if (/^jesus\s*\/\s*young child\b/i.test(clean)) return ["JESUS / young CHILD"];
+      if (/\s+\/\s+/.test(clean)) return clean.split(/\s+\/\s+/);
+      return [clean];
+    });
+    const bySceneSpeaker = /\bby scene\b/i.test(label) && sourceRoles.some((role) => /speaker/i.test(role));
+    return pieces
+      .map((piece, index) => {
+        const canonical = studyReferenceCanonicalDisplayLabel(piece);
+        if (!canonical) return null;
+        const roles = bySceneSpeaker && index > 0 ? ["participant"] : sourceRoles;
+        return { label: canonical, roles };
+      })
+      .filter(Boolean);
+  }
+
+  function addStudyReferenceItem(map, name, detail = {}) {
+    const entries = studyReferenceCanonicalDisplayEntries(name, detail);
+    if (!entries.length) return;
+    entries.forEach((entry) => {
+    const label = studyReferenceNormalizeLabel(entry.label);
     if (!label) return;
     if (!detail.includeTechnical && studyReferenceIsTechnicalLabel(label)) return;
     const key = label.toLowerCase();
@@ -11800,7 +11847,7 @@ createRevelationPartsSection(item.subEvents)
       sources: new Set()
     };
     if (studyReferenceIsDivineAuthorityLabel(label)) existing.roles.add("authority");
-    asArray(detail.roles).forEach((role) => {
+    asArray(entry.roles).forEach((role) => {
       const normalized = studyReferenceRoleLabel(role);
       if (normalized) existing.roles.add(normalized);
     });
@@ -11810,6 +11857,7 @@ createRevelationPartsSection(item.subEvents)
       if (normalized) existing.sources.add(normalized);
     });
     map.set(key, existing);
+    });
   }
 
   function studyReferenceListFromItems(items = [], limit = 14, options = {}) {
