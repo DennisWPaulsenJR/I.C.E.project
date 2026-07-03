@@ -13759,6 +13759,73 @@ createRevelationPartsSection(item.subEvents)
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.causalityType}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
+
+  function consequenceChainRecord(input = {}, index = 0) {
+    const intermediateEffects = asArray(input.intermediateEffects).filter(Boolean);
+    const status = input.status || (input.originatingCause && input.resultingConsequence && intermediateEffects.length ? "resolved" : "unresolved");
+    return {
+      consequenceId: `english_surface_v1.consequence_chain.${index}`,
+      sourceScope: input.sourceScope || currentStudyScopeLabel(),
+      sourceReference: input.sourceReference || currentStudyScopeLabel(),
+      originatingCause: input.originatingCause || "",
+      intermediateEffects,
+      resultingConsequence: input.resultingConsequence || "",
+      confidence: input.confidence || (status === "resolved" ? "supported / chained explicit causality preview records" : "unresolved"),
+      provenance: input.provenance || "I.C.E. Consequence Chain preview from resolved Causality, Action Chain, Timeline, Scene, and Context Lock preview records",
+      evidenceDistance: input.evidenceDistance || "Distance 6: consequence chain derived from Distance 5 causality records without rewriting primary evidence",
+      status
+    };
+  }
+
+  function consequenceChainPreviewRecords() {
+    const causalityRecords = causalityPreviewRecords().filter((record) => record.status === "resolved");
+    const groups = causalityRecords.reduce((bucket, record) => {
+      const key = normalizeText(record.sourceReference || record.sourceScope || currentStudyScopeLabel());
+      if (!bucket[key]) bucket[key] = [];
+      bucket[key].push(record);
+      return bucket;
+    }, {});
+    const chains = [];
+    Object.entries(groups).forEach(([sourceReference, group]) => {
+      const ordered = group.slice(0, 12);
+      for (let index = 0; index < ordered.length - 1; index += 1) {
+        const first = ordered[index];
+        const second = ordered[index + 1];
+        const linked = normalizeText(first.effectRecord) && normalizeText(first.effectRecord) === normalizeText(second.causeRecord);
+        chains.push(consequenceChainRecord({
+          sourceScope: second.sourceScope || first.sourceScope,
+          sourceReference,
+          originatingCause: first.causeRecord,
+          intermediateEffects: linked ? [first.effectRecord] : [],
+          resultingConsequence: linked ? second.effectRecord : "",
+          confidence: linked ? "supported / explicit adjacent causality chain" : "unresolved",
+          provenance: "I.C.E. Consequence Chain preview from adjacent resolved Causality preview records in the same source reference",
+          status: linked ? "resolved" : "unresolved"
+        }, chains.length));
+      }
+    });
+    return chains.slice(0, 500);
+  }
+
+  function consequenceChainInspectorLines() {
+    const records = consequenceChainPreviewRecords();
+    const resolved = records.filter((record) => record.status === "resolved");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const lines = [
+      `Consequence chains found: ${records.length}`,
+      `Resolved: ${resolved.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Ambiguous: ${ambiguous.length}`,
+      "Supported chain shape: originating cause -> intermediate effect(s) -> resulting consequence.",
+      "Evidence distance: consequence chains are farther from primary evidence than causality records and only chain explicit resolved causal relationships.",
+      "Boundary: preview-only. Consequence chains do not rewrite source text, mutate Context Lock, infer doctrine, infer motives, infer fulfillment, infer symbolism, infer typology, write storage, process queues, crawl, or change Study View output."
+    ];
+    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 6).map((record) => `${record.originatingCause} -> ${record.intermediateEffects.join(" -> ")} -> ${record.resultingConsequence} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((record) => `${record.originatingCause || "cause"} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.originatingCause}: ${record.resultingConsequence}`).join(" | ")}`);
+    return lines;
+  }
   function qaDashboardResolutionCounts(records = []) {
     const list = asArray(records);
     return {
@@ -13794,6 +13861,7 @@ createRevelationPartsSection(item.subEvents)
     const subjectObject = subjectObjectPreviewRecords();
     const actionChains = actionChainPreviewRecords();
     const causality = causalityPreviewRecords();
+    const consequenceChains = consequenceChainPreviewRecords();
     const coverageFromLines = (lines) => {
       const match = asArray(lines).join(" ").match(/Coverage:\s*(\d+)%/i);
       return match ? Number(match[1]) : null;
@@ -13815,7 +13883,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Grammatical Roles", grammar),
       qaDashboardLayerLine("Subject/Object", subjectObject),
       qaDashboardLayerLine("Action Chains", actionChains),
-      qaDashboardLayerLine("Causality", causality)
+      qaDashboardLayerLine("Causality", causality),
+      qaDashboardLayerLine("Consequence Chains", consequenceChains)
     ];
   }
 
@@ -13853,6 +13922,7 @@ createRevelationPartsSection(item.subEvents)
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
     const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
+    const consequenceChains = qaDashboardResolutionCounts(consequenceChainPreviewRecords());
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -13865,7 +13935,8 @@ createRevelationPartsSection(item.subEvents)
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
       `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
       `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`,
-      `Causality: found=${causality.total}; resolved=${causality.resolved}; unresolved=${causality.unresolved}; ambiguous=${causality.ambiguous}`
+      `Causality: found=${causality.total}; resolved=${causality.resolved}; unresolved=${causality.unresolved}; ambiguous=${causality.ambiguous}`,
+      `Consequence chains: found=${consequenceChains.total}; resolved=${consequenceChains.resolved}; unresolved=${consequenceChains.unresolved}; ambiguous=${consequenceChains.ambiguous}`
     ];
   }
 
@@ -14069,6 +14140,7 @@ createRevelationPartsSection(item.subEvents)
       subjectObjectLines: subjectObjectInspectorLines(),
       actionChainLines: actionChainInspectorLines(),
       causalityLines: causalityInspectorLines(),
+      consequenceChainLines: consequenceChainInspectorLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -14106,6 +14178,7 @@ createRevelationPartsSection(item.subEvents)
       item.subjectObjectLines,
       item.actionChainLines,
       item.causalityLines,
+      item.consequenceChainLines,
       item.qaDashboardLines,
       item.inferenceLines,
       item.provenanceLines,
@@ -14157,6 +14230,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Subject/Object Inspector", "", { list: item.subjectObjectLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Subject/Object Inspector" }),
       createPassageFunctionSection("Action Chain Inspector", "", { list: item.actionChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Action Chain Inspector" }),
       createPassageFunctionSection("Causality Inspector", "", { list: item.causalityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Causality Inspector" }),
+      createPassageFunctionSection("Consequence Chain Inspector", "", { list: item.consequenceChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Consequence Chain Inspector" }),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
