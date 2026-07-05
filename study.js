@@ -12600,6 +12600,181 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function registeredPerspectiveModels() {
+    const supportOnly = "support model only / no generated interpretation records";
+    const baseBoundary = "Perspective models may illuminate, compare, or classify evidence; they do not rewrite source evidence, Context Lock, semantic records, Study View output, queues, scope, or storage authority.";
+    return [
+      {
+        perspectiveId: "surface_translation_model_v1",
+        perspectiveType: "surface translation model",
+        sourceAdapter: "english_surface_v1",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / perspective support",
+        attribution: "I.C.E. generated contract",
+        authorityLevel: supportOnly,
+        supportedScopes: ["verse", "chapter", "selected range", "book", "volume"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "strongs_model_v1",
+        perspectiveType: "Strong's model",
+        sourceAdapter: "strong_alignment_preview",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / lexical perspective support",
+        attribution: "attributable lexical model contract",
+        authorityLevel: supportOnly,
+        supportedScopes: ["token", "phrase", "verse", "chapter", "selected range"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "lexicon_model_v1",
+        perspectiveType: "lexicon model",
+        sourceAdapter: "future_lexicon_adapter",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / lexical perspective support",
+        attribution: "attributable lexicon model contract",
+        authorityLevel: supportOnly,
+        supportedScopes: ["token", "phrase", "verse", "chapter", "selected range"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "grammar_model_v1",
+        perspectiveType: "grammar model",
+        sourceAdapter: "english_surface_v1 / koine_greek_v1 / biblical_hebrew_v1",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / grammar perspective support",
+        attribution: "attributable grammar model contract",
+        authorityLevel: supportOnly,
+        supportedScopes: ["token", "sentence", "verse", "chapter", "selected range"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "expert_model_v1",
+        perspectiveType: "expert model",
+        sourceAdapter: "future_expert_source_adapter",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / attributed expert perspective",
+        attribution: "expert source required before use",
+        authorityLevel: supportOnly,
+        supportedScopes: ["verse", "chapter", "selected range", "book", "volume"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "commentary_model_v1",
+        perspectiveType: "commentary model",
+        sourceAdapter: "future_commentary_adapter",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / attributed commentary perspective",
+        attribution: "commentary source required before use",
+        authorityLevel: supportOnly,
+        supportedScopes: ["verse", "chapter", "selected range", "book", "volume"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "tradition_model_v1",
+        perspectiveType: "tradition model",
+        sourceAdapter: "future_tradition_adapter",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / attributed tradition perspective",
+        attribution: "tradition source required before use",
+        authorityLevel: supportOnly,
+        supportedScopes: ["verse", "chapter", "selected range", "book", "volume"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "language_adapter_model_v1",
+        perspectiveType: "language adapter model",
+        sourceAdapter: "registered language adapters",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / adapter perspective support",
+        attribution: "I.C.E. language adapter registry",
+        authorityLevel: supportOnly,
+        supportedScopes: ["token", "phrase", "verse", "chapter", "selected range", "book"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      },
+      {
+        perspectiveId: "interreligious_comparison_model_v1",
+        perspectiveType: "interreligious comparison model",
+        sourceAdapter: "future_comparison_adapter",
+        provenance: "I.C.E. Perspective Model foundation; architecture-only registry contract",
+        confidence: "pending / no generated records",
+        evidenceDistance: "distance 7 / attributed comparison perspective",
+        attribution: "comparison source and perspective required before use",
+        authorityLevel: supportOnly,
+        supportedScopes: ["verse", "chapter", "selected range", "book", "volume", "library"],
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        trustBoundary: baseBoundary
+      }
+    ];
+  }
+
+  function registeredPresentationLenses() {
+    const presentationOnly = "registry-only / no generated lens records";
+    const defaultPolicy = "preserve evidence distance, source references, confidence, and provenance; presentation may simplify but may not rewrite evidence";
+    const prohibitedActions = ["rewrite evidence", "mutate Context Lock", "create doctrine", "alter semantic records", "flatten ontology hierarchy", "change Study Scope", "write storage", "process queues", "crawl"];
+    const lensDefinitions = [
+      ["study_lens_v1", "Study Lens", "study", ["Source", "Context", "Entities", "Events", "Relationships", "Themes"], ["surface_translation_model_v1"], ["user-facing study summary"]],
+      ["editor_architect_lens_v1", "Editor / Architect Lens", "technical inspection", ["all scoped ontology records", "QA diagnostics"], ["language_adapter_model_v1", "grammar_model_v1"], ["technical inspection"]],
+      ["qa_lens_v1", "QA Lens", "quality assurance", ["QA diagnostics", "promotion coverage", "trust checks"], [], ["QA summary"]],
+      ["timeline_lens_v1", "Timeline Lens", "timeline", ["Timeline", "Events", "Scenes", "Context"], [], ["ordered event presentation"]],
+      ["scene_lens_v1", "Scene Lens", "scene", ["Scenes", "Context", "Entities", "Timeline"], [], ["scene summary"]],
+      ["relationship_lens_v1", "Relationship Lens", "relationship", ["Relationships", "Entities", "Scenes", "Timeline"], [], ["relationship summary"]],
+      ["theme_lens_v1", "Theme Lens", "theme", ["Themes", "Relationships", "Scenes", "Events"], ["tradition_model_v1"], ["theme summary"]],
+      ["literary_structure_lens_v1", "Literary Structure Lens", "literary", ["Literary Structures", "Source", "Language", "Themes"], ["grammar_model_v1"], ["literary structure summary"]],
+      ["character_actor_lens_v1", "Character / Actor Lens", "entity", ["Entities", "Context", "Scenes", "Relationships"], [], ["actor summary"]],
+      ["authority_lens_v1", "Authority Lens", "authority", ["Context", "Entities", "Relationships", "Dialogue"], ["grammar_model_v1"], ["authority-path summary"]],
+      ["class_of_being_lens_v1", "Class of Being Lens", "ontology hierarchy", ["Entities", "Context", "Language", "Perspective Models"], ["language_adapter_model_v1"], ["class hierarchy display"]],
+      ["exaltation_lens_v1", "Exaltation Lens", "ontology hierarchy", ["Entities", "Context", "Class of Being", "Perspective Models"], ["tradition_model_v1", "expert_model_v1"], ["attributed class-of-being display"]],
+      ["language_lens_v1", "Language Lens", "language", ["Language Records", "POS", "Morphology", "Grammar"], ["language_adapter_model_v1", "grammar_model_v1"], ["language preview summary"]],
+      ["translation_lens_v1", "Translation Lens", "translation", ["Translation Alignment", "Source", "Language"], ["surface_translation_model_v1"], ["translation alignment summary"]],
+      ["strong_lexicon_lens_v1", "Strong's / Lexicon Lens", "lexical", ["Strong Alignment", "Translation Alignment", "Language"], ["strongs_model_v1", "lexicon_model_v1"], ["lexical alignment summary"]],
+      ["grammar_lens_v1", "Grammar Lens", "grammar", ["POS", "Morphology", "Grammatical Roles", "Subject/Object"], ["grammar_model_v1"], ["grammar preview summary"]],
+      ["confidence_lens_v1", "Confidence Lens", "confidence", ["Evidence Chains", "Analysis Support", "Promotion Coverage"], [], ["confidence/support summary"]],
+      ["evidence_distance_lens_v1", "Evidence Distance Lens", "evidence distance", ["Source", "Language", "Context", "Derived Records"], [], ["evidence distance summary"]],
+      ["fulfillment_lens_v1", "Fulfillment Lens", "fulfillment", ["Fulfillment Confidence", "Relationships", "Timeline", "Source"], ["tradition_model_v1", "expert_model_v1"], ["fulfillment confidence summary"]],
+      ["perspective_lens_v1", "Perspective Lens", "perspective", ["Perspective Models", "Source", "Evidence"], registeredPerspectiveModels().map((model) => model.perspectiveId), ["perspective comparison summary"]],
+      ["interreligious_lens_v1", "Interreligious Lens", "comparison", ["Perspective Models", "Source", "Themes", "Relationships"], ["interreligious_comparison_model_v1"], ["attributed comparison summary"]]
+    ];
+    return lensDefinitions.map(([lensId, lensName, lensType, consumedLayers, consumedPerspectiveModels, allowedOutputs]) => ({
+      lensId,
+      lensName,
+      lensType,
+      consumedLayers,
+      consumedPerspectiveModels,
+      allowedOutputs,
+      prohibitedActions,
+      evidenceDistancePolicy: defaultPolicy,
+      trustRules: "Lenses consume ontology and perspective models; they do not create source truth, semantic truth, doctrine, or storage authority.",
+      status: presentationOnly,
+      generatedRecordCount: 0
+    }));
+  }
+
   function languagePreviewTokenParts(text = "") {
     return normalizeText(text).match(/[A-Za-z]+(?:'[A-Za-z]+)?|\d+|[^\sA-Za-z\d]/g) || [];
   }
@@ -14274,6 +14449,8 @@ createRevelationPartsSection(item.subEvents)
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const greekAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "koine_greek_v1");
     const hebrewAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "biblical_hebrew_v1");
+    const perspectiveModels = registeredPerspectiveModels();
+    const presentationLenses = registeredPresentationLenses();
     const morphology = morphologyPreviewRecords();
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
@@ -14302,6 +14479,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
       qaDashboardLayerLine("Greek Adapter", greekAdapter, { active: true }),
       qaDashboardLayerLine("Hebrew Adapter", hebrewAdapter, { active: true }),
+      qaDashboardLayerLine("Perspective Models", perspectiveModels, { active: true }),
+      qaDashboardLayerLine("Lens Registry", presentationLenses, { active: true }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
@@ -14508,6 +14687,72 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function perspectiveModelInspectorLines() {
+    const models = registeredPerspectiveModels();
+    const generatedRecords = models.reduce((sum, model) => sum + Number(model.generatedRecordCount || 0), 0);
+    const unresolvedRecords = models.reduce((sum, model) => sum + Number(model.unresolvedRecordCount || 0), 0);
+    const activeModels = models.filter((model) => model.adapterStatus !== "inactive");
+    const categories = Array.from(new Set(models.map((model) => model.perspectiveType).filter(Boolean)));
+    const lines = [
+      `Registered perspective models: ${models.length}`,
+      `Active models: ${activeModels.length}`,
+      `Generated records: ${generatedRecords}`,
+      `Unresolved records: ${unresolvedRecords}`,
+      `Perspective categories: ${categories.join("; ")}`,
+      "Record shape: perspectiveId; perspectiveType; sourceAdapter; provenance; confidence; evidenceDistance; attribution; authorityLevel; supportedScopes",
+      "Authority: primary evidence remains authoritative. Perspectives may illuminate, compare, or classify evidence, but may not rewrite evidence.",
+      "Disagreement: perspective disagreement is information rather than error when attribution, provenance, and evidence distance remain visible."
+    ];
+    models.forEach((model) => {
+      lines.push([
+        model.perspectiveId,
+        `type=${model.perspectiveType}`,
+        `sourceAdapter=${model.sourceAdapter}`,
+        `authority=${model.authorityLevel}`,
+        `evidenceDistance=${model.evidenceDistance}`,
+        `attribution=${model.attribution}`,
+        `scopes=${asArray(model.supportedScopes).join(", ")}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only. No interpretation generation, automatic perspective selection, doctrinal conclusion, crawling, queue processing, storage write, Context Lock change, or Study View change.");
+    lines.push("Trust: perspective models remain attributable support records; they do not create doctrine, override source evidence, or override Context Lock.");
+    return lines;
+  }
+
+  function lensRegistryInspectorLines() {
+    const lenses = registeredPresentationLenses();
+    const activeLenses = lenses.filter((lens) => lens.status !== "inactive");
+    const generatedRecords = lenses.reduce((sum, lens) => sum + Number(lens.generatedRecordCount || 0), 0);
+    const lensTypes = Array.from(new Set(lenses.map((lens) => lens.lensType).filter(Boolean)));
+    const consumedLayers = Array.from(new Set(lenses.flatMap((lens) => asArray(lens.consumedLayers)).filter(Boolean)));
+    const consumedModels = Array.from(new Set(lenses.flatMap((lens) => asArray(lens.consumedPerspectiveModels)).filter(Boolean)));
+    const prohibited = Array.from(new Set(lenses.flatMap((lens) => asArray(lens.prohibitedActions)).filter(Boolean)));
+    const lines = [
+      `Registered lenses: ${lenses.length}`,
+      `Active lenses: ${activeLenses.length}`,
+      `Generated lens records: ${generatedRecords}`,
+      "Record shape: lensId; lensName; lensType; consumedLayers; consumedPerspectiveModels; allowedOutputs; prohibitedActions; evidenceDistancePolicy; trustRules; status",
+      `Lens types: ${lensTypes.join("; ")}`,
+      `Consumed layers: ${consumedLayers.join("; ")}`,
+      `Consumed perspective models: ${consumedModels.length ? consumedModels.join("; ") : "none recorded"}`,
+      `Prohibited actions: ${prohibited.join("; ")}`,
+      "Trust: lenses consume ontology and perspective models. They may simplify presentation but may not rewrite evidence, mutate Context Lock, create doctrine, alter semantic records, flatten ontology hierarchy, change scope, process queues, crawl, or write storage."
+    ];
+    lenses.forEach((lens) => {
+      lines.push([
+        lens.lensId,
+        lens.lensName,
+        `type=${lens.lensType}`,
+        `layers=${asArray(lens.consumedLayers).join(", ")}`,
+        `models=${asArray(lens.consumedPerspectiveModels).join(", ") || "none"}`,
+        `outputs=${asArray(lens.allowedOutputs).join(", ")}`,
+        `status=${lens.status}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only registry. No major UI redesign, Study View behavior change, storage authority change, semantic mutation, or generated lens records.");
+    return lines;
+  }
+
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -14636,6 +14881,8 @@ createRevelationPartsSection(item.subEvents)
       languageAdapterLines: languageAdapterInspectorLines(),
       greekAdapterLines: greekAdapterInspectorLines(),
       hebrewAdapterLines: hebrewAdapterInspectorLines(),
+      perspectiveModelLines: perspectiveModelInspectorLines(),
+      lensRegistryLines: lensRegistryInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -14680,6 +14927,8 @@ createRevelationPartsSection(item.subEvents)
       item.languageAdapterLines,
       item.greekAdapterLines,
       item.hebrewAdapterLines,
+      item.perspectiveModelLines,
+      item.lensRegistryLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -14738,6 +14987,8 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Greek Adapter Inspector", "", { list: item.greekAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Greek Adapter Inspector" }),
       createPassageFunctionSection("Hebrew Adapter Inspector", "", { list: item.hebrewAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Hebrew Adapter Inspector" }),
+      createPassageFunctionSection("Perspective Model Inspector", "", { list: item.perspectiveModelLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Perspective Model Inspector" }),
+      createPassageFunctionSection("Lens Registry Inspector", "", { list: item.lensRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Lens Registry Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
