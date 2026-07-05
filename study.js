@@ -12548,7 +12548,7 @@ createRevelationPartsSection(item.subEvents)
     if (/^\d+$/.test(value)) return "number";
     if (/^[^A-Za-z\d]+$/.test(value)) return "punctuation";
     if (/^(he|him|his|himself|she|her|hers|herself|they|them|their|theirs|themselves|we|us|our|ours|you|your|yours|i|me|my|mine|thou|thee|thy|thine|thyself|ye|whosoever|whatsoever)$/i.test(value)) return "possible pronoun";
-    if (/^(god|lord|jesus|christ|holy|spirit|father|son|messiah|savior|saviour|jehovah)$/i.test(value)) return "possible divine title";
+    if (/^(god|lord|jesus|christ|holy|spirit|father|son|messiah|anointed|one|savior|saviour|jehovah)$/i.test(value)) return "possible divine title";
     if (/^[A-Z][A-Za-z'-]*$/.test(value)) return "possible proper noun";
     return "word";
   }
@@ -12567,7 +12567,7 @@ createRevelationPartsSection(item.subEvents)
     if (/^(holy|good|great|many|few|poor|meek|merciful|pure|righteous|evil|false|wise|young|old|first|last|other)$/i.test(value)) return { partOfSpeech: "adjective", confidence: "supported / closed adjective list" };
     if (/^(behold|lo|yea|nay)$/i.test(value)) return { partOfSpeech: "interjection", confidence: "supported / closed scripture discourse marker list" };
     if (/^(not|now|then|again|there|here|forth|away|straightway|immediately|verily|therefore|wherefore|also)$/i.test(value) || /ly$/i.test(value)) return { partOfSpeech: "adverb", confidence: "supported / surface adverb or discourse signal heuristic" };
-    if (/^[A-Z][A-Za-z'-]*$/.test(value) || /^(jesus|christ|god|lord|spirit|mary|joseph|abraham|david|moses|john|peter|galilee|jerusalem|bethlehem|nazareth|egypt)$/i.test(value)) return { partOfSpeech: "proper_noun", confidence: "supported / capitalization or known-name surface list" };
+    if (/^[A-Z][A-Za-z'-]*$/.test(value) || /^(jesus|christ|messiah|anointed|god|lord|spirit|mary|joseph|abraham|david|moses|john|peter|galilee|jerusalem|bethlehem|nazareth|egypt)$/i.test(value)) return { partOfSpeech: "proper_noun", confidence: "supported / capitalization or known-name surface list" };
     if (/^(mountain|sea|ship|city|house|synagogue|wilderness|disciple|disciples|multitude|multitudes|kingdom|heaven|earth|father|mother|son|daughter|servant|people|word|words|law|prophet|prophets|angel|child|man|men|woman|faith|mercy|peace|righteousness|sick|leper|centurion)$/i.test(value)) return { partOfSpeech: "noun", confidence: "supported / closed noun list" };
     return { partOfSpeech: "unresolved", confidence: "unresolved / safe fallback" };
   }
@@ -12734,6 +12734,173 @@ createRevelationPartsSection(item.subEvents)
     lines.push(resolved.length ? `Sample resolved: ${resolved.slice(0, 8).map((record) => `${record.token}=${record.morphologyValue} (${record.sourceReference})`).join(" | ")}` : "Sample resolved: none");
     lines.push(unresolved.length ? `Sample unresolved: ${unresolved.slice(0, 8).map((record) => `${record.token} (${record.sourceReference})`).join(" | ")}` : "Sample unresolved: none");
     if (ambiguous.length) lines.push(`Sample ambiguous: ${ambiguous.slice(0, 5).map((record) => `${record.token}: ${record.evidence}`).join(" | ")}`);
+    return lines;
+  }
+
+  const TRANSLATION_ALIGNMENT_CONCEPTS = [
+    {
+      alignedConcept: "ANOINTED_CONCEPT",
+      terms: ["THE ANOINTED ONE", "The Anointed One", "ANOINTED ONE", "Anointed One", "Messiah", "The Christ", "the Christ", "Christ"]
+    }
+  ];
+
+  function translationAlignmentStatusForTerm(term = "") {
+    const normalized = normalizeText(term).toLowerCase();
+    if (/^(messiah|anointed one|the anointed one)$/i.test(normalized)) return { status: "aligned", confidence: "supported / explicit anointed-title surface form" };
+    if (/^(christ|the christ)$/i.test(normalized)) return { status: "possible", confidence: "possible / Christ surface form aligned as anointed concept candidate without forced equivalence" };
+    return { status: "unresolved", confidence: "unresolved" };
+  }
+
+  function translationAlignmentPreviewRecords() {
+    const entries = languagePreviewSourceEntries();
+    const records = [];
+    TRANSLATION_ALIGNMENT_CONCEPTS.forEach((concept) => {
+      entries.forEach((entry) => {
+        concept.terms.forEach((term) => {
+          const pattern = new RegExp(`\\b${escapeRegExp(term)}\\b`, "gi");
+          let match;
+          while ((match = pattern.exec(entry.text || "")) !== null) {
+            const status = translationAlignmentStatusForTerm(match[0]);
+            records.push({
+              alignmentId: `english_surface_v1.translation_alignment.${records.length}`,
+              sourceScope: entry.sourceScope || currentStudyScopeLabel(),
+              sourceReference: entry.sourceReference || currentStudyScopeLabel(),
+              sourceTerm: match[0],
+              alignedConcept: concept.alignedConcept,
+              adapterSource: "english_surface_v1",
+              confidence: status.confidence,
+              provenance: "I.C.E. Translation Alignment preview from scoped English source text and anointed concept surface forms",
+              evidenceDistance: "Distance 7: translation alignment candidate derived from source wording while preserving primary evidence",
+              status: status.status
+            });
+          }
+        });
+      });
+    });
+    const seen = new Set();
+    return records.filter((record) => {
+      const key = [record.sourceReference, record.sourceTerm.toLowerCase(), record.alignedConcept].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 500);
+  }
+
+  function translationAlignmentInspectorLines() {
+    const records = translationAlignmentPreviewRecords();
+    const aligned = records.filter((record) => record.status === "aligned");
+    const possible = records.filter((record) => record.status === "possible");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const conceptCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.alignedConcept || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Translation alignment records found: ${records.length}`,
+      `Aligned: ${aligned.length}`,
+      `Possible: ${possible.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Concept counts: ${languageCountLine(conceptCounts)}`,
+      "Supported concepts: ANOINTED_CONCEPT from Christ / Messiah / Anointed One surface forms.",
+      "Boundary: preview-only. Alignment does not imply equivalence, create doctrine, rewrite source wording, override source evidence, write storage, crawl, process queues, or change Study View output."
+    ];
+    lines.push(records.length ? `Sample records: ${records.slice(0, 8).map((record) => `${record.sourceTerm} -> ${record.alignedConcept} [${record.status}] (${record.sourceReference})`).join(" | ")}` : "Sample records: none");
+    return lines;
+  }
+
+  const STRONG_ALIGNMENT_CANDIDATES = [
+    { terms: ["Christ", "The Christ", "the Christ"], semanticConcept: "ANOINTED_CONCEPT", possibleStrongId: "G5547", status: "translation_alignment", confidence: "possible / English Christ surface form aligned to anointed concept candidate" },
+    { terms: ["Messiah"], semanticConcept: "ANOINTED_CONCEPT", possibleStrongId: "H4899", status: "translation_alignment", confidence: "possible / English Messiah surface form aligned to anointed concept candidate" },
+    { terms: ["Anointed One", "The Anointed One", "ANOINTED ONE", "THE ANOINTED ONE"], semanticConcept: "ANOINTED_CONCEPT", possibleStrongId: "H4899 / G5547", status: "translation_alignment", confidence: "possible / anointed-title surface form aligned to Hebrew/Greek candidate family" },
+    { terms: ["Kingdom", "kingdom"], semanticConcept: "KINGDOM_CONCEPT", possibleStrongId: "G932 / H4438", status: "possible_alignment", confidence: "possible / English kingdom surface form only" }
+  ];
+
+  function strongAlignmentRecordsFromTranslationAlignment() {
+    return translationAlignmentPreviewRecords().map((record, index) => {
+      const term = normalizeText(record.sourceTerm).toLowerCase();
+      const candidate = STRONG_ALIGNMENT_CANDIDATES.find((item) => item.terms.some((candidateTerm) => candidateTerm.toLowerCase() === term));
+      return {
+        strongAlignmentId: `english_surface_v1.strong_alignment.translation.${index}`,
+        sourceScope: record.sourceScope || currentStudyScopeLabel(),
+        sourceReference: record.sourceReference || currentStudyScopeLabel(),
+        surfaceTerm: record.sourceTerm,
+        semanticConcept: record.alignedConcept,
+        possibleStrongId: candidate?.possibleStrongId || "",
+        sourceAdapter: record.adapterSource || "english_surface_v1",
+        confidence: candidate?.confidence || "unresolved / no local Strong's candidate mapping",
+        provenance: "I.C.E. Strong's Alignment preview from existing Translation Alignment records; no external lookup performed",
+        evidenceDistance: "Distance 8: lexical alignment candidate derived from source wording plus translation alignment preview",
+        status: candidate?.status || "unresolved"
+      };
+    });
+  }
+
+  function strongAlignmentRecordsFromLanguage() {
+    const languageRecords = generatedLanguageRecords();
+    const candidates = [];
+    STRONG_ALIGNMENT_CANDIDATES.forEach((candidate) => {
+      candidate.terms.forEach((term) => {
+        const pieces = languagePreviewTokenParts(term);
+        if (pieces.length !== 1) return;
+        languageRecords
+          .filter((record) => normalizeText(record.token).toLowerCase() === term.toLowerCase())
+          .forEach((record) => {
+            candidates.push({
+              strongAlignmentId: `english_surface_v1.strong_alignment.language.${candidates.length}`,
+              sourceScope: record.sourceScope || currentStudyScopeLabel(),
+              sourceReference: record.sourceReference || currentStudyScopeLabel(),
+              surfaceTerm: record.token,
+              semanticConcept: candidate.semanticConcept,
+              possibleStrongId: candidate.possibleStrongId,
+              sourceAdapter: record.adapterId || "english_surface_v1",
+              confidence: candidate.confidence,
+              provenance: "I.C.E. Strong's Alignment preview from english_surface_v1 language records and local candidate map; no external lookup performed",
+              evidenceDistance: "Distance 8: lexical alignment candidate derived from source token surface form",
+              status: candidate.status
+            });
+          });
+      });
+    });
+    return candidates;
+  }
+
+  function strongAlignmentPreviewRecords() {
+    const records = [
+      ...strongAlignmentRecordsFromTranslationAlignment(),
+      ...strongAlignmentRecordsFromLanguage()
+    ];
+    const seen = new Set();
+    return records.filter((record) => {
+      const key = [record.sourceReference, record.surfaceTerm.toLowerCase(), record.semanticConcept, record.possibleStrongId].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 500);
+  }
+
+  function strongAlignmentInspectorLines() {
+    const records = strongAlignmentPreviewRecords();
+    const explicit = records.filter((record) => record.status === "explicit_source_alignment");
+    const translation = records.filter((record) => record.status === "translation_alignment");
+    const possible = records.filter((record) => record.status === "possible_alignment");
+    const unresolved = records.filter((record) => record.status === "unresolved");
+    const statusCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.status || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Strong alignment records found: ${records.length}`,
+      `Explicit source alignment: ${explicit.length}`,
+      `Translation alignment: ${translation.length}`,
+      `Possible alignment: ${possible.length}`,
+      `Unresolved: ${unresolved.length}`,
+      `Status counts: ${languageCountLine(statusCounts)}`,
+      "Supported candidate concepts: ANOINTED_CONCEPT; KINGDOM_CONCEPT.",
+      "Boundary: preview-only. Strong's alignment does not imply meaning authority, override source or translation wording, crawl, perform internet lookups, write storage, redefine ontology, or change Study View output."
+    ];
+    lines.push(records.length ? `Sample records: ${records.slice(0, 8).map((record) => `${record.surfaceTerm} -> ${record.semanticConcept} -> ${record.possibleStrongId || "unresolved"} [${record.status}] (${record.sourceReference})`).join(" | ")}` : "Sample records: none");
     return lines;
   }
 
@@ -14044,6 +14211,8 @@ createRevelationPartsSection(item.subEvents)
     const languageRecords = generatedLanguageRecords();
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const morphology = morphologyPreviewRecords();
+    const translationAlignment = translationAlignmentPreviewRecords();
+    const strongAlignment = strongAlignmentPreviewRecords();
     const pronouns = pronounResolutionPreviewRecords();
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = speakerDetectionPreviewRecords();
@@ -14069,6 +14238,8 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
+      qaDashboardLayerLine("Translation Alignment", translationAlignment),
+      qaDashboardLayerLine("Strong Alignment", strongAlignment),
       qaDashboardLayerLine("Pronouns", pronouns),
       qaDashboardLayerLine("Quotations", quotations),
       qaDashboardLayerLine("Speakers", speakers),
@@ -14111,6 +14282,22 @@ createRevelationPartsSection(item.subEvents)
     const unresolvedPosPercent = languageRecords.length ? Math.round((unresolvedPos / languageRecords.length) * 100) : 0;
     const morphology = qaDashboardResolutionCounts(morphologyPreviewRecords());
     const morphologyUnresolvedPercent = morphology.total ? Math.round((morphology.unresolved / morphology.total) * 100) : 0;
+    const translationAlignmentRecords = translationAlignmentPreviewRecords();
+    const translationAlignment = {
+      total: translationAlignmentRecords.length,
+      aligned: translationAlignmentRecords.filter((record) => record.status === "aligned").length,
+      possible: translationAlignmentRecords.filter((record) => record.status === "possible").length,
+      unresolved: translationAlignmentRecords.filter((record) => record.status === "unresolved").length,
+      ambiguous: translationAlignmentRecords.filter((record) => record.status === "ambiguous").length
+    };
+    const strongAlignmentRecords = strongAlignmentPreviewRecords();
+    const strongAlignment = {
+      total: strongAlignmentRecords.length,
+      explicit: strongAlignmentRecords.filter((record) => record.status === "explicit_source_alignment").length,
+      translation: strongAlignmentRecords.filter((record) => record.status === "translation_alignment").length,
+      possible: strongAlignmentRecords.filter((record) => record.status === "possible_alignment").length,
+      unresolved: strongAlignmentRecords.filter((record) => record.status === "unresolved").length
+    };
     const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
@@ -14126,6 +14313,8 @@ createRevelationPartsSection(item.subEvents)
       `Language records generated: ${languageRecords.length}`,
       `POS unresolved: ${unresolvedPos} (${unresolvedPosPercent}%)`,
       `Morphology: found=${morphology.total}; resolved=${morphology.resolved}; unresolved=${morphology.unresolved} (${morphologyUnresolvedPercent}%); ambiguous=${morphology.ambiguous}`,
+      `Translation alignment: found=${translationAlignment.total}; aligned=${translationAlignment.aligned}; possible=${translationAlignment.possible}; unresolved=${translationAlignment.unresolved}; ambiguous=${translationAlignment.ambiguous}`,
+      `Strong alignment: found=${strongAlignment.total}; explicit=${strongAlignment.explicit}; translation=${strongAlignment.translation}; possible=${strongAlignment.possible}; unresolved=${strongAlignment.unresolved}`,
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
       `Quotations found: ${quotations.length}`,
       `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
@@ -14330,6 +14519,8 @@ createRevelationPartsSection(item.subEvents)
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
+      translationAlignmentLines: translationAlignmentInspectorLines(),
+      strongAlignmentLines: strongAlignmentInspectorLines(),
       pronounResolutionLines: pronounResolutionInspectorLines(),
       quotationBoundaryLines: quotationBoundaryInspectorLines(),
       speakerDetectionLines: speakerDetectionInspectorLines(),
@@ -14370,6 +14561,8 @@ createRevelationPartsSection(item.subEvents)
       item.literaryPromotionLines,
       item.languageAdapterLines,
       item.morphologyLines,
+      item.translationAlignmentLines,
+      item.strongAlignmentLines,
       item.pronounResolutionLines,
       item.quotationBoundaryLines,
       item.speakerDetectionLines,
@@ -14424,6 +14617,8 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
+      createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
+      createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
       createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
       createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
       createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),

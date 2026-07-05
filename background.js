@@ -128,7 +128,7 @@ const PLURAL_ACTOR_NAMES = new Set([
   "Pharisees and Sadducees",
   "People / multitudes"
 ]);
-const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Gabriel|Moses|Elias|Peter|James|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|wise men|the wise men|the angel of the Lord|angel of the Lord|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
+const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|The Anointed One|Anointed One|ANOINTED ONE|the Christ|The Christ|Christ|Messiah|Gabriel|Moses|Elias|Peter|James|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|wise men|the wise men|the angel of the Lord|angel of the Lord|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
 const LEADING_ACTOR_PATTERN = new RegExp(
   `^(?:\\d+[:.)]?\\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
   "i"
@@ -7588,6 +7588,13 @@ function createEntityRoleItems(captures, eventItems, actorTimelines, sceneModels
     } else if (/\bJesus\b|\bChrist\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "JESUS", "explicit", "captured divine title");
     }
+    if (/\b(?:the\s+)?(?:anointed one|messiah|christ)\b/i.test(captureText)) {
+      addEntityRoleItem(items, seen, context, "Semantic Entities", "ANOINTED_CONCEPT", "probable", "translation-aligned anointed concept candidate", {
+        actorReason: "aligned concept candidate; preserves source wording without forcing equivalence",
+        eventType: "translation_alignment_readiness",
+        anchorText: "Christ / Messiah / Anointed One"
+      });
+    }
     if (/\bTHE LORD\b|\bthe Lord\b|\bLord\b/i.test(captureText)) {
       addEntityRoleItem(items, seen, context, "Divine / Glorified Entities", "THE LORD", "probable", "captured divine title");
     }
@@ -7660,8 +7667,14 @@ function canonicalEntityName(name) {
     ["the lord", "THE LORD"],
     ["lord", "THE LORD"],
     ["angel of the lord", "Angel of THE LORD"],
+    ["anointed one", "ANOINTED_CONCEPT"],
+    ["the anointed one", "ANOINTED_CONCEPT"],
+    ["anointed concept", "ANOINTED_CONCEPT"],
+    ["anointed_concept", "ANOINTED_CONCEPT"],
+    ["messiah", "ANOINTED_CONCEPT"],
     ["jesus", "JESUS CHRIST"],
     ["christ", "JESUS CHRIST"],
+    ["the christ", "JESUS CHRIST"],
     ["jesus christ", "JESUS CHRIST"],
     ["scripture narrator", "scripture narrator"],
     ["quoted prophet", "quoted prophet"]
@@ -7698,6 +7711,7 @@ function inferEntityType(name, roleTypes = []) {
 
   if (canonical === "THE LORD" || canonical === "GOD") return "divine_authority";
   if (canonical === "Angel of THE LORD") return "divine_messenger";
+  if (canonical === "ANOINTED_CONCEPT") return "messianic_title_concept";
   if (canonical === "JESUS CHRIST" || canonical === "JESUS") return "divine";
   if (/narrator/i.test(canonical)) return "narrator";
   if (roleSet.has("traditionalAuthor")) return "traditional_author";
@@ -7937,6 +7951,7 @@ function identityScopeForCanonicalName(canonicalName) {
   if (canonicalName === "JESUS CHRIST") {
     return "source-explicit / narrative-progressive / retrospective";
   }
+  if (canonicalName === "ANOINTED_CONCEPT") return "translation-aligned title concept; not forced equivalence";
   if (canonicalName === "THE LORD") return "source-explicit divine authority";
   if (canonicalName === "Angel of THE LORD") return "source-explicit divine messenger";
   return "source-mentioned";
@@ -7999,6 +8014,12 @@ function enrichKnownIdentity(record) {
     record.identityScope = "source title: JESUS CHRIST; narrative identity: JESUS / child; retrospective identity: CHRIST";
     record.notes = "Preserves source-explicit, narrative-time, and retrospective/tradition-aware identity distinctions.";
     record.confidence = record.confidence === "explicit" ? "explicit" : record.confidence;
+  }
+  if (record.canonicalName === "ANOINTED_CONCEPT") {
+    for (const alias of ["ANOINTED ONE", "Anointed One", "The Anointed One", "Messiah", "Christ", "The Christ"]) addIdentitySurface(record, alias);
+    record.entityType = "messianic_title_concept";
+    record.identityScope = "translation-aligned title concept; preserves wording/provenance and does not force equivalence";
+    record.notes = "Alignment support for Christ / Messiah / Anointed One surface forms; source wording remains primary.";
   }
   if (record.canonicalName === "THE LORD") {
     for (const alias of ["Lord", "THE LORD"]) addIdentitySurface(record, alias);
@@ -8345,7 +8366,7 @@ function createRelationshipGraph(entityRegistry, semanticEvents, semanticFlowCha
 }
 const HUMAN_ROLE_MENTION_PATTERN = /\b(prophet|husband|wife|mother|virgin)\b/gi;
 const HUMAN_GROUP_MENTION_PATTERN = /\b(people|brethren|generations)\b/gi;
-const DIVINE_TITLE_MENTION_PATTERN = /\b(JESUS CHRIST|Jesus Christ|Holy Ghost|Holy Spirit|THE LORD|the Lord|GOD with us|God with us|Emmanuel|God)\b/g;
+const DIVINE_TITLE_MENTION_PATTERN = /\b(JESUS CHRIST|Jesus Christ|THE ANOINTED ONE|The Anointed One|ANOINTED ONE|Anointed One|The Christ|the Christ|Messiah|Christ|Holy Ghost|Holy Spirit|THE LORD|the Lord|GOD with us|God with us|Emmanuel|God)\b/g;
 const ANGEL_MENTION_PATTERN = /\b(?:the\s+)?angel of (?:THE LORD|the Lord)\b/gi;
 const PRONOUN_MENTION_PATTERN = /\b(He|Him|His|he|him|his)\b/g;
 
@@ -8356,7 +8377,7 @@ function entityClassForMention({ mentionText = "", mentionType = "", entityType 
 
   if (["adversary", "anti_god", "deceiver", "wicked", "evil"].includes(type) || ["satan", "lucifer", "adversary", "perdition"].includes(text)) return "i";
   if (["divine_authority", "divine_redeemer", "divine"].includes(type) ||
-      ["god", "the lord", "yhwh", "jesus christ", "jesus", "holy ghost", "holy spirit", "emmanuel", "god with us"].includes(text)) return "I";
+      ["god", "the lord", "yhwh", "jesus christ", "jesus", "christ", "the christ", "messiah", "anointed one", "the anointed one", "holy ghost", "holy spirit", "emmanuel", "god with us"].includes(text)) return "I";
   if (["divine_messenger", "angelic_messenger"].includes(type) || /angel of (?:the )?lord/i.test(mentionText)) return "II";
   if (["human", "prophet", "author", "narrator", "lineage_person", "traditional_author", "source_author"].includes(type) ||
       ["named_entity", "role_title", "group_collective", "lineage_person"].includes(mentionType) ||
@@ -8369,7 +8390,7 @@ function entityClassForMention({ mentionText = "", mentionType = "", entityType 
 function mentionTypeForEntity(entity = {}) {
   const entityType = entity.entityType || "";
   const roles = new Set((entity.roleTypes || []).map((role) => normalizeWhitespace(role).toLowerCase()));
-  if (["divine_authority", "divine", "divine_redeemer"].includes(entityType)) return "divine_title";
+  if (["divine_authority", "divine", "divine_redeemer", "messianic_title_concept"].includes(entityType)) return "divine_title";
   if (["divine_messenger", "angelic_messenger"].includes(entityType)) return "named_entity";
   if (entityType === "lineage_person" || roles.has("lineageperson")) return "lineage_person";
   return "named_entity";

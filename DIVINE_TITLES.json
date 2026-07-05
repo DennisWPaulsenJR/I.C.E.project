@@ -2,5 +2,9 @@
   "LORD": {
     "type": "divine_title",
     "aliases": ["JEHOVAH", "YAHWEH"]
+  },
+  "ANOINTED ONE": {
+    "type": "divine_title",
+    "aliases": ["THE ANOINTED ONE", "Anointed One", "The Anointed One", "MESSIAH", "Messiah", "THE CHRIST", "The Christ", "Christ"]
   }
 }

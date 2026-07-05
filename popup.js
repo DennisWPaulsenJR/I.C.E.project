@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Sadducees",
     "Pharisees and Sadducees"
   ]);
-  const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|Christ|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
+  const ACTOR_SOURCE_PATTERN = "(John the Baptist|John|Jesus Christ|Jesus|The Anointed One|Anointed One|ANOINTED ONE|the Christ|The Christ|Christ|Messiah|Herod|Joseph|Mary|Pharisees and Sadducees|Pharisees|Sadducees|chief priests and scribes|chief priests|wise men|the wise men|the angel of the Lord|angel of the Lord|the angel|angel|Spirit of God|the Spirit of God|Spirit|Father|the young child|young child|the child|child|the Lord|Lord|priests|scribes|the king|king|the people|people|multitudes|Jerusalem|Jud(?:a|\\u00e6)ea|Jordan)";
   const LEADING_ACTOR_PATTERN = new RegExp(
     `^(?:\\d+[:.)]?\\s*)?(?:(?:and|but|then|afterward|later|next|finally|subsequently|after that|before that|before this|before then|now|when)\\s+)*(?:the\\s+)?${ACTOR_SOURCE_PATTERN}\\b`,
     "i"

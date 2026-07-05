@@ -15,6 +15,22 @@
     "className": "I",
     "render": "CHRIST"
   },
+  "ANOINTED ONE": {
+    "className": "I",
+    "render": "ANOINTED ONE"
+  },
+  "THE ANOINTED ONE": {
+    "className": "I",
+    "render": "THE ANOINTED ONE"
+  },
+  "Anointed One": {
+    "className": "I",
+    "render": "Anointed One"
+  },
+  "The Anointed One": {
+    "className": "I",
+    "render": "The Anointed One"
+  },
   "SPIRIT": {
     "className": "I",
     "render": "SPIRIT"
