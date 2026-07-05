@@ -12520,22 +12520,56 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function registeredLanguageAdapters() {
-    return [{
-      adapterId: "english_surface_v1",
-      sourceLanguage: "English",
-      targetLanguage: "English",
-      tokenizationRules: ["basic whitespace and punctuation tokenization pending implementation"],
-      quoteRules: ["quote boundary support pending"],
-      divineTitleRules: ["existing I.C.E. divine title display rules pending adapter integration"],
-      pronounRules: ["pronoun support pending"],
-      morphologySupportLevel: "none / pending",
-      confidenceModel: "explicit / pending",
-      partOfSpeechSupport: "safe English surface preview",
-      recordAuthority: "support record only",
-      provenance: "I.C.E. Language Adapter Registry foundation",
-      storageKey: STORAGE_KEYS.languageAdapters,
-      trustBoundary: "Language adapters support future grammar and translation evaluation; they do not rewrite source text, Context Lock, semantic records, Study Scope, or current extraction behavior."
-    }];
+    return [
+      {
+        adapterId: "english_surface_v1",
+        sourceLanguage: "English",
+        targetLanguage: "English",
+        adapterStatus: "active_preview",
+        tokenizationRules: ["basic whitespace and punctuation tokenization pending implementation"],
+        quoteRules: ["quote boundary support pending"],
+        divineTitleRules: ["existing I.C.E. divine title display rules pending adapter integration"],
+        pronounRules: ["pronoun support pending"],
+        morphologySupportLevel: "English surface preview",
+        morphologyCategories: ["singular", "plural", "possessive", "past tense", "present tense", "future marker", "comparative", "superlative", "unresolved"],
+        confidenceModel: "explicit / pending",
+        partOfSpeechSupport: "safe English surface preview",
+        recordAuthority: "support record only",
+        generatedRecordCount: "preview records generated from current scoped English source text",
+        provenance: "I.C.E. Language Adapter Registry foundation",
+        storageKey: STORAGE_KEYS.languageAdapters,
+        trustBoundary: "Language adapters support future grammar and translation evaluation; they do not rewrite source text, Context Lock, semantic records, Study Scope, or current extraction behavior."
+      },
+      {
+        adapterId: "koine_greek_v1",
+        sourceLanguage: "Koine Greek",
+        targetLanguage: "English",
+        adapterStatus: "architecture_only",
+        tokenizationRules: ["Greek tokenization contract defined; no tokenization implemented"],
+        quoteRules: ["quotation support contract defined; no Greek quotation detection implemented"],
+        divineTitleRules: ["divine/title alignment must preserve source wording and provenance"],
+        pronounRules: ["person/number/gender support contract defined; no pronoun resolution implemented"],
+        morphologySupportLevel: "contract only / no generated records",
+        morphologyCategories: ["tense", "voice", "mood", "person", "number", "gender", "case"],
+        tenseCategories: ["present", "imperfect", "future", "aorist", "perfect", "pluperfect"],
+        voiceCategories: ["active", "middle", "passive"],
+        moodCategories: ["indicative", "imperative", "subjunctive", "optative", "infinitive", "participle"],
+        caseCategories: ["nominative", "genitive", "dative", "accusative", "vocative"],
+        personCategories: ["first", "second", "third"],
+        numberCategories: ["singular", "plural"],
+        genderCategories: ["masculine", "feminine", "neuter"],
+        grammaticalRoleSupport: ["subject", "object", "indirect object", "modifier", "predicate", "speaker", "audience", "quotation source", "quotation target"],
+        recordFields: ["token", "lemma", "morphology", "tense", "voice", "mood", "person", "number", "gender", "case", "grammaticalRole", "quotationSupport", "speakerSupport", "audienceSupport", "provenance", "confidence"],
+        confidenceModel: "attributed original-language support / pending",
+        partOfSpeechSupport: "contract only / pending",
+        recordAuthority: "support record only",
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        provenance: "I.C.E. Koine Greek Adapter foundation; architecture-only registry contract",
+        storageKey: STORAGE_KEYS.languageAdapters,
+        trustBoundary: "Greek adapters support evidence; they do not override source text, translation wording, Context Lock, semantic records, Study View output, queues, scope, or storage authority."
+      }
+    ];
   }
 
   function languagePreviewTokenParts(text = "") {
@@ -14210,6 +14244,7 @@ createRevelationPartsSection(item.subEvents)
     const literaryRows = literaryPromotionInspectorLines();
     const languageRecords = generatedLanguageRecords();
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
+    const greekAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "koine_greek_v1");
     const morphology = morphologyPreviewRecords();
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
@@ -14236,6 +14271,7 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Themes", promotedThemeRecords(), { coverage: coverageFromLines(themeRows) }),
       qaDashboardLayerLine("Literary Structures", promotedLiteraryRecords(), { coverage: coverageFromLines(literaryRows) }),
       qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
+      qaDashboardLayerLine("Greek Adapter", greekAdapter, { active: true }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
@@ -14392,6 +14428,31 @@ createRevelationPartsSection(item.subEvents)
     lines.push("Trust: language adapter records are support records only; they do not rewrite source text, Context Lock, semantic records, Study View results, queues, or scope.");
     return lines;
   }
+
+  function greekAdapterInspectorLines() {
+    const adapter = registeredLanguageAdapters().find((item) => item.adapterId === "koine_greek_v1") || {};
+    const generatedRecords = 0;
+    const unresolvedRecords = 0;
+    return [
+      `Adapter: ${adapter.adapterId || "koine_greek_v1"}`,
+      `Adapter status: ${adapter.adapterStatus || "architecture_only"}`,
+      `Source language: ${adapter.sourceLanguage || "Koine Greek"}`,
+      `Target language: ${adapter.targetLanguage || "English"}`,
+      `Generated records: ${generatedRecords}`,
+      `Unresolved records: ${unresolvedRecords}`,
+      `Record fields: ${asArray(adapter.recordFields).join("; ")}`,
+      `Tense categories: ${asArray(adapter.tenseCategories).join("; ")}`,
+      `Voice categories: ${asArray(adapter.voiceCategories).join("; ")}`,
+      `Mood categories: ${asArray(adapter.moodCategories).join("; ")}`,
+      `Case categories: ${asArray(adapter.caseCategories).join("; ")}`,
+      `Person categories: ${asArray(adapter.personCategories).join("; ")}`,
+      `Number categories: ${asArray(adapter.numberCategories).join("; ")}`,
+      `Gender categories: ${asArray(adapter.genderCategories).join("; ")}`,
+      `Grammatical roles: ${asArray(adapter.grammaticalRoleSupport).join("; ")}`,
+      "Boundary: architecture-only. No Greek parsing, lexicon download, morphology generation, Strong's crawling, storage write, source rewrite, translation override, Context Lock change, or Study View change.",
+      `Trust: ${adapter.trustBoundary || "Greek adapters support evidence rather than replace primary evidence."}`
+    ];
+  }
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -14518,6 +14579,7 @@ createRevelationPartsSection(item.subEvents)
       themePromotionLines: themePromotionInspectorLines(),
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
+      greekAdapterLines: greekAdapterInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -14560,6 +14622,7 @@ createRevelationPartsSection(item.subEvents)
       item.themePromotionLines,
       item.literaryPromotionLines,
       item.languageAdapterLines,
+      item.greekAdapterLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -14616,6 +14679,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
+      createPassageFunctionSection("Greek Adapter Inspector", "", { list: item.greekAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Greek Adapter Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
