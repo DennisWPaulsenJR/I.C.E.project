@@ -12568,6 +12568,34 @@ createRevelationPartsSection(item.subEvents)
         provenance: "I.C.E. Koine Greek Adapter foundation; architecture-only registry contract",
         storageKey: STORAGE_KEYS.languageAdapters,
         trustBoundary: "Greek adapters support evidence; they do not override source text, translation wording, Context Lock, semantic records, Study View output, queues, scope, or storage authority."
+      },
+      {
+        adapterId: "biblical_hebrew_v1",
+        sourceLanguage: "Biblical Hebrew",
+        targetLanguage: "English",
+        adapterStatus: "architecture_only",
+        tokenizationRules: ["Hebrew tokenization contract defined; no tokenization implemented"],
+        quoteRules: ["quotation support contract defined; no Hebrew quotation detection implemented"],
+        divineTitleRules: ["divine/title alignment must preserve source wording and provenance"],
+        pronounRules: ["person/number/gender support contract defined; no pronoun resolution implemented"],
+        morphologySupportLevel: "contract only / no generated records",
+        morphologyCategories: ["stem", "state", "person", "number", "gender", "tense/aspect"],
+        stemCategories: ["qal", "niphal", "piel", "pual", "hiphil", "hophal", "hithpael"],
+        stateCategories: ["absolute", "construct", "determined"],
+        aspectTenseCategories: ["perfect", "imperfect", "imperative", "infinitive construct", "infinitive absolute", "participle"],
+        personCategories: ["first", "second", "third"],
+        numberCategories: ["singular", "plural", "dual"],
+        genderCategories: ["masculine", "feminine", "common"],
+        grammaticalRoleSupport: ["subject", "object", "indirect object", "modifier", "predicate", "speaker", "audience", "quotation source", "quotation target"],
+        recordFields: ["token", "lemma", "morphology", "stem", "state", "person", "number", "gender", "tenseAspect", "grammaticalRole", "quotationSupport", "speakerSupport", "audienceSupport", "provenance", "confidence"],
+        confidenceModel: "attributed original-language support / pending",
+        partOfSpeechSupport: "contract only / pending",
+        recordAuthority: "support record only",
+        generatedRecordCount: 0,
+        unresolvedRecordCount: 0,
+        provenance: "I.C.E. Biblical Hebrew Adapter foundation; architecture-only registry contract",
+        storageKey: STORAGE_KEYS.languageAdapters,
+        trustBoundary: "Hebrew adapters support evidence; they do not override source text, translation wording, Context Lock, semantic records, Study View output, queues, scope, or storage authority."
       }
     ];
   }
@@ -14245,6 +14273,7 @@ createRevelationPartsSection(item.subEvents)
     const languageRecords = generatedLanguageRecords();
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const greekAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "koine_greek_v1");
+    const hebrewAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "biblical_hebrew_v1");
     const morphology = morphologyPreviewRecords();
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
@@ -14272,6 +14301,7 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Literary Structures", promotedLiteraryRecords(), { coverage: coverageFromLines(literaryRows) }),
       qaDashboardLayerLine("Language Adapter", registeredLanguageAdapters(), { active: registeredLanguageAdapters().length > 0 }),
       qaDashboardLayerLine("Greek Adapter", greekAdapter, { active: true }),
+      qaDashboardLayerLine("Hebrew Adapter", hebrewAdapter, { active: true }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
@@ -14453,6 +14483,31 @@ createRevelationPartsSection(item.subEvents)
       `Trust: ${adapter.trustBoundary || "Greek adapters support evidence rather than replace primary evidence."}`
     ];
   }
+
+  function hebrewAdapterInspectorLines() {
+    const adapter = registeredLanguageAdapters().find((item) => item.adapterId === "biblical_hebrew_v1") || {};
+    const generatedRecords = 0;
+    const unresolvedRecords = 0;
+    return [
+      `Adapter: ${adapter.adapterId || "biblical_hebrew_v1"}`,
+      `Adapter status: ${adapter.adapterStatus || "architecture_only"}`,
+      `Source language: ${adapter.sourceLanguage || "Biblical Hebrew"}`,
+      `Target language: ${adapter.targetLanguage || "English"}`,
+      `Generated records: ${generatedRecords}`,
+      `Unresolved records: ${unresolvedRecords}`,
+      `Record fields: ${asArray(adapter.recordFields).join("; ")}`,
+      `Stem categories: ${asArray(adapter.stemCategories).join("; ")}`,
+      `State categories: ${asArray(adapter.stateCategories).join("; ")}`,
+      `Aspect/Tense categories: ${asArray(adapter.aspectTenseCategories).join("; ")}`,
+      `Person categories: ${asArray(adapter.personCategories).join("; ")}`,
+      `Number categories: ${asArray(adapter.numberCategories).join("; ")}`,
+      `Gender categories: ${asArray(adapter.genderCategories).join("; ")}`,
+      `Grammatical roles: ${asArray(adapter.grammaticalRoleSupport).join("; ")}`,
+      "Boundary: architecture-only. No Hebrew parsing, lexicon download, morphology generation, Strong's lookup, storage write, source rewrite, translation override, Context Lock change, or Study View change.",
+      `Trust: ${adapter.trustBoundary || "Hebrew adapters support evidence rather than replace primary evidence."}`
+    ];
+  }
+
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -14580,6 +14635,7 @@ createRevelationPartsSection(item.subEvents)
       literaryPromotionLines: literaryPromotionInspectorLines(),
       languageAdapterLines: languageAdapterInspectorLines(),
       greekAdapterLines: greekAdapterInspectorLines(),
+      hebrewAdapterLines: hebrewAdapterInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -14623,6 +14679,7 @@ createRevelationPartsSection(item.subEvents)
       item.literaryPromotionLines,
       item.languageAdapterLines,
       item.greekAdapterLines,
+      item.hebrewAdapterLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -14680,6 +14737,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
       createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
       createPassageFunctionSection("Greek Adapter Inspector", "", { list: item.greekAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Greek Adapter Inspector" }),
+      createPassageFunctionSection("Hebrew Adapter Inspector", "", { list: item.hebrewAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Hebrew Adapter Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
