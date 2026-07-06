@@ -12775,6 +12775,152 @@ createRevelationPartsSection(item.subEvents)
     }));
   }
 
+  function registeredExpertModels() {
+    const categories = [
+      ["lexicographer_model_v1", "Lexicographer", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["lexicon", "Strong's", "source language"], "Lexical claims remain attributed and may illuminate wording without replacing source evidence."],
+      ["grammarian_model_v1", "Grammarian", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["grammar", "syntax", "morphology"], "Grammar claims remain attributed and may support language analysis without rewriting Context Lock."],
+      ["translator_model_v1", "Translator", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["translation", "source text", "target text"], "Translation claims remain perspective records and may not override source wording."],
+      ["commentator_model_v1", "Commentator", ["English"], ["commentary", "study notes"], "Commentary claims remain attributed perspective records and may not create doctrine."],
+      ["historian_model_v1", "Historian", ["English"], ["historical context", "cultural context"], "Historical claims illuminate setting but may not rewrite source context."],
+      ["academic_source_model_v1", "Academic Source", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["academic literature", "critical apparatus", "language studies"], "Academic claims remain attributed and may disagree without becoming primary evidence."],
+      ["tradition_authority_model_v1", "Tradition Authority", ["English"], ["tradition", "interpretive tradition"], "Tradition claims must remain tradition-attributed and may not replace primary evidence."],
+      ["religious_authority_model_v1", "Religious Authority", ["English"], ["religious teaching", "doctrinal instruction"], "Religious authority claims remain attributed and may not silently create doctrine in I.C.E. records."],
+      ["conference_source_model_v1", "Conference Source", ["English"], ["conference talk", "speaker teaching"], "Conference source claims remain attributed and separate from source scripture evidence."],
+      ["expert_contributor_model_v1", "Expert Contributor", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["contributor note", "review note", "expert annotation"], "Contributor claims require attribution, provenance, and evidence-distance labeling before use."]
+    ];
+    return categories.map(([expertId, expertType, supportedLanguages, supportedCorpora, authorityPolicy]) => ({
+      expertId,
+      expertName: `${expertType} Registry Contract`,
+      expertType,
+      tradition: "not assigned / attribution required before use",
+      supportedLanguages,
+      supportedCorpora,
+      confidencePolicy: "expert confidence must remain attributed and separate from primary evidence confidence",
+      authorityPolicy,
+      provenance: "I.C.E. Expert Model Registry foundation; architecture-only registry contract",
+      evidenceDistance: "distance 7 / attributed expert perspective support",
+      status: "registry-only / no generated expert records",
+      generatedRecordCount: 0,
+      trustBoundary: "Experts illuminate evidence; they do not replace evidence, override Context Lock, create doctrine, mutate semantic records, alter Study View output, crawl, process queues, or write storage."
+    }));
+  }
+
+  function registeredCorpora() {
+    const registryOnly = "registry-only / no generated corpus records";
+    const sharedBoundary = "Corpora define source boundaries, provenance, language expectations, and perspective defaults; they do not define truth, override primary evidence, mutate Context Lock, crawl, ingest, index, process queues, or write storage.";
+    const corpusDefinitions = [
+      ["scripture_corpus_v1", "Scripture Corpus", "Scripture Corpus", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["english_surface_v1", "koine_greek_v1", "biblical_hebrew_v1"], ["surface_translation_model_v1", "strongs_model_v1", "lexicon_model_v1", "grammar_model_v1", "tradition_model_v1"], ["Lexicographer", "Grammarian", "Translator", "Religious Authority", "Tradition Authority"]],
+      ["conference_corpus_v1", "Conference Corpus", "Conference Corpus", ["English"], ["english_surface_v1"], ["surface_translation_model_v1", "commentary_model_v1", "tradition_model_v1"], ["Conference Source", "Religious Authority", "Expert Contributor"]],
+      ["commentary_corpus_v1", "Commentary Corpus", "Commentary Corpus", ["English"], ["english_surface_v1"], ["commentary_model_v1", "expert_model_v1", "tradition_model_v1"], ["Commentator", "Tradition Authority", "Expert Contributor"]],
+      ["academic_corpus_v1", "Academic Corpus", "Academic Corpus", ["English", "Koine Greek", "Biblical Hebrew", "Aramaic"], ["english_surface_v1", "koine_greek_v1", "biblical_hebrew_v1"], ["expert_model_v1", "lexicon_model_v1", "grammar_model_v1"], ["Academic Source", "Historian", "Lexicographer", "Grammarian"]],
+      ["historical_corpus_v1", "Historical Corpus", "Historical Corpus", ["English"], ["english_surface_v1"], ["expert_model_v1", "commentary_model_v1"], ["Historian", "Academic Source", "Expert Contributor"]],
+      ["legal_corpus_v1", "Legal Corpus", "Legal Corpus", ["English"], ["english_surface_v1"], ["expert_model_v1", "surface_translation_model_v1"], ["Academic Source", "Expert Contributor"]],
+      ["scientific_corpus_v1", "Scientific Corpus", "Scientific Corpus", ["English"], ["english_surface_v1"], ["expert_model_v1", "surface_translation_model_v1"], ["Academic Source", "Expert Contributor"]],
+      ["comparative_corpus_v1", "Comparative Corpus", "Comparative Corpus", ["English"], ["english_surface_v1"], ["interreligious_comparison_model_v1", "tradition_model_v1", "expert_model_v1"], ["Tradition Authority", "Religious Authority", "Academic Source", "Expert Contributor"]]
+    ];
+    return corpusDefinitions.map(([corpusId, corpusName, corpusType, supportedLanguages, supportedAdapters, supportedPerspectives, supportedExperts]) => ({
+      corpusId,
+      corpusName,
+      corpusType,
+      supportedLanguages,
+      supportedAdapters,
+      supportedPerspectives,
+      supportedExperts,
+      provenance: "I.C.E. Corpus Registry foundation; architecture-only registry contract",
+      authorityPolicy: "corpus identity defines source boundaries and provenance only; it does not establish truth or replace primary evidence",
+      evidenceDistancePolicy: "corpus metadata remains boundary/provenance support and must preserve source references, confidence, and evidence distance",
+      status: registryOnly,
+      generatedRecordCount: 0,
+      trustBoundary: sharedBoundary
+    }));
+  }
+
+  function registeredOntologyClasses() {
+    const registryOnly = "registry-only / no generated ontology records";
+    const defaultPolicy = "ontology classes describe classification categories only; evidence and Context Lock remain authoritative";
+    const defaultBoundary = "Ontology may support classification, lenses, adapters, perspectives, and expert review, but may not create evidence, rewrite evidence, override Context Lock, flatten hierarchy, create doctrine, crawl, process queues, or write storage.";
+    const ontologyDefinitions = [
+      ["being_v1", "Being", "", 0, ["Class of Being Lens"], ["english_surface_v1"], ["language_adapter_model_v1"]],
+      ["divine_being_v1", "Divine Being", "Being", 1, ["Class of Being Lens", "Authority Lens", "Exaltation Lens"], ["english_surface_v1", "koine_greek_v1", "biblical_hebrew_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["exalted_glorified_being_v1", "Exalted / Glorified Being", "Divine Being", 2, ["Exaltation Lens", "Class of Being Lens"], ["english_surface_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["human_being_v1", "Human Being", "Being", 1, ["Character / Actor Lens", "Class of Being Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]],
+      ["prophet_v1", "Prophet", "Human Being", 2, ["Character / Actor Lens", "Authority Lens"], ["english_surface_v1", "biblical_hebrew_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["disciple_v1", "Disciple", "Human Being", 2, ["Character / Actor Lens"], ["english_surface_v1", "koine_greek_v1"], ["surface_translation_model_v1"]],
+      ["messenger_v1", "Messenger", "Being", 1, ["Authority Lens", "Relationship Lens"], ["english_surface_v1", "koine_greek_v1", "biblical_hebrew_v1"], ["grammar_model_v1"]],
+      ["angel_messenger_v1", "Angel / Messenger", "Messenger", 2, ["Authority Lens", "Class of Being Lens"], ["english_surface_v1", "koine_greek_v1", "biblical_hebrew_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["spirit_being_v1", "Spirit Being", "Being", 1, ["Class of Being Lens", "Exaltation Lens"], ["english_surface_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["group_multitude_v1", "Group / Multitude", "Being", 1, ["Character / Actor Lens", "Scene Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]],
+      ["nation_people_v1", "Nation / People", "Group / Multitude", 2, ["Character / Actor Lens", "Interreligious Lens"], ["english_surface_v1", "biblical_hebrew_v1"], ["historical_corpus_v1", "tradition_model_v1"]],
+      ["institution_v1", "Institution", "", 0, ["Relationship Lens", "Interreligious Lens"], ["english_surface_v1"], ["expert_model_v1"]],
+      ["authority_source_v1", "Authority Source", "Being", 1, ["Authority Lens", "Evidence Distance Lens"], ["english_surface_v1"], ["grammar_model_v1", "tradition_model_v1"]],
+      ["narrator_source_voice_v1", "Narrator / Source Voice", "", 0, ["Evidence Distance Lens", "Editor / Architect Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]],
+      ["literary_entity_v1", "Literary Entity", "", 0, ["Literary Structure Lens", "Editor / Architect Lens"], ["english_surface_v1"], ["commentary_model_v1"]],
+      ["symbolic_entity_v1", "Symbolic Entity", "Literary Entity", 1, ["Literary Structure Lens", "Interreligious Lens"], ["english_surface_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["parable_figure_v1", "Parable Figure", "Literary Entity", 1, ["Literary Structure Lens", "Scene Lens"], ["english_surface_v1", "koine_greek_v1"], ["grammar_model_v1", "commentary_model_v1"]],
+      ["claimed_divine_entity_v1", "Claimed Divine Entity", "Being", 1, ["Class of Being Lens", "Interreligious Lens"], ["english_surface_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["false_deity_claim_v1", "False Deity Claim", "Claimed Divine Entity", 2, ["Class of Being Lens", "Interreligious Lens"], ["english_surface_v1", "biblical_hebrew_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["idol_crafted_object_v1", "Idol / Crafted Object", "Object", 1, ["Class of Being Lens", "Interreligious Lens"], ["english_surface_v1", "biblical_hebrew_v1"], ["lexicon_model_v1", "expert_model_v1"]],
+      ["object_of_worship_v1", "Object of Worship", "Object", 1, ["Interreligious Lens", "Relationship Lens"], ["english_surface_v1"], ["tradition_model_v1", "expert_model_v1"]],
+      ["location_v1", "Location", "", 0, ["Scene Lens", "Timeline Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]],
+      ["object_v1", "Object", "", 0, ["Scene Lens", "Relationship Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]],
+      ["unknown_unresolved_v1", "Unknown / Unresolved", "", 0, ["Editor / Architect Lens", "QA Lens"], ["english_surface_v1"], ["surface_translation_model_v1"]]
+    ];
+    return ontologyDefinitions.map(([ontologyId, ontologyClass, parentOntologyClass, hierarchyDistance, supportedLenses, supportedAdapters, supportedPerspectives]) => ({
+      ontologyId,
+      ontologyClass,
+      parentOntologyClass,
+      hierarchyDistance,
+      supportedLenses,
+      supportedAdapters,
+      supportedPerspectives,
+      evidenceDistancePolicy: defaultPolicy,
+      provenancePolicy: "ontology classification must preserve source references, provenance, confidence, and evidence distance when applied",
+      hierarchyBoundary: ontologyClass === "Claimed Divine Entity" || ontologyClass === "False Deity Claim"
+        ? "claimed deity classifications must not become established Divine Being without source-grounded evidence"
+        : ontologyClass === "Literary Entity" || ontologyClass === "Symbolic Entity" || ontologyClass === "Parable Figure"
+          ? "literary or symbolic entities remain literary/symbolic unless source context establishes otherwise"
+          : defaultBoundary,
+      status: registryOnly,
+      generatedRecordCount: 0
+    }));
+  }
+
+  function registeredAuthorityClasses() {
+    const registryOnly = "registry-only / no generated authority records";
+    const primaryBoundary = "Primary evidence remains authoritative. Derived authority may depend on primary authority but may not rewrite it.";
+    const authorityDefinitions = [
+      ["primary_evidence_authority_v1", "Primary Evidence Authority", "Primary Evidence Authority", 0, "source evidence and direct source records", [], ["all derived records", "QA diagnostics", "presentation"], ["none"], ["source rewrite", "context rewrite", "evidence replacement"]],
+      ["source_text_authority_v1", "Source Text Authority", "Source Text Authority", 0, "immutable source text and source reference", ["Primary Evidence Authority"], ["Language Adapter Authority", "Context Lock Authority", "Translation Authority"], ["Language Adapter Authority", "Expert Authority", "Perspective Authority", "Presentation / Lens Authority"], ["source text replacement", "source reference replacement"]],
+      ["context_lock_authority_v1", "Context Lock Authority", "Context Lock Authority", 2, "speaker, audience, authority, participants, location, narrative frame", ["Source Text Authority"], ["Entity Classification", "Timeline", "Scene", "Relationship", "Lens presentation"], ["Language Adapter Authority", "Expert Authority", "Perspective Authority", "Ontology Classification Authority", "Presentation / Lens Authority"], ["role inversion", "authority inversion", "participant rewrite", "location-to-actor rewrite"]],
+      ["language_adapter_authority_v1", "Language Adapter Authority", "Language Adapter Authority", 1, "tokens, grammar support, morphology support, quotation support", ["Source Text Authority"], ["Context review", "Perspective Models", "Grammar Lens", "Translation Lens"], ["Source Text Authority", "Context Lock Authority"], ["source rewrite", "context rewrite", "semantic record override"]],
+      ["translation_authority_v1", "Translation Authority", "Translation Authority", 1, "surface translation wording and alignment support", ["Source Text Authority"], ["Translation Alignment", "Perspective Models", "Translation Lens"], ["Source Text Authority", "Context Lock Authority"], ["source wording replacement", "doctrine creation"]],
+      ["strong_lexicon_authority_v1", "Strong's / Lexicon Authority", "Strong's / Lexicon Authority", 7, "lexical alignment support", ["Source Text Authority", "Language Adapter Authority"], ["Translation Lens", "Strong's / Lexicon Lens", "Expert review"], ["Source Text Authority", "Context Lock Authority"], ["meaning authority override", "context rewrite"]],
+      ["expert_authority_v1", "Expert Authority", "Expert Authority", 7, "attributed expert interpretation or evaluation", ["Primary Evidence Authority", "Perspective Authority"], ["Perspective Models", "Lenses", "QA diagnostics"], ["Source Text Authority", "Context Lock Authority", "Primary Evidence Authority"], ["evidence replacement", "doctrine creation", "context rewrite"]],
+      ["tradition_authority_v1", "Tradition Authority", "Tradition Authority", 7, "attributed tradition interpretation", ["Primary Evidence Authority", "Expert Authority"], ["Perspective Models", "Interreligious Lens", "Exaltation Lens"], ["Source Text Authority", "Context Lock Authority", "Primary Evidence Authority"], ["unattributed doctrine creation", "source rewrite"]],
+      ["corpus_authority_v1", "Corpus Authority", "Corpus Authority", 7, "source collection boundaries and provenance expectations", ["Source Text Authority"], ["Perspective defaults", "Expert defaults", "Lenses"], ["Source Text Authority", "Context Lock Authority"], ["truth definition", "evidence override"]],
+      ["perspective_authority_v1", "Perspective Authority", "Perspective Authority", 7, "evaluation methods and attributed models", ["Primary Evidence Authority", "Language Adapter Authority", "Expert Authority"], ["Lenses", "Comparison", "QA diagnostics"], ["Source Text Authority", "Context Lock Authority", "Primary Evidence Authority"], ["evidence rewrite", "context rewrite", "doctrine creation"]],
+      ["ontology_classification_authority_v1", "Ontology Classification Authority", "Ontology Classification Authority", 7, "classification categories and hierarchy boundaries", ["Context Lock Authority", "Entity Classification"], ["Class of Being Lens", "Authority Lens", "Exaltation Lens"], ["Source Text Authority", "Context Lock Authority", "Primary Evidence Authority"], ["classification behavior mutation", "hierarchy flattening", "claimed deity promotion"]],
+      ["presentation_lens_authority_v1", "Presentation / Lens Authority", "Presentation / Lens Authority", 8, "display wording and selected presentation surfaces", ["Perspective Authority", "Ontology Classification Authority", "Primary Evidence Authority"], ["Study View", "Editor View", "QA Dashboard"], ["Source Text Authority", "Context Lock Authority", "Semantic Records", "Storage Authority"], ["source truth creation", "semantic truth creation", "doctrine creation", "storage mutation"]],
+      ["qa_diagnostic_authority_v1", "QA / Diagnostic Authority", "QA / Diagnostic Authority", 8, "diagnostics, validation summaries, warnings", ["all relevant scoped authorities"], ["Developer review", "Editor / Architect View", "QA Dashboard"], ["Source Text Authority", "Context Lock Authority", "Semantic Records", "Storage Authority"], ["record mutation", "scope mutation", "queue processing"]]
+    ];
+    return authorityDefinitions.map(([authorityId, authorityName, authorityType, evidenceDistance, authorityScope, consumedAuthorities, mayInform, mayNotOverride, prohibitedOverrides]) => ({
+      authorityId,
+      authorityName,
+      authorityType,
+      evidenceDistance,
+      authorityScope,
+      consumedAuthorities,
+      mayInform,
+      mayNotOverride,
+      prohibitedOverrides,
+      provenancePolicy: "authority claims must remain attributable and preserve source, scope, confidence, and evidence distance",
+      confidencePolicy: "confidence describes support for the authority claim and does not replace primary evidence",
+      status: registryOnly,
+      generatedRecordCount: 0,
+      trustBoundary: primaryBoundary
+    }));
+  }
+
   function languagePreviewTokenParts(text = "") {
     return normalizeText(text).match(/[A-Za-z]+(?:'[A-Za-z]+)?|\d+|[^\sA-Za-z\d]/g) || [];
   }
@@ -14451,6 +14597,10 @@ createRevelationPartsSection(item.subEvents)
     const hebrewAdapter = registeredLanguageAdapters().filter((adapter) => adapter.adapterId === "biblical_hebrew_v1");
     const perspectiveModels = registeredPerspectiveModels();
     const presentationLenses = registeredPresentationLenses();
+    const expertModels = registeredExpertModels();
+    const corpora = registeredCorpora();
+    const ontologyClasses = registeredOntologyClasses();
+    const authorityClasses = registeredAuthorityClasses();
     const morphology = morphologyPreviewRecords();
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
@@ -14481,6 +14631,10 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Hebrew Adapter", hebrewAdapter, { active: true }),
       qaDashboardLayerLine("Perspective Models", perspectiveModels, { active: true }),
       qaDashboardLayerLine("Lens Registry", presentationLenses, { active: true }),
+      qaDashboardLayerLine("Expert Registry", expertModels, { active: true }),
+      qaDashboardLayerLine("Corpus Registry", corpora, { active: true }),
+      qaDashboardLayerLine("Ontology Registry", ontologyClasses, { active: true }),
+      qaDashboardLayerLine("Authority Registry", authorityClasses, { active: true }),
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
@@ -14753,6 +14907,145 @@ createRevelationPartsSection(item.subEvents)
     return lines;
   }
 
+  function expertRegistryInspectorLines() {
+    const experts = registeredExpertModels();
+    const activeExperts = experts.filter((expert) => expert.status !== "inactive");
+    const generatedRecords = experts.reduce((sum, expert) => sum + Number(expert.generatedRecordCount || 0), 0);
+    const categories = Array.from(new Set(experts.map((expert) => expert.expertType).filter(Boolean)));
+    const languages = Array.from(new Set(experts.flatMap((expert) => asArray(expert.supportedLanguages)).filter(Boolean)));
+    const corpora = Array.from(new Set(experts.flatMap((expert) => asArray(expert.supportedCorpora)).filter(Boolean)));
+    const lines = [
+      `Registered experts: ${experts.length}`,
+      `Active expert records: ${activeExperts.length}`,
+      `Generated expert records: ${generatedRecords}`,
+      "Record shape: expertId; expertName; expertType; tradition; supportedLanguages; supportedCorpora; confidencePolicy; authorityPolicy; provenance; evidenceDistance; status",
+      `Expert categories: ${categories.join("; ")}`,
+      `Supported languages: ${languages.join("; ")}`,
+      `Supported corpora: ${corpora.join("; ")}`,
+      "Perspective relationship: perspective models describe evaluation methods; expert models describe attributable evaluators.",
+      "Examples: Grammar Model evaluated by Grammarian; Translation Model evaluated by Translator; Lexicon Model evaluated by Lexicographer.",
+      "Trust: experts illuminate evidence, do not become evidence, may disagree, remain attributable, and may not override Context Lock or create doctrine."
+    ];
+    experts.forEach((expert) => {
+      lines.push([
+        expert.expertId,
+        expert.expertType,
+        `languages=${asArray(expert.supportedLanguages).join(", ")}`,
+        `corpora=${asArray(expert.supportedCorpora).join(", ")}`,
+        `tradition=${expert.tradition}`,
+        `evidenceDistance=${expert.evidenceDistance}`,
+        `status=${expert.status}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only registry. No automatic expert evaluation, internet access, crawling, commentary ingestion, Study View behavior change, storage authority change, or generated expert records.");
+    return lines;
+  }
+
+  function corpusRegistryInspectorLines() {
+    const corpora = registeredCorpora();
+    const activeCorpora = corpora.filter((corpus) => corpus.status !== "inactive");
+    const generatedRecords = corpora.reduce((sum, corpus) => sum + Number(corpus.generatedRecordCount || 0), 0);
+    const corpusTypes = Array.from(new Set(corpora.map((corpus) => corpus.corpusType).filter(Boolean)));
+    const languages = Array.from(new Set(corpora.flatMap((corpus) => asArray(corpus.supportedLanguages)).filter(Boolean)));
+    const adapters = Array.from(new Set(corpora.flatMap((corpus) => asArray(corpus.supportedAdapters)).filter(Boolean)));
+    const perspectives = Array.from(new Set(corpora.flatMap((corpus) => asArray(corpus.supportedPerspectives)).filter(Boolean)));
+    const experts = Array.from(new Set(corpora.flatMap((corpus) => asArray(corpus.supportedExperts)).filter(Boolean)));
+    const lines = [
+      `Registered corpora: ${corpora.length}`,
+      `Active corpus: ${activeCorpora.length ? activeCorpora.map((corpus) => corpus.corpusName).join("; ") : "none"}`,
+      `Generated corpus records: ${generatedRecords}`,
+      "Record shape: corpusId; corpusName; corpusType; supportedLanguages; supportedAdapters; supportedPerspectives; supportedExperts; provenance; authorityPolicy; evidenceDistancePolicy; status",
+      `Corpus categories: ${corpusTypes.join("; ")}`,
+      `Supported languages: ${languages.join("; ")}`,
+      `Supported adapters: ${adapters.join("; ")}`,
+      `Supported perspectives: ${perspectives.join("; ")}`,
+      `Supported experts: ${experts.join("; ")}`,
+      "Trust: corpora define source boundaries, canon/provenance expectations, language expectations, and perspective defaults. Corpora do not define truth, override primary evidence, or replace Context Lock."
+    ];
+    corpora.forEach((corpus) => {
+      lines.push([
+        corpus.corpusId,
+        corpus.corpusName,
+        `type=${corpus.corpusType}`,
+        `languages=${asArray(corpus.supportedLanguages).join(", ")}`,
+        `adapters=${asArray(corpus.supportedAdapters).join(", ")}`,
+        `perspectives=${asArray(corpus.supportedPerspectives).join(", ")}`,
+        `experts=${asArray(corpus.supportedExperts).join(", ")}`,
+        `status=${corpus.status}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only registry. No crawling, ingestion, indexing, automatic study progression, Study View behavior change, storage authority change, or generated corpus records.");
+    return lines;
+  }
+
+  function ontologyRegistryInspectorLines() {
+    const ontologyClasses = registeredOntologyClasses();
+    const generatedRecords = ontologyClasses.reduce((sum, item) => sum + Number(item.generatedRecordCount || 0), 0);
+    const parentClasses = Array.from(new Set(ontologyClasses.map((item) => item.parentOntologyClass).filter(Boolean)));
+    const supportedLenses = Array.from(new Set(ontologyClasses.flatMap((item) => asArray(item.supportedLenses)).filter(Boolean)));
+    const supportedAdapters = Array.from(new Set(ontologyClasses.flatMap((item) => asArray(item.supportedAdapters)).filter(Boolean)));
+    const supportedPerspectives = Array.from(new Set(ontologyClasses.flatMap((item) => asArray(item.supportedPerspectives)).filter(Boolean)));
+    const lines = [
+      `Registered ontology classes: ${ontologyClasses.length}`,
+      `Generated ontology records: ${generatedRecords}`,
+      "Record shape: ontologyId; ontologyClass; parentOntologyClass; hierarchyDistance; supportedLenses; supportedAdapters; supportedPerspectives; evidenceDistancePolicy; provenancePolicy; hierarchyBoundary; status",
+      `Parent classes: ${parentClasses.length ? parentClasses.join("; ") : "none"}`,
+      `Supported lenses: ${supportedLenses.join("; ")}`,
+      `Supported adapters: ${supportedAdapters.join("; ")}`,
+      `Supported perspectives: ${supportedPerspectives.join("; ")}`,
+      "Trust: ontology describes classification categories only. It does not create evidence, rewrite primary evidence, override Context Lock, flatten entity hierarchy, create doctrine, promote ontology records, crawl, process queues, or write storage.",
+      "Boundary: claimed deity does not become established Divine Being without source-grounded evidence. Literary, symbolic, and parable entities remain literary/symbolic unless source context establishes otherwise."
+    ];
+    ontologyClasses.forEach((item) => {
+      lines.push([
+        item.ontologyId,
+        item.ontologyClass,
+        `parent=${item.parentOntologyClass || "none"}`,
+        `hierarchyDistance=${item.hierarchyDistance}`,
+        `lenses=${asArray(item.supportedLenses).join(", ")}`,
+        `boundary=${item.hierarchyBoundary}`,
+        `status=${item.status}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only registry. No Study View behavior change, storage authority change, doctrine creation, ontology promotion, or generated ontology records.");
+    return lines;
+  }
+
+  function authorityRegistryInspectorLines() {
+    const authorities = registeredAuthorityClasses();
+    const generatedRecords = authorities.reduce((sum, item) => sum + Number(item.generatedRecordCount || 0), 0);
+    const authorityTypes = Array.from(new Set(authorities.map((item) => item.authorityType).filter(Boolean)));
+    const mayInform = Array.from(new Set(authorities.flatMap((item) => asArray(item.mayInform)).filter(Boolean)));
+    const mayNotOverride = Array.from(new Set(authorities.flatMap((item) => asArray(item.mayNotOverride)).filter(Boolean)));
+    const prohibited = Array.from(new Set(authorities.flatMap((item) => asArray(item.prohibitedOverrides)).filter(Boolean)));
+    const lines = [
+      `Registered authority classes: ${authorities.length}`,
+      `Generated authority records: ${generatedRecords}`,
+      "Record shape: authorityId; authorityName; authorityType; evidenceDistance; authorityScope; consumedAuthorities; mayInform; mayNotOverride; prohibitedOverrides; provenancePolicy; confidencePolicy; status",
+      `Authority types: ${authorityTypes.join("; ")}`,
+      `May inform: ${mayInform.join("; ")}`,
+      `May not override: ${mayNotOverride.join("; ")}`,
+      `Prohibited overrides: ${prohibited.join("; ")}`,
+      "Trust: primary evidence remains authoritative. Derived authority may depend on primary authority but may not rewrite primary authority.",
+      "Boundaries: Context Lock may not be rewritten by derived records; lenses present but do not create source truth, doctrine, or semantic authority; QA diagnoses but does not mutate records."
+    ];
+    authorities.forEach((item) => {
+      lines.push([
+        item.authorityId,
+        item.authorityName,
+        `type=${item.authorityType}`,
+        `evidenceDistance=${item.evidenceDistance}`,
+        `scope=${item.authorityScope}`,
+        `mayInform=${asArray(item.mayInform).join(", ")}`,
+        `mayNotOverride=${asArray(item.mayNotOverride).join(", ")}`,
+        `prohibited=${asArray(item.prohibitedOverrides).join(", ")}`,
+        `status=${item.status}`
+      ].join(" | "));
+    });
+    lines.push("Boundary: architecture-only registry. No Study View behavior change, storage authority change, doctrine creation, semantic-record behavior change, classification behavior change, or generated authority records.");
+    return lines;
+  }
+
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -14883,6 +15176,10 @@ createRevelationPartsSection(item.subEvents)
       hebrewAdapterLines: hebrewAdapterInspectorLines(),
       perspectiveModelLines: perspectiveModelInspectorLines(),
       lensRegistryLines: lensRegistryInspectorLines(),
+      expertRegistryLines: expertRegistryInspectorLines(),
+      corpusRegistryLines: corpusRegistryInspectorLines(),
+      ontologyRegistryLines: ontologyRegistryInspectorLines(),
+      authorityRegistryLines: authorityRegistryInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -14929,6 +15226,10 @@ createRevelationPartsSection(item.subEvents)
       item.hebrewAdapterLines,
       item.perspectiveModelLines,
       item.lensRegistryLines,
+      item.expertRegistryLines,
+      item.corpusRegistryLines,
+      item.ontologyRegistryLines,
+      item.authorityRegistryLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -14989,6 +15290,10 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Hebrew Adapter Inspector", "", { list: item.hebrewAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Hebrew Adapter Inspector" }),
       createPassageFunctionSection("Perspective Model Inspector", "", { list: item.perspectiveModelLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Perspective Model Inspector" }),
       createPassageFunctionSection("Lens Registry Inspector", "", { list: item.lensRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Lens Registry Inspector" }),
+      createPassageFunctionSection("Expert Registry Inspector", "", { list: item.expertRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Expert Registry Inspector" }),
+      createPassageFunctionSection("Corpus Registry Inspector", "", { list: item.corpusRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Corpus Registry Inspector" }),
+      createPassageFunctionSection("Ontology Registry Inspector", "", { list: item.ontologyRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Ontology Registry Inspector" }),
+      createPassageFunctionSection("Authority Registry Inspector", "", { list: item.authorityRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Authority Registry Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
