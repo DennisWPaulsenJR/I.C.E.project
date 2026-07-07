@@ -15252,6 +15252,157 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function semanticExplainabilitySourceGroups() {
+    return [
+      { recordType: "Context Lock", records: contextLockRecords(), producedByStage: "Stage 2 - Context Layer", authoritySource: "Context Lock Authority", evidenceDistance: 2, supportingRules: ["Context precedes meaning", "Context Lock remains authoritative"], consumedRegistries: ["Authority Registry"] },
+      { recordType: "Entity Records", records: [...Array.from(studyReferenceActors({ includeTechnical: true }).values()), ...scopedSemanticRecords(studyData.entityRegistry)], producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Ontology Classification Authority", evidenceDistance: 3, supportingRules: ["Entities may not rewrite Context Lock", "Locations remain locations; actors remain actors"], consumedRegistries: ["Ontology Registry", "Authority Registry"] },
+      { recordType: "Timeline Records", records: promotedTimelineRecords(), producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Context Lock Authority / Timeline Promotion Rules", evidenceDistance: 4, supportingRules: ["Timeline summarizes source order", "Timeline may not infer missing chronology"], consumedRegistries: ["Authority Registry"] },
+      { recordType: "Scene Records", records: promotedSceneRecords(), producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Context Lock Authority / Scene Promotion Rules", evidenceDistance: 4, supportingRules: ["Scenes summarize context", "Scenes may not create participants"], consumedRegistries: ["Authority Registry", "Ontology Registry"] },
+      { recordType: "Relationship Records", records: promotedRelationshipRecords(), producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Relationship Promotion Rules", evidenceDistance: 5, supportingRules: ["Relationships may not rewrite context", "Relationships may not create actors or locations"], consumedRegistries: ["Authority Registry", "Ontology Registry"] },
+      { recordType: "Theme Records", records: promotedThemeRecords(), producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Theme Promotion Rules", evidenceDistance: 6, supportingRules: ["Themes summarize semantic records", "Themes may not create doctrine"], consumedRegistries: ["Authority Registry", "Lens Registry"] },
+      { recordType: "Literary Structure Records", records: promotedLiteraryRecords(), producedByStage: "Stage 3 - Semantic Layer", authoritySource: "Literary Promotion Rules", evidenceDistance: 6, supportingRules: ["Literary structures summarize source organization", "Possible structures remain possible"], consumedRegistries: ["Authority Registry", "Lens Registry"] },
+      { recordType: "Language Records", records: generatedLanguageRecords(), producedByStage: "Stage 1 - Language Layer", authoritySource: "Language Adapter Authority", evidenceDistance: 1, supportingRules: ["Language records are advisory", "Language may not rewrite source text"], consumedRegistries: ["Language Adapter Registry", "Authority Registry"] },
+      { recordType: "Action Chains", records: actionChainPreviewRecords(), producedByStage: "Stage 4 - Reasoning Support", authoritySource: "QA / Diagnostic Authority", evidenceDistance: 6, supportingRules: ["Action chains are preview-only", "No doctrine or motive inference"], consumedRegistries: ["Authority Registry", "Lens Registry"] },
+      { recordType: "Causality", records: causalityPreviewRecords(), producedByStage: "Stage 4 - Reasoning Support", authoritySource: "QA / Diagnostic Authority", evidenceDistance: 6, supportingRules: ["Causality requires explicit source wording", "No motive or fulfillment inference"], consumedRegistries: ["Authority Registry"] },
+      { recordType: "Consequence Chains", records: consequenceChainPreviewRecords(), producedByStage: "Stage 4 - Reasoning Support", authoritySource: "QA / Diagnostic Authority", evidenceDistance: 7, supportingRules: ["Only explicit causal links may be chained", "Unresolved is better than wrong"], consumedRegistries: ["Authority Registry"] },
+      { recordType: "Fulfillment Confidence", records: fulfillmentConfidencePreviewRecords(), producedByStage: "Stage 4 - Reasoning Support", authoritySource: "Fulfillment Confidence Framework", evidenceDistance: 7, supportingRules: ["Explicit fulfillment is only explicit when source says so", "Typology must remain typology unless source marks fulfillment"], consumedRegistries: ["Authority Registry", "Perspective Registry"] },
+      { recordType: "Translation Alignment", records: translationAlignmentPreviewRecords(), producedByStage: "Stage 5 - Language Expansion", authoritySource: "Translation Authority", evidenceDistance: 7, supportingRules: ["Alignment does not imply equivalence", "Translation models may not override source wording"], consumedRegistries: ["Language Adapter Registry", "Perspective Registry", "Authority Registry"] },
+      { recordType: "Strong Alignment", records: strongAlignmentPreviewRecords(), producedByStage: "Stage 5 - Language Expansion", authoritySource: "Strong's / Lexicon Authority", evidenceDistance: 7, supportingRules: ["Strong alignment is attributable support", "Strong alignment does not imply meaning authority"], consumedRegistries: ["Language Adapter Registry", "Expert Registry", "Authority Registry"] }
+    ];
+  }
+
+  function semanticExplainabilityRecord(group, record = {}, index = 0) {
+    const textRecord = normalizeText(record);
+    const recordId = record.explainabilityId
+      || record.id
+      || record.recordId
+      || record.entityId
+      || record.timelineId
+      || record.sceneId
+      || record.relationshipId
+      || record.themeId
+      || record.literaryId
+      || record.tokenId
+      || record.actionId
+      || record.causalityId
+      || record.consequenceId
+      || record.fulfillmentId
+      || record.alignmentId
+      || record.strongAlignmentId
+      || record.canonicalKey
+      || `${normalizeText(group.recordType).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${index + 1}`;
+    const sourceEvidence = record.sourceEvidence
+      || record.evidence
+      || record.evidenceChain
+      || record.sourceText
+      || record.sourcePhrase
+      || record.sourceReference
+      || record.verseRange
+      || record.sourceScope
+      || "source evidence not recorded on source record";
+    const confidence = record.confidence || record.evidenceWeight || record.appAccuracy || record.status || record.promotionStatus || "confidence not recorded on source record";
+    const explicitProvenance = Boolean(record.provenance || record.sourceProvenance || record.createdFrom);
+    const explicitAuthority = Boolean(record.authoritySource || record.authority || record.sourceAuthority || record.authorityPath);
+    const explicitConfidence = Boolean(record.confidence || record.evidenceWeight || record.appAccuracy || record.status || record.promotionStatus);
+    const explicitEvidence = Boolean(record.sourceEvidence || record.evidence || record.evidenceChain || record.sourceText || record.sourcePhrase || record.sourceReference || record.verseRange || record.sourceScope);
+    return {
+      explainabilityId: `explain.${normalizeText(group.recordType).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${index + 1}`,
+      recordType: group.recordType,
+      recordId,
+      createdFrom: record.createdFrom || record.parentRecord || record.parentId || group.producedByStage,
+      sourceEvidence,
+      consumedRecords: asArray(record.consumedRecords || record.supportingRecords || record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidenceLinks || record.timelineReferences).slice(0, 8),
+      producedByStage: group.producedByStage,
+      authoritySource: record.authoritySource || record.authority || record.sourceAuthority || group.authoritySource,
+      authorityPath: asArray(record.authorityPath || [group.authoritySource]).join(" -> "),
+      evidenceDistance: record.evidenceDistance ?? group.evidenceDistance,
+      confidence,
+      provenance: record.provenance || record.sourceProvenance || `I.C.E. Explainability derived from existing scoped ${group.recordType} display/runtime records only`,
+      supportingRules: group.supportingRules,
+      consumedRegistries: group.consumedRegistries,
+      activePerspectiveModels: registeredPerspectiveModels().filter((model) => model.status !== "inactive").map((model) => model.perspectiveId).slice(0, 8),
+      activeExpertModels: registeredExpertModels().filter((model) => model.status !== "inactive").map((model) => model.expertId).slice(0, 8),
+      activeLenses: registeredPresentationLenses().filter((lens) => lens.status !== "inactive").map((lens) => lens.lensId).slice(0, 10),
+      missingProvenance: !explicitProvenance,
+      missingAuthority: !explicitAuthority,
+      missingConfidence: !explicitConfidence,
+      missingEvidenceChain: !explicitEvidence,
+      status: /unresolved|ambiguous|pending|unknown/i.test(`${confidence} ${textRecord}`) ? "review" : "explainable"
+    };
+  }
+
+  function semanticExplainabilityRecords() {
+    return semanticExplainabilitySourceGroups()
+      .flatMap((group) => asArray(group.records).slice(0, 180).map((record, index) => semanticExplainabilityRecord(group, record, index)));
+  }
+
+  function semanticExplainabilityDiagnostics() {
+    const records = semanticExplainabilityRecords();
+    const missingProvenance = records.filter((record) => record.missingProvenance);
+    const missingAuthority = records.filter((record) => record.missingAuthority);
+    const missingConfidence = records.filter((record) => record.missingConfidence);
+    const missingEvidenceChain = records.filter((record) => record.missingEvidenceChain);
+    const explainable = records.filter((record) => record.status === "explainable");
+    const coverage = records.length ? Math.round((explainable.length / records.length) * 100) : 100;
+    const byType = records.reduce((counts, record) => {
+      counts[record.recordType] = (counts[record.recordType] || 0) + 1;
+      return counts;
+    }, {});
+    return {
+      records,
+      explainable,
+      missingProvenance,
+      missingAuthority,
+      missingConfidence,
+      missingEvidenceChain,
+      coverage,
+      byType
+    };
+  }
+
+  function semanticExplainabilityInspectorLines() {
+    const diagnostics = semanticExplainabilityDiagnostics();
+    const sample = diagnostics.records.slice(0, 12).map((record) => [
+      record.recordType,
+      `id=${record.recordId}`,
+      `stage=${record.producedByStage}`,
+      `authority=${record.authoritySource}`,
+      `distance=${record.evidenceDistance}`,
+      `confidence=${normalizeText(record.confidence)}`,
+      `provenance=${trimText(record.provenance, 80)}`,
+      `status=${record.status}`
+    ].join(" | "));
+    return [
+      `Explainability records: ${diagnostics.records.length}`,
+      `Explainability coverage: ${diagnostics.coverage}%`,
+      `Records missing provenance: ${diagnostics.missingProvenance.length}`,
+      `Records missing authority: ${diagnostics.missingAuthority.length}`,
+      `Records missing confidence: ${diagnostics.missingConfidence.length}`,
+      `Records missing evidence chain: ${diagnostics.missingEvidenceChain.length}`,
+      `Categories: ${languageCountLine(diagnostics.byType)}`,
+      "Record shape: explainabilityId; recordType; recordId; createdFrom; sourceEvidence; consumedRecords; producedByStage; authoritySource; authorityPath; evidenceDistance; confidence; provenance; supportingRules; consumedRegistries; activePerspectiveModels; activeExpertModels; activeLenses; status",
+      "Selected record: first available explainability sample from the current scoped runtime records.",
+      "Sample records:",
+      ...(sample.length ? sample : ["No explainability records generated from current scoped records."]),
+      "Dependency chain: source evidence -> produced stage -> authority path -> consumed registries -> active perspectives/experts/lenses.",
+      "Trust: explainability describes records only. It does not alter records, create semantic records, rewrite evidence, mutate Context Lock, write storage, process queues, crawl, or change Study View output."
+    ];
+  }
+
+  function semanticExplainabilityDashboardLines() {
+    const diagnostics = semanticExplainabilityDiagnostics();
+    return [
+      "Explainability Summary",
+      `Explainable records: ${diagnostics.explainable.length}`,
+      `Records missing provenance: ${diagnostics.missingProvenance.length}`,
+      `Records missing authority: ${diagnostics.missingAuthority.length}`,
+      `Records missing confidence: ${diagnostics.missingConfidence.length}`,
+      `Records missing evidence chain: ${diagnostics.missingEvidenceChain.length}`,
+      `Explainability coverage: ${diagnostics.coverage}%`,
+      "Boundary: explainability is generated from existing scoped/runtime records and registry metadata only."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -15273,6 +15424,7 @@ createRevelationPartsSection(item.subEvents)
       ...qaDashboardPromotionLines(),
       ...qaDashboardLanguageLines(),
       ...semanticHealthDashboardLines(),
+      ...semanticExplainabilityDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -15767,6 +15919,7 @@ createRevelationPartsSection(item.subEvents)
       authorityRegistryLines: authorityRegistryInspectorLines(),
       architectureGraphLines: architectureGraphInspectorLines(),
       semanticHealthLines: semanticHealthMonitorLines(),
+      semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -15819,6 +15972,7 @@ createRevelationPartsSection(item.subEvents)
       item.authorityRegistryLines,
       item.architectureGraphLines,
       item.semanticHealthLines,
+      item.semanticExplainabilityLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -15885,6 +16039,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Authority Registry Inspector", "", { list: item.authorityRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Authority Registry Inspector" }),
       createPassageFunctionSection("Architecture Graph Inspector", "", { list: item.architectureGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Architecture Graph Inspector" }),
       createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
+      createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
