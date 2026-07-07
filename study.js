@@ -12921,6 +12921,166 @@ createRevelationPartsSection(item.subEvents)
     }));
   }
 
+  function architectureGraphNodes() {
+    const registryStatus = "registry-only / no runtime graph mutation";
+    const nodeDefinitions = [
+      ["primary_evidence", "Primary Evidence", "Evidence", [], ["Context Lock", "Source Discovery", "Mention Index"], "Primary Evidence Authority", 0, ["source-grounded evidence"], ["source rewrite", "context mutation"], "Primary evidence remains authoritative."],
+      ["context_lock", "Context Lock", "Evidence", ["Primary Evidence"], ["Entity Registry", "Timeline Records", "Scene Records"], "Context Lock Authority", 2, ["locked context diagnostics"], ["role inversion", "participant rewrite"], "Context Lock may constrain derived records and may not be rewritten by them."],
+      ["source_discovery", "Source Discovery", "Evidence", ["Primary Evidence"], ["Mention Index", "Reference Graph"], "Source Text Authority", 1, ["source discovery diagnostics"], ["semantic authority creation"], "Discovery surfaces source signals without replacing source text."],
+      ["mention_index", "Mention Index", "Evidence", ["Source Discovery"], ["Entity Registry", "Relationship Records"], "Source Text Authority", 2, ["mention diagnostics"], ["entity-class rewrite"], "Mention records support classification but do not become classification authority."],
+      ["entity_registry", "Entity Registry", "Semantic", ["Context Lock", "Mention Index", "Ontology Registry"], ["Timeline Records", "Scene Records", "Relationship Records"], "Ontology Classification Authority", 3, ["entity classification records"], ["Context Lock rewrite", "hierarchy flattening"], "Entity classification depends on context and ontology boundaries."],
+      ["timeline_records", "Timeline Records", "Semantic", ["Context Lock", "Entity Registry"], ["Scene Records", "Relationship Records"], "Context Lock Authority", 4, ["ordered timeline records"], ["source order rewrite"], "Timeline records summarize accepted source order only."],
+      ["scene_records", "Scene Records", "Semantic", ["Context Lock", "Timeline Records", "Entity Registry"], ["Relationship Records", "Theme Records"], "Context Lock Authority", 4, ["scene summaries"], ["inferred participants"], "Scenes summarize context and may not create context."],
+      ["relationship_records", "Relationship Records", "Semantic", ["Entity Registry", "Scene Records", "Timeline Records"], ["Theme Records", "Fulfillment Confidence"], "Context Lock Authority", 5, ["relationship summaries"], ["actor rewrite", "location rewrite"], "Relationships may connect grounded records but not rewrite them."],
+      ["theme_records", "Theme Records", "Semantic", ["Relationship Records", "Scene Records"], ["Lens Registry"], "Perspective Authority", 6, ["theme summaries"], ["doctrine creation"], "Themes summarize grounded semantic records."],
+      ["literary_records", "Literary Records", "Semantic", ["Source Discovery", "Scene Records", "Theme Records"], ["Lens Registry"], "Perspective Authority", 6, ["literary summaries"], ["source meaning rewrite"], "Literary records describe organization without creating doctrine."],
+      ["fulfillment_confidence", "Fulfillment Confidence", "Semantic", ["Relationship Records", "Timeline Records", "Source Discovery"], ["Fulfillment Lens"], "Perspective Authority", 7, ["fulfillment confidence summaries"], ["implicit fulfillment promotion"], "Fulfillment confidence separates explicit, supported, possible, and attributed categories."],
+      ["language_adapters", "Language Adapters", "Language", ["Primary Evidence"], ["POS", "Morphology", "Translation Alignment"], "Language Adapter Authority", 1, ["language support records"], ["source rewrite"], "Language adapters support evidence and do not replace evidence."],
+      ["pos", "POS", "Language", ["Language Adapters"], ["Pronouns", "Grammatical Roles"], "Language Adapter Authority", 2, ["part-of-speech preview"], ["semantic rewrite"], "POS remains advisory."],
+      ["pronouns", "Pronouns", "Language", ["POS", "Context Lock"], ["Subject/Object"], "Language Adapter Authority", 3, ["pronoun preview"], ["entity creation"], "Pronoun resolution is advisory and unresolved is preferred over wrong."],
+      ["quotations", "Quotations", "Language", ["Primary Evidence"], ["Speakers", "Audiences", "Dialogue Relationships"], "Language Adapter Authority", 2, ["quotation boundary preview"], ["speaker inference without evidence"], "Quotation boundaries use explicit source punctuation and markers only."],
+      ["speakers", "Speakers", "Language", ["Quotations", "Context Lock"], ["Dialogue Relationships"], "Context Lock Authority", 3, ["speaker preview"], ["speaker creation"], "Speaker detection remains subordinate to source and Context Lock."],
+      ["audiences", "Audiences", "Language", ["Quotations", "Context Lock"], ["Dialogue Relationships"], "Context Lock Authority", 3, ["audience preview"], ["audience creation"], "Audience detection separates immediate, direct, narrative, reader, intended, and application levels."],
+      ["dialogue_relationships", "Dialogue Relationships", "Language", ["Speakers", "Audiences", "Quotations"], ["Relationship Records"], "Context Lock Authority", 4, ["dialogue preview"], ["doctrine creation"], "Dialogue records remain advisory."],
+      ["grammatical_roles", "Grammatical Roles", "Language", ["POS", "Quotations", "Context Lock"], ["Subject/Object"], "Language Adapter Authority", 3, ["grammar role preview"], ["Context Lock rewrite"], "Grammatical roles are advisory support records."],
+      ["subject_object", "Subject/Object", "Language", ["Grammatical Roles", "Pronouns"], ["Relationship Records"], "Language Adapter Authority", 4, ["subject/object preview"], ["unstated actor inference"], "Subject/object records may support but not override semantic records."],
+      ["morphology", "Morphology", "Language", ["Language Adapters", "POS"], ["Translation Alignment"], "Language Adapter Authority", 2, ["morphology preview"], ["semantic authority creation"], "Morphology is advisory only."],
+      ["translation_alignment", "Translation Alignment", "Language", ["Language Adapters", "Morphology"], ["Strong Alignment", "Perspective Registry"], "Translation Authority", 7, ["alignment preview"], ["equivalence enforcement"], "Alignment does not imply equivalence."],
+      ["strong_alignment", "Strong Alignment", "Language", ["Translation Alignment"], ["Perspective Registry", "Expert Registry"], "Strong's / Lexicon Authority", 7, ["Strong alignment preview"], ["meaning authority override"], "Strong alignment remains attributable and advisory."],
+      ["corpus_registry", "Corpus Registry", "Registry", [], ["Perspective Registry", "Expert Registry", "Lens Registry"], "Corpus Authority", 7, ["corpus metadata"], ["truth definition"], "Corpora define source boundaries and provenance expectations."],
+      ["ontology_registry", "Ontology Registry", "Registry", ["Context Lock"], ["Entity Registry", "Lens Registry"], "Ontology Classification Authority", 7, ["ontology class metadata"], ["classification behavior mutation"], "Ontology describes classification categories only."],
+      ["authority_registry", "Authority Registry", "Registry", ["Primary Evidence"], ["Architecture Graph", "QA Dashboard"], "QA / Diagnostic Authority", 8, ["authority boundary metadata"], ["authority mutation"], "Authority Registry makes boundaries explicit without altering behavior."],
+      ["perspective_registry", "Perspective Registry", "Registry", ["Language Adapters", "Corpus Registry", "Expert Registry"], ["Lens Registry"], "Perspective Authority", 7, ["perspective metadata"], ["evidence rewrite"], "Perspective models describe methods and may disagree."],
+      ["expert_registry", "Expert Registry", "Registry", ["Primary Evidence", "Perspective Registry"], ["Lens Registry"], "Expert Authority", 7, ["expert attribution metadata"], ["evidence replacement"], "Experts illuminate evidence; experts do not become evidence."],
+      ["lens_registry", "Lens Registry", "Registry", ["Ontology Registry", "Perspective Registry", "Expert Registry"], ["Study View", "Editor / Architect View", "QA Dashboard"], "Presentation / Lens Authority", 8, ["presentation lens metadata"], ["semantic mutation"], "Lenses consume ontology and perspective models but do not create source truth."],
+      ["architecture_graph", "Architecture Graph", "Registry", ["Authority Registry", "Ontology Registry", "Corpus Registry", "Perspective Registry", "Expert Registry", "Lens Registry"], ["Architecture Graph Inspector", "QA Dashboard"], "QA / Diagnostic Authority", 8, ["architecture diagnostics"], ["system mutation"], "Architecture graphs describe the system and do not alter it."],
+      ["study_view", "Study View", "Presentation", ["Lens Registry", "Primary Evidence", "Context Lock"], [], "Presentation / Lens Authority", 8, ["user-facing presentation"], ["semantic mutation"], "Study View presents selected records without rewriting evidence."]
+    ];
+    return nodeDefinitions.map(([architectureNodeId, architectureNodeName, nodeType, consumes, produces, authoritySource, evidenceDistance, allowedOutputs, prohibitedOutputs, trustRules]) => ({
+      architectureNodeId,
+      architectureNodeName,
+      nodeType,
+      consumes,
+      produces,
+      authoritySource,
+      evidenceDistance,
+      allowedOutputs,
+      prohibitedOutputs,
+      trustRules,
+      status: registryStatus
+    }));
+  }
+
+  function architectureGraphEdges() {
+    const allowedStatus = "registered / display-only";
+    const edgeDefinitions = [
+      ["primary_context", "primary_evidence", "context_lock", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["primary_discovery", "primary_evidence", "source_discovery", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["discovery_mentions", "source_discovery", "mention_index", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["context_entities", "context_lock", "entity_registry", "constrains", "primary_to_derived", "near_to_farther", true, ""],
+      ["mentions_entities", "mention_index", "entity_registry", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["ontology_entities", "ontology_registry", "entity_registry", "informs", "registry_to_semantic", "farther_supports_closer_without_override", true, ""],
+      ["entities_timeline", "entity_registry", "timeline_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["context_timeline", "context_lock", "timeline_records", "constrains", "primary_to_derived", "near_to_farther", true, ""],
+      ["timeline_scenes", "timeline_records", "scene_records", "derives", "primary_to_derived", "same_distance_or_farther", true, ""],
+      ["context_scenes", "context_lock", "scene_records", "constrains", "primary_to_derived", "near_to_farther", true, ""],
+      ["scenes_relationships", "scene_records", "relationship_records", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["entities_relationships", "entity_registry", "relationship_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["relationships_themes", "relationship_records", "theme_records", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["relationships_fulfillment", "relationship_records", "fulfillment_confidence", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["source_literary", "source_discovery", "literary_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["primary_language", "primary_evidence", "language_adapters", "consumes", "primary_to_support", "near_to_farther", true, ""],
+      ["language_pos", "language_adapters", "pos", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["pos_pronouns", "pos", "pronouns", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["primary_quotations", "primary_evidence", "quotations", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["quotations_speakers", "quotations", "speakers", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["quotations_audiences", "quotations", "audiences", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["speakers_dialogue", "speakers", "dialogue_relationships", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["audiences_dialogue", "audiences", "dialogue_relationships", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["pos_grammar", "pos", "grammatical_roles", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["grammar_subject_object", "grammatical_roles", "subject_object", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["subject_relationships", "subject_object", "relationship_records", "informs", "support_to_semantic", "support_to_farther_semantic", true, ""],
+      ["language_morphology", "language_adapters", "morphology", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["morphology_translation", "morphology", "translation_alignment", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["translation_strong", "translation_alignment", "strong_alignment", "informs", "same_distance_support", "same_distance", true, ""],
+      ["corpus_perspective", "corpus_registry", "perspective_registry", "informs", "registry_to_registry", "same_distance", true, ""],
+      ["expert_perspective", "expert_registry", "perspective_registry", "informs", "registry_to_registry", "same_distance", true, ""],
+      ["perspective_lens", "perspective_registry", "lens_registry", "informs", "registry_to_presentation", "near_to_farther", true, ""],
+      ["ontology_lens", "ontology_registry", "lens_registry", "informs", "registry_to_presentation", "near_to_farther", true, ""],
+      ["authority_graph", "authority_registry", "architecture_graph", "constrains", "registry_to_diagnostic", "same_distance", true, ""],
+      ["graph_dashboard", "architecture_graph", "lens_registry", "validates", "diagnostic_to_presentation", "same_distance", true, ""],
+      ["lens_study", "lens_registry", "study_view", "presents", "presentation_only", "presentation", true, ""],
+      ["derived_context_override", "relationship_records", "context_lock", "prohibited_override", "derived_to_primary", "farther_to_near", false, "Relationships may not rewrite Context Lock."],
+      ["lens_semantic_mutation", "lens_registry", "entity_registry", "prohibited_mutation", "presentation_to_semantic", "farther_to_near", false, "Lenses may present but may not mutate semantic records."],
+      ["expert_evidence_replacement", "expert_registry", "primary_evidence", "prohibited_override", "expert_to_primary", "farther_to_near", false, "Experts illuminate evidence; experts do not become or replace evidence."],
+      ["ontology_context_override", "ontology_registry", "context_lock", "prohibited_override", "registry_to_primary", "farther_to_near", false, "Ontology may classify but may not override Context Lock."]
+    ];
+    return edgeDefinitions.map(([edgeId, sourceNode, targetNode, edgeType, authorityDirection, evidenceDirection, allowed, prohibitedReason]) => ({
+      edgeId,
+      sourceNode,
+      targetNode,
+      edgeType,
+      authorityDirection,
+      evidenceDirection,
+      allowed,
+      prohibitedReason,
+      status: allowed ? allowedStatus : "registered prohibited boundary"
+    }));
+  }
+
+  function architectureGraphDiagnostics() {
+    const nodes = architectureGraphNodes();
+    const edges = architectureGraphEdges();
+    const nodeIds = new Set(nodes.map((node) => node.architectureNodeId));
+    const degree = new Map(nodes.map((node) => [node.architectureNodeId, 0]));
+    edges.forEach((edge) => {
+      if (nodeIds.has(edge.sourceNode)) degree.set(edge.sourceNode, (degree.get(edge.sourceNode) || 0) + 1);
+      if (nodeIds.has(edge.targetNode)) degree.set(edge.targetNode, (degree.get(edge.targetNode) || 0) + 1);
+    });
+    const orphanNodes = nodes.filter((node) => (degree.get(node.architectureNodeId) || 0) === 0);
+    const nodeDistance = new Map(nodes.map((node) => [node.architectureNodeId, Number(node.evidenceDistance || 0)]));
+    const allowedEdges = edges.filter((edge) => edge.allowed);
+    const evidenceDistanceViolations = allowedEdges.filter((edge) => {
+      const source = nodeDistance.get(edge.sourceNode);
+      const target = nodeDistance.get(edge.targetNode);
+      if (source === undefined || target === undefined) return false;
+      if (/same_distance/.test(edge.evidenceDirection)) return source !== target;
+      if (/farther_supports_closer_without_override|support_to_farther_semantic/.test(edge.evidenceDirection)) return false;
+      return target < source;
+    });
+    const authorityViolations = allowedEdges.filter((edge) => /override|mutation/i.test(edge.edgeType));
+    const adjacency = new Map();
+    allowedEdges.forEach((edge) => {
+      if (!adjacency.has(edge.sourceNode)) adjacency.set(edge.sourceNode, []);
+      adjacency.get(edge.sourceNode).push(edge.targetNode);
+    });
+    const visited = new Set();
+    const stack = new Set();
+    const circular = new Set();
+    const visit = (nodeId) => {
+      if (stack.has(nodeId)) {
+        circular.add(nodeId);
+        return;
+      }
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+      stack.add(nodeId);
+      asArray(adjacency.get(nodeId)).forEach(visit);
+      stack.delete(nodeId);
+    };
+    nodes.forEach((node) => visit(node.architectureNodeId));
+    return {
+      nodes,
+      edges,
+      circularDependencyCount: circular.size,
+      circularNodes: Array.from(circular),
+      authorityViolations,
+      evidenceDistanceViolations,
+      orphanNodes,
+      prohibitedEdges: edges.filter((edge) => !edge.allowed)
+    };
+  }
+
   function languagePreviewTokenParts(text = "") {
     return normalizeText(text).match(/[A-Za-z]+(?:'[A-Za-z]+)?|\d+|[^\sA-Za-z\d]/g) || [];
   }
@@ -14601,6 +14761,7 @@ createRevelationPartsSection(item.subEvents)
     const corpora = registeredCorpora();
     const ontologyClasses = registeredOntologyClasses();
     const authorityClasses = registeredAuthorityClasses();
+    const architectureGraph = architectureGraphDiagnostics();
     const morphology = morphologyPreviewRecords();
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
@@ -14635,6 +14796,7 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Corpus Registry", corpora, { active: true }),
       qaDashboardLayerLine("Ontology Registry", ontologyClasses, { active: true }),
       qaDashboardLayerLine("Authority Registry", authorityClasses, { active: true }),
+      `Architecture Graph: active; nodes=${architectureGraph.nodes.length}; edges=${architectureGraph.edges.length}; circular=${architectureGraph.circularDependencyCount}; authorityViolations=${architectureGraph.authorityViolations.length}; evidenceDistanceViolations=${architectureGraph.evidenceDistanceViolations.length}; orphans=${architectureGraph.orphanNodes.length}`,
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
       qaDashboardLayerLine("Morphology", morphology),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
@@ -14726,6 +14888,370 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function semanticHealthPercent(resolved = 0, total = 0) {
+    const count = Number(total) || 0;
+    if (!count) return 100;
+    return Math.max(0, Math.min(100, Math.round((Number(resolved || 0) / count) * 100)));
+  }
+
+  function semanticHealthStatus(value = 100, warningBelow = 60) {
+    const score = Number(value) || 0;
+    if (score < warningBelow) return "warning";
+    if (score < 80) return "informational";
+    return "healthy";
+  }
+
+  function semanticHealthMetric(healthCategory, metricName, metricValue, metricType, metricScope, status = "informational", evidenceDistance = 8) {
+    const healthMetricId = `health.${normalizeText(healthCategory).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${normalizeText(metricName).toLowerCase().replace(/[^a-z0-9]+/g, ".")}`;
+    return {
+      healthMetricId,
+      healthCategory,
+      metricName,
+      metricValue,
+      metricType,
+      metricScope,
+      provenance: "I.C.E. Semantic Health Monitor generated from loaded scoped records for display only",
+      evidenceDistance,
+      status
+    };
+  }
+
+  function semanticHealthMetrics() {
+    const languageRecords = generatedLanguageRecords();
+    const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
+    const posUnresolved = Number(posCounts.unresolved || 0);
+    const posResolved = Math.max(0, languageRecords.length - posUnresolved);
+    const morphology = qaDashboardResolutionCounts(morphologyPreviewRecords());
+    const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
+    const quotations = quotationBoundaryPreviewRecords();
+    const quotationUnresolved = quotations.filter((record) => /unresolved/i.test(normalizeText(record.quoteType || record.status))).length;
+    const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
+    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
+    const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
+    const consequenceChains = qaDashboardResolutionCounts(consequenceChainPreviewRecords());
+    const fulfillmentRecords = fulfillmentConfidencePreviewRecords();
+    const fulfillmentDistribution = fulfillmentRecords.reduce((counts, record) => {
+      const label = normalizeText(record.fulfillmentCategory || record.status || "unresolved") || "unresolved";
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+    const coverageRows = promotionCoverageRows();
+    const coverageMetric = (label) => coverageRows.find((row) => row.label === label) || { coverage: 100, promoted: 0, discovered: 0, unresolved: 0 };
+    const graph = architectureGraphDiagnostics();
+    const languageScores = [
+      semanticHealthPercent(posResolved, languageRecords.length),
+      semanticHealthPercent(pronouns.resolved, pronouns.total),
+      semanticHealthPercent(morphology.resolved, morphology.total),
+      semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length),
+      semanticHealthPercent(speakers.resolved, speakers.total),
+      semanticHealthPercent(audiences.resolved, audiences.total),
+      semanticHealthPercent(subjectObject.resolved, subjectObject.total)
+    ];
+    const semanticScores = [
+      coverageMetric("Mention Records").coverage,
+      coverageMetric("Timeline Promotions").coverage,
+      coverageMetric("Scene Models").coverage,
+      coverageMetric("Relationship Promotions").coverage,
+      coverageMetric("Theme Promotions").coverage,
+      coverageMetric("Literary Structure Promotions").coverage,
+      semanticHealthPercent(causality.resolved, causality.total),
+      semanticHealthPercent(consequenceChains.resolved, consequenceChains.total),
+      semanticHealthPercent(fulfillmentRecords.filter((record) => !/unresolved/i.test(normalizeText(record.status))).length, fulfillmentRecords.length)
+    ];
+    const architecturePenalty = graph.circularDependencyCount + graph.authorityViolations.length + graph.evidenceDistanceViolations.length + graph.orphanNodes.length;
+    const architectureScore = Math.max(0, 100 - (architecturePenalty * 25));
+    const average = (values) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 100;
+    const languageScore = average(languageScores);
+    const semanticScore = average(semanticScores);
+    const overallScore = average([languageScore, semanticScore, architectureScore]);
+    const metrics = [
+      semanticHealthMetric("Language Health", "POS resolution rate", semanticHealthPercent(posResolved, languageRecords.length), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(posResolved, languageRecords.length))),
+      semanticHealthMetric("Language Health", "Pronoun resolution rate", semanticHealthPercent(pronouns.resolved, pronouns.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(pronouns.resolved, pronouns.total), 35)),
+      semanticHealthMetric("Language Health", "Morphology resolution rate", semanticHealthPercent(morphology.resolved, morphology.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(morphology.resolved, morphology.total))),
+      semanticHealthMetric("Language Health", "Quotation resolution rate", semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length))),
+      semanticHealthMetric("Language Health", "Speaker resolution rate", semanticHealthPercent(speakers.resolved, speakers.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(speakers.resolved, speakers.total), 35)),
+      semanticHealthMetric("Language Health", "Audience resolution rate", semanticHealthPercent(audiences.resolved, audiences.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(audiences.resolved, audiences.total), 35)),
+      semanticHealthMetric("Language Health", "Subject/Object resolution rate", semanticHealthPercent(subjectObject.resolved, subjectObject.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(subjectObject.resolved, subjectObject.total), 35)),
+      semanticHealthMetric("Semantic Health", "Entity coverage", coverageMetric("Mention Records").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Mention Records").coverage)),
+      semanticHealthMetric("Semantic Health", "Timeline coverage", coverageMetric("Timeline Promotions").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Timeline Promotions").coverage)),
+      semanticHealthMetric("Semantic Health", "Scene coverage", coverageMetric("Scene Models").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Scene Models").coverage)),
+      semanticHealthMetric("Semantic Health", "Relationship coverage", coverageMetric("Relationship Promotions").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Relationship Promotions").coverage)),
+      semanticHealthMetric("Semantic Health", "Theme coverage", coverageMetric("Theme Promotions").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Theme Promotions").coverage)),
+      semanticHealthMetric("Semantic Health", "Literary structure coverage", coverageMetric("Literary Structure Promotions").coverage, "percentage", currentStudyScopeLabel(), semanticHealthStatus(coverageMetric("Literary Structure Promotions").coverage)),
+      semanticHealthMetric("Semantic Health", "Causality coverage", semanticHealthPercent(causality.resolved, causality.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(causality.resolved, causality.total), 35)),
+      semanticHealthMetric("Semantic Health", "Consequence chain coverage", semanticHealthPercent(consequenceChains.resolved, consequenceChains.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(consequenceChains.resolved, consequenceChains.total), 35)),
+      semanticHealthMetric("Semantic Health", "Fulfillment confidence distribution", languageCountLine(fulfillmentDistribution), "distribution", currentStudyScopeLabel(), "informational"),
+      semanticHealthMetric("Architecture Health", "Authority violations", graph.authorityViolations.length, "count", "architecture graph", graph.authorityViolations.length ? "warning" : "healthy"),
+      semanticHealthMetric("Architecture Health", "Evidence distance violations", graph.evidenceDistanceViolations.length, "count", "architecture graph", graph.evidenceDistanceViolations.length ? "warning" : "healthy"),
+      semanticHealthMetric("Architecture Health", "Perspective conflicts", 0, "count", "registry metadata", "healthy"),
+      semanticHealthMetric("Architecture Health", "Lens conflicts", 0, "count", "registry metadata", "healthy"),
+      semanticHealthMetric("Architecture Health", "Circular dependencies", graph.circularDependencyCount, "count", "architecture graph", graph.circularDependencyCount ? "warning" : "healthy"),
+      semanticHealthMetric("Architecture Health", "Orphan nodes", graph.orphanNodes.length, "count", "architecture graph", graph.orphanNodes.length ? "warning" : "healthy"),
+      semanticHealthMetric("Architecture Health", "Registry consistency", architecturePenalty ? "review needed" : "consistent", "informational", "registry metadata", architecturePenalty ? "warning" : "healthy"),
+      semanticHealthMetric("Semantic Health Summary", "Semantic health score", semanticScore, "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticScore)),
+      semanticHealthMetric("Language Health Summary", "Language health score", languageScore, "percentage", currentStudyScopeLabel(), semanticHealthStatus(languageScore)),
+      semanticHealthMetric("Architecture Health Summary", "Architecture health score", architectureScore, "percentage", "architecture graph", semanticHealthStatus(architectureScore)),
+      semanticHealthMetric("Semantic Health Summary", "Overall semantic health score", overallScore, "percentage", currentStudyScopeLabel(), semanticHealthStatus(overallScore))
+    ];
+    return metrics;
+  }
+
+  function semanticHealthMonitorLines() {
+    const metrics = semanticHealthMetrics();
+    const warnings = metrics.filter((metric) => metric.status === "warning");
+    const unresolvedSamples = metrics
+      .filter((metric) => /resolution|coverage/i.test(metric.metricName) && Number(metric.metricValue) < 100)
+      .slice(0, 8)
+      .map((metric) => `${metric.healthCategory}: ${metric.metricName}=${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`);
+    const summary = (category) => metrics.filter((metric) => metric.healthCategory === category)
+      .map((metric) => `${metric.metricName}: ${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""} (${metric.status})`);
+    return [
+      `Health metrics generated: ${metrics.length}`,
+      `Warning metrics: ${warnings.length}`,
+      "Record shape: healthMetricId; healthCategory; metricName; metricValue; metricType; metricScope; provenance; evidenceDistance; status",
+      "Language health:",
+      ...summary("Language Health"),
+      "Semantic health:",
+      ...summary("Semantic Health"),
+      "Architecture health:",
+      ...summary("Architecture Health"),
+      "Trend-ready metrics:",
+      ...metrics.filter((metric) => /score|rate|coverage|violations|dependencies|nodes/i.test(metric.metricName)).slice(0, 12).map((metric) => `${metric.metricName}: ${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`),
+      "Sample unresolved categories:",
+      ...(unresolvedSamples.length ? unresolvedSamples : ["No unresolved sample categories detected."]),
+      "Warnings:",
+      ...(warnings.length ? warnings.map((metric) => `${metric.healthCategory}: ${metric.metricName}=${metric.metricValue}`) : ["No warning metrics detected."]),
+      "Boundary: Semantic Health Monitor is display-only and observational. It does not crawl, process queues, mutate scope, write storage, rewrite evidence, mutate Context Lock, create doctrine, create semantic records, or alter Study View output."
+    ];
+  }
+
+  function semanticHealthDashboardLines() {
+    const metrics = semanticHealthMetrics();
+    const valueFor = (name) => metrics.find((metric) => metric.metricName === name)?.metricValue ?? "not recorded";
+    const warnings = metrics.filter((metric) => metric.status === "warning");
+    const unresolvedDistribution = metrics
+      .filter((metric) => /resolution|coverage/i.test(metric.metricName))
+      .map((metric) => `${metric.metricName}=${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`)
+      .join("; ");
+    const fulfillment = metrics.find((metric) => metric.metricName === "Fulfillment confidence distribution")?.metricValue || "none";
+    return [
+      "Semantic Health Summary",
+      `Semantic health score: ${valueFor("Semantic health score")}%`,
+      `Language health score: ${valueFor("Language health score")}%`,
+      `Architecture health score: ${valueFor("Architecture health score")}%`,
+      `Overall semantic health score: ${valueFor("Overall semantic health score")}%`,
+      `Warning metrics: ${warnings.length}`,
+      `Unresolved distribution: ${unresolvedDistribution || "none"}`,
+      `Confidence distribution: ${fulfillment}`,
+      "Boundary: health metrics describe behavior from existing scoped records only and do not influence semantic output."
+    ];
+  }
+
+  function integratedSemanticPipelineStages() {
+    const resolutionCounts = (records = []) => qaDashboardResolutionCounts(records);
+    const languageRecords = generatedLanguageRecords();
+    const languageSupport = [
+      ...languageRecords,
+      ...morphologyPreviewRecords(),
+      ...quotationBoundaryPreviewRecords(),
+      ...pronounResolutionPreviewRecords()
+    ];
+    const contextRecords = [
+      ...contextLockRecords(),
+      ...sessionContinuityReviewRecords(),
+      ...currentStudyScopePages()
+    ];
+    const semanticRecords = [
+      ...Array.from(studyReferenceActors({ includeTechnical: true }).values()),
+      ...scopedSemanticRecords(studyData.entityRegistry),
+      ...promotedTimelineRecords(),
+      ...promotedSceneRecords(),
+      ...promotedRelationshipRecords(),
+      ...promotedThemeRecords(),
+      ...promotedLiteraryRecords()
+    ];
+    const reasoningRecords = [
+      ...actionChainPreviewRecords(),
+      ...causalityPreviewRecords(),
+      ...consequenceChainPreviewRecords(),
+      ...fulfillmentConfidencePreviewRecords()
+    ];
+    const languageExpansionRecords = [
+      ...translationAlignmentPreviewRecords(),
+      ...strongAlignmentPreviewRecords(),
+      ...registeredLanguageAdapters()
+    ];
+    const registryRecords = [
+      ...registeredOntologyClasses(),
+      ...registeredCorpora(),
+      ...registeredAuthorityClasses(),
+      ...registeredPerspectiveModels(),
+      ...registeredExpertModels(),
+      ...registeredPresentationLenses()
+    ];
+    const presentationRecords = [
+      ...qaArchitectureDashboardLines(),
+      ...semanticHealthMetrics(),
+      ...architectureGraphNodes()
+    ];
+    const stageDefs = [
+      {
+        pipelineStageId: "stage.0.primary_evidence",
+        stageName: "Stage 0 - Primary Evidence",
+        consumedRecords: activeSourcePageRecord() ? 1 : 0,
+        producedRecords: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length + scopedSemanticRecords(studyData.mentionIndex).length,
+        unresolvedRecords: 0,
+        authoritySource: "Primary Evidence Authority / Source Text Authority",
+        evidenceDistance: 0,
+        confidenceSummary: "source-grounded",
+        provenanceSummary: activeSourcePageRecord() ? volumePageLabel(activeSourcePageRecord()) : currentStudyScopeLabel()
+      },
+      {
+        pipelineStageId: "stage.1.language",
+        stageName: "Stage 1 - Language Layer",
+        consumedRecords: languageRecords.length,
+        producedRecords: languageSupport.length,
+        unresolvedRecords: resolutionCounts(languageSupport).unresolved,
+        authoritySource: "Language Adapter Authority",
+        evidenceDistance: 1,
+        confidenceSummary: "preview-only language support",
+        provenanceSummary: "english_surface_v1 plus registered original-language adapter contracts"
+      },
+      {
+        pipelineStageId: "stage.2.context",
+        stageName: "Stage 2 - Context Layer",
+        consumedRecords: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length + scopedSemanticRecords(studyData.mentionIndex).length,
+        producedRecords: contextRecords.length,
+        unresolvedRecords: resolutionCounts(contextRecords).unresolved,
+        authoritySource: "Context Lock Authority",
+        evidenceDistance: 2,
+        confidenceSummary: "locked source context and scoped continuity",
+        provenanceSummary: currentStudyScopeLabel()
+      },
+      {
+        pipelineStageId: "stage.3.semantic",
+        stageName: "Stage 3 - Semantic Layer",
+        consumedRecords: contextRecords.length,
+        producedRecords: semanticRecords.length,
+        unresolvedRecords: resolutionCounts(semanticRecords).unresolved,
+        authoritySource: "Context Lock Authority / Ontology Classification Authority",
+        evidenceDistance: 3,
+        confidenceSummary: "promoted scoped semantic records",
+        provenanceSummary: "entity, timeline, scene, relationship, theme, and literary records"
+      },
+      {
+        pipelineStageId: "stage.4.reasoning_support",
+        stageName: "Stage 4 - Reasoning Support",
+        consumedRecords: semanticRecords.length,
+        producedRecords: reasoningRecords.length,
+        unresolvedRecords: resolutionCounts(reasoningRecords).unresolved,
+        authoritySource: "Perspective Authority / QA Diagnostic Authority",
+        evidenceDistance: 6,
+        confidenceSummary: "advisory reasoning support only",
+        provenanceSummary: "action chains, causality, consequence chains, and fulfillment confidence"
+      },
+      {
+        pipelineStageId: "stage.5.language_expansion",
+        stageName: "Stage 5 - Language Expansion",
+        consumedRecords: languageSupport.length,
+        producedRecords: languageExpansionRecords.length,
+        unresolvedRecords: resolutionCounts(languageExpansionRecords).unresolved,
+        authoritySource: "Translation Authority / Strong's-Lexicon Authority",
+        evidenceDistance: 7,
+        confidenceSummary: "alignment support without equivalence enforcement",
+        provenanceSummary: "translation, Strong alignment, and adapter registry contracts"
+      },
+      {
+        pipelineStageId: "stage.6.registries",
+        stageName: "Stage 6 - Registries",
+        consumedRecords: 0,
+        producedRecords: registryRecords.length,
+        unresolvedRecords: 0,
+        authoritySource: "Authority Registry / Corpus Registry / Ontology Registry",
+        evidenceDistance: 7,
+        confidenceSummary: "registry metadata only",
+        provenanceSummary: "ontology, corpus, authority, perspective, expert, and lens registries"
+      },
+      {
+        pipelineStageId: "stage.7.presentation",
+        stageName: "Stage 7 - Presentation",
+        consumedRecords: semanticRecords.length + registryRecords.length,
+        producedRecords: presentationRecords.length,
+        unresolvedRecords: resolutionCounts(presentationRecords).unresolved,
+        authoritySource: "Presentation / Lens Authority",
+        evidenceDistance: 8,
+        confidenceSummary: "display-only summaries and diagnostics",
+        provenanceSummary: "Editor / Architect View and QA Dashboard"
+      }
+    ];
+    return stageDefs.map((stage) => ({
+      ...stage,
+      status: stage.producedRecords > 0 ? "active" : "inactive"
+    }));
+  }
+
+  function integratedSemanticPipelineDiagnostics() {
+    const stages = integratedSemanticPipelineStages();
+    const activeStages = stages.filter((stage) => stage.status === "active");
+    const inactiveStages = stages.filter((stage) => stage.status !== "active");
+    const completeness = stages.length ? Math.round((activeStages.length / stages.length) * 100) : 0;
+    const stageCoverage = stages.length ? Math.round((stages.reduce((sum, stage) => sum + (stage.producedRecords ? 1 : 0), 0) / stages.length) * 100) : 0;
+    const warningStages = stages.filter((stage) => stage.unresolvedRecords > 0);
+    return {
+      stages,
+      activeStages,
+      inactiveStages,
+      completeness,
+      stageCoverage,
+      warningStages
+    };
+  }
+
+  function integratedSemanticPipelineLines() {
+    const diagnostics = integratedSemanticPipelineDiagnostics();
+    const lines = [
+      `Pipeline stages: ${diagnostics.stages.length}`,
+      `Active stages: ${diagnostics.activeStages.length}`,
+      `Inactive stages: ${diagnostics.inactiveStages.length}`,
+      `Pipeline completeness: ${diagnostics.completeness}%`,
+      `Stage coverage: ${diagnostics.stageCoverage}%`,
+      `Stages with unresolved counts: ${diagnostics.warningStages.length}`,
+      "Record shape: pipelineStageId; stageName; consumedRecords; producedRecords; authoritySource; evidenceDistance; confidenceSummary; provenanceSummary; status",
+      "Trust: pipeline visualizes existing records only. It does not create records, alter Context Lock, alter semantic authority, rewrite evidence, write storage, process queues, crawl, or change Study View output."
+    ];
+    diagnostics.stages.forEach((stage) => {
+      lines.push([
+        stage.stageName,
+        `consumed=${stage.consumedRecords}`,
+        `produced=${stage.producedRecords}`,
+        `unresolved=${stage.unresolvedRecords}`,
+        `authority=${stage.authoritySource}`,
+        `evidenceDistance=${stage.evidenceDistance}`,
+        `confidence=${stage.confidenceSummary}`,
+        `provenance=${stage.provenanceSummary}`,
+        `status=${stage.status}`
+      ].join(" | "));
+    });
+    lines.push("Evidence distance progression: 0 Primary Evidence -> 1 Language -> 2 Context -> 3 Semantic -> 6 Reasoning Support -> 7 Expansion/Registries -> 8 Presentation.");
+    lines.push("Authority progression: primary evidence and Context Lock constrain derived semantic, registry, reasoning, and presentation outputs.");
+    lines.push("Boundary: integrated pipeline is observational and display-only, built from existing scoped runtime records and static registry metadata.");
+    return lines;
+  }
+
+  function integratedSemanticPipelineDashboardLines() {
+    const diagnostics = integratedSemanticPipelineDiagnostics();
+    return [
+      "Integrated Semantic Pipeline",
+      `Pipeline completeness: ${diagnostics.completeness}%`,
+      `Completed stages: ${diagnostics.activeStages.length}`,
+      `Inactive stages: ${diagnostics.inactiveStages.length}`,
+      `Stage coverage: ${diagnostics.stageCoverage}%`,
+      `Stage health: ${diagnostics.warningStages.length ? `${diagnostics.warningStages.length} stage(s) contain unresolved diagnostics` : "all active stages clean"}`,
+      "Boundary: pipeline is display-only and does not influence semantic output."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -14746,6 +15272,7 @@ createRevelationPartsSection(item.subEvents)
       ...qaDashboardArchitectureLayerLines(),
       ...qaDashboardPromotionLines(),
       ...qaDashboardLanguageLines(),
+      ...semanticHealthDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -15046,6 +15573,64 @@ createRevelationPartsSection(item.subEvents)
     return lines;
   }
 
+  function architectureGraphInspectorLines() {
+    const graph = architectureGraphDiagnostics();
+    const nodeTypeCounts = graph.nodes.reduce((counts, node) => {
+      const type = normalizeText(node.nodeType || "unknown") || "unknown";
+      counts[type] = (counts[type] || 0) + 1;
+      return counts;
+    }, {});
+    const edgeTypeCounts = graph.edges.reduce((counts, edge) => {
+      const type = normalizeText(edge.edgeType || "unknown") || "unknown";
+      counts[type] = (counts[type] || 0) + 1;
+      return counts;
+    }, {});
+    const lines = [
+      `Registered nodes: ${graph.nodes.length}`,
+      `Registered edges: ${graph.edges.length}`,
+      `Node types: ${languageCountLine(nodeTypeCounts)}`,
+      `Edge types: ${languageCountLine(edgeTypeCounts)}`,
+      `Circular dependency warnings: ${graph.circularDependencyCount}`,
+      `Authority violation count: ${graph.authorityViolations.length}`,
+      `Evidence distance violation count: ${graph.evidenceDistanceViolations.length}`,
+      `Orphan node count: ${graph.orphanNodes.length}`,
+      `Prohibited edges: ${graph.prohibitedEdges.length}`,
+      "Node record shape: architectureNodeId; architectureNodeName; nodeType; consumes; produces; authoritySource; evidenceDistance; allowedOutputs; prohibitedOutputs; trustRules; status",
+      "Edge record shape: edgeId; sourceNode; targetNode; edgeType; authorityDirection; evidenceDirection; allowed; prohibitedReason; status",
+      "Trust: Architecture graphs describe the system. They do not alter source records, semantic records, storage, queues, scope, Study View, or registry behavior."
+    ];
+    lines.push("Authority flow:");
+    graph.edges.filter((edge) => edge.allowed).slice(0, 18).forEach((edge) => {
+      lines.push(`${edge.sourceNode} -> ${edge.targetNode} | ${edge.edgeType} | authority=${edge.authorityDirection} | evidence=${edge.evidenceDirection}`);
+    });
+    lines.push("Prohibited flow:");
+    graph.prohibitedEdges.forEach((edge) => {
+      lines.push(`${edge.sourceNode} -X-> ${edge.targetNode} | ${edge.edgeType} | reason=${edge.prohibitedReason}`);
+    });
+    if (graph.circularNodes.length) {
+      lines.push(`Circular dependency nodes: ${graph.circularNodes.join("; ")}`);
+    } else {
+      lines.push("Circular dependency nodes: none");
+    }
+    if (graph.orphanNodes.length) {
+      lines.push(`Orphan nodes: ${graph.orphanNodes.map((node) => node.architectureNodeName).join("; ")}`);
+    } else {
+      lines.push("Orphan nodes: none");
+    }
+    if (graph.authorityViolations.length) {
+      lines.push(`Authority violations: ${graph.authorityViolations.map((edge) => edge.edgeId).join("; ")}`);
+    } else {
+      lines.push("Authority violations: none");
+    }
+    if (graph.evidenceDistanceViolations.length) {
+      lines.push(`Evidence distance violations: ${graph.evidenceDistanceViolations.map((edge) => edge.edgeId).join("; ")}`);
+    } else {
+      lines.push("Evidence distance violations: none");
+    }
+    lines.push("Boundary: architecture-only graph populated from registry metadata and static architecture definitions. No runtime graph mutation, semantic influence, Study View behavior change, storage authority change, queue change, crawl, or automatic progression.");
+    return lines;
+  }
+
   function editorArchitectContextLines() {
     const active = activeSourcePageRecord();
     const locks = contextLockRecords();
@@ -15180,6 +15765,8 @@ createRevelationPartsSection(item.subEvents)
       corpusRegistryLines: corpusRegistryInspectorLines(),
       ontologyRegistryLines: ontologyRegistryInspectorLines(),
       authorityRegistryLines: authorityRegistryInspectorLines(),
+      architectureGraphLines: architectureGraphInspectorLines(),
+      semanticHealthLines: semanticHealthMonitorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -15230,6 +15817,8 @@ createRevelationPartsSection(item.subEvents)
       item.corpusRegistryLines,
       item.ontologyRegistryLines,
       item.authorityRegistryLines,
+      item.architectureGraphLines,
+      item.semanticHealthLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -15294,6 +15883,8 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Corpus Registry Inspector", "", { list: item.corpusRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Corpus Registry Inspector" }),
       createPassageFunctionSection("Ontology Registry Inspector", "", { list: item.ontologyRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Ontology Registry Inspector" }),
       createPassageFunctionSection("Authority Registry Inspector", "", { list: item.authorityRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Authority Registry Inspector" }),
+      createPassageFunctionSection("Architecture Graph Inspector", "", { list: item.architectureGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Architecture Graph Inspector" }),
+      createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
