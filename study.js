@@ -15403,6 +15403,195 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function provenanceGraphRecordTypes() {
+    return [
+      "Primary Evidence",
+      "Context Lock",
+      "Language Records",
+      "Entity Records",
+      "Timeline Records",
+      "Scene Records",
+      "Relationship Records",
+      "Theme Records",
+      "Literary Structure Records",
+      "Action Chains",
+      "Causality",
+      "Consequence Chains",
+      "Fulfillment Confidence",
+      "Translation Alignment",
+      "Strong Alignment",
+      "Perspective Models",
+      "Expert Models",
+      "Lenses"
+    ];
+  }
+
+  function provenanceGraphNodeFromExplainability(record = {}, index = 0) {
+    const recordType = normalizeText(record.recordType || "Derived Record") || "Derived Record";
+    const recordId = normalizeText(record.recordId || record.explainabilityId || `record.${index + 1}`) || `record.${index + 1}`;
+    return {
+      provenanceNodeId: `prov.node.${normalizeText(recordType).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${index + 1}`,
+      recordType,
+      recordId,
+      label: `${recordType}: ${trimText(recordId, 80)}`,
+      evidenceDistance: record.evidenceDistance ?? 8,
+      authoritySource: record.authoritySource || "authority not recorded",
+      confidence: record.confidence || "confidence not recorded",
+      provenance: record.provenance || "provenance not recorded",
+      status: record.missingProvenance || record.missingAuthority || record.missingConfidence ? "review" : "connected"
+    };
+  }
+
+  function provenanceGraphDiagnostics() {
+    const explainability = semanticExplainabilityDiagnostics();
+    const derivedNodes = explainability.records.map((record, index) => provenanceGraphNodeFromExplainability(record, index));
+    const sourceNode = {
+      provenanceNodeId: "prov.node.primary.evidence.current.scope",
+      recordType: "Primary Evidence",
+      recordId: currentStudyScopeLabel(),
+      label: `Primary Evidence: ${currentStudyScopeLabel()}`,
+      evidenceDistance: 0,
+      authoritySource: "Primary Evidence Authority / Source Text Authority",
+      confidence: "source-grounded",
+      provenance: activeSourcePageRecord() ? volumePageLabel(activeSourcePageRecord()) : currentStudyScopeLabel(),
+      status: "connected"
+    };
+    const perspectiveNodes = registeredPerspectiveModels().map((model, index) => ({
+      provenanceNodeId: `prov.node.perspective.${index + 1}`,
+      recordType: "Perspective Models",
+      recordId: model.perspectiveId,
+      label: `Perspective Model: ${model.perspectiveType}`,
+      evidenceDistance: model.evidenceDistance ?? 7,
+      authoritySource: "Perspective Authority",
+      confidence: model.confidence || "registry metadata",
+      provenance: model.provenance || "Perspective registry",
+      status: "registry"
+    }));
+    const expertNodes = registeredExpertModels().map((model, index) => ({
+      provenanceNodeId: `prov.node.expert.${index + 1}`,
+      recordType: "Expert Models",
+      recordId: model.expertId,
+      label: `Expert Model: ${model.expertType}`,
+      evidenceDistance: model.evidenceDistance ?? 7,
+      authoritySource: "Expert Authority",
+      confidence: model.confidencePolicy || "registry metadata",
+      provenance: model.provenance || "Expert registry",
+      status: "registry"
+    }));
+    const lensNodes = registeredPresentationLenses().map((lens, index) => ({
+      provenanceNodeId: `prov.node.lens.${index + 1}`,
+      recordType: "Lenses",
+      recordId: lens.lensId,
+      label: `Lens: ${lens.lensName}`,
+      evidenceDistance: 8,
+      authoritySource: "Presentation / Lens Authority",
+      confidence: lens.status || "registry metadata",
+      provenance: "Lens registry",
+      status: "registry"
+    }));
+    const nodes = [sourceNode, ...derivedNodes, ...perspectiveNodes, ...expertNodes, ...lensNodes];
+    const sourceEdges = derivedNodes.map((node, index) => ({
+      provenanceEdgeId: `prov.edge.source.${index + 1}`,
+      sourceNode: sourceNode.provenanceNodeId,
+      targetNode: node.provenanceNodeId,
+      edgeType: node.evidenceDistance <= 2 ? "derived_from" : "informed_by",
+      evidenceFlow: `Distance 0 -> ${node.evidenceDistance}`,
+      authorityFlow: `${sourceNode.authoritySource} constrains ${node.authoritySource}`,
+      confidenceFlow: `${sourceNode.confidence} -> ${node.confidence}`,
+      status: "connected"
+    }));
+    const registryEdges = [
+      ...perspectiveNodes.flatMap((node, index) => derivedNodes.filter((item) => /Translation Alignment|Strong Alignment|Fulfillment Confidence/i.test(item.recordType)).slice(0, 12).map((target, targetIndex) => ({
+        provenanceEdgeId: `prov.edge.perspective.${index + 1}.${targetIndex + 1}`,
+        sourceNode: node.provenanceNodeId,
+        targetNode: target.provenanceNodeId,
+        edgeType: "attributed_to",
+        evidenceFlow: `Distance ${node.evidenceDistance} attribution -> ${target.evidenceDistance}`,
+        authorityFlow: `${node.authoritySource} may inform but not override ${target.authoritySource}`,
+        confidenceFlow: "attributed perspective influence remains separate",
+        status: "registry"
+      }))),
+      ...expertNodes.flatMap((node, index) => derivedNodes.filter((item) => /Strong Alignment|Translation Alignment/i.test(item.recordType)).slice(0, 8).map((target, targetIndex) => ({
+        provenanceEdgeId: `prov.edge.expert.${index + 1}.${targetIndex + 1}`,
+        sourceNode: node.provenanceNodeId,
+        targetNode: target.provenanceNodeId,
+        edgeType: "attributed_to",
+        evidenceFlow: `Distance ${node.evidenceDistance} attribution -> ${target.evidenceDistance}`,
+        authorityFlow: `${node.authoritySource} illuminates but does not replace evidence`,
+        confidenceFlow: "expert confidence remains attributable",
+        status: "registry"
+      }))),
+      ...lensNodes.slice(0, 12).map((node, index) => ({
+        provenanceEdgeId: `prov.edge.lens.${index + 1}`,
+        sourceNode: derivedNodes[0]?.provenanceNodeId || sourceNode.provenanceNodeId,
+        targetNode: node.provenanceNodeId,
+        edgeType: "presented_by",
+        evidenceFlow: `Derived records -> Distance ${node.evidenceDistance} presentation`,
+        authorityFlow: "Presentation consumes records but may not rewrite evidence",
+        confidenceFlow: "presentation preserves confidence labels",
+        status: "registry"
+      }))
+    ];
+    const edges = [...sourceEdges, ...registryEdges];
+    const connectedNodeIds = new Set(edges.flatMap((edge) => [edge.sourceNode, edge.targetNode]));
+    const missingProvenance = nodes.filter((node) => /not recorded/i.test(normalizeText(node.provenance)));
+    const missingAuthority = nodes.filter((node) => /not recorded/i.test(normalizeText(node.authoritySource)));
+    const missingConfidence = nodes.filter((node) => /not recorded/i.test(normalizeText(node.confidence)));
+    const disconnected = nodes.filter((node) => !connectedNodeIds.has(node.provenanceNodeId));
+    return {
+      nodes,
+      edges,
+      sourceEvidenceNodes: nodes.filter((node) => node.recordType === "Primary Evidence"),
+      derivedRecordNodes: nodes.filter((node) => node.evidenceDistance > 0),
+      missingProvenance,
+      missingAuthority,
+      missingConfidence,
+      disconnected
+    };
+  }
+
+  function provenanceGraphInspectorLines() {
+    const graph = provenanceGraphDiagnostics();
+    const typeCounts = graph.nodes.reduce((counts, node) => {
+      const type = normalizeText(node.recordType || "Unknown") || "Unknown";
+      counts[type] = (counts[type] || 0) + 1;
+      return counts;
+    }, {});
+    const samplePaths = graph.edges.slice(0, 14).map((edge) => `${edge.sourceNode} -> ${edge.targetNode} | ${edge.edgeType} | evidence=${edge.evidenceFlow} | authority=${edge.authorityFlow}`);
+    return [
+      `Provenance nodes: ${graph.nodes.length}`,
+      `Provenance edges: ${graph.edges.length}`,
+      `Supported node types: ${provenanceGraphRecordTypes().join("; ")}`,
+      `Node type counts: ${languageCountLine(typeCounts)}`,
+      `Source evidence nodes: ${graph.sourceEvidenceNodes.length}`,
+      `Derived record nodes: ${graph.derivedRecordNodes.length}`,
+      `Missing provenance nodes: ${graph.missingProvenance.length}`,
+      `Missing authority nodes: ${graph.missingAuthority.length}`,
+      `Missing confidence nodes: ${graph.missingConfidence.length}`,
+      `Disconnected provenance nodes: ${graph.disconnected.length}`,
+      "Node shape: provenanceNodeId; recordType; recordId; label; evidenceDistance; authoritySource; confidence; provenance; status",
+      "Edge shape: provenanceEdgeId; sourceNode; targetNode; edgeType; evidenceFlow; authorityFlow; confidenceFlow; status",
+      "Supported edge types: derived_from; informed_by; consumed_by; presented_by; constrained_by; attributed_to",
+      "Sample provenance paths:",
+      ...(samplePaths.length ? samplePaths : ["No provenance paths available for the current scoped records."]),
+      "Trust: provenance graph describes record lineage only. It does not alter records, create semantic authority, rewrite evidence, mutate Context Lock, write storage, crawl, process queues, or change Study View output."
+    ];
+  }
+
+  function provenanceGraphDashboardLines() {
+    const graph = provenanceGraphDiagnostics();
+    return [
+      "Provenance Graph Summary",
+      `Provenance graph node count: ${graph.nodes.length}`,
+      `Provenance graph edge count: ${graph.edges.length}`,
+      `Missing provenance count: ${graph.missingProvenance.length}`,
+      `Missing authority count: ${graph.missingAuthority.length}`,
+      `Missing confidence count: ${graph.missingConfidence.length}`,
+      `Disconnected provenance nodes: ${graph.disconnected.length}`,
+      "Boundary: provenance graph is runtime/display-only and does not persist graph storage or influence semantic output."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -15425,6 +15614,7 @@ createRevelationPartsSection(item.subEvents)
       ...qaDashboardLanguageLines(),
       ...semanticHealthDashboardLines(),
       ...semanticExplainabilityDashboardLines(),
+      ...provenanceGraphDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -15920,6 +16110,7 @@ createRevelationPartsSection(item.subEvents)
       architectureGraphLines: architectureGraphInspectorLines(),
       semanticHealthLines: semanticHealthMonitorLines(),
       semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
+      provenanceGraphLines: provenanceGraphInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -15973,6 +16164,7 @@ createRevelationPartsSection(item.subEvents)
       item.architectureGraphLines,
       item.semanticHealthLines,
       item.semanticExplainabilityLines,
+      item.provenanceGraphLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -16040,6 +16232,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Architecture Graph Inspector", "", { list: item.architectureGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Architecture Graph Inspector" }),
       createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
       createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
+      createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
