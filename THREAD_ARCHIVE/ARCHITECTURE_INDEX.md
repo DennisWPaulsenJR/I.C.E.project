@@ -12,15 +12,15 @@ Authority level: explicit non-negotiable constitutional rules.
 
 Purpose: define the governing trust, evidence, authority, ontology, provenance, explainability, verification, scope, and operational rules that every implementation, adapter, model, corpus, expert source, lens, and contributor must obey.
 
-Use this after `MASTER_DESIGN.md`, when present, and before adding or reviewing any feature that creates, promotes, presents, verifies, or interprets semantic records.
+Use this after `MASTER_DESIGN.md` and before adding or reviewing any feature that creates, promotes, presents, verifies, or interprets semantic records.
 
 ### `MASTER_DESIGN.md`
 
-Intended authority level: highest project constitution.
+Authority level: first-read reconstructed master design overview.
 
-Purpose: define the global product vision, non-negotiable trust boundaries, target user experience, and long-term system philosophy.
+Purpose: define the global product vision, architectural direction, target user experience, major subsystems, frontend/backend relationship, and long-term system philosophy.
 
-Current note: `MASTER_DESIGN.md` is referenced as the intended top-level design document, but it is not present in this checkout at the time this index was written.
+Current note: `MASTER_DESIGN.md` is reconstructed, not restored. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` controls non-negotiable trust and governance rules if the two documents conflict.
 
 ### `PROJECT_STATE.md`
 
@@ -347,7 +347,7 @@ Every source, derived, discovery, perspective, and presentation record must pres
 
 ### Recommended Reading Order For New Developers
 
-1. `MASTER_DESIGN.md`, when present.
+1. `MASTER_DESIGN.md`
 2. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
 3. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 4. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`

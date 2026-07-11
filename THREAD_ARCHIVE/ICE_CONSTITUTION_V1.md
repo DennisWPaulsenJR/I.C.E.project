@@ -2,7 +2,7 @@
 
 Purpose: define the non-negotiable trust, evidence, authority, ontology, provenance, explainability, verification, scope, and operational rules that govern all future I.C.E. development.
 
-This document does not replace `MASTER_DESIGN.md`. `MASTER_DESIGN.md`, when present, remains the mission-level and product-level design constitution. This Constitution v1.0 is the explicit governing contract that every implementation, adapter, model, expert source, corpus, lens, view, QA harness, and future contributor must obey.
+This document does not replace `MASTER_DESIGN.md`. `MASTER_DESIGN.md` is a reconstructed mission-level and product-level design overview. This Constitution v1.0 is the explicit governing contract that every implementation, adapter, model, expert source, corpus, lens, view, QA harness, and future contributor must obey.
 
 ## Constitutional Summary
 
@@ -140,7 +140,7 @@ This document does not replace `MASTER_DESIGN.md`. `MASTER_DESIGN.md`, when pres
 
 This Constitution should be read with:
 
-- `MASTER_DESIGN.md`, when present, for mission-level and product-level architecture.
+- `MASTER_DESIGN.md` for reconstructed mission-level and product-level architecture.
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` for document responsibilities and dependency order.
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md` for the ontology and evidence-distance contract.
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md` for canonical record shapes.

@@ -33,7 +33,7 @@ MCDX convention:
 Current Active WIP:
 - I.C.E. Constitution v1.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
 - The Constitution is the explicit non-negotiable rule contract for trust, evidence, authority, ontology, provenance, explainability, verification, scope, lenses, corpora, adapters, perspectives, experts, and operational boundaries.
-- `MASTER_DESIGN.md`, when present, remains mission-level/product-level design; the Constitution records the implementation-governing rules every future semantic system must obey.
+- `MASTER_DESIGN.md` has been reconstructed from durable architecture and coordination documents after history investigation found no tracked historical copy; it is the first-read mission and architecture overview, while the Constitution records the implementation-governing rules every future semantic system must obey.
 - Full Context Evaluation Architecture is documented in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
 - The architecture formalizes the long-term direction: fully evaluate selected scripture input across Source, Context, Situation, Event, Inference, Relationship, Large Scope Comparison, and Presentation layers while keeping frontend views modular and clear.
 - Trust rule recorded: Context always wins; Meaning never rewrites Context; Relationships never rewrite Meaning; Journeys never rewrite Relationships; Study guidance never rewrites Evidence.
