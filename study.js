@@ -15592,6 +15592,388 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function semanticVerificationRecord(category, rule, result, severity, evidence, authority, provenance, evidenceDistance = 8, confidence = "observational") {
+    return {
+      verificationId: `verify.${normalizeText(category).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${normalizeText(rule).toLowerCase().replace(/[^a-z0-9]+/g, ".")}`,
+      verificationCategory: category,
+      verificationRule: rule,
+      evaluatedRecord: currentStudyScopeLabel(),
+      result,
+      severity,
+      evidence,
+      authority,
+      provenance,
+      evidenceDistance,
+      confidence,
+      status: result
+    };
+  }
+
+  function semanticVerificationRecords() {
+    const explainability = semanticExplainabilityDiagnostics();
+    const provenance = provenanceGraphDiagnostics();
+    const architecture = architectureGraphDiagnostics();
+    const coverageRows = promotionCoverageRows();
+    const relationshipRecords = promotedRelationshipRecords();
+    const themeRecords = promotedThemeRecords();
+    const literaryRecords = promotedLiteraryRecords();
+    const causalityRecords = causalityPreviewRecords();
+    const consequenceRecords = consequenceChainPreviewRecords();
+    const fulfillmentRecords = fulfillmentConfidencePreviewRecords();
+    const registryCounts = {
+      ontology: registeredOntologyClasses().length,
+      corpus: registeredCorpora().length,
+      adapters: registeredLanguageAdapters().length,
+      perspectives: registeredPerspectiveModels().length,
+      experts: registeredExpertModels().length,
+      lenses: registeredPresentationLenses().length,
+      authority: registeredAuthorityClasses().length
+    };
+    const resultForCount = (count, failSeverity = "medium") => count ? { result: "warning", severity: failSeverity } : { result: "pass", severity: "informational" };
+    const coverageFor = (label) => coverageRows.find((row) => row.label === label) || { coverage: 100, discovered: 0, promoted: 0, unresolved: 0 };
+    const records = [
+      semanticVerificationRecord(
+        "Evidence Integrity",
+        "Every derived record has source evidence",
+        explainability.missingEvidenceChain.length ? "warning" : "pass",
+        explainability.missingEvidenceChain.length ? "medium" : "informational",
+        `${explainability.missingEvidenceChain.length} explainability record(s) missing direct evidence chain fields`,
+        "Primary Evidence Authority",
+        "Semantic Explainability diagnostics",
+        8,
+        `${explainability.coverage}% explainability coverage`
+      ),
+      semanticVerificationRecord(
+        "Evidence Integrity",
+        "Evidence path complete",
+        provenance.disconnected.length ? "warning" : "pass",
+        provenance.disconnected.length ? "medium" : "informational",
+        `${provenance.disconnected.length} disconnected provenance node(s)`,
+        "Provenance Graph observational authority",
+        "Provenance Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Evidence Integrity",
+        "Evidence distance assigned",
+        provenance.nodes.filter((node) => node.evidenceDistance === undefined || node.evidenceDistance === null || node.evidenceDistance === "").length ? "warning" : "pass",
+        "low",
+        "All provenance nodes should carry evidenceDistance",
+        "Evidence Distance model",
+        "Provenance Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Evidence Integrity",
+        "No evidence-distance violations",
+        architecture.evidenceDistanceViolations.length ? "failure" : "pass",
+        architecture.evidenceDistanceViolations.length ? "constitutional" : "informational",
+        `${architecture.evidenceDistanceViolations.length} architecture evidence-distance violation(s)`,
+        "Authority Registry",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Authority Integrity",
+        "Authority path exists",
+        explainability.missingAuthority.length ? "warning" : "pass",
+        explainability.missingAuthority.length ? "medium" : "informational",
+        `${explainability.missingAuthority.length} explainability record(s) missing authority`,
+        "Authority Registry",
+        "Semantic Explainability diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Authority Integrity",
+        "Authority registry match",
+        registryCounts.authority ? "pass" : "failure",
+        registryCounts.authority ? "informational" : "constitutional",
+        `${registryCounts.authority} authority class(es) registered`,
+        "Authority Registry",
+        "Authority Registry metadata",
+        7
+      ),
+      semanticVerificationRecord(
+        "Authority Integrity",
+        "No prohibited authority override",
+        architecture.authorityViolations.length ? "failure" : "pass",
+        architecture.authorityViolations.length ? "constitutional" : "informational",
+        `${architecture.authorityViolations.length} architecture authority violation(s)`,
+        "Authority Registry",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Authority Integrity",
+        "Context Lock preserved",
+        /review trust records/i.test(editorArchitectQaLines().join(" ")) ? "warning" : "pass",
+        /review trust records/i.test(editorArchitectQaLines().join(" ")) ? "high" : "informational",
+        "Loaded trust records reviewed for Context Lock violation language",
+        "Context Lock Authority",
+        "QA / Trust Inspector",
+        2
+      ),
+      semanticVerificationRecord(
+        "Provenance Integrity",
+        "Provenance path complete",
+        provenance.missingProvenance.length ? "warning" : "pass",
+        provenance.missingProvenance.length ? "medium" : "informational",
+        `${provenance.missingProvenance.length} provenance node(s) missing provenance text`,
+        "Provenance Graph observational authority",
+        "Provenance Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Provenance Integrity",
+        "No disconnected provenance nodes",
+        provenance.disconnected.length ? "warning" : "pass",
+        provenance.disconnected.length ? "medium" : "informational",
+        `${provenance.disconnected.length} disconnected provenance node(s)`,
+        "Provenance Graph observational authority",
+        "Provenance Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Provenance Integrity",
+        "Explainability complete",
+        explainability.coverage < 80 ? "warning" : "pass",
+        explainability.coverage < 80 ? "medium" : "informational",
+        `Explainability coverage ${explainability.coverage}%`,
+        "Semantic Explainability observational authority",
+        "Semantic Explainability diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Entity references valid",
+        scopedSemanticRecords(studyData.entityRegistry).length || Array.from(studyReferenceActors({ includeTechnical: true }).values()).length ? "pass" : "informational",
+        "informational",
+        "Entity records are loaded from scoped entity registry and actor reference index",
+        "Ontology Classification Authority",
+        "Entity Classification Inspector",
+        3
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Timeline references valid",
+        coverageFor("Timeline Promotions").unresolved ? "warning" : "pass",
+        coverageFor("Timeline Promotions").unresolved ? "low" : "informational",
+        `Timeline unresolved=${coverageFor("Timeline Promotions").unresolved}; coverage=${coverageFor("Timeline Promotions").coverage}%`,
+        "Timeline Promotion Rules",
+        "Promotion Coverage diagnostics",
+        4
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Scene references valid",
+        coverageFor("Scene Models").unresolved ? "warning" : "pass",
+        coverageFor("Scene Models").unresolved ? "low" : "informational",
+        `Scene unresolved=${coverageFor("Scene Models").unresolved}; coverage=${coverageFor("Scene Models").coverage}%`,
+        "Scene Promotion Rules",
+        "Promotion Coverage diagnostics",
+        4
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Relationship endpoints valid",
+        relationshipRecords.filter((record) => !(record.sourceEntity || record.sourceRecord || record.fromNode || record.relatedEvent) || !(record.targetEntity || record.targetRecord || record.toNode || record.relatedScene)).length ? "warning" : "pass",
+        "medium",
+        "Relationship records checked for source/target or related-event/scene endpoints",
+        "Relationship Promotion Rules",
+        "Relationship Promotion Inspector",
+        5
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Theme support present",
+        themeRecords.filter((record) => !asArray(record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidence).length && !record.evidence).length ? "warning" : "pass",
+        "low",
+        `${themeRecords.length} promoted theme record(s) reviewed for support`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary support present",
+        literaryRecords.filter((record) => !asArray(record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidence).length && !record.evidence).length ? "warning" : "pass",
+        "low",
+        `${literaryRecords.length} promoted literary record(s) reviewed for support`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Causality support present",
+        causalityRecords.filter((record) => record.status === "resolved" && !(record.causeRecord || record.effectRecord || record.evidence)).length ? "warning" : "pass",
+        "medium",
+        `${causalityRecords.length} causality preview record(s) reviewed`,
+        "QA / Diagnostic Authority",
+        "Causality Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Consequence support present",
+        consequenceRecords.filter((record) => record.status === "resolved" && !(record.originatingCause || record.resultingConsequence || record.evidence)).length ? "warning" : "pass",
+        "medium",
+        `${consequenceRecords.length} consequence chain record(s) reviewed`,
+        "QA / Diagnostic Authority",
+        "Consequence Chain Inspector",
+        7
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Fulfillment confidence policy satisfied",
+        fulfillmentRecords.filter((record) => /explicit/i.test(record.status) && !/fulfilled|as it is written|spoken by the prophet|scripture is fulfilled/i.test(normalizeText(record.evidence))).length ? "warning" : "pass",
+        "high",
+        `${fulfillmentRecords.length} fulfillment confidence record(s) reviewed for explicit-policy wording`,
+        "Fulfillment Confidence Framework",
+        "Fulfillment Confidence Inspector",
+        7
+      ),
+      semanticVerificationRecord(
+        "Registry Integrity",
+        "Registry references valid",
+        Object.values(registryCounts).every(Boolean) ? "pass" : "warning",
+        Object.values(registryCounts).every(Boolean) ? "informational" : "medium",
+        `Registry counts: ${Object.entries(registryCounts).map(([key, value]) => `${key}=${value}`).join("; ")}`,
+        "Authority Registry",
+        "Registry inspectors",
+        7
+      ),
+      semanticVerificationRecord(
+        "Architecture Integrity",
+        "No circular dependencies",
+        architecture.circularDependencyCount ? "failure" : "pass",
+        architecture.circularDependencyCount ? "high" : "informational",
+        `${architecture.circularDependencyCount} circular dependency warning(s)`,
+        "Architecture Graph observational authority",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Architecture Integrity",
+        "No orphan architecture nodes",
+        architecture.orphanNodes.length ? "warning" : "pass",
+        architecture.orphanNodes.length ? "low" : "informational",
+        `${architecture.orphanNodes.length} orphan architecture node(s)`,
+        "Architecture Graph observational authority",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Architecture Integrity",
+        "No prohibited graph edges active",
+        architecture.prohibitedEdges.filter((edge) => edge.status === "active" || edge.allowed).length ? "failure" : "pass",
+        architecture.prohibitedEdges.filter((edge) => edge.status === "active" || edge.allowed).length ? "constitutional" : "informational",
+        `${architecture.prohibitedEdges.length} prohibited/guardrail edge definition(s); none may be active allowed flows`,
+        "Authority Registry",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Architecture Integrity",
+        "Authority flow valid",
+        architecture.authorityViolations.length ? "failure" : "pass",
+        architecture.authorityViolations.length ? "constitutional" : "informational",
+        `${architecture.authorityViolations.length} authority flow violation(s)`,
+        "Authority Registry",
+        "Architecture Graph diagnostics",
+        8
+      ),
+      semanticVerificationRecord(
+        "Architecture Integrity",
+        "Evidence flow valid",
+        architecture.evidenceDistanceViolations.length ? "failure" : "pass",
+        architecture.evidenceDistanceViolations.length ? "constitutional" : "informational",
+        `${architecture.evidenceDistanceViolations.length} evidence flow violation(s)`,
+        "Evidence Distance model",
+        "Architecture Graph diagnostics",
+        8
+      )
+    ];
+    return records;
+  }
+
+  function semanticVerificationDiagnostics() {
+    const records = semanticVerificationRecords();
+    const count = (predicate) => records.filter(predicate).length;
+    const byCategory = records.reduce((groups, record) => {
+      if (!groups[record.verificationCategory]) groups[record.verificationCategory] = [];
+      groups[record.verificationCategory].push(record);
+      return groups;
+    }, {});
+    const scoreFor = (items) => {
+      const evaluable = asArray(items).filter((record) => record.result !== "informational");
+      const source = evaluable.length ? evaluable : asArray(items);
+      if (!source.length) return 100;
+      const passed = source.filter((record) => record.result === "pass" || record.result === "informational").length;
+      return Math.round((passed / source.length) * 100);
+    };
+    const constitutionalViolations = records.filter((record) => record.result === "failure" && record.severity === "constitutional");
+    return {
+      records,
+      passed: count((record) => record.result === "pass"),
+      warnings: count((record) => record.result === "warning"),
+      failures: count((record) => record.result === "failure"),
+      informational: count((record) => record.result === "informational"),
+      constitutionalViolations,
+      byCategory,
+      scores: {
+        overall: scoreFor(records),
+        constitutional: records.length ? Math.round(((records.length - constitutionalViolations.length) / records.length) * 100) : 100,
+        evidence: scoreFor(byCategory["Evidence Integrity"]),
+        authority: scoreFor(byCategory["Authority Integrity"]),
+        provenance: scoreFor(byCategory["Provenance Integrity"]),
+        semantic: scoreFor(byCategory["Semantic Integrity"]),
+        registry: scoreFor(byCategory["Registry Integrity"]),
+        architecture: scoreFor(byCategory["Architecture Integrity"])
+      }
+    };
+  }
+
+  function semanticVerificationInspectorLines() {
+    const diagnostics = semanticVerificationDiagnostics();
+    const samples = diagnostics.records
+      .filter((record) => record.result !== "pass")
+      .concat(diagnostics.records.filter((record) => record.result === "pass"))
+      .slice(0, 16)
+      .map((record) => `${record.verificationCategory}: ${record.verificationRule} | result=${record.result} | severity=${record.severity} | evidence=${trimText(record.evidence, 100)} | authority=${record.authority}`);
+    return [
+      `Verification rules: ${diagnostics.records.length}`,
+      `Passed rules: ${diagnostics.passed}`,
+      `Warnings: ${diagnostics.warnings}`,
+      `Failures: ${diagnostics.failures}`,
+      `Constitutional violations: ${diagnostics.constitutionalViolations.length}`,
+      "Record shape: verificationId; verificationCategory; verificationRule; evaluatedRecord; result; severity; evidence; authority; provenance; evidenceDistance; confidence; status",
+      "Verification categories: Evidence Integrity; Authority Integrity; Provenance Integrity; Semantic Integrity; Registry Integrity; Architecture Integrity",
+      `Semantic verification score: ${diagnostics.scores.overall}%`,
+      `Constitutional compliance: ${diagnostics.scores.constitutional}%`,
+      "Sample verification paths:",
+      ...(samples.length ? samples : ["No verification records generated."]),
+      "Trust: Semantic Verification observes constitutional integrity only. It never mutates records, rewrites evidence, changes Context Lock, creates doctrine, writes storage, crawls, processes queues, or changes Study View output."
+    ];
+  }
+
+  function semanticVerificationDashboardLines() {
+    const diagnostics = semanticVerificationDiagnostics();
+    return [
+      "Semantic Verification Summary",
+      `Semantic verification score: ${diagnostics.scores.overall}%`,
+      `Constitutional compliance percentage: ${diagnostics.scores.constitutional}%`,
+      `Evidence integrity score: ${diagnostics.scores.evidence}%`,
+      `Authority integrity score: ${diagnostics.scores.authority}%`,
+      `Provenance integrity score: ${diagnostics.scores.provenance}%`,
+      `Semantic integrity score: ${diagnostics.scores.semantic}%`,
+      `Registry integrity score: ${diagnostics.scores.registry}%`,
+      `Architecture integrity score: ${diagnostics.scores.architecture}%`,
+      `Verification rules: ${diagnostics.records.length}; passed=${diagnostics.passed}; warnings=${diagnostics.warnings}; failures=${diagnostics.failures}; constitutional=${diagnostics.constitutionalViolations.length}`,
+      "Boundary: semantic verification is display-only and reports compliance without correction or mutation."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -15615,6 +15997,7 @@ createRevelationPartsSection(item.subEvents)
       ...semanticHealthDashboardLines(),
       ...semanticExplainabilityDashboardLines(),
       ...provenanceGraphDashboardLines(),
+      ...semanticVerificationDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -16111,6 +16494,7 @@ createRevelationPartsSection(item.subEvents)
       semanticHealthLines: semanticHealthMonitorLines(),
       semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
       provenanceGraphLines: provenanceGraphInspectorLines(),
+      semanticVerificationLines: semanticVerificationInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -16165,6 +16549,7 @@ createRevelationPartsSection(item.subEvents)
       item.semanticHealthLines,
       item.semanticExplainabilityLines,
       item.provenanceGraphLines,
+      item.semanticVerificationLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -16233,6 +16618,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
       createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
       createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
+      createPassageFunctionSection("Semantic Verification Inspector", "", { list: item.semanticVerificationLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Verification Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
