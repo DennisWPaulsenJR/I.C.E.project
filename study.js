@@ -15974,6 +15974,227 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function journeyNarrativeArcCategories() {
+    return [
+      "Physical Journey",
+      "Spiritual Journey",
+      "Covenant Journey",
+      "Leadership Journey",
+      "Teaching Journey",
+      "Conflict Journey",
+      "Restoration Journey",
+      "Mission Journey",
+      "Revelation Journey",
+      "Prophetic Journey"
+    ];
+  }
+
+  function journeyNarrativeArcText(record = {}) {
+    return normalizeText([
+      record.journeyType,
+      record.eventType,
+      record.sceneType,
+      record.relationshipType,
+      record.themeName,
+      record.structureType,
+      record.action,
+      record.causalityType,
+      record.fulfillmentCategory,
+      record.label,
+      record.eventName,
+      record.sceneId,
+      record.sourcePhrase,
+      record.derivedMeaning,
+      record.evidence,
+      record.provenance
+    ].flat(Infinity).join(" "));
+  }
+
+  function journeyNarrativeArcTypeForRecord(record = {}) {
+    const text = journeyNarrativeArcText(record).toLowerCase();
+    if (/travel|journey|movement|depart|return|came|went|flee|flight|ship|sea|wilderness|mountain|egypt|nazareth|galilee|location/.test(text)) return "Physical Journey";
+    if (/teach|teacher|disciples|discourse|sermon|beatitude|audience|hearers|saying|doctrine/.test(text)) return "Teaching Journey";
+    if (/reveal|revelation|angel|messenger|dream|spake|said|command|instruction|warning|authority/.test(text)) return "Revelation Journey";
+    if (/conflict|opposition|tempt|adversary|herod|devil|woe|judgment|persecution/.test(text)) return "Conflict Journey";
+    if (/covenant|lineage|genealogy|promise|abraham|david|begat|fulfillment/.test(text)) return "Covenant Journey";
+    if (/mission|save|sent|calling|called|name|purpose|commission/.test(text)) return "Mission Journey";
+    if (/prophet|prophecy|prophetic|fulfilled|spoken by the prophet|as it is written/.test(text)) return "Prophetic Journey";
+    if (/heal|cleanse|restore|deliver|forgive|mercy|repent|restoration/.test(text)) return "Restoration Journey";
+    if (/king|kingdom|leader|authority|ruler|chief|governor/.test(text)) return "Leadership Journey";
+    return "Spiritual Journey";
+  }
+
+  function journeyNarrativeParticipantLabels(records = []) {
+    const labels = [];
+    asArray(records).forEach((record) => {
+      [
+        record.primaryParticipant,
+        record.actor,
+        record.subject,
+        record.speaker,
+        record.detectedSpeaker,
+        record.authority,
+        record.authoritySource,
+        record.sourceEntity,
+        record.targetEntity,
+        record.sourceCharacter,
+        record.targetCharacter,
+        record.recipient,
+        record.audience,
+        record.detectedAudience,
+        record.primaryEntity
+      ].forEach((value) => {
+        if (normalizeText(value)) labels.push(normalizeText(value));
+      });
+      labels.push(...asArray(record.participants), ...asArray(record.actors), ...asArray(record.supportingParticipants));
+    });
+    return uniqueStudyList(labels.map(normalizeText).filter(Boolean)).slice(0, 12);
+  }
+
+  function journeyNarrativeLocationLabels(records = []) {
+    const labels = [];
+    asArray(records).forEach((record) => {
+      [record.location, record.locations, record.where].forEach((value) => labels.push(...asArray(value)));
+    });
+    return uniqueStudyList(labels.map(normalizeText).filter(Boolean)).slice(0, 12);
+  }
+
+  function journeyNarrativeArcSourceRecords() {
+    return [
+      ...promotedTimelineRecords().map((record) => ({ ...record, journeySourceLayer: "Timeline Records" })),
+      ...promotedSceneRecords().map((record) => ({ ...record, journeySourceLayer: "Scene Records" })),
+      ...promotedRelationshipRecords().map((record) => ({ ...record, journeySourceLayer: "Relationship Records" })),
+      ...promotedThemeRecords().map((record) => ({ ...record, journeySourceLayer: "Theme Records" })),
+      ...promotedLiteraryRecords().map((record) => ({ ...record, journeySourceLayer: "Literary Structure Records" })),
+      ...actionChainPreviewRecords().map((record) => ({ ...record, journeySourceLayer: "Action Chains" })),
+      ...causalityPreviewRecords().map((record) => ({ ...record, journeySourceLayer: "Causality" })),
+      ...consequenceChainPreviewRecords().map((record) => ({ ...record, journeySourceLayer: "Consequence Chains" })),
+      ...journeyNodesRecords().map((record) => ({ ...record, journeySourceLayer: "Journey Nodes" })),
+      ...journeyPathRecords().map((record) => ({ ...record, journeySourceLayer: "Journey Paths" }))
+    ];
+  }
+
+  function journeyNarrativeArcRecords() {
+    const sources = journeyNarrativeArcSourceRecords();
+    const scenes = promotedSceneRecords();
+    const timelines = promotedTimelineRecords();
+    const relationships = promotedRelationshipRecords();
+    const themes = promotedThemeRecords();
+    const causality = causalityPreviewRecords();
+    const consequences = consequenceChainPreviewRecords();
+    const groups = new Map();
+    const addRecord = (journeyType, record) => {
+      const key = journeyType;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(record);
+    };
+    sources.forEach((record) => addRecord(journeyNarrativeArcTypeForRecord(record), record));
+    if (!sources.length && contextLockRecords().length) {
+      contextLockRecords().forEach((record) => addRecord("Spiritual Journey", { ...record, journeySourceLayer: "Context Lock" }));
+    }
+    return Array.from(groups.entries()).map(([journeyType, records], index) => {
+      const participants = journeyNarrativeParticipantLabels(records);
+      const locations = journeyNarrativeLocationLabels(records);
+      const relatedTimeline = timelines.filter((item) => records.some((record) => journeyNarrativeArcText(record).includes(normalizeText(item.eventType || item.eventName || item.timelineId)))).slice(0, 8);
+      const relatedScenes = scenes.filter((item) => records.some((record) => journeyNarrativeArcText(record).includes(normalizeText(item.sceneType || item.sceneId || item.sourceReference)))).slice(0, 8);
+      const keyEvents = uniqueStudyList(records.flatMap((record) => [
+        record.eventName,
+        record.eventType,
+        record.action,
+        record.predicate,
+        record.nodeName,
+        record.fromNode && record.toNode ? `${record.fromNode} -> ${record.toNode}` : ""
+      ]).map(normalizeText).filter(Boolean)).slice(0, 10);
+      const relatedRelationships = relationships.filter((item) => journeyNarrativeArcTypeForRecord(item) === journeyType).slice(0, 8);
+      const relatedThemes = themes.filter((item) => journeyNarrativeArcTypeForRecord(item) === journeyType).slice(0, 8);
+      const causalitySupport = causality.filter((item) => journeyNarrativeArcTypeForRecord(item) === journeyType).slice(0, 8);
+      const consequenceSupport = consequences.filter((item) => journeyNarrativeArcTypeForRecord(item) === journeyType).slice(0, 8);
+      const hasTimelineOrScene = relatedTimeline.length || relatedScenes.length;
+      const hasSupport = records.length && (hasTimelineOrScene || keyEvents.length || relatedRelationships.length || relatedThemes.length);
+      return {
+        journeyId: `journey-arc-${journeyType.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        journeyType,
+        primaryParticipant: participants[0] || "not resolved",
+        supportingParticipants: participants.slice(1),
+        startingScene: relatedScenes[0]?.sceneType || relatedScenes[0]?.sceneId || keyEvents[0] || "not resolved",
+        endingScene: relatedScenes[relatedScenes.length - 1]?.sceneType || relatedScenes[relatedScenes.length - 1]?.sceneId || keyEvents[keyEvents.length - 1] || "not resolved",
+        timelineSegments: relatedTimeline.map((item) => normalizeText(item.eventName || item.eventType || item.timelineId || item.sourceReference)).filter(Boolean),
+        locations,
+        keyEvents,
+        relationships: relatedRelationships.map((item) => {
+          if (item.sourceEntity && item.targetEntity) return normalizeText(`${item.sourceEntity} -> ${item.targetEntity}`);
+          return normalizeText(item.relationshipType || item.relationshipId);
+        }).filter(Boolean),
+        themes: relatedThemes.map((item) => normalizeText(item.themeName || item.themeId)).filter(Boolean),
+        causalitySupport: causalitySupport.map((item) => normalizeText(item.causalityType || item.causalityId || item.evidence)).filter(Boolean),
+        consequenceSupport: consequenceSupport.map((item) => normalizeText(item.consequenceId || item.resultingConsequence || item.evidence)).filter(Boolean),
+        evidenceDistance: 7,
+        confidence: hasSupport ? "supported by existing scoped semantic records" : "unsupported preview",
+        provenance: `I.C.E. Journey & Narrative Arc Foundation from ${uniqueStudyList(records.map((record) => record.journeySourceLayer || record.provenance).filter(Boolean)).join(", ") || "existing scoped records"}`,
+        status: hasSupport ? "supported" : "unsupported",
+        disconnected: !hasTimelineOrScene,
+        sourceRecordCount: records.length,
+        sourceScope: currentStudyScopeLabel()
+      };
+    }).sort((left, right) => right.sourceRecordCount - left.sourceRecordCount || left.journeyType.localeCompare(right.journeyType));
+  }
+
+  function journeyNarrativeArcDiagnostics() {
+    const records = journeyNarrativeArcRecords();
+    const candidates = journeyNarrativeArcSourceRecords();
+    const supported = records.filter((record) => record.status === "supported");
+    const unsupported = records.filter((record) => record.status !== "supported");
+    const disconnected = records.filter((record) => record.disconnected);
+    const coverage = records.length ? Math.round((supported.length / records.length) * 100) : 100;
+    const confidenceDistribution = records.reduce((counts, record) => {
+      const label = normalizeText(record.confidence || record.status || "unknown") || "unknown";
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+    return { records, candidates, supported, unsupported, disconnected, coverage, confidenceDistribution };
+  }
+
+  function journeyNarrativeArcInspectorLines() {
+    const diagnostics = journeyNarrativeArcDiagnostics();
+    const sample = diagnostics.records.slice(0, 14).map((record) => [
+      record.journeyType,
+      `participant=${record.primaryParticipant}`,
+      `supporting=${asArray(record.supportingParticipants).join(", ") || "none"}`,
+      `scenes=${record.startingScene} -> ${record.endingScene}`,
+      `events=${asArray(record.keyEvents).slice(0, 4).join("; ") || "none"}`,
+      `locations=${asArray(record.locations).join(", ") || "none"}`,
+      `themes=${asArray(record.themes).join(", ") || "none"}`,
+      `distance=${record.evidenceDistance}`,
+      `confidence=${record.confidence}`,
+      `status=${record.status}`
+    ].join(" | "));
+    return [
+      `Detected journeys: ${diagnostics.records.length}`,
+      `Journey coverage: ${diagnostics.coverage}%`,
+      `Unsupported journeys: ${diagnostics.unsupported.length}`,
+      `Disconnected journeys: ${diagnostics.disconnected.length}`,
+      `Journey categories supported: ${journeyNarrativeArcCategories().join("; ")}`,
+      `Confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      "Record shape: journeyId; journeyType; primaryParticipant; supportingParticipants; startingScene; endingScene; timelineSegments; locations; keyEvents; relationships; themes; causalitySupport; consequenceSupport; evidenceDistance; confidence; provenance; status",
+      "Sample journeys:",
+      ...(sample.length ? sample : ["No Journey & Narrative Arc records generated for the current Study Scope."]),
+      "Trust: journeys summarize existing semantic records only. They never replace primary evidence, rewrite themes, rewrite relationships, create semantic authority, write storage, crawl, process queues, mutate scope, infer doctrine, or change Study View output."
+    ];
+  }
+
+  function journeyNarrativeArcDashboardLines() {
+    const diagnostics = journeyNarrativeArcDiagnostics();
+    return [
+      "Journey & Narrative Arc Summary",
+      `Journey count: ${diagnostics.records.length}`,
+      `Journey coverage: ${diagnostics.coverage}%`,
+      `Journey confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      `Unsupported journey count: ${diagnostics.unsupported.length}`,
+      `Disconnected journey count: ${diagnostics.disconnected.length}`,
+      "Boundary: Journey & Narrative Arc Foundation is runtime/display-only and does not persist records or change Study View output."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -15998,6 +16219,7 @@ createRevelationPartsSection(item.subEvents)
       ...semanticExplainabilityDashboardLines(),
       ...provenanceGraphDashboardLines(),
       ...semanticVerificationDashboardLines(),
+      ...journeyNarrativeArcDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -16495,6 +16717,7 @@ createRevelationPartsSection(item.subEvents)
       semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
       provenanceGraphLines: provenanceGraphInspectorLines(),
       semanticVerificationLines: semanticVerificationInspectorLines(),
+      journeyNarrativeArcLines: journeyNarrativeArcInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -16550,6 +16773,7 @@ createRevelationPartsSection(item.subEvents)
       item.semanticExplainabilityLines,
       item.provenanceGraphLines,
       item.semanticVerificationLines,
+      item.journeyNarrativeArcLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -16619,6 +16843,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
       createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
       createPassageFunctionSection("Semantic Verification Inspector", "", { list: item.semanticVerificationLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Verification Inspector" }),
+      createPassageFunctionSection("Journey Inspector", "", { list: item.journeyNarrativeArcLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Journey Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
