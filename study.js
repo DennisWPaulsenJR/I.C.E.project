@@ -15141,6 +15141,7 @@ createRevelationPartsSection(item.subEvents)
     const groundedThemes = themeCatalog.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
     const promotedThemes = promotedThemeRecords();
     const principleDiagnostics = principleExtractionDiagnostics();
+    const guidanceDiagnostics = studyGuidanceDiagnostics();
     const explainability = semanticExplainabilityDiagnostics();
     const provenance = provenanceGraphDiagnostics();
     const analyzed = analyzedPageHistory();
@@ -15204,6 +15205,17 @@ createRevelationPartsSection(item.subEvents)
         status: principleDiagnostics.groundedCandidates.length ? metricState({ denominator: principleDiagnostics.groundedCandidates.length, numerator: principleDiagnostics.promoted.length, unresolved: principleDiagnostics.unresolved.length }) : "no_candidates",
         statusRule: "promoted grounded principle records / grounded principle candidates; no principle catalog denominator is used.",
         warnings: principleDiagnostics.groundedCandidates.length && !principleDiagnostics.promoted.length ? ["Grounded principle candidates exist but none were promoted under the current confidence rules."] : []
+      }),
+      metricRecord({
+        metricName: "Verified study guidance coverage",
+        scopeBasis: "selected scope grounded guidance candidates",
+        numerator: guidanceDiagnostics.verified.length,
+        denominator: guidanceDiagnostics.groundedCandidates.length,
+        excluded: Math.max(0, guidanceDiagnostics.records.length - guidanceDiagnostics.groundedCandidates.length),
+        sourceCollection: "studyGuidanceRecords",
+        status: guidanceDiagnostics.groundedCandidates.length ? metricState({ denominator: guidanceDiagnostics.groundedCandidates.length, numerator: guidanceDiagnostics.verified.length, unresolved: guidanceDiagnostics.unresolved.length }) : "no_candidates",
+        statusRule: "verified grounded guidance records / grounded guidance candidates; no guidance catalog denominator is used.",
+        warnings: guidanceDiagnostics.groundedCandidates.length && !guidanceDiagnostics.verified.length ? ["Grounded guidance candidates exist but none are verified under current principle/support rules."] : []
       }),
       metricRecord({
         metricName: "Pronoun versus downstream resolution",
@@ -16679,40 +16691,48 @@ createRevelationPartsSection(item.subEvents)
       "Key Events",
       "Major Relationships",
       "Journey Summary",
+      "Explicit Principles",
+      "Supported Principles",
       "Central Themes",
       "Teaching Moments",
-      "Questions Raised by the Text",
-      "Cross-reference Opportunities",
-      "Areas Requiring Further Study",
       "Explicit Commands",
       "Explicit Promises",
       "Explicit Warnings",
       "Explicit Covenants",
-      "Explicit Prophecies"
+      "Explicit Prophecies",
+      "Questions Raised by the Text",
+      "Cross-reference Opportunities",
+      "Areas Requiring Further Study"
     ];
   }
 
   function studyGuidanceRecord(guidanceCategory, options = {}) {
+    const supportingPrinciples = uniqueStudyList(asArray(options.supportingPrinciples).map(normalizeText).filter(Boolean)).slice(0, 10);
     const supportingEvidence = uniqueStudyList(asArray(options.supportingEvidence).map(normalizeText).filter(Boolean)).slice(0, 12);
     const supportingJourneys = uniqueStudyList(asArray(options.supportingJourneys).map(normalizeText).filter(Boolean)).slice(0, 8);
     const supportingThemes = uniqueStudyList(asArray(options.supportingThemes).map(normalizeText).filter(Boolean)).slice(0, 8);
     const supportingRelationships = uniqueStudyList(asArray(options.supportingRelationships).map(normalizeText).filter(Boolean)).slice(0, 8);
     const supportingEvents = uniqueStudyList(asArray(options.supportingEvents).map(normalizeText).filter(Boolean)).slice(0, 8);
-    const hasSupport = supportingEvidence.length || supportingJourneys.length || supportingThemes.length || supportingRelationships.length || supportingEvents.length;
-    const status = options.status || (hasSupport ? "supported" : "unsupported");
+    const confidence = options.confidence || (supportingPrinciples.length ? "Supported" : "Unresolved");
+    const hasSupport = supportingPrinciples.length || supportingEvidence.length || supportingJourneys.length || supportingThemes.length || supportingRelationships.length || supportingEvents.length;
+    const status = options.status || (/explicit|strongly supported|supported/i.test(confidence) && hasSupport ? "verified" : (/possible/i.test(confidence) ? "possible" : (hasSupport ? "supported" : "unsupported")));
     return {
       guidanceId: `study-guidance-${normalizeText(guidanceCategory).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       guidanceCategory,
       sourceScope: currentStudyScopeLabel(),
+      sourceReference: options.sourceReference || supportingEvidence[0] || currentStudyScopeLabel(),
+      guidanceText: options.guidanceText || `${guidanceCategory}: ${supportingPrinciples[0] || supportingEvidence[0] || "no grounded guidance text available"}`,
+      supportingPrinciples,
       supportingEvidence,
       supportingJourneys,
       supportingThemes,
       supportingRelationships,
       supportingEvents,
       evidenceDistance: 8,
-      confidence: options.confidence || (status === "supported" ? "supported observation from existing scoped records" : "unresolved / requires further study"),
+      confidence,
       provenance: options.provenance || "I.C.E. Study Guidance Foundation from existing scoped semantic records",
       explainabilityReference: options.explainabilityReference || "Semantic Explainability Inspector / Provenance Graph Inspector",
+      verificationStatus: options.verificationStatus || (status === "verified" ? "verified guidance support" : "guidance requires further study"),
       status,
       guidanceMode: options.guidanceMode || "supported observation"
     };
@@ -16741,6 +16761,11 @@ createRevelationPartsSection(item.subEvents)
     const events = promotedTimelineRecords();
     const scenes = promotedSceneRecords();
     const questions = scopedSemanticRecords(studyData.semanticQuestions);
+    const principleDiagnostics = principleExtractionDiagnostics();
+    const principles = principleDiagnostics.records;
+    const explicitPrinciples = principles.filter((record) => /explicit/i.test(record.confidence || record.principleCategory) && record.status === "promoted");
+    const supportedPrinciples = principles.filter((record) => /strongly supported|supported/i.test(record.confidence || record.principleCategory) && record.status === "promoted");
+    const possiblePrinciples = principles.filter((record) => record.status === "possible");
     const actors = Array.from(studyReferenceActors({ includeTechnical: false }).values());
     const teachingRecords = [
       ...scopedSemanticRecords(studyData.teachingSemantics),
@@ -16757,124 +16782,181 @@ createRevelationPartsSection(item.subEvents)
     const relationshipLabel = (record) => normalizeText(record.relationshipType || (record.sourceEntity && record.targetEntity ? `${record.sourceEntity} -> ${record.targetEntity}` : "") || record.relationshipId);
     const themeLabel = (record) => normalizeText(record.themeName || record.themeId);
     const journeyLabel = (record) => normalizeText(`${record.journeyType}${record.primaryParticipant && record.primaryParticipant !== "not resolved" ? ` - ${record.primaryParticipant}` : ""}`);
+    const principleLabel = (record) => normalizeText(`${record.principleCategory || "Principle"}: ${record.principleName || "unnamed principle"} (${record.confidence || "confidence not recorded"})`);
     const explicitCue = (category, pattern, mode) => {
       const cueRecords = studyGuidanceCueRecords(pattern);
       return studyGuidanceRecord(category, {
+        guidanceText: cueRecords.length ? `${category} identified from explicit scoped source cues.` : `${category} not grounded in the current Study Scope.`,
+        supportingPrinciples: principles.filter((record) => normalizeText(record.principleCategory).toLowerCase() === normalizeText(category.replace(/s$/, "")).toLowerCase() || normalizeText(record.principleCategory).toLowerCase().includes(normalizeText(category.replace(/^Explicit\s+/, "").replace(/s$/, "")).toLowerCase())).map(principleLabel),
         supportingEvidence: cueRecords.map(evidenceLabel),
         supportingEvents: cueRecords.map(eventLabel),
-        confidence: cueRecords.length ? "explicit source cue detected in existing scoped records" : "no explicit source cue detected",
+        confidence: cueRecords.length ? "Explicit" : "Unresolved",
         provenance: `I.C.E. Study Guidance Foundation explicit-cue scan for ${category}`,
-        status: cueRecords.length ? "supported" : "unsupported",
+        verificationStatus: cueRecords.length ? "explicit source cue present in scoped records" : "no explicit source cue in scoped records",
+        status: cueRecords.length ? "verified" : "unresolved",
         guidanceMode: mode || "explicit"
       });
     };
     return [
       studyGuidanceRecord("Narrative Overview", {
+        guidanceText: scenes.length || events.length ? "Review the scoped narrative through promoted scenes, ordered events, and journey arcs." : "Narrative overview requires grounded scenes or events in the selected scope.",
         supportingEvidence: [...scenes.map(evidenceLabel), ...events.map(evidenceLabel)],
         supportingEvents: events.map(eventLabel),
         supportingJourneys: journeys.map(journeyLabel),
-        confidence: scenes.length || events.length ? "supported narrative overview from scenes, timeline records, and journey arcs" : "requires further study",
+        confidence: scenes.length || events.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Scene, Timeline, and Journey records"
       }),
       studyGuidanceRecord("Primary Participants", {
+        guidanceText: actors.length ? "Review the grounded participants before drawing broader study conclusions." : "Primary participants are not grounded in the current Study Scope.",
         supportingEvidence: actors.map((item) => `${item.label || item.name || item.canonicalName}: ${asArray(item.roles).join(", ") || "role not recorded"}`),
-        confidence: actors.length ? "grounded actors summarized from Study Reference Index" : "no grounded actor summary available",
+        confidence: actors.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Study Reference Index actor records",
         guidanceMode: "explicit / context"
       }),
       studyGuidanceRecord("Key Events", {
+        guidanceText: events.length ? "Use promoted timeline events as the grounded event flow for the selected scope." : "Key events are not promoted for the selected scope.",
         supportingEvidence: events.map(evidenceLabel),
         supportingEvents: events.map(eventLabel),
-        confidence: events.length ? "supported by promoted Timeline records" : "no promoted timeline events available",
+        confidence: events.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Timeline records"
       }),
       studyGuidanceRecord("Major Relationships", {
+        guidanceText: relationships.length ? "Use promoted relationships as grounded connection points, without letting them rewrite context." : "Major relationships are not promoted for the selected scope.",
         supportingEvidence: relationships.map(evidenceLabel),
         supportingRelationships: relationships.map(relationshipLabel),
-        confidence: relationships.length ? "supported by promoted Relationship records" : "no promoted relationships available",
+        confidence: relationships.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Relationship records"
       }),
       studyGuidanceRecord("Journey Summary", {
+        guidanceText: journeys.length ? "Review supported journey arcs as narrative progressions, not as new source authority." : "Journey summary is unresolved for the selected scope.",
         supportingEvidence: journeys.map((record) => `${record.journeyType}: ${record.provenance}`),
         supportingJourneys: journeys.map(journeyLabel),
-        confidence: journeys.length ? "supported by Journey & Narrative Arc records" : "no journey arc records available",
+        confidence: journeys.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Journey & Narrative Arc records"
       }),
+      studyGuidanceRecord("Explicit Principles", {
+        guidanceText: explicitPrinciples.length ? "Begin with explicit principle records before considering supported or possible guidance." : "No explicit principle records are grounded in the current Study Scope.",
+        supportingPrinciples: explicitPrinciples.map(principleLabel),
+        supportingEvidence: explicitPrinciples.flatMap((record) => asArray(record.supportingEvidence)).slice(0, 12),
+        confidence: explicitPrinciples.length ? "Explicit" : "Unresolved",
+        provenance: "I.C.E. Study Guidance Foundation from verified explicit Principle Extraction records",
+        verificationStatus: explicitPrinciples.length ? "verified explicit principle support" : "no explicit principle support",
+        status: explicitPrinciples.length ? "verified" : "unresolved",
+        guidanceMode: "explicit"
+      }),
+      studyGuidanceRecord("Supported Principles", {
+        guidanceText: supportedPrinciples.length ? "Review supported principle records as grounded study guidance, distinct from possible application." : "No supported principle records are grounded in the current Study Scope.",
+        supportingPrinciples: supportedPrinciples.map(principleLabel),
+        supportingEvidence: supportedPrinciples.flatMap((record) => asArray(record.supportingEvidence)).slice(0, 12),
+        confidence: supportedPrinciples.length > 1 ? "Strongly Supported" : (supportedPrinciples.length ? "Supported" : "Unresolved"),
+        provenance: "I.C.E. Study Guidance Foundation from verified supported Principle Extraction records",
+        verificationStatus: supportedPrinciples.length ? "verified supported principle records" : "no supported principle records",
+        status: supportedPrinciples.length ? "verified" : "unresolved"
+      }),
       studyGuidanceRecord("Central Themes", {
+        guidanceText: themes.length ? "Use promoted themes as study grouping support, not as doctrine creation." : "Central themes are not promoted for the selected scope.",
         supportingEvidence: themes.map(evidenceLabel),
         supportingThemes: themes.map(themeLabel),
-        confidence: themes.length ? "supported by promoted Theme records" : "no promoted themes available",
+        supportingPrinciples: supportedPrinciples.filter((record) => asArray(record.supportingThemes).length).map(principleLabel),
+        confidence: themes.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Theme records"
       }),
       studyGuidanceRecord("Teaching Moments", {
+        guidanceText: teachingRecords.length ? "Review teaching and principle records as scoped teaching moments." : "Teaching moments are not grounded in the current Study Scope.",
         supportingEvidence: teachingRecords.map(evidenceLabel),
-        confidence: teachingRecords.length ? "supported by teaching/principle records" : "no teaching moment records available",
+        supportingPrinciples: [...explicitPrinciples, ...supportedPrinciples].map(principleLabel),
+        confidence: teachingRecords.length || explicitPrinciples.length || supportedPrinciples.length ? "Supported" : "Unresolved",
         provenance: "I.C.E. Study Guidance Foundation from Teaching and Principle records"
-      }),
-      studyGuidanceRecord("Questions Raised by the Text", {
-        supportingEvidence: questions.map((record) => normalizeText(record.question || record.semanticQuestion || record.prompt || record.derivedMeaning || record.id)),
-        confidence: questions.length ? "questions surfaced from existing Semantic Questions records" : "no scoped semantic questions available",
-        provenance: "I.C.E. Study Guidance Foundation from Semantic Questions records",
-        status: questions.length ? "supported" : "unresolved",
-        guidanceMode: "question"
-      }),
-      studyGuidanceRecord("Cross-reference Opportunities", {
-        supportingEvidence: crossReferences.map(evidenceLabel),
-        confidence: crossReferences.length ? "supported by reference graph, cross-reference, or fulfillment confidence records" : "no cross-reference opportunities available",
-        provenance: "I.C.E. Study Guidance Foundation from reference and fulfillment records"
-      }),
-      studyGuidanceRecord("Areas Requiring Further Study", {
-        supportingEvidence: [
-          ...semanticExplainabilityDiagnostics().missingProvenance.slice(0, 6).map((record) => `${record.recordType}: missing provenance`),
-          ...semanticExplainabilityDiagnostics().missingEvidenceChain.slice(0, 6).map((record) => `${record.recordType}: missing evidence chain`),
-          ...journeyNarrativeArcDiagnostics().unsupported.slice(0, 6).map((record) => `${record.journeyType}: unsupported journey preview`)
-        ],
-        confidence: "diagnostic questions only; no unsupported answers generated",
-        provenance: "I.C.E. Study Guidance Foundation from Explainability and Journey diagnostics",
-        status: "unresolved",
-        guidanceMode: "question"
       }),
       explicitCue("Explicit Commands", /\b(command|commanded|commandment|charge|charged|instruct|instruction|fear not|take|go|depart|arise|call)\b/i, "explicit"),
       explicitCue("Explicit Promises", /\b(promise|promised|shall|will|blessed|blessing|inherit|receive)\b/i, "explicit"),
       explicitCue("Explicit Warnings", /\b(warn|warning|beware|woe|flee|fear|lest|take heed)\b/i, "explicit"),
       explicitCue("Explicit Covenants", /\b(covenant|promise|abraham|david|lineage|generation|begat)\b/i, "explicit"),
-      explicitCue("Explicit Prophecies", /\b(prophet|prophecy|prophesied|fulfilled|spoken by the prophet|as it is written|scripture)\b/i, "explicit")
+      explicitCue("Explicit Prophecies", /\b(prophet|prophecy|prophesied|fulfilled|spoken by the prophet|as it is written|scripture)\b/i, "explicit"),
+      studyGuidanceRecord("Questions Raised by the Text", {
+        guidanceText: "Surface grounded study questions without answering them automatically or expanding scope.",
+        supportingEvidence: [
+          ...questions.map((record) => normalizeText(record.question || record.semanticQuestion || record.prompt || record.derivedMeaning || record.id)),
+          ...principleDiagnostics.unresolved.slice(0, 6).map((record) => `${record.principleCategory}: ${record.principleName}`)
+        ],
+        confidence: questions.length || principleDiagnostics.unresolved.length ? "Unresolved" : "Unresolved",
+        provenance: "I.C.E. Study Guidance Foundation from Semantic Questions records",
+        verificationStatus: "questions only; no unsupported answers generated",
+        status: "unresolved",
+        guidanceMode: "question"
+      }),
+      studyGuidanceRecord("Cross-reference Opportunities", {
+        guidanceText: crossReferences.length ? "Review available cross-reference opportunities with provenance; do not let them rewrite current context." : "No cross-reference opportunities are grounded in the current Study Scope.",
+        supportingEvidence: crossReferences.map(evidenceLabel),
+        confidence: crossReferences.length ? "Possible" : "Unresolved",
+        provenance: "I.C.E. Study Guidance Foundation from reference and fulfillment records"
+      }),
+      studyGuidanceRecord("Areas Requiring Further Study", {
+        guidanceText: "Use unresolved diagnostics to decide what needs more evidence; do not fabricate answers.",
+        supportingEvidence: [
+          ...semanticExplainabilityDiagnostics().missingProvenance.slice(0, 6).map((record) => `${record.recordType}: missing provenance`),
+          ...semanticExplainabilityDiagnostics().missingEvidenceChain.slice(0, 6).map((record) => `${record.recordType}: missing evidence chain`),
+          ...journeyNarrativeArcDiagnostics().unsupported.slice(0, 6).map((record) => `${record.journeyType}: unsupported journey preview`),
+          ...principleDiagnostics.unresolved.slice(0, 6).map((record) => `${record.principleCategory}: unresolved principle`)
+        ],
+        supportingPrinciples: principleDiagnostics.unresolved.slice(0, 6).map(principleLabel),
+        confidence: "Unresolved",
+        provenance: "I.C.E. Study Guidance Foundation from Explainability and Journey diagnostics",
+        verificationStatus: "unresolved diagnostics only; no answer generated",
+        status: "unresolved",
+        guidanceMode: "question"
+      })
     ];
   }
 
   function studyGuidanceDiagnostics() {
     const records = studyGuidanceRecords();
-    const supported = records.filter((record) => record.status === "supported");
+    const groundedCandidates = records.filter((record) => asArray(record.supportingPrinciples).length || asArray(record.supportingEvidence).length || asArray(record.supportingJourneys).length || asArray(record.supportingThemes).length || asArray(record.supportingRelationships).length || asArray(record.supportingEvents).length);
+    const verified = records.filter((record) => record.status === "verified");
+    const supported = records.filter((record) => /strongly supported|supported/i.test(record.confidence) || record.status === "supported");
+    const possible = records.filter((record) => record.status === "possible" || /possible/i.test(record.confidence));
+    const unresolved = records.filter((record) => record.status === "unresolved" || /unresolved/i.test(record.confidence));
     const unsupported = records.filter((record) => record.status === "unsupported");
-    const unresolvedQuestions = records.filter((record) => record.status === "unresolved" || record.guidanceMode === "question");
-    const explicit = records.filter((record) => record.guidanceMode === "explicit");
-    const supportedObservation = records.filter((record) => record.guidanceMode === "supported observation" && record.status === "supported");
-    const coverage = records.length ? Math.round((supported.length / records.length) * 100) : 100;
-    return { records, supported, unsupported, unresolvedQuestions, explicit, supportedObservation, coverage };
+    const unresolvedQuestions = records.filter((record) => record.guidanceMode === "question");
+    const explicit = records.filter((record) => /explicit/i.test(record.confidence) || record.guidanceMode === "explicit");
+    const coverage = metricPercent(verified.length, groundedCandidates.length);
+    const confidenceDistribution = records.reduce((counts, record) => {
+      const label = normalizeText(record.confidence || "Unresolved") || "Unresolved";
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+    return { records, groundedCandidates, verified, supported, possible, unresolved, unsupported, unresolvedQuestions, explicit, coverage, confidenceDistribution };
   }
 
   function studyGuidanceInspectorLines() {
     const diagnostics = studyGuidanceDiagnostics();
     const sample = diagnostics.records.map((record) => [
       record.guidanceCategory,
+      `text=${trimText(record.guidanceText, 90)}`,
       `status=${record.status}`,
       `distance=${record.evidenceDistance}`,
       `confidence=${record.confidence}`,
+      `principles=${asArray(record.supportingPrinciples).slice(0, 3).join("; ") || "none"}`,
       `evidence=${asArray(record.supportingEvidence).slice(0, 3).join("; ") || "none"}`,
       `journeys=${asArray(record.supportingJourneys).slice(0, 3).join("; ") || "none"}`,
       `themes=${asArray(record.supportingThemes).slice(0, 3).join("; ") || "none"}`,
       `relationships=${asArray(record.supportingRelationships).slice(0, 3).join("; ") || "none"}`,
+      `verification=${record.verificationStatus}`,
       `explainability=${record.explainabilityReference}`
     ].join(" | "));
     return [
       `Guidance records: ${diagnostics.records.length}`,
-      `Guidance coverage: ${diagnostics.coverage}%`,
+      `Verified-guidance coverage: ${formatMetricPercent(diagnostics.coverage)}`,
       `Explicit guidance count: ${diagnostics.explicit.length}`,
-      `Supported observation count: ${diagnostics.supportedObservation.length}`,
+      `Supported guidance count: ${diagnostics.supported.length}`,
+      `Possible guidance count: ${diagnostics.possible.length}`,
+      `Unresolved guidance count: ${diagnostics.unresolved.length}`,
       `Unresolved question count: ${diagnostics.unresolvedQuestions.length}`,
       `Unsupported guidance count: ${diagnostics.unsupported.length}`,
       `Guidance categories supported: ${studyGuidanceCategories().join("; ")}`,
-      "Record shape: guidanceId; guidanceCategory; sourceScope; supportingEvidence; supportingJourneys; supportingThemes; supportingRelationships; supportingEvents; evidenceDistance; confidence; provenance; explainabilityReference; status",
+      `Confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      "Denominator rule: verified-guidance coverage = verified grounded guidance records / grounded guidance candidates. The full guidance catalog is not used as the denominator.",
+      "Record shape: guidanceId; guidanceCategory; sourceScope; sourceReference; guidanceText; supportingPrinciples; supportingEvidence; supportingJourneys; supportingThemes; supportingRelationships; supportingEvents; evidenceDistance; confidence; provenance; explainabilityReference; verificationStatus; status",
       "Sample guidance records:",
       ...(sample.length ? sample : ["No Study Guidance records generated for the current Study Scope."]),
       "Trust: guidance organizes evidence only. It does not create evidence, doctrine, semantic authority, storage records, queue actions, crawling, scope changes, unsupported answers, or Study View behavior changes."
@@ -16886,11 +16968,14 @@ createRevelationPartsSection(item.subEvents)
     return [
       "Study Guidance Summary",
       `Guidance records: ${diagnostics.records.length}`,
-      `Guidance coverage: ${diagnostics.coverage}%`,
+      `Verified-guidance coverage: ${formatMetricPercent(diagnostics.coverage)}`,
       `Explicit guidance count: ${diagnostics.explicit.length}`,
-      `Supported observation count: ${diagnostics.supportedObservation.length}`,
-      `Unresolved question count: ${diagnostics.unresolvedQuestions.length}`,
+      `Supported guidance count: ${diagnostics.supported.length}`,
+      `Possible guidance count: ${diagnostics.possible.length}`,
+      `Unresolved guidance count: ${diagnostics.unresolved.length}`,
       `Unsupported guidance count: ${diagnostics.unsupported.length}`,
+      `Principle-backed guidance candidates: ${diagnostics.records.filter((record) => asArray(record.supportingPrinciples).length).length}`,
+      `Guidance confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
       "Boundary: Study Guidance Foundation is runtime/display-only and may surface unanswered questions but may not fabricate answers."
     ];
   }
