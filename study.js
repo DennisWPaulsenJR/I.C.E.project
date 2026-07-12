@@ -13854,6 +13854,9 @@ createRevelationPartsSection(item.subEvents)
       quoteId: `english_surface_v1.quote.${sourceIndex}.${startRecord?.tokenIndex ?? 0}.${endRecord?.tokenIndex ?? startRecord?.tokenIndex ?? 0}`,
       sourceScope: sourceScope || currentStudyScopeLabel(),
       sourceReference: sourceReference || currentStudyScopeLabel(),
+      sourceIndex,
+      startTokenIndex: Number(startRecord?.tokenIndex ?? 0),
+      endTokenIndex: Number(endRecord?.tokenIndex ?? startRecord?.tokenIndex ?? 0),
       quoteStartToken: startToken,
       quoteEndToken: endToken,
       quoteType,
@@ -13958,7 +13961,15 @@ createRevelationPartsSection(item.subEvents)
     return lines;
   }
   function speakerDetectionAttributionVerbs() {
-    return new Set(["said", "say", "saying", "answered", "answer", "spake", "speak", "commanded", "command", "called", "cried", "asked", "ask", "taught", "teach"]);
+    return new Set(["said", "say", "saying", "saith", "answered", "answer", "spake", "speak", "cried", "asked", "ask", "commanded", "command", "taught", "teach", "preached", "preach", "testified", "testify", "declared", "declare", "warned", "warn", "called", "call", "prayed", "pray", "wrote", "write", "prophesied", "prophesy"]);
+  }
+
+  function speakerDetectionCandidateAllowed(candidate = "") {
+    const value = pronounResolutionCleanCandidate(candidate);
+    if (!value || pronounResolutionIsTechnicalCandidate(value)) return false;
+    if (/scripture narrator|quoted prophet|current analyzed source|source reference unavailable/i.test(value)) return false;
+    if (/^(Egypt|Nazareth|Jerusalem|Galilee|Bethlehem|Capernaum|Jordan|wilderness|sea|mountain)$/i.test(value)) return false;
+    return true;
   }
 
   function speakerDetectionNameFromTokens(tokens = []) {
@@ -13973,79 +13984,204 @@ createRevelationPartsSection(item.subEvents)
       "Joseph",
       "Mary",
       "Peter",
+      "disciples",
+      "multitudes",
+      "Pharisees",
+      "scribes",
+      "devil",
       "THE LORD",
       "GOD",
       "AngEL Of THE LORD",
+      "wise men",
+      "Herod",
+      "leper",
+      "centurion",
       "prophet"
     ];
     return known.find((name) => new RegExp(`\\b${escapeRegExp(name)}\\b`, "i").test(joined)) || "";
   }
 
-  function speakerDetectionExplicitAttribution(quote = {}, records = []) {
+  function speakerDetectionSentenceIdForToken(tokenRecord = {}, sentenceIds = new Map()) {
+    return tokenRecord?.tokenId ? sentenceIds.get(tokenRecord.tokenId) || "" : "";
+  }
+
+  function speakerDetectionRecordsForQuoteSentence(quote = {}, records = [], sentenceIds = new Map()) {
+    const start = records.find((record) => record.tokenId === quote.quoteStartToken);
+    const sentenceId = speakerDetectionSentenceIdForToken(start, sentenceIds);
+    if (!sentenceId) return [];
+    return records
+      .filter((record) => String(record.sourceIndex) === String(quote.sourceIndex) && sentenceIds.get(record.tokenId) === sentenceId)
+      .sort((left, right) => Number(left.tokenIndex || 0) - Number(right.tokenIndex || 0));
+  }
+
+  function speakerDetectionPriorSentenceRecords(quote = {}, records = [], sentenceIds = new Map()) {
+    const start = records.find((record) => record.tokenId === quote.quoteStartToken);
+    const sentenceId = speakerDetectionSentenceIdForToken(start, sentenceIds);
+    const match = sentenceId.match(/^(.*\.sentence\.)(\d+)$/);
+    if (!match) return [];
+    const priorId = `${match[1]}${Math.max(0, Number(match[2]) - 1)}`;
+    return records
+      .filter((record) => String(record.sourceIndex) === String(quote.sourceIndex) && sentenceIds.get(record.tokenId) === priorId)
+      .sort((left, right) => Number(left.tokenIndex || 0) - Number(right.tokenIndex || 0));
+  }
+
+  function speakerDetectionCandidateFromWindow(tokens = [], attributionType = "explicit_prior_sentence_attribution", quote = {}) {
     const verbs = speakerDetectionAttributionVerbs();
-    const before = records
-      .filter((record) => String(record.sourceIndex) === String(quote.sourceIndex) && Number(record.tokenIndex) < Number(quote.startTokenIndex))
-      .sort((left, right) => Number(right.tokenIndex || 0) - Number(left.tokenIndex || 0))
-      .slice(0, 12)
-      .reverse();
-    if (!before.length) return null;
-    const verbIndex = before.findIndex((record) => verbs.has(normalizeText(record.token).toLowerCase()));
+    const ordered = asArray(tokens).slice().sort((left, right) => Number(left.tokenIndex || 0) - Number(right.tokenIndex || 0));
+    const verbIndex = ordered.findIndex((record) => verbs.has(normalizeText(record.token).toLowerCase()));
     if (verbIndex < 0) return null;
-    const candidate = speakerDetectionNameFromTokens(before.slice(Math.max(0, verbIndex - 5), verbIndex));
-    if (!candidate) return null;
+    const candidate = speakerDetectionNameFromTokens(ordered.slice(Math.max(0, verbIndex - 6), verbIndex));
+    if (!speakerDetectionCandidateAllowed(candidate)) return null;
     return {
-      detectedSpeaker: candidate,
-      attributionType: "explicit narrative attribution",
-      evidence: `${candidate} ${before[verbIndex].token} before quotation boundary in ${quote.sourceReference || currentStudyScopeLabel()}.`,
-      confidence: "strong / explicit narrative attribution"
+      value: candidate,
+      attributionType,
+      speechPredicate: normalizeText(ordered[verbIndex].token),
+      evidence: `${candidate} ${ordered[verbIndex].token} ${attributionType === "explicit_same_sentence_attribution" ? "within the quotation sentence" : "in the immediately preceding attribution segment"} for ${quote.sourceReference || currentStudyScopeLabel()}.`,
+      confidence: `strong / ${attributionType.replace(/_/g, " ")}`
     };
   }
 
-  function speakerDetectionContextLockAttribution(quote = {}) {
+  function speakerDetectionExplicitAttributionCandidates(quote = {}, records = [], sentenceIds = new Map()) {
+    return [
+      speakerDetectionCandidateFromWindow(speakerDetectionRecordsForQuoteSentence(quote, records, sentenceIds), "explicit_same_sentence_attribution", quote),
+      speakerDetectionCandidateFromWindow(speakerDetectionPriorSentenceRecords(quote, records, sentenceIds), "explicit_prior_sentence_attribution", quote)
+    ].filter(Boolean);
+  }
+
+  function speakerDetectionContextLockCandidates(quote = {}) {
     const locks = pronounResolutionMatchingContextLocks({ sourceReference: quote.sourceReference, sourceScope: quote.sourceScope });
-    const speakers = uniqueStudyList(locks.map((lock) => normalizeText(lock.speaker)).filter(Boolean)).filter((speaker) => !/unknown|narrator|source/i.test(speaker));
-    if (speakers.length === 1) {
-      return {
-        detectedSpeaker: speakers[0],
-        attributionType: "Context Lock speaker",
-        evidence: `Single Context Lock speaker for ${quote.sourceReference || currentStudyScopeLabel()}: ${speakers[0]}.`,
-        confidence: "strong / single Context Lock speaker"
-      };
+    return uniqueStudyList(locks.map((lock) => normalizeText(lock.speaker)).filter(Boolean))
+      .filter(speakerDetectionCandidateAllowed)
+      .map((speaker) => ({
+        value: speaker,
+        attributionType: "context_lock_speaker",
+        speechPredicate: "",
+        evidence: `Context Lock speaker candidate for ${quote.sourceReference || currentStudyScopeLabel()}: ${speaker}.`,
+        confidence: "supported / Context Lock speaker"
+      }));
+  }
+
+  function speakerDetectionGrammaticalSubjectCandidates(quote = {}, records = [], sentenceIds = new Map()) {
+    const windows = [
+      ...speakerDetectionRecordsForQuoteSentence(quote, records, sentenceIds),
+      ...speakerDetectionPriorSentenceRecords(quote, records, sentenceIds)
+    ];
+    const candidate = speakerDetectionCandidateFromWindow(windows, "grammatical_subject_of_speech", quote);
+    return candidate ? [{ ...candidate, confidence: "supported / grounded subject of explicit speech predicate" }] : [];
+  }
+
+  function speakerDetectionQuotedSourceDistinction(quote = {}) {
+    const text = normalizeText(quote.segmentPreview || "");
+    if (/\bit is written\b|\bas it is written\b|\bspoken by the prophet\b|\bscripture\b/i.test(text)) {
+      return "quoted_source_distinguished / scripture citation voice is not collapsed into narrative speaker";
     }
-    if (speakers.length > 1) {
-      return {
-        detectedSpeaker: "",
-        attributionType: "Context Lock speaker",
-        evidence: `Multiple Context Lock speakers: ${speakers.slice(0, 5).join(", ")}.`,
-        confidence: "ambiguous / multiple Context Lock speakers",
-        status: "ambiguous"
-      };
-    }
-    return null;
+    return "";
+  }
+
+  function speakerDetectionResolveCandidateGroup(candidates = [], rejectedCandidates = []) {
+    const seen = new Set();
+    const accepted = [];
+    asArray(candidates).forEach((candidate) => {
+      const value = pronounResolutionCleanCandidate(candidate.value || "");
+      if (!speakerDetectionCandidateAllowed(value)) {
+        rejectedCandidates.push({ value, reason: "not a grounded speaker candidate" });
+        return;
+      }
+      const key = value.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      accepted.push({ ...candidate, value });
+    });
+    if (accepted.length === 1) return { status: "resolved", candidate: accepted[0], candidates: accepted, rejectedCandidates };
+    if (accepted.length > 1) return { status: "ambiguous", candidates: accepted, rejectedCandidates };
+    return { status: "unresolved", candidates: [], rejectedCandidates };
+  }
+
+  function speakerDetectionRecordFromResolution({ quote = {}, index = 0, resolution = {}, sentenceId = "", attributionType = "unresolved", continuitySource = "" } = {}) {
+    const candidate = resolution.candidate || {};
+    const status = resolution.status || "unresolved";
+    const speakerCandidates = asArray(resolution.candidates).map((item) => item.value).filter(Boolean);
+    return {
+      speakerRecordId: `english_surface_v1.speaker.${index}.${quote.quoteId}`,
+      sourceScope: quote.sourceScope || currentStudyScopeLabel(),
+      sourceReference: quote.sourceReference || currentStudyScopeLabel(),
+      sentenceId,
+      quoteId: quote.quoteId,
+      detectedSpeaker: status === "resolved" ? candidate.value || "" : "",
+      speakerCandidates,
+      rejectedCandidates: asArray(resolution.rejectedCandidates),
+      speechPredicate: status === "resolved" ? candidate.speechPredicate || "" : "",
+      attributionType: status === "resolved" ? candidate.attributionType || attributionType : (status === "ambiguous" ? "ambiguous" : attributionType),
+      evidence: status === "resolved"
+        ? candidate.evidence || `${candidate.value} is the single grounded speaker candidate.`
+        : (status === "ambiguous" ? `Multiple plausible speaker candidates remain: ${speakerCandidates.slice(0, 6).join(", ")}.` : "No single grounded speaker candidate found for this quotation boundary."),
+      confidence: status === "resolved" ? candidate.confidence || "supported / single grounded speaker candidate" : (status === "ambiguous" ? "ambiguous / multiple grounded speaker candidates" : "unresolved"),
+      evidenceDistance: "Distance 7: advisory language/support record derived from quotation boundaries, source wording, Context Lock, and speech predicate candidates",
+      provenance: "I.C.E. speaker detection v2 preview from explicit attribution, quotation boundaries, current-scope Context Lock, and conservative speech-predicate support",
+      continuitySource,
+      quotedSourceDistinction: speakerDetectionQuotedSourceDistinction(quote),
+      inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+      status
+    };
   }
 
   function speakerDetectionPreviewRecords() {
     const languageRecords = generatedLanguageRecords();
+    const sentenceIds = pronounResolutionSentenceMap(languageRecords);
     const quotes = quotationBoundaryPreviewRecords().filter((record) => record.quoteType === "direct quotation" || record.quoteType === "unresolved");
-    return quotes.map((quote, index) => {
-      const explicit = speakerDetectionExplicitAttribution(quote, languageRecords);
-      const context = explicit ? null : speakerDetectionContextLockAttribution(quote);
-      const attribution = explicit || context;
-      const status = attribution?.status || (attribution?.detectedSpeaker ? "resolved" : "unresolved");
-      return {
-        speakerRecordId: `english_surface_v1.speaker.${index}.${quote.quoteId}`,
-        sourceScope: quote.sourceScope || currentStudyScopeLabel(),
-        sourceReference: quote.sourceReference || currentStudyScopeLabel(),
-        quoteId: quote.quoteId,
-        detectedSpeaker: attribution?.detectedSpeaker || "",
-        attributionType: attribution?.attributionType || "not resolved",
-        evidence: attribution?.evidence || "No explicit narrative attribution or single grounded Context Lock speaker found for this quotation boundary.",
-        confidence: attribution?.confidence || "unresolved",
-        provenance: "I.C.E. speaker detection preview from explicit source attribution, quotation boundaries, and current-scope Context Lock records",
-        inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
-        status
-      };
+    const output = [];
+    quotes.forEach((quote, index) => {
+      const startToken = languageRecords.find((record) => record.tokenId === quote.quoteStartToken);
+      const sentenceId = startToken ? sentenceIds.get(startToken.tokenId) || "" : "";
+      const rejectedCandidates = [];
+      const priorityGroups = [
+        { attributionType: "explicit_same_sentence_attribution", candidates: speakerDetectionExplicitAttributionCandidates(quote, languageRecords, sentenceIds).filter((candidate) => candidate.attributionType === "explicit_same_sentence_attribution") },
+        { attributionType: "explicit_prior_sentence_attribution", candidates: speakerDetectionExplicitAttributionCandidates(quote, languageRecords, sentenceIds).filter((candidate) => candidate.attributionType === "explicit_prior_sentence_attribution") },
+        { attributionType: "context_lock_speaker", candidates: speakerDetectionContextLockCandidates(quote) },
+        { attributionType: "grammatical_subject_of_speech", candidates: speakerDetectionGrammaticalSubjectCandidates(quote, languageRecords, sentenceIds) }
+      ];
+      let record = null;
+      for (const group of priorityGroups) {
+        const resolution = speakerDetectionResolveCandidateGroup(group.candidates, rejectedCandidates);
+        if (resolution.status !== "unresolved") {
+          record = speakerDetectionRecordFromResolution({ quote, index, resolution, sentenceId, attributionType: group.attributionType });
+          break;
+        }
+      }
+      if (!record) {
+        const previous = output[output.length - 1];
+        const sameSource = previous && previous.status === "resolved" && String(previous.sourceReference || "") === String(quote.sourceReference || "");
+        if (sameSource && quote.quoteType === "direct quotation") {
+          record = speakerDetectionRecordFromResolution({
+            quote,
+            index,
+            sentenceId,
+            attributionType: "dialogue_continuity",
+            continuitySource: previous.speakerRecordId,
+            resolution: {
+              status: "resolved",
+              candidate: {
+                value: previous.detectedSpeaker,
+                attributionType: "dialogue_continuity",
+                speechPredicate: previous.speechPredicate,
+                evidence: `Speaker carried from prior grounded quote ${previous.quoteId} within the same source reference and without a new explicit speaker candidate.`,
+                confidence: "supported / explicit adjacent dialogue continuity"
+              },
+              candidates: [{ value: previous.detectedSpeaker, attributionType: "dialogue_continuity" }],
+              rejectedCandidates
+            }
+          });
+        }
+      }
+      output.push(record || speakerDetectionRecordFromResolution({
+        quote,
+        index,
+        sentenceId,
+        attributionType: quotes.length ? "unresolved" : "dependency_unavailable",
+        resolution: { status: quotes.length ? "unresolved" : "dependency_unavailable", rejectedCandidates }
+      }));
     });
+    return output;
   }
 
   function speakerDetectionInspectorLines() {
@@ -14053,23 +14189,47 @@ createRevelationPartsSection(item.subEvents)
     const resolved = records.filter((record) => record.status === "resolved");
     const unresolved = records.filter((record) => record.status === "unresolved");
     const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const dependencyUnavailable = records.filter((record) => record.status === "dependency_unavailable");
     const attributionCounts = records.reduce((counts, record) => {
       const key = normalizeText(record.attributionType || "not resolved") || "not resolved";
       counts[key] = (counts[key] || 0) + 1;
       return counts;
     }, {});
+    const predicateCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.speechPredicate || "none") || "none";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const confidenceCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.confidence || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const candidateCount = records.reduce((sum, record) => sum + asArray(record.speakerCandidates).length, 0);
+    const rejectedCount = records.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
+    const quotedSource = records.filter((record) => record.quotedSourceDistinction);
     const lines = [
       `Quotations found: ${records.length}`,
+      `Quotation candidates: ${records.length}`,
+      `Grounded speaker candidates: ${candidateCount}`,
       `Resolved speakers: ${resolved.length}`,
       `Unresolved speakers: ${unresolved.length}`,
       `Ambiguous speakers: ${ambiguous.length}`,
+      `Dependency-unavailable records: ${dependencyUnavailable.length}`,
       `Attribution counts: ${languageCountLine(attributionCounts)}`,
-      "Attribution types supported: explicit narrative attribution; Context Lock speaker; explicit quotation attribution (reserved for explicit quote metadata).",
-      "Boundary: preview-only. Speaker detection does not rewrite source text, create speakers, infer unnamed speakers, infer audience, override Context Lock, or alter Study View output."
+      `Speech predicate counts: ${languageCountLine(predicateCounts)}`,
+      `Confidence distribution: ${languageCountLine(confidenceCounts)}`,
+      `Rejected candidate notes: ${rejectedCount}`,
+      `Quoted-source distinctions: ${quotedSource.length}`,
+      "Attribution types supported: explicit_same_sentence_attribution; explicit_prior_sentence_attribution; explicit_quotation_attribution; context_lock_speaker; grammatical_subject_of_speech; dialogue_continuity; unresolved; ambiguous; dependency_unavailable.",
+      "False-positive safeguards: no speaker from mere chapter tradition, theology, narrator proximity, quoted prophet labels, retained out-of-scope pages, ontology class alone, or JESUS presence without explicit speech evidence.",
+      "Quoted-source distinction: current narrative speaker, quoted source, quoted prophetic/scriptural voice, and narrator introduction remain separate when source wording supports the distinction.",
+      "Boundary: preview-only. Speaker detection does not rewrite source text, create speakers, infer unnamed speakers, infer audience, override Context Lock, write storage, process queues, crawl, or alter Study View output."
     ];
     lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.detectedSpeaker} -> ${record.quoteId} (${record.attributionType})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(ambiguous.length ? `Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}` : "Ambiguous examples: none");
     lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.quoteId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
-    if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
+    lines.push(rejectedCount ? `Rejected candidate reasons: ${records.flatMap((record) => asArray(record.rejectedCandidates).map((candidate) => `${candidate.value || "blank"}:${candidate.reason}`)).slice(0, 6).join(" | ")}` : "Rejected candidate reasons: none");
     return lines;
   }
   function audienceDetectionRecord({ audienceLevel, detectedAudience, evidence, confidence, inferenceLevel, status = "resolved", sourceScope, sourceReference, quoteId = "" } = {}) {
@@ -15171,7 +15331,14 @@ createRevelationPartsSection(item.subEvents)
     }, {});
     const pronounReflexive = pronounRecords.filter((record) => record.grammaticalCase === "reflexive");
     const quotations = quotationBoundaryPreviewRecords();
-    const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
+    const speakerRecords = speakerDetectionPreviewRecords();
+    const speakers = qaDashboardResolutionCounts(speakerRecords);
+    const speakerAttributionCounts = speakerRecords.reduce((counts, record) => {
+      const key = normalizeText(record.attributionType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const quotedSourceDistinctions = speakerRecords.filter((record) => record.quotedSourceDistinction).length;
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
@@ -15194,6 +15361,8 @@ createRevelationPartsSection(item.subEvents)
       `Pronoun reflexives: found=${pronounReflexive.length}; resolved=${pronounReflexive.filter((record) => record.status === "resolved").length}; ambiguous=${pronounReflexive.filter((record) => record.status === "ambiguous").length}`,
       `Quotations found: ${quotations.length}`,
       `Speakers: found=${speakers.total}; resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}; status=${speakerStatus}`,
+      `Speaker attribution types: ${languageCountLine(speakerAttributionCounts)}`,
+      `Quoted-source distinctions: ${quotedSourceDistinctions}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
       `Dialogue dependency: status=${dialogueStatus}; rule=dialogue requires grounded speaker and audience support`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
@@ -15391,7 +15560,9 @@ createRevelationPartsSection(item.subEvents)
     const scenes = promotedSceneRecords();
     const timelines = promotedTimelineRecords();
     const knowledge = knowledgeGraphRecords();
-    const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
+    const speakerRecords = speakerDetectionPreviewRecords();
+    const speakers = qaDashboardResolutionCounts(speakerRecords);
+    const speakerRejectedCandidateCount = speakerRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
     const dialogue = qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords());
@@ -15437,11 +15608,16 @@ createRevelationPartsSection(item.subEvents)
         scopeBasis: "selected scope language preview",
         numerator: speakers.resolved,
         denominator: speakers.total,
-        excluded: Math.max(0, quotations.length - speakers.total),
+        excluded: speakerRejectedCandidateCount,
         sourceCollection: "speakerDetectionPreviewRecords",
-        status: speakers.total ? metricState({ denominator: speakers.total, numerator: speakers.resolved, unresolved: speakers.unresolved }) : "no_candidates",
-        statusRule: "resolved speakers / speaker candidates; zero candidates reports no_candidates, not 100% health.",
-        warnings: speakers.total ? [] : ["No grounded speaker candidates were generated. Do not infer JESUS or another speaker from broad chapter tradition without source-record attribution."]
+        status: speakers.total ? metricState({ denominator: speakers.total, numerator: speakers.resolved, unresolved: speakers.unresolved, unsupported: speakers.ambiguous }) : "no_candidates",
+        statusRule: "resolved speaker preview records / speaker-attribution candidates in the current scope; zero candidates reports no_candidates, ambiguous candidates remain ambiguous, and rejected candidates are not counted as resolved.",
+        warnings: [
+          speakers.total ? "" : "No grounded speaker candidates were generated. Do not infer JESUS or another speaker from broad chapter tradition without source-record attribution.",
+          speakers.ambiguous ? `${speakers.ambiguous} speaker records remain ambiguous by design; ambiguity is not collapsed to improve resolution.` : "",
+          speakerRejectedCandidateCount ? `${speakerRejectedCandidateCount} speaker candidate notes were rejected by v2 safeguards or grounding constraints.` : "",
+          speakerRecords.some((record) => record.quotedSourceDistinction) ? "Quoted source distinctions are present; quoted scripture/prophetic voice is kept separate from narrative speaker attribution." : ""
+        ]
       }),
       metricRecord({
         metricName: "Dialogue relationship availability",
