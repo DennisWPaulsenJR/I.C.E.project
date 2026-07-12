@@ -13453,16 +13453,66 @@ createRevelationPartsSection(item.subEvents)
     return lines;
   }
 
+  function pronounResolutionMetadata(token = "") {
+    const lower = normalizeText(token).toLowerCase();
+    const metadata = {
+      i: ["first", "singular", "unknown", "subject"],
+      me: ["first", "singular", "unknown", "object"],
+      my: ["first", "singular", "unknown", "possessive"],
+      mine: ["first", "singular", "unknown", "possessive"],
+      we: ["first", "plural", "unknown", "subject"],
+      us: ["first", "plural", "unknown", "object"],
+      our: ["first", "plural", "unknown", "possessive"],
+      ours: ["first", "plural", "unknown", "possessive"],
+      you: ["second", "ambiguous", "unknown", "subject_or_object"],
+      your: ["second", "ambiguous", "unknown", "possessive"],
+      yours: ["second", "ambiguous", "unknown", "possessive"],
+      ye: ["second", "plural", "unknown", "subject"],
+      thee: ["second", "singular", "unknown", "object"],
+      thou: ["second", "singular", "unknown", "subject"],
+      thy: ["second", "singular", "unknown", "possessive"],
+      thine: ["second", "singular", "unknown", "possessive"],
+      he: ["third", "singular", "masculine candidate", "subject"],
+      him: ["third", "singular", "masculine candidate", "object"],
+      his: ["third", "singular", "masculine candidate", "possessive"],
+      she: ["third", "singular", "feminine candidate", "subject"],
+      her: ["third", "singular", "feminine candidate", "object_or_possessive"],
+      hers: ["third", "singular", "feminine candidate", "possessive"],
+      it: ["third", "singular", "neuter candidate", "subject_or_object"],
+      its: ["third", "singular", "neuter candidate", "possessive"],
+      they: ["third", "plural", "unknown", "subject"],
+      them: ["third", "plural", "unknown", "object"],
+      their: ["third", "plural", "unknown", "possessive"],
+      theirs: ["third", "plural", "unknown", "possessive"],
+      himself: ["third", "singular", "masculine candidate", "reflexive"],
+      herself: ["third", "singular", "feminine candidate", "reflexive"],
+      itself: ["third", "singular", "neuter candidate", "reflexive"],
+      themselves: ["third", "plural", "unknown", "reflexive"],
+      thyself: ["second", "singular", "unknown", "reflexive"],
+      yourselves: ["second", "plural", "unknown", "reflexive"]
+    };
+    const values = metadata[lower];
+    if (!values) return null;
+    return {
+      person: values[0],
+      number: values[1],
+      genderCandidate: values[2],
+      grammaticalCase: values[3],
+      isReflexive: values[3] === "reflexive"
+    };
+  }
+
   function pronounResolutionSupportedPronoun(token = "") {
-    return /^(he|him|his|they|them|their|we|us|our|i|me|my|you|your)$/i.test(normalizeText(token));
+    return Boolean(pronounResolutionMetadata(token));
   }
 
   function pronounResolutionRoleForToken(token = "") {
-    const lower = normalizeText(token).toLowerCase();
-    if (/^(i|me|my)$/.test(lower)) return "speaker";
-    if (/^(you|your)$/.test(lower)) return "audience";
-    if (/^(we|us|our|they|them|their)$/.test(lower)) return "plural_or_group";
-    if (/^(he|him|his)$/.test(lower)) return "singular_actor";
+    const metadata = pronounResolutionMetadata(token);
+    if (!metadata) return "unsupported";
+    if (metadata.person === "first") return "speaker";
+    if (metadata.person === "second") return "audience";
+    if (metadata.number === "plural") return "plural_or_group";
+    if (metadata.person === "third") return "singular_actor";
     return "unsupported";
   }
 
@@ -13470,12 +13520,91 @@ createRevelationPartsSection(item.subEvents)
     return normalizeText(value).replace(/\s+\/\s+/g, " / ");
   }
 
+  function pronounResolutionIsTechnicalCandidate(value = "") {
+    return /unknown|narrator|source|current analyzed|source reference unavailable/i.test(pronounResolutionCleanCandidate(value));
+  }
+
   function pronounResolutionCandidateAllowed(candidate = "", role = "") {
     const value = pronounResolutionCleanCandidate(candidate);
-    if (!value || /unknown|narrator|source|current analyzed/i.test(value)) return false;
+    if (!value || pronounResolutionIsTechnicalCandidate(value)) return false;
     if (role === "plural_or_group") return /disciples|multitudes|people|brethren|scribes|pharisees|they|group|audience/i.test(value);
     if (role === "singular_actor") return /^(JESUS|JESUS CHRIST|Joseph|John the Baptist|Peter|Abraham|David|Moses|AngEL Of THE LORD|THE LORD|GOD)$/i.test(value);
     return true;
+  }
+
+  function pronounResolutionCandidateKey(candidate = {}) {
+    return pronounResolutionCleanCandidate(candidate.value || candidate.resolvedEntity || candidate.detectedSpeaker || candidate.detectedAudience || "").toLowerCase();
+  }
+
+  function pronounResolutionUniqueCandidates(candidates = [], role = "unsupported") {
+    const seen = new Set();
+    const rejected = [];
+    const accepted = asArray(candidates)
+      .map((candidate) => ({
+        value: pronounResolutionCleanCandidate(candidate.value || ""),
+        type: candidate.type || candidate.resolutionType || "candidate",
+        evidence: candidate.evidence || "",
+        confidence: candidate.confidence || "candidate",
+        source: candidate.source || ""
+      }))
+      .filter((candidate) => {
+        if (!candidate.value) {
+          rejected.push({ value: "", reason: "empty candidate" });
+          return false;
+        }
+        if (pronounResolutionIsTechnicalCandidate(candidate.value)) {
+          rejected.push({ value: candidate.value, reason: "technical/source/unresolved label" });
+          return false;
+        }
+        if (!pronounResolutionCandidateAllowed(candidate.value, role)) {
+          rejected.push({ value: candidate.value, reason: `candidate does not match ${role} pronoun constraints` });
+          return false;
+        }
+        const key = pronounResolutionCandidateKey(candidate);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    return { accepted, rejected };
+  }
+
+  function pronounResolutionTokenPositionFromId(tokenId = "") {
+    const parts = normalizeText(tokenId).split(".");
+    if (parts.length < 3) return null;
+    return {
+      sourceIndex: parts[1],
+      tokenIndex: Number(parts[2])
+    };
+  }
+
+  function pronounResolutionSentenceMap(records = []) {
+    const sentenceIds = new Map();
+    const grouped = asArray(records).reduce((groups, record) => {
+      const key = `${record.sourceIndex}.${record.sourceReference || record.sourceScope || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(record);
+      return groups;
+    }, {});
+    Object.values(grouped).forEach((sourceRecords) => {
+      const ordered = sourceRecords.slice().sort((left, right) => Number(left.tokenIndex || 0) - Number(right.tokenIndex || 0));
+      let sentenceIndex = 0;
+      ordered.forEach((record) => {
+        sentenceIds.set(record.tokenId, `${record.sourceIndex}.sentence.${sentenceIndex}`);
+        if (/^[.!?;:]$/.test(normalizeText(record.token || ""))) sentenceIndex += 1;
+      });
+    });
+    return sentenceIds;
+  }
+
+  function pronounResolutionQuoteForToken(record = {}) {
+    const tokenIndex = Number(record.tokenIndex ?? -1);
+    return quotationBoundaryPreviewRecords().find((quote) => {
+      const start = pronounResolutionTokenPositionFromId(quote.quoteStartToken);
+      const end = pronounResolutionTokenPositionFromId(quote.quoteEndToken);
+      if (!start || !end) return false;
+      if (String(start.sourceIndex) !== String(record.sourceIndex) || String(end.sourceIndex) !== String(record.sourceIndex)) return false;
+      return tokenIndex >= Number(start.tokenIndex) && tokenIndex <= Number(end.tokenIndex);
+    }) || null;
   }
 
   function pronounResolutionMatchingContextLocks(record = {}) {
@@ -13495,81 +13624,180 @@ createRevelationPartsSection(item.subEvents)
     const locks = pronounResolutionMatchingContextLocks(record);
     const candidates = [];
     locks.forEach((lock) => {
-      if (role === "speaker") candidates.push({ value: lock.speaker, type: "current speaker" });
-      else if (role === "audience") candidates.push({ value: lock.audience || lock.recipient, type: "current audience" });
+      if (role === "speaker") candidates.push({ value: lock.speaker, type: "context_role_match", evidence: "Context Lock speaker matches first-person pronoun role." });
+      else if (role === "audience") candidates.push({ value: lock.audience || lock.recipient, type: "context_role_match", evidence: "Context Lock audience/recipient matches second-person pronoun role." });
       else if (role === "plural_or_group") {
-        asArray(lock.participants).forEach((participant) => candidates.push({ value: participant, type: "Context Lock participant" }));
-        if (lock.audience) candidates.push({ value: lock.audience, type: "Context Lock audience" });
+        asArray(lock.participants).forEach((participant) => candidates.push({ value: participant, type: "context_role_match", evidence: "Context Lock participant matches plural pronoun role." }));
+        if (lock.audience) candidates.push({ value: lock.audience, type: "context_role_match", evidence: "Context Lock audience matches plural pronoun role." });
       } else if (role === "singular_actor") {
-        [lock.speaker, lock.audience, lock.recipient, lock.messenger, lock.authoritySource, ...asArray(lock.participants)].forEach((value) => candidates.push({ value, type: "Context Lock actor" }));
+        [lock.speaker, lock.audience, lock.recipient, lock.messenger, lock.authoritySource, ...asArray(lock.participants)].forEach((value) => candidates.push({ value, type: "context_role_match", evidence: "Context Lock actor role matches singular pronoun role." }));
       }
     });
-    const seen = new Set();
-    return candidates
-      .map((candidate) => ({ ...candidate, value: pronounResolutionCleanCandidate(candidate.value) }))
-      .filter((candidate) => pronounResolutionCandidateAllowed(candidate.value, role))
-      .filter((candidate) => {
-        const key = candidate.value.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+    return pronounResolutionUniqueCandidates(candidates, role);
   }
 
-  function pronounResolutionNearbyCandidates(record = {}, records = []) {
+  function pronounResolutionNearbyCandidates(record = {}, records = [], sentenceIds = new Map(), mode = "same_sentence_entity") {
     const role = pronounResolutionRoleForToken(record.token);
     if (role !== "singular_actor" && role !== "plural_or_group") return [];
+    const sentenceId = sentenceIds.get(record.tokenId);
+    const adjacentIds = new Set();
+    if (sentenceId) {
+      const match = sentenceId.match(/^(.*\.sentence\.)(\d+)$/);
+      if (match) {
+        adjacentIds.add(`${match[1]}${Math.max(0, Number(match[2]) - 1)}`);
+        adjacentIds.add(`${match[1]}${Number(match[2]) + 1}`);
+      }
+    }
     const candidates = records
-      .filter((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex < record.tokenIndex && record.tokenIndex - item.tokenIndex <= 8)
+      .filter((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex < record.tokenIndex && record.tokenIndex - item.tokenIndex <= 12)
+      .filter((item) => {
+        const itemSentenceId = sentenceIds.get(item.tokenId);
+        if (mode === "same_sentence_entity") return sentenceId && itemSentenceId === sentenceId;
+        return itemSentenceId && adjacentIds.has(itemSentenceId);
+      })
       .filter((item) => item.partOfSpeech === "proper_noun" || item.label === "possible proper noun")
-      .map((item) => ({ value: pronounResolutionCleanCandidate(item.token), type: "nearby explicit actor token" }))
-      .filter((candidate) => pronounResolutionCandidateAllowed(candidate.value, role));
-    const seen = new Set();
-    return candidates.filter((candidate) => {
-      const key = candidate.value.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+      .map((item) => ({ value: pronounResolutionCleanCandidate(item.token), type: mode, evidence: `${item.token} appears in ${mode.replace(/_/g, " ")} before ${record.token}.` }));
+    return pronounResolutionUniqueCandidates(candidates, role);
+  }
+
+  function pronounResolutionQuoteCandidates(record = {}, quote = null) {
+    if (!quote) return { accepted: [], rejected: [] };
+    const role = pronounResolutionRoleForToken(record.token);
+    if (role !== "speaker" && role !== "audience") return { accepted: [], rejected: [] };
+    const speakers = speakerDetectionPreviewRecords()
+      .filter((speaker) => speaker.quoteId === quote.quoteId && speaker.status === "resolved" && speaker.detectedSpeaker)
+      .map((speaker) => ({ value: speaker.detectedSpeaker, type: /explicit narrative attribution/i.test(speaker.attributionType || "") ? "explicit_narrative_attribution" : "explicit_speaker", evidence: speaker.evidence, confidence: speaker.confidence, source: speaker.speakerRecordId }));
+    const audiences = audienceDetectionPreviewRecords()
+      .filter((audience) => audience.quoteId === quote.quoteId && audience.status === "resolved" && audience.detectedAudience)
+      .map((audience) => ({ value: audience.detectedAudience, type: "explicit_audience", evidence: audience.evidence, confidence: audience.confidence, source: audience.audienceRecordId }));
+    return pronounResolutionUniqueCandidates(role === "speaker" ? speakers : audiences, role);
+  }
+
+  function pronounResolutionReflexiveCandidates(record = {}, sentenceIds = new Map()) {
+    const role = pronounResolutionRoleForToken(record.token);
+    const sentenceId = sentenceIds.get(record.tokenId);
+    if (!sentenceId) return { accepted: [], rejected: [] };
+    const grammar = grammaticalRolePreviewRecords()
+      .filter((item) => item.status === "resolved" && item.sourceReference === record.sourceReference && /possible_subject|possible_speaker/.test(item.grammaticalRole || ""))
+      .filter((item) => {
+        const tokenRecord = generatedLanguageRecords().find((languageRecord) => languageRecord.tokenId === item.tokenId);
+        return tokenRecord && sentenceIds.get(tokenRecord.tokenId) === sentenceId;
+      })
+      .map((item) => ({ value: item.relatedEntity, type: "reflexive_subject_match", evidence: item.evidence, confidence: item.confidence, source: item.roleRecordId }));
+    return pronounResolutionUniqueCandidates(grammar, role);
+  }
+
+  function pronounResolutionBuildRecord(record = {}, options = {}) {
+    const metadata = pronounResolutionMetadata(record.token) || {};
+    const candidates = asArray(options.candidates);
+    const rejectedCandidates = asArray(options.rejectedCandidates);
+    let status = options.status || "unresolved";
+    let resolvedEntity = "";
+    let resolutionType = options.resolutionType || "unresolved";
+    let evidence = options.evidence || "No single grounded candidate met conservative resolution rules.";
+    let confidence = options.confidence || "unresolved";
+    if (candidates.length === 1 && status !== "unresolved") {
+      resolvedEntity = candidates[0].value;
+      resolutionType = candidates[0].type || resolutionType;
+      evidence = candidates[0].evidence || `${record.token} linked to ${resolvedEntity} by ${resolutionType}.`;
+      confidence = candidates[0].confidence || "supported / single grounded candidate";
+    }
+    return {
+      pronoun: record.token,
+      person: metadata.person || "unknown",
+      number: metadata.number || "unknown",
+      genderCandidate: metadata.genderCandidate || "unknown",
+      grammaticalCase: metadata.grammaticalCase || "unknown",
+      sourceScope: record.sourceScope || currentStudyScopeLabel(),
+      sourceReference: record.sourceReference || currentStudyScopeLabel(),
+      tokenId: record.tokenId,
+      sentenceId: options.sentenceId || "",
+      quoteId: options.quoteId || "",
+      resolvedEntity,
+      resolutionType,
+      evidence,
+      candidateEntities: candidates.map((candidate) => candidate.value),
+      rejectedCandidates,
+      confidence,
+      evidenceDistance: "Distance 7: advisory language/support record derived from source tokens, Context Lock, quotation, speaker, audience, grammar, and subject/object preview records",
+      provenance: "I.C.E. conservative pronoun resolution v2 preview from english_surface_v1 language records and current-scope grounded support records",
+      inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
+      status
+    };
+  }
+
+  function pronounResolutionEvaluateCandidates(record = {}, candidateBundle = {}, sentenceId = "", quoteId = "") {
+    const candidates = asArray(candidateBundle.accepted);
+    const rejectedCandidates = asArray(candidateBundle.rejected);
+    if (candidates.length === 1) {
+      const candidate = candidates[0];
+      if (/same_sentence_entity|adjacent_sentence_entity/.test(candidate.type || "") && /^(he|him|his)$/i.test(record.token || "") && /^(JESUS|JESUS CHRIST|GOD|THE LORD)$/i.test(candidate.value || "")) {
+        return pronounResolutionBuildRecord(record, {
+          sentenceId,
+          quoteId,
+          status: "unresolved",
+          resolutionType: "unresolved",
+          candidates: [],
+          rejectedCandidates: [...rejectedCandidates, { value: candidate.value, reason: "presence alone is not enough to resolve third-person divine/Christ pronoun" }],
+          evidence: "Third-person pronoun was not resolved to JESUS/GOD/THE LORD from mere nearby presence; explicit speaker, audience, attribution, or role evidence is required.",
+          confidence: "unresolved / false-positive safeguard"
+        });
+      }
+      return pronounResolutionBuildRecord(record, {
+        sentenceId,
+        quoteId,
+        status: "resolved",
+        candidates,
+        rejectedCandidates
+      });
+    }
+    if (candidates.length > 1) {
+      return pronounResolutionBuildRecord(record, {
+        sentenceId,
+        quoteId,
+        status: "ambiguous",
+        resolutionType: "ambiguous",
+        candidates,
+        rejectedCandidates,
+        evidence: `Multiple plausible candidates remain: ${candidates.map((candidate) => candidate.value).slice(0, 6).join(", ")}.`,
+        confidence: "ambiguous / multiple grounded candidates"
+      });
+    }
+    return null;
   }
 
   function pronounResolutionPreviewRecords() {
     const records = generatedLanguageRecords();
+    const sentenceIds = pronounResolutionSentenceMap(records);
     const pronouns = records.filter((record) => record.partOfSpeech === "pronoun" && pronounResolutionSupportedPronoun(record.token));
     return pronouns.map((record) => {
-      const contextCandidates = pronounResolutionContextCandidates(record);
-      const nearbyCandidates = pronounResolutionNearbyCandidates(record, records);
-      const candidates = contextCandidates.length ? contextCandidates : nearbyCandidates;
-      const uniqueCandidates = candidates.map((candidate) => candidate.value);
-      let status = "unresolved";
-      let resolvedEntity = "";
-      let resolutionType = "not resolved";
-      let evidence = "No single grounded candidate met conservative resolution rules.";
-      let confidence = "unresolved";
-      if (uniqueCandidates.length === 1) {
-        status = "resolved";
-        resolvedEntity = uniqueCandidates[0];
-        resolutionType = candidates[0].type;
-        evidence = `${record.token} linked to ${resolvedEntity} by ${resolutionType} within ${record.sourceReference || currentStudyScopeLabel()}.`;
-        confidence = "strong / single grounded candidate";
-      } else if (uniqueCandidates.length > 1) {
-        status = "ambiguous";
-        evidence = `Multiple plausible candidates: ${uniqueCandidates.slice(0, 5).join(", ")}.`;
-        confidence = "ambiguous / multiple grounded candidates";
+      const metadata = pronounResolutionMetadata(record.token) || {};
+      const sentenceId = sentenceIds.get(record.tokenId) || "";
+      const quote = pronounResolutionQuoteForToken(record);
+      const quoteId = quote?.quoteId || "";
+      const bundles = [];
+      if (quote) bundles.push(pronounResolutionQuoteCandidates(record, quote));
+      if (metadata.isReflexive) bundles.push(pronounResolutionReflexiveCandidates(record, sentenceIds));
+      bundles.push(pronounResolutionContextCandidates(record));
+      bundles.push(pronounResolutionNearbyCandidates(record, records, sentenceIds, "same_sentence_entity"));
+      bundles.push(pronounResolutionNearbyCandidates(record, records, sentenceIds, "adjacent_sentence_entity"));
+      const allRejected = [];
+      for (const bundle of bundles) {
+        allRejected.push(...asArray(bundle.rejected));
+        const evaluated = pronounResolutionEvaluateCandidates(record, { accepted: bundle.accepted, rejected: allRejected }, sentenceId, quoteId);
+        if (evaluated) return evaluated;
       }
-      return {
-        pronoun: record.token,
-        sourceScope: record.sourceScope || currentStudyScopeLabel(),
-        sourceReference: record.sourceReference || currentStudyScopeLabel(),
-        tokenId: record.tokenId,
-        resolvedEntity,
-        resolutionType,
-        evidence,
-        confidence,
-        provenance: "I.C.E. conservative pronoun resolution preview from english_surface_v1 and current-scope Context Lock records",
-        inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
-        status
-      };
+      return pronounResolutionBuildRecord(record, {
+        sentenceId,
+        quoteId,
+        status: "unresolved",
+        resolutionType: "unresolved",
+        rejectedCandidates: allRejected,
+        evidence: allRejected.length
+          ? `No candidate survived conservative pronoun resolution rules; rejected=${allRejected.slice(0, 4).map((item) => `${item.value || "blank"} (${item.reason})`).join("; ")}.`
+          : "No grounded candidate found from quote speaker/audience, explicit role, Context Lock, same-sentence, or adjacent-sentence evidence.",
+        confidence: "unresolved"
+      });
     });
   }
 
@@ -13578,17 +13806,35 @@ createRevelationPartsSection(item.subEvents)
     const resolved = records.filter((record) => record.status === "resolved");
     const unresolved = records.filter((record) => record.status === "unresolved");
     const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const typeCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.resolutionType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const personCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.person || "unknown") || "unknown";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const reflexive = records.filter((record) => record.grammaticalCase === "reflexive");
+    const rejected = records.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
     const lines = [
       `Pronouns found: ${records.length}`,
       `Resolved: ${resolved.length}`,
       `Unresolved: ${unresolved.length}`,
       `Ambiguous: ${ambiguous.length}`,
-      `Resolution confidence: ${resolved.length ? "strong only" : "no strong resolutions in current preview"}`,
-      "Supported pronouns: he, him, his, they, them, their, we, us, our, I, me, my, you, your",
-      "Boundary: preview-only. Pronoun resolution does not rewrite source text, Context Lock, entity classification, semantic records, Study View output, queues, or scope."
+      `Resolution types: ${languageCountLine(typeCounts)}`,
+      `Person counts: ${languageCountLine(personCounts)}`,
+      `Reflexive pronouns: ${reflexive.length}; resolved=${reflexive.filter((record) => record.status === "resolved").length}; ambiguous=${reflexive.filter((record) => record.status === "ambiguous").length}`,
+      `Rejected candidate notes: ${rejected}`,
+      `Resolution confidence: ${resolved.length ? "supported/strong preview only where a single grounded candidate survives priority rules" : "no strong resolutions in current preview"}`,
+      "Supported pronouns: I, me, my, mine, we, us, our, ours, you, your, yours, ye, thee, thou, thy, thine, he, him, his, she, her, hers, it, its, they, them, their, theirs, himself, herself, itself, themselves, thyself, yourselves.",
+      "Priority: explicit quotation speaker/audience; explicit narrative attribution; Context Lock role match; same-sentence grounded entity; adjacent-sentence grounded entity; unresolved.",
+      "False-positive safeguards: no JESUS/GOD/THE LORD third-person resolution from mere presence; ontology class alone is not identity evidence; ambiguous remains ambiguous.",
+      "Boundary: preview-only. Pronoun resolution does not rewrite source text, Context Lock, entity classification, semantic records, Study View output, queues, storage, or scope."
     ];
     lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.pronoun} -> ${record.resolvedEntity} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
-    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.pronoun} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
+    lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.pronoun} (${record.sourceReference}) - ${record.evidence}`).join(" | ")}` : "Unresolved examples: none");
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.pronoun}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
@@ -14911,7 +15157,19 @@ createRevelationPartsSection(item.subEvents)
       possible: strongAlignmentRecords.filter((record) => record.status === "possible_alignment").length,
       unresolved: strongAlignmentRecords.filter((record) => record.status === "unresolved").length
     };
-    const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
+    const pronounRecords = pronounResolutionPreviewRecords();
+    const pronouns = qaDashboardResolutionCounts(pronounRecords);
+    const pronounPersonCounts = pronounRecords.reduce((counts, record) => {
+      const key = normalizeText(record.person || "unknown") || "unknown";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const pronounTypeCounts = pronounRecords.reduce((counts, record) => {
+      const key = normalizeText(record.resolutionType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const pronounReflexive = pronounRecords.filter((record) => record.grammaticalCase === "reflexive");
     const quotations = quotationBoundaryPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
@@ -14931,6 +15189,9 @@ createRevelationPartsSection(item.subEvents)
       `Translation alignment: found=${translationAlignment.total}; aligned=${translationAlignment.aligned}; possible=${translationAlignment.possible}; unresolved=${translationAlignment.unresolved}; ambiguous=${translationAlignment.ambiguous}`,
       `Strong alignment: found=${strongAlignment.total}; explicit=${strongAlignment.explicit}; translation=${strongAlignment.translation}; possible=${strongAlignment.possible}; unresolved=${strongAlignment.unresolved}`,
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
+      `Pronoun person counts: ${languageCountLine(pronounPersonCounts)}`,
+      `Pronoun resolution sources: ${languageCountLine(pronounTypeCounts)}`,
+      `Pronoun reflexives: found=${pronounReflexive.length}; resolved=${pronounReflexive.filter((record) => record.status === "resolved").length}; ambiguous=${pronounReflexive.filter((record) => record.status === "ambiguous").length}`,
       `Quotations found: ${quotations.length}`,
       `Speakers: found=${speakers.total}; resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}; status=${speakerStatus}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
@@ -15134,7 +15395,16 @@ createRevelationPartsSection(item.subEvents)
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
     const dialogue = qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords());
-    const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
+    const pronounRecords = pronounResolutionPreviewRecords();
+    const pronouns = qaDashboardResolutionCounts(pronounRecords);
+    const pronounRejectedCandidateCount = pronounRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
+    const pronounDependencyWarnings = [];
+    if (pronounRecords.length && !speakerDetectionPreviewRecords().some((record) => record.status === "resolved")) {
+      pronounDependencyWarnings.push("No resolved speaker preview records are available; first-person quotation pronouns remain unresolved unless Context Lock supplies a single grounded speaker.");
+    }
+    if (pronounRecords.length && !audienceDetectionPreviewRecords().some((record) => record.status === "resolved")) {
+      pronounDependencyWarnings.push("No resolved audience preview records are available; second-person quotation pronouns remain unresolved unless Context Lock supplies a single grounded audience.");
+    }
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
     const themeCatalog = themePromotionCandidates();
@@ -15222,11 +15492,16 @@ createRevelationPartsSection(item.subEvents)
         scopeBasis: "selected scope language preview",
         numerator: pronouns.resolved,
         denominator: pronouns.total,
-        excluded: 0,
+        excluded: pronounRejectedCandidateCount,
         sourceCollection: "pronounResolutionPreviewRecords; subjectObjectPreviewRecords; actionChainPreviewRecords",
-        status: pronouns.total ? metricState({ denominator: pronouns.total, numerator: pronouns.resolved, unresolved: pronouns.unresolved }) : "no_candidates",
-        statusRule: "pronoun resolution is independent from subject/object and action-chain previews; downstream records may resolve from explicit nouns/entities.",
-        warnings: !pronouns.resolved && (subjectObject.resolved || actionChains.resolved) ? [`Subject/Object resolved=${subjectObject.resolved} and Action Chains resolved=${actionChains.resolved} without resolved pronouns; downstream resolution is coming from explicit nouns/entities or other grounded records.`] : []
+        status: pronouns.total ? metricState({ denominator: pronouns.total, numerator: pronouns.resolved, unresolved: pronouns.unresolved, unsupported: pronouns.ambiguous }) : "no_candidates",
+        statusRule: "resolved pronoun preview records / pronouns eligible for resolution in the selected current scope; zero candidates reports no_candidates, ambiguous candidates remain ambiguous, and rejected candidate notes are not treated as successful resolution.",
+        warnings: [
+          !pronouns.resolved && (subjectObject.resolved || actionChains.resolved) ? `Subject/Object resolved=${subjectObject.resolved} and Action Chains resolved=${actionChains.resolved} without resolved pronouns; downstream resolution is coming from explicit nouns/entities or other grounded records.` : "",
+          pronouns.ambiguous ? `${pronouns.ambiguous} pronoun records remain ambiguous by design; ambiguity is not collapsed to improve coverage.` : "",
+          pronounRejectedCandidateCount ? `${pronounRejectedCandidateCount} candidate notes were rejected by v2 false-positive safeguards or role constraints.` : "",
+          ...pronounDependencyWarnings
+        ]
       }),
       metricRecord({
         metricName: "Explainability authority completeness",
