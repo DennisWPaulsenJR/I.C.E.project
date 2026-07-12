@@ -14232,19 +14232,82 @@ createRevelationPartsSection(item.subEvents)
     lines.push(rejectedCount ? `Rejected candidate reasons: ${records.flatMap((record) => asArray(record.rejectedCandidates).map((candidate) => `${candidate.value || "blank"}:${candidate.reason}`)).slice(0, 6).join(" | ")}` : "Rejected candidate reasons: none");
     return lines;
   }
-  function audienceDetectionRecord({ audienceLevel, detectedAudience, evidence, confidence, inferenceLevel, status = "resolved", sourceScope, sourceReference, quoteId = "" } = {}) {
+  function audienceDetectionScopeForAudience(audience = "", level = "") {
+    const value = normalizeText(audience);
+    if (!value) return "unresolved";
+    if (/parable|story/i.test(level) || /parable/i.test(value)) return "parable_internal";
+    if (/reader/i.test(level)) return "later_readers";
+    if (/universal|general/i.test(level)) return "universal_class";
+    if (/disciple/i.test(value)) return "disciples";
+    if (/multitude|people|crowd/i.test(value)) return "multitude";
+    if (/house|household|family/i.test(value)) return "household";
+    if (/nation|israel|gentile/i.test(value)) return "nation";
+    if (/whosoever|every one|all who|they that|he that|those/i.test(value)) return "indefinite_class";
+    if (/hearer|reader|addressed hearer/i.test(value)) return "unnamed_group";
+    if (/\b(and|,|\/)\b/.test(value)) return "named_group";
+    return /^[A-Z]/.test(value) || /^(JESUS|Joseph|Mary|Peter|John|Herod)$/i.test(value) ? "individual" : "unnamed_group";
+  }
+
+  function audienceDetectionGrammarForAudience(audience = "", token = "") {
+    const meta = pronounResolutionMetadata(token || audience);
+    return {
+      grammaticalPerson: meta?.person || (/directly addressed/i.test(audience) ? "second" : "unknown"),
+      grammaticalNumber: meta?.number || (/disciples|multitudes|people|hearers|readers|those|they|all|every/i.test(audience) ? "plural" : "unknown")
+    };
+  }
+
+  function audienceDetectionRecord({
+    audienceLevel,
+    detectedAudience,
+    evidence,
+    confidence,
+    inferenceLevel,
+    status = "resolved",
+    sourceScope,
+    sourceReference,
+    quoteId = "",
+    sentenceId = "",
+    speakerRecordId = "",
+    audienceCandidates = [],
+    rejectedCandidates = [],
+    audienceScope,
+    addressForm = "",
+    grammaticalPerson = "",
+    grammaticalNumber = "",
+    physicalPresenceStatus = "",
+    directness = "",
+    applicationType = "",
+    speakerRelationship = "",
+    transitionType = "no_transition"
+  } = {}) {
     const safeLevel = normalizeText(audienceLevel || "Unresolved Audience");
     const safeAudience = normalizeText(detectedAudience || "");
+    const grammar = audienceDetectionGrammarForAudience(safeAudience, addressForm);
+    const derivedScope = audienceScope || audienceDetectionScopeForAudience(safeAudience, safeLevel);
     return {
       audienceRecordId: `english_surface_v1.audience.${safeLevel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${safeAudience.toLowerCase().replace(/[^a-z0-9]+/g, "-") || status}.${Math.abs(String(evidence || quoteId || safeLevel).split("").reduce((sum, char) => sum + char.charCodeAt(0), 0))}`,
       sourceScope: sourceScope || currentStudyScopeLabel(),
       sourceReference: sourceReference || currentStudyScopeLabel(),
+      sentenceId,
       quoteId,
+      speakerRecordId,
       audienceLevel: safeLevel,
       detectedAudience: safeAudience,
+      audienceCandidates: asArray(audienceCandidates).length ? asArray(audienceCandidates) : (safeAudience ? [safeAudience] : []),
+      rejectedCandidates: asArray(rejectedCandidates),
+      audienceScope: derivedScope,
+      addressForm: addressForm || "",
+      grammaticalPerson: grammaticalPerson || grammar.grammaticalPerson,
+      grammaticalNumber: grammaticalNumber || grammar.grammaticalNumber,
+      physicalPresenceStatus: physicalPresenceStatus || (/Immediate Physical/i.test(safeLevel) ? "narratively_present" : (/Reader/i.test(safeLevel) ? "later_reader" : (/Universal|Intended/i.test(safeLevel) ? "not_physically_present" : (/Parable/i.test(safeLevel) ? "parable_internal" : "unresolved")))),
+      directness: directness || (/Direct Address/i.test(safeLevel) ? "explicit_direct_address" : (/Narrative/i.test(safeLevel) ? "explicit_narrative_attribution" : (/Immediate/i.test(safeLevel) ? "context_lock_grounded" : (/Intended/i.test(safeLevel) ? "intended_hearer_phrase" : (/Universal/i.test(safeLevel) ? "generalized_application_phrase" : "unresolved"))))),
+      applicationType: applicationType || (/Universal/i.test(safeLevel) ? "generalized_class" : (/Intended/i.test(safeLevel) ? "intended_hearers" : (/Reader/i.test(safeLevel) ? "later_reader_application" : (/Immediate|Direct|Narrative/i.test(safeLevel) ? "immediate_only" : "unresolved")))),
+      speakerRelationship: speakerRelationship || "",
+      transitionType,
       evidence: evidence || "No grounded audience evidence recorded.",
       confidence: confidence || "unresolved",
       provenance: "I.C.E. audience detection preview from english_surface_v1, quotation boundaries, and current-scope Context Lock records",
+      evidenceDistance: "Distance 7: advisory audience attribution record derived from source wording, Context Lock, quotation, speaker, grammar, and direct-address preview records",
       inferenceLevel: inferenceLevel || "Unresolved / preview only",
       status
     };
@@ -14269,7 +14332,12 @@ createRevelationPartsSection(item.subEvents)
         confidence: "supported / Context Lock participant",
         inferenceLevel: "Context / preview only",
         sourceScope,
-        sourceReference
+        sourceReference,
+        audienceScope: audienceDetectionScopeForAudience(participant, "Immediate Physical Audience"),
+        physicalPresenceStatus: "narratively_present",
+        directness: "context_lock_grounded",
+        applicationType: "immediate_only",
+        speakerRelationship: lock.speaker ? `${lock.speaker} -> present participant` : ""
       })));
       const audience = normalizeText(lock.audience || lock.recipient || "");
       if (audience && !/unknown|narrator|source/i.test(audience)) audienceDetectionAddUnique(records, audienceDetectionRecord({
@@ -14279,7 +14347,12 @@ createRevelationPartsSection(item.subEvents)
         confidence: "strong / Context Lock audience",
         inferenceLevel: "Context / preview only",
         sourceScope,
-        sourceReference
+        sourceReference,
+        audienceScope: audienceDetectionScopeForAudience(audience, "Direct Address Audience"),
+        physicalPresenceStatus: "narratively_present",
+        directness: "context_lock_grounded",
+        applicationType: "immediate_only",
+        speakerRelationship: lock.speaker ? `${lock.speaker} -> ${audience}` : ""
       }));
       const narratorAudience = normalizeText(lock.sourceContext?.sourceTitle || lock.eventScope || "");
       if (narratorAudience) audienceDetectionAddUnique(records, audienceDetectionRecord({
@@ -14289,19 +14362,31 @@ createRevelationPartsSection(item.subEvents)
         confidence: "supported / narrative source frame",
         inferenceLevel: "Context / preview only",
         sourceScope,
-        sourceReference
+        sourceReference,
+        audienceScope: "unnamed_group",
+        physicalPresenceStatus: "narratively_present",
+        directness: "explicit_narrative_attribution",
+        applicationType: "immediate_only"
       }));
     });
     return records;
   }
 
+  function audienceDetectionSpeakerForQuote(quoteId = "") {
+    if (!quoteId) return null;
+    return speakerDetectionPreviewRecords().find((record) => record.quoteId === quoteId) || null;
+  }
+
   function audienceDetectionDirectAddressRecords() {
     const records = [];
     const languageRecords = generatedLanguageRecords();
+    const sentenceIds = pronounResolutionSentenceMap(languageRecords);
     const quotes = quotationBoundaryPreviewRecords();
     const directTokens = languageRecords.filter((record) => /^(you|your|ye|thee|thou|thy|thine)$/i.test(normalizeText(record.token)));
     directTokens.forEach((token) => {
       const quote = quotes.find((item) => String(item.sourceIndex) === String(token.sourceIndex) && Number(token.tokenIndex) >= Number(item.startTokenIndex || 0) && Number(token.tokenIndex) <= Number(item.endTokenIndex || 0));
+      const speaker = audienceDetectionSpeakerForQuote(quote?.quoteId || "");
+      const meta = pronounResolutionMetadata(token.token) || {};
       audienceDetectionAddUnique(records, audienceDetectionRecord({
         audienceLevel: "Direct Address Audience",
         detectedAudience: "directly addressed hearer(s)",
@@ -14310,7 +14395,17 @@ createRevelationPartsSection(item.subEvents)
         inferenceLevel: "Grounded Observation / preview only",
         sourceScope: token.sourceScope,
         sourceReference: token.sourceReference,
-        quoteId: quote?.quoteId || ""
+        sentenceId: sentenceIds.get(token.tokenId) || "",
+        quoteId: quote?.quoteId || "",
+        speakerRecordId: speaker?.speakerRecordId || "",
+        audienceScope: meta.number === "singular" ? "individual" : (meta.number === "plural" ? "unnamed_group" : "unresolved"),
+        addressForm: token.token,
+        grammaticalPerson: meta.person || "second",
+        grammaticalNumber: meta.number || "ambiguous",
+        physicalPresenceStatus: "possibly_present",
+        directness: "grammatical_direct_address",
+        applicationType: "immediate_only",
+        speakerRelationship: speaker?.detectedSpeaker ? `${speaker.detectedSpeaker} -> directly addressed hearer(s)` : ""
       }));
     });
     return records;
@@ -14328,7 +14423,11 @@ createRevelationPartsSection(item.subEvents)
           confidence: "strong / explicit invitation formula",
           inferenceLevel: "Grounded Observation / preview only",
           sourceScope: entry.sourceScope,
-          sourceReference: entry.sourceReference
+          sourceReference: entry.sourceReference,
+          audienceScope: "indefinite_class",
+          physicalPresenceStatus: "not_physically_present",
+          directness: "intended_hearer_phrase",
+          applicationType: "intended_hearers"
         }));
       }
       if (/\b(whosoever|every one|he that|they that)\b/i.test(text)) {
@@ -14339,11 +14438,57 @@ createRevelationPartsSection(item.subEvents)
           confidence: "supported / generalizing source phrase",
           inferenceLevel: "Supported Meaning / preview only",
           sourceScope: entry.sourceScope,
-          sourceReference: entry.sourceReference
+          sourceReference: entry.sourceReference,
+          audienceScope: "universal_class",
+          physicalPresenceStatus: "not_physically_present",
+          directness: "generalized_application_phrase",
+          applicationType: "generalized_class"
+        }));
+      }
+      if (/\bparable\b/i.test(text) && /\b(man|servant|enemy|sower|householder|king|son|virgins)\b/i.test(text)) {
+        audienceDetectionAddUnique(records, audienceDetectionRecord({
+          audienceLevel: "Parable Internal Audience / Participants",
+          detectedAudience: "parable-internal figures named by story wording",
+          evidence: `Parable/story wording found in ${entry.sourceReference || currentStudyScopeLabel()}; internal figures remain distinct from physical audience.`,
+          confidence: "supported / explicit parable frame",
+          inferenceLevel: "Grounded Observation / preview only",
+          sourceScope: entry.sourceScope,
+          sourceReference: entry.sourceReference,
+          audienceScope: "parable_internal",
+          physicalPresenceStatus: "parable_internal",
+          directness: "unresolved",
+          applicationType: "possible_application",
+          transitionType: "parable_frame_to_internal_story"
         }));
       }
     });
     return records;
+  }
+
+  function audienceDetectionTransitionType(previous = {}, current = {}) {
+    if (!previous || !current || !previous.audienceLevel || !current.audienceLevel) return "no_transition";
+    if (previous.sourceReference !== current.sourceReference) return "no_transition";
+    const before = previous.audienceLevel;
+    const after = current.audienceLevel;
+    if (/Immediate Physical/.test(before) && /Intended Hearers/.test(after)) return "physical_to_intended_hearers";
+    if (/Immediate|Direct|Narrative/.test(before) && /Universal/.test(after)) return "immediate_to_general_application";
+    if (/Narrative/.test(before) && /Reader/.test(after)) return "narrator_to_reader";
+    if (/Parable/.test(after)) return "parable_frame_to_internal_story";
+    if (/Parable/.test(before) && /Direct|Intended|Universal/.test(after)) return "internal_story_to_explanation";
+    if (previous.audienceScope === "multitude" && current.audienceScope === "disciples") return "multitude_to_disciples";
+    if (previous.audienceScope === "disciples" && current.audienceScope === "multitude") return "disciples_to_multitude";
+    if (previous.audienceScope === "named_group" && current.audienceScope === "individual") return "group_to_individual";
+    if (previous.audienceScope === "individual" && /group|multitude|disciples/.test(current.audienceScope || "")) return "individual_to_group";
+    return "no_transition";
+  }
+
+  function audienceDetectionApplyTransitions(records = []) {
+    return asArray(records).map((record, index, list) => {
+      const transitionType = record.transitionType && record.transitionType !== "no_transition"
+        ? record.transitionType
+        : audienceDetectionTransitionType(list[index - 1], record);
+      return { ...record, transitionType };
+    });
   }
 
   function audienceDetectionPreviewRecords() {
@@ -14361,7 +14506,7 @@ createRevelationPartsSection(item.subEvents)
       inferenceLevel: "Unresolved / preview only",
       status: "unresolved"
     }));
-    return records.slice(0, 120);
+    return audienceDetectionApplyTransitions(records).slice(0, 160);
   }
 
   function audienceDetectionInspectorLines() {
@@ -14374,20 +14519,58 @@ createRevelationPartsSection(item.subEvents)
     const resolved = records.filter((record) => record.status === "resolved");
     const unresolved = records.filter((record) => record.status === "unresolved");
     const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const directnessCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.directness || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const numberCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.grammaticalNumber || "unknown") || "unknown";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const physicalCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.physicalPresenceStatus || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const applicationCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.applicationType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const transitionCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.transitionType || "no_transition") || "no_transition";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const candidateCount = records.reduce((sum, record) => sum + asArray(record.audienceCandidates).length, 0);
+    const rejectedCount = records.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
     const lines = [
       `Audience records: ${records.length}`,
+      `Audience candidates: ${candidateCount}`,
       `Resolved: ${resolved.length}`,
       `Unresolved: ${unresolved.length}`,
       `Ambiguous: ${ambiguous.length}`,
       `Audience levels: ${languageCountLine(byLevel)}`,
-      "Levels kept distinct: Immediate Physical Audience; Direct Address Audience; Narrative Audience; Reader Audience; Intended Hearers; Universal / General Application.",
+      `Directness counts: ${languageCountLine(directnessCounts)}`,
+      `Singular/plural counts: ${languageCountLine(numberCounts)}`,
+      `Physical-presence counts: ${languageCountLine(physicalCounts)}`,
+      `Application-type counts: ${languageCountLine(applicationCounts)}`,
+      `Audience transition counts: ${languageCountLine(transitionCounts)}`,
+      `Rejected candidate notes: ${rejectedCount}`,
+      "Levels kept distinct: Immediate Physical Audience; Direct Address Audience; Narrative Audience; Reader Audience; Intended Hearers; Universal / General Application; Parable Internal Audience / Participants.",
       "Parable caution: spoken audience, story characters, figurative referents, later readers, and possible application must remain distinct unless explicitly grounded.",
-      "Boundary: preview-only. Audience detection does not rewrite Context Lock, create audiences, infer doctrine, assign parable referents, or alter Study View output."
+      "False-universalization safeguard: intended hearers, reader audience, and universal/general application may extend presentation but may not replace immediate physical or direct-address audience.",
+      "Boundary: preview-only. Audience detection does not rewrite Context Lock, create audiences, infer doctrine, assign parable referents, universalize private speech, write storage, or alter Study View output."
     ];
-    ["Immediate Physical Audience", "Direct Address Audience", "Narrative Audience", "Intended Hearers", "Reader Audience", "Universal / General Application"].forEach((level) => {
+    ["Immediate Physical Audience", "Direct Address Audience", "Narrative Audience", "Intended Hearers", "Reader Audience", "Universal / General Application", "Parable Internal Audience / Participants"].forEach((level) => {
       const examples = records.filter((record) => record.audienceLevel === level).slice(0, 4);
       lines.push(examples.length ? `${level}: ${examples.map((record) => record.detectedAudience || record.status).join(" | ")}` : `${level}: none detected`);
     });
+    const parable = records.filter((record) => /Parable/.test(record.audienceLevel)).slice(0, 4);
+    lines.push(parable.length ? `Sample parable distinctions: ${parable.map((record) => `${record.detectedAudience} (${record.physicalPresenceStatus})`).join(" | ")}` : "Sample parable distinctions: none detected");
+    lines.push(rejectedCount ? `Rejected candidate reasons: ${records.flatMap((record) => asArray(record.rejectedCandidates).map((candidate) => `${candidate.value || "blank"}:${candidate.reason}`)).slice(0, 6).join(" | ")}` : "Rejected candidate reasons: none");
     if (unresolved.length) lines.push(`Unresolved examples: ${unresolved.slice(0, 5).map((record) => record.evidence).join(" | ")}`);
     return lines;
   }
@@ -15339,7 +15522,15 @@ createRevelationPartsSection(item.subEvents)
       return counts;
     }, {});
     const quotedSourceDistinctions = speakerRecords.filter((record) => record.quotedSourceDistinction).length;
-    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const audienceRecords = audienceDetectionPreviewRecords();
+    const audiences = qaDashboardResolutionCounts(audienceRecords);
+    const audienceLevelCounts = audienceRecords.reduce((counts, record) => {
+      const key = normalizeText(record.audienceLevel || "Unresolved Audience") || "Unresolved Audience";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const audienceTransitionCount = audienceRecords.filter((record) => record.transitionType && record.transitionType !== "no_transition").length;
+    const audienceDependencyUnavailable = audienceRecords.filter((record) => record.status === "dependency_unavailable").length;
     const grammar = qaDashboardResolutionCounts(grammaticalRolePreviewRecords());
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
@@ -15364,6 +15555,8 @@ createRevelationPartsSection(item.subEvents)
       `Speaker attribution types: ${languageCountLine(speakerAttributionCounts)}`,
       `Quoted-source distinctions: ${quotedSourceDistinctions}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
+      `Audience levels: ${languageCountLine(audienceLevelCounts)}`,
+      `Audience transitions: ${audienceTransitionCount}; dependency-unavailable=${audienceDependencyUnavailable}`,
       `Dialogue dependency: status=${dialogueStatus}; rule=dialogue requires grounded speaker and audience support`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
       `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
@@ -15423,7 +15616,13 @@ createRevelationPartsSection(item.subEvents)
     const quotations = quotationBoundaryPreviewRecords();
     const quotationUnresolved = quotations.filter((record) => /unresolved/i.test(normalizeText(record.quoteType || record.status))).length;
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
-    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const audienceRecords = audienceDetectionPreviewRecords();
+    const audiences = qaDashboardResolutionCounts(audienceRecords);
+    const immediateAudienceCandidates = audienceRecords.filter((record) => /Immediate Physical Audience|Direct Address Audience|Narrative Audience/i.test(record.audienceLevel || ""));
+    const extendedAudienceCandidates = audienceRecords.filter((record) => /Intended Hearers|Reader Audience|Universal \/ General Application|Parable Internal Audience/i.test(record.audienceLevel || ""));
+    const groundedImmediateAudiences = immediateAudienceCandidates.filter((record) => record.status === "resolved" && record.detectedAudience);
+    const groundedExtendedAudiences = extendedAudienceCandidates.filter((record) => record.status === "resolved" && record.detectedAudience);
+    const audienceTransitionCount = audienceRecords.filter((record) => record.transitionType && record.transitionType !== "no_transition").length;
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
     const consequenceChains = qaDashboardResolutionCounts(consequenceChainPreviewRecords());
@@ -15629,6 +15828,34 @@ createRevelationPartsSection(item.subEvents)
         status: dialogue.total ? metricState({ denominator: dialogue.total, numerator: dialogue.resolved, unresolved: dialogue.unresolved }) : (speakers.total ? "active_no_records" : "inactive dependency"),
         statusRule: "dialogue relationships require quotation/speaker/audience support; missing speaker candidates make dialogue unavailable rather than healthy.",
         warnings: !speakers.total && (quotations.length || audiences.total) ? ["Quotations or audiences exist without speaker candidates; dialogue status depends on speaker attribution availability."] : []
+      }),
+      metricRecord({
+        metricName: "Immediate audience resolution",
+        scopeBasis: "selected scope immediate/direct/narrative audience preview",
+        numerator: groundedImmediateAudiences.length,
+        denominator: immediateAudienceCandidates.length,
+        excluded: Math.max(0, audienceRecords.length - immediateAudienceCandidates.length),
+        sourceCollection: "audienceDetectionPreviewRecords",
+        status: immediateAudienceCandidates.length ? metricState({ denominator: immediateAudienceCandidates.length, numerator: groundedImmediateAudiences.length, unresolved: immediateAudienceCandidates.filter((record) => record.status === "unresolved").length, unsupported: immediateAudienceCandidates.filter((record) => record.status === "ambiguous").length }) : "no_candidates",
+        statusRule: "grounded immediate/direct/narrative audience records / immediate audience candidates; extended application records are excluded from this denominator.",
+        warnings: [
+          immediateAudienceCandidates.some((record) => record.status === "ambiguous") ? "Immediate audience ambiguity remains preserved and is not collapsed into a resolved audience." : "",
+          audienceTransitionCount ? `${audienceTransitionCount} audience transition signals are visible; transitions do not rewrite immediate audience identity.` : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Extended audience classification",
+        scopeBasis: "selected scope intended-hearer/reader/general/parable audience preview",
+        numerator: groundedExtendedAudiences.length,
+        denominator: extendedAudienceCandidates.length,
+        excluded: Math.max(0, audienceRecords.length - extendedAudienceCandidates.length),
+        sourceCollection: "audienceDetectionPreviewRecords",
+        status: extendedAudienceCandidates.length ? metricState({ denominator: extendedAudienceCandidates.length, numerator: groundedExtendedAudiences.length, unresolved: extendedAudienceCandidates.filter((record) => record.status === "unresolved").length, unsupported: extendedAudienceCandidates.filter((record) => record.status === "ambiguous").length }) : "no_candidates",
+        statusRule: "grounded intended-hearer, reader, generalized-application, and parable-internal records / extended-audience candidates; these records may not replace immediate audience.",
+        warnings: [
+          groundedExtendedAudiences.length ? "Extended audience/application records are classified separately from immediate audience to prevent false universalization." : "",
+          extendedAudienceCandidates.some((record) => /Parable/.test(record.audienceLevel || "")) ? "Parable-internal participants remain distinct from physical audience members." : ""
+        ]
       }),
       metricRecord({
         metricName: "Theme promotion coverage",
