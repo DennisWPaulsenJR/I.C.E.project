@@ -12432,6 +12432,7 @@ createRevelationPartsSection(item.subEvents)
 
   function promotionCoverageRows() {
     const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
+    const groundedThemeCandidates = themePromotionCandidates().filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
     const fulfillmentRecords = [
       ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.fulfillmentMeaning, item.sourceGrounding].join(" ")))),
       ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding].join(" ")))),
@@ -12446,7 +12447,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
       { label: "Knowledge Graph Promotions", records: knowledgeGraphRecords(), discoveredFallback: scopedSemanticRecords(studyData.knowledgeGraph).length },
       { label: "Relationship Promotions", records: promotedRelationshipRecords(), discoveredFallback: relationshipPromotionCandidates().length || scopedRelationshipGraph.length },
-      { label: "Theme Promotions", records: promotedThemeRecords(), discoveredFallback: themePromotionCandidates().length || promotedThemeRecords().length },
+      { label: "Theme Promotions", records: promotedThemeRecords(), discoveredFallback: groundedThemeCandidates.length || promotedThemeRecords().length },
       { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
       { label: "Literary Structure Promotions", records: promotedLiteraryRecords(), discoveredFallback: literaryPromotionCandidates().length || promotedLiteraryRecords().length }
     ];
@@ -12456,22 +12457,27 @@ createRevelationPartsSection(item.subEvents)
       const rejected = records.filter((record) => promotionCoverageDisposition(record) === "rejected").length;
       const unresolved = records.filter((record) => promotionCoverageDisposition(record) === "unresolved").length;
       const promoted = Math.max(0, records.length - rejected - unresolved);
-      const coverage = discovered ? Math.round((promoted / discovered) * 100) : 0;
+      const coverage = metricPercent(promoted, discovered);
       return {
         label: category.label,
         discovered,
         promoted,
         rejected,
         unresolved,
-        coverage
+        coverage,
+        denominator: discovered,
+        status: metricState({ denominator: discovered, numerator: promoted, unresolved }),
+        scopeBasis: "selected scope / retained scoped records",
+        denominatorRule: `${category.label} coverage = promoted records / grounded candidates; zero candidates are no candidates, not perfect health`
       };
     });
   }
 
   function editorArchitectPromotionCoverageLines() {
     const rows = promotionCoverageRows();
-    const lines = rows.map((item) => `${item.label}: discovered=${item.discovered}; promoted=${item.promoted}; rejected=${item.rejected}; unresolved=${item.unresolved}; coverage=${item.coverage}%`);
+    const lines = rows.map((item) => `${item.label}: discovered=${item.discovered}; promoted=${item.promoted}; rejected=${item.rejected}; unresolved=${item.unresolved}; coverage=${formatMetricPercent(item.coverage)}; status=${item.status}; denominator=${item.denominator}`);
     lines.push("Boundary: coverage metrics are visibility diagnostics, not quality scores. Higher coverage is not automatically better; false promotions are worse than missing promotions.");
+    lines.push("Denominator rule: coverage uses grounded candidates for the current selected scope or retained scoped records, never the whole catalog unless explicitly labeled catalog coverage.");
     lines.push("Layer: ICE_PROMOTION_COVERAGE");
     return lines;
   }
@@ -14737,12 +14743,58 @@ createRevelationPartsSection(item.subEvents)
     };
   }
 
+  function metricPercent(numerator = 0, denominator = 0) {
+    const total = Number(denominator) || 0;
+    if (!total) return null;
+    return Math.max(0, Math.min(100, Math.round(((Number(numerator) || 0) / total) * 100)));
+  }
+
+  function formatMetricPercent(value) {
+    return typeof value === "number" ? `${value}%` : "no candidates";
+  }
+
+  function metricState({ active = true, denominator = 0, numerator = 0, unresolved = 0, unsupported = 0, applicable = true, unavailable = false } = {}) {
+    if (!applicable) return "not_applicable";
+    if (unavailable) return "unavailable_from_current_scope";
+    if (!active) return "inactive";
+    if (!denominator) return "active_no_records";
+    if (unsupported) return "unsupported";
+    if (unresolved && !numerator) return "unresolved";
+    return "active_with_records";
+  }
+
+  function metricRecord({
+    metricName,
+    scopeBasis,
+    numerator = 0,
+    denominator = 0,
+    excluded = 0,
+    sourceCollection,
+    status,
+    statusRule,
+    warnings = []
+  }) {
+    return {
+      metricName,
+      scopeBasis,
+      numerator,
+      denominator,
+      excluded,
+      sourceCollection,
+      percentage: metricPercent(numerator, denominator),
+      status: status || metricState({ denominator, numerator }),
+      statusRule,
+      warnings: asArray(warnings).filter(Boolean)
+    };
+  }
+
   function qaDashboardLayerLine(label, records = [], options = {}) {
     const list = asArray(records);
     const counts = qaDashboardResolutionCounts(list);
-    const coverage = typeof options.coverage === "number" ? `; coverage=${options.coverage}%` : "";
+    const coverage = options.coverage !== undefined && options.coverage !== null ? `; coverage=${formatMetricPercent(options.coverage)}` : "";
     const active = options.active ?? list.length > 0;
-    return `${label}: ${active ? "active" : "inactive"}; records=${counts.total}; unresolved=${counts.unresolved}; ambiguous=${counts.ambiguous}${coverage}`;
+    const status = options.status || metricState({ active, denominator: counts.total, numerator: counts.resolved || counts.total, unresolved: counts.unresolved });
+    return `${label}: ${active ? "active" : "inactive"}; status=${status}; records=${counts.total}; unresolved=${counts.unresolved}; ambiguous=${counts.ambiguous}${coverage}`;
   }
 
   function qaDashboardArchitectureLayerLines() {
@@ -14832,7 +14884,7 @@ createRevelationPartsSection(item.subEvents)
   function qaDashboardPromotionLines() {
     return [
       "Promotion Summary",
-      ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${row.coverage}%`)
+      ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${formatMetricPercent(row.coverage)}; status=${row.status}; denominator=${row.denominator}`)
     ];
   }
 
@@ -14868,6 +14920,8 @@ createRevelationPartsSection(item.subEvents)
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
     const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
     const consequenceChains = qaDashboardResolutionCounts(consequenceChainPreviewRecords());
+    const speakerStatus = speakers.total ? metricState({ denominator: speakers.total, numerator: speakers.resolved, unresolved: speakers.unresolved }) : "no_candidates";
+    const dialogueStatus = speakers.total ? metricState({ denominator: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).total, numerator: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).resolved, unresolved: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).unresolved }) : "inactive dependency";
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -14878,8 +14932,9 @@ createRevelationPartsSection(item.subEvents)
       `Strong alignment: found=${strongAlignment.total}; explicit=${strongAlignment.explicit}; translation=${strongAlignment.translation}; possible=${strongAlignment.possible}; unresolved=${strongAlignment.unresolved}`,
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
       `Quotations found: ${quotations.length}`,
-      `Speakers: resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}`,
+      `Speakers: found=${speakers.total}; resolved=${speakers.resolved}; unresolved=${speakers.unresolved}; ambiguous=${speakers.ambiguous}; status=${speakerStatus}`,
       `Audiences: resolved=${audiences.resolved}; unresolved=${audiences.unresolved}; ambiguous=${audiences.ambiguous}`,
+      `Dialogue dependency: status=${dialogueStatus}; rule=dialogue requires grounded speaker and audience support`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
       `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
       `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`,
@@ -14890,18 +14945,19 @@ createRevelationPartsSection(item.subEvents)
 
   function semanticHealthPercent(resolved = 0, total = 0) {
     const count = Number(total) || 0;
-    if (!count) return 100;
+    if (!count) return null;
     return Math.max(0, Math.min(100, Math.round((Number(resolved || 0) / count) * 100)));
   }
 
-  function semanticHealthStatus(value = 100, warningBelow = 60) {
+  function semanticHealthStatus(value = null, warningBelow = 60) {
+    if (value === null || value === undefined || value === "") return "active_no_records";
     const score = Number(value) || 0;
     if (score < warningBelow) return "warning";
     if (score < 80) return "informational";
     return "healthy";
   }
 
-  function semanticHealthMetric(healthCategory, metricName, metricValue, metricType, metricScope, status = "informational", evidenceDistance = 8) {
+  function semanticHealthMetric(healthCategory, metricName, metricValue, metricType, metricScope, status = "informational", evidenceDistance = 8, options = {}) {
     const healthMetricId = `health.${normalizeText(healthCategory).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${normalizeText(metricName).toLowerCase().replace(/[^a-z0-9]+/g, ".")}`;
     return {
       healthMetricId,
@@ -14912,8 +14968,19 @@ createRevelationPartsSection(item.subEvents)
       metricScope,
       provenance: "I.C.E. Semantic Health Monitor generated from loaded scoped records for display only",
       evidenceDistance,
-      status
+      status,
+      numerator: options.numerator ?? "",
+      denominator: options.denominator ?? "",
+      denominatorRule: options.denominatorRule || "",
+      scopeBasis: options.scopeBasis || metricScope,
+      sourceCollection: options.sourceCollection || "",
+      excludedRecords: options.excludedRecords ?? 0
     };
+  }
+
+  function formatHealthMetricValue(metric = {}) {
+    if (metric.metricType === "percentage") return formatMetricPercent(metric.metricValue);
+    return `${metric.metricValue}`;
   }
 
   function semanticHealthMetrics() {
@@ -14937,7 +15004,7 @@ createRevelationPartsSection(item.subEvents)
       return counts;
     }, {});
     const coverageRows = promotionCoverageRows();
-    const coverageMetric = (label) => coverageRows.find((row) => row.label === label) || { coverage: 100, promoted: 0, discovered: 0, unresolved: 0 };
+    const coverageMetric = (label) => coverageRows.find((row) => row.label === label) || { coverage: null, promoted: 0, discovered: 0, unresolved: 0, status: "active_no_records" };
     const graph = architectureGraphDiagnostics();
     const languageScores = [
       semanticHealthPercent(posResolved, languageRecords.length),
@@ -14961,7 +15028,10 @@ createRevelationPartsSection(item.subEvents)
     ];
     const architecturePenalty = graph.circularDependencyCount + graph.authorityViolations.length + graph.evidenceDistanceViolations.length + graph.orphanNodes.length;
     const architectureScore = Math.max(0, 100 - (architecturePenalty * 25));
-    const average = (values) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 100;
+    const average = (values) => {
+      const scored = values.filter((value) => typeof value === "number");
+      return scored.length ? Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length) : null;
+    };
     const languageScore = average(languageScores);
     const semanticScore = average(semanticScores);
     const overallScore = average([languageScore, semanticScore, architectureScore]);
@@ -15001,11 +15071,11 @@ createRevelationPartsSection(item.subEvents)
     const metrics = semanticHealthMetrics();
     const warnings = metrics.filter((metric) => metric.status === "warning");
     const unresolvedSamples = metrics
-      .filter((metric) => /resolution|coverage/i.test(metric.metricName) && Number(metric.metricValue) < 100)
+      .filter((metric) => /resolution|coverage/i.test(metric.metricName) && (typeof metric.metricValue !== "number" || Number(metric.metricValue) < 100))
       .slice(0, 8)
-      .map((metric) => `${metric.healthCategory}: ${metric.metricName}=${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`);
+      .map((metric) => `${metric.healthCategory}: ${metric.metricName}=${formatHealthMetricValue(metric)} (${metric.status})`);
     const summary = (category) => metrics.filter((metric) => metric.healthCategory === category)
-      .map((metric) => `${metric.metricName}: ${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""} (${metric.status})`);
+      .map((metric) => `${metric.metricName}: ${formatHealthMetricValue(metric)} (${metric.status})`);
     return [
       `Health metrics generated: ${metrics.length}`,
       `Warning metrics: ${warnings.length}`,
@@ -15017,7 +15087,7 @@ createRevelationPartsSection(item.subEvents)
       "Architecture health:",
       ...summary("Architecture Health"),
       "Trend-ready metrics:",
-      ...metrics.filter((metric) => /score|rate|coverage|violations|dependencies|nodes/i.test(metric.metricName)).slice(0, 12).map((metric) => `${metric.metricName}: ${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`),
+      ...metrics.filter((metric) => /score|rate|coverage|violations|dependencies|nodes/i.test(metric.metricName)).slice(0, 12).map((metric) => `${metric.metricName}: ${formatHealthMetricValue(metric)} (${metric.status})`),
       "Sample unresolved categories:",
       ...(unresolvedSamples.length ? unresolvedSamples : ["No unresolved sample categories detected."]),
       "Warnings:",
@@ -15028,23 +15098,176 @@ createRevelationPartsSection(item.subEvents)
 
   function semanticHealthDashboardLines() {
     const metrics = semanticHealthMetrics();
-    const valueFor = (name) => metrics.find((metric) => metric.metricName === name)?.metricValue ?? "not recorded";
+    const valueFor = (name) => {
+      const metric = metrics.find((item) => item.metricName === name);
+      return metric ? formatHealthMetricValue(metric) : "not recorded";
+    };
     const warnings = metrics.filter((metric) => metric.status === "warning");
     const unresolvedDistribution = metrics
       .filter((metric) => /resolution|coverage/i.test(metric.metricName))
-      .map((metric) => `${metric.metricName}=${metric.metricValue}${metric.metricType === "percentage" ? "%" : ""}`)
+      .map((metric) => `${metric.metricName}=${formatHealthMetricValue(metric)} (${metric.status})`)
       .join("; ");
     const fulfillment = metrics.find((metric) => metric.metricName === "Fulfillment confidence distribution")?.metricValue || "none";
     return [
       "Semantic Health Summary",
-      `Semantic health score: ${valueFor("Semantic health score")}%`,
-      `Language health score: ${valueFor("Language health score")}%`,
-      `Architecture health score: ${valueFor("Architecture health score")}%`,
-      `Overall semantic health score: ${valueFor("Overall semantic health score")}%`,
+      `Semantic health score: ${valueFor("Semantic health score")}`,
+      `Language health score: ${valueFor("Language health score")}`,
+      `Architecture health score: ${valueFor("Architecture health score")}`,
+      `Overall semantic health score: ${valueFor("Overall semantic health score")}`,
+      "Components: Constitutional Integrity; Metadata Completeness; Semantic Coverage; Language Resolution; Provenance Completeness; Capability Availability",
       `Warning metrics: ${warnings.length}`,
       `Unresolved distribution: ${unresolvedDistribution || "none"}`,
       `Confidence distribution: ${fulfillment}`,
       "Boundary: health metrics describe behavior from existing scoped records only and do not influence semantic output."
+    ];
+  }
+
+  function metricIntegrityRecords() {
+    const coverageRows = promotionCoverageRows();
+    const coverage = (label) => coverageRows.find((row) => row.label === label) || {};
+    const sourceDiscovery = scopedSemanticRecords(studyData.sourceDiscoveryIndex);
+    const mentions = scopedSemanticRecords(studyData.mentionIndex);
+    const scenes = promotedSceneRecords();
+    const timelines = promotedTimelineRecords();
+    const knowledge = knowledgeGraphRecords();
+    const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
+    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const quotations = quotationBoundaryPreviewRecords();
+    const dialogue = qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords());
+    const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
+    const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
+    const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
+    const themeCatalog = themePromotionCandidates();
+    const groundedThemes = themeCatalog.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
+    const promotedThemes = promotedThemeRecords();
+    const explainability = semanticExplainabilityDiagnostics();
+    const provenance = provenanceGraphDiagnostics();
+    const analyzed = analyzedPageHistory();
+    const active = activeSourcePageRecord();
+    const sourceLineageWarnings = [];
+    if (!sourceDiscovery.length && (mentions.length || scenes.length || timelines.length || knowledge.length)) {
+      sourceLineageWarnings.push("Derived/scoped records are present while scoped Source Discovery is empty; likely retained/session-derived records, Context Lock derivation, adapter filtering, or selected-scope versus active-page mismatch.");
+    }
+    return [
+      metricRecord({
+        metricName: "Source Discovery lineage",
+        scopeBasis: "selected scope compared with retained analyzed pages",
+        numerator: sourceDiscovery.length,
+        denominator: Math.max(sourceDiscovery.length, mentions.length + scenes.length + timelines.length + knowledge.length),
+        excluded: 0,
+        sourceCollection: "studyData.sourceDiscoveryIndex; mentionIndex; promotedSceneRecords; promotedTimelineRecords; knowledgeGraphRecords",
+        status: sourceDiscovery.length ? "active_with_records" : "unavailable_from_current_scope",
+        statusRule: "Source Discovery may be unavailable even when retained or derived scoped records exist; no records are fabricated to raise coverage.",
+        warnings: sourceLineageWarnings
+      }),
+      metricRecord({
+        metricName: "Speaker resolution rate",
+        scopeBasis: "selected scope language preview",
+        numerator: speakers.resolved,
+        denominator: speakers.total,
+        excluded: Math.max(0, quotations.length - speakers.total),
+        sourceCollection: "speakerDetectionPreviewRecords",
+        status: speakers.total ? metricState({ denominator: speakers.total, numerator: speakers.resolved, unresolved: speakers.unresolved }) : "no_candidates",
+        statusRule: "resolved speakers / speaker candidates; zero candidates reports no_candidates, not 100% health.",
+        warnings: speakers.total ? [] : ["No grounded speaker candidates were generated. Do not infer JESUS or another speaker from broad chapter tradition without source-record attribution."]
+      }),
+      metricRecord({
+        metricName: "Dialogue relationship availability",
+        scopeBasis: "selected scope language preview",
+        numerator: dialogue.resolved,
+        denominator: dialogue.total,
+        excluded: Math.max(0, quotations.length + audiences.total - dialogue.total),
+        sourceCollection: "dialogueRelationshipPreviewRecords; quotationBoundaryPreviewRecords; audienceDetectionPreviewRecords",
+        status: dialogue.total ? metricState({ denominator: dialogue.total, numerator: dialogue.resolved, unresolved: dialogue.unresolved }) : (speakers.total ? "active_no_records" : "inactive dependency"),
+        statusRule: "dialogue relationships require quotation/speaker/audience support; missing speaker candidates make dialogue unavailable rather than healthy.",
+        warnings: !speakers.total && (quotations.length || audiences.total) ? ["Quotations or audiences exist without speaker candidates; dialogue status depends on speaker attribution availability."] : []
+      }),
+      metricRecord({
+        metricName: "Theme promotion coverage",
+        scopeBasis: "selected scope grounded theme candidates",
+        numerator: promotedThemes.length,
+        denominator: groundedThemes.length,
+        excluded: Math.max(0, themeCatalog.length - groundedThemes.length),
+        sourceCollection: "themePromotionCandidates; promotedThemeRecords",
+        status: groundedThemes.length ? metricState({ denominator: groundedThemes.length, numerator: promotedThemes.length, unresolved: groundedThemes.length - promotedThemes.length }) : "zero grounded promotions",
+        statusRule: "promoted grounded themes / grounded theme candidates; catalog entries are excluded from the denominator.",
+        warnings: themeCatalog.length && !groundedThemes.length ? [`${themeCatalog.length} theme catalog entries were available but none had grounded current-scope support.`] : []
+      }),
+      metricRecord({
+        metricName: "Pronoun versus downstream resolution",
+        scopeBasis: "selected scope language preview",
+        numerator: pronouns.resolved,
+        denominator: pronouns.total,
+        excluded: 0,
+        sourceCollection: "pronounResolutionPreviewRecords; subjectObjectPreviewRecords; actionChainPreviewRecords",
+        status: pronouns.total ? metricState({ denominator: pronouns.total, numerator: pronouns.resolved, unresolved: pronouns.unresolved }) : "no_candidates",
+        statusRule: "pronoun resolution is independent from subject/object and action-chain previews; downstream records may resolve from explicit nouns/entities.",
+        warnings: !pronouns.resolved && (subjectObject.resolved || actionChains.resolved) ? [`Subject/Object resolved=${subjectObject.resolved} and Action Chains resolved=${actionChains.resolved} without resolved pronouns; downstream resolution is coming from explicit nouns/entities or other grounded records.`] : []
+      }),
+      metricRecord({
+        metricName: "Explainability authority completeness",
+        scopeBasis: "runtime explainability records",
+        numerator: explainability.records.length - explainability.missingAuthority.length,
+        denominator: explainability.records.length,
+        excluded: 0,
+        sourceCollection: "semanticExplainabilityRecords",
+        status: explainability.missingAuthority.length ? "unresolved" : metricState({ denominator: explainability.records.length, numerator: explainability.records.length }),
+        statusRule: "records with explicit source/runtime authority / explainability records.",
+        warnings: explainability.missingAuthority.length ? [`${explainability.missingAuthority.length} explainability records lack explicit authority and may rely on inherited authority labels.`] : []
+      }),
+      metricRecord({
+        metricName: "Provenance authority completeness",
+        scopeBasis: "runtime provenance graph nodes",
+        numerator: provenance.nodes.length - provenance.missingAuthority.length,
+        denominator: provenance.nodes.length,
+        excluded: 0,
+        sourceCollection: "provenanceGraphDiagnostics",
+        status: provenance.missingAuthority.length ? "unresolved" : metricState({ denominator: provenance.nodes.length, numerator: provenance.nodes.length }),
+        statusRule: "nodes with explicit/inherited authority / provenance nodes; inherited authority is labeled and not treated as raw-record authority.",
+        warnings: explainability.missingAuthority.length !== provenance.missingAuthority.length ? ["Explainability checks raw source/runtime records; Provenance checks graph nodes after inherited authority labels are applied."] : []
+      }),
+      metricRecord({
+        metricName: "Active source and retained scope basis",
+        scopeBasis: "active page / stored analyzed pages / selected scope",
+        numerator: analyzed.length,
+        denominator: analyzed.length,
+        excluded: 0,
+        sourceCollection: "activeSourcePageRecord; analyzedPageHistory; currentStudyScopeLabel",
+        status: analyzed.length ? "active_with_records" : "active_no_records",
+        statusRule: "Metrics must state whether they use active page, selected scope, retained records, or registry metadata.",
+        warnings: [`Active=${active ? volumePageLabel(active) : "not recorded"}; selected=${currentStudyScopeLabel()}; retained=${analyzed.length ? analyzed.map(volumePageLabel).join(" | ") : "none"}`]
+      })
+    ];
+  }
+
+  function metricIntegrityInspectorLines() {
+    const records = metricIntegrityRecords();
+    const warnings = records.flatMap((record) => asArray(record.warnings).map((warning) => `${record.metricName}: ${warning}`));
+    return [
+      "Metric states: active_with_records; active_no_records; inactive; not_applicable; unresolved; unsupported; unavailable_from_current_scope; no_candidates; inactive dependency; zero grounded promotions",
+      "Denominator rule: every percentage must expose numerator and denominator; zero records are not reported as perfect health.",
+      `Metric integrity records: ${records.length}`,
+      `Consistency warnings: ${warnings.length}`,
+      "Record shape: metric name; scope basis; numerator; denominator; excluded count; status; source collection; status rule; consistency warnings",
+      "Metric records:",
+      ...records.map((record) => `${record.metricName} | scope=${record.scopeBasis} | numerator=${record.numerator} | denominator=${record.denominator} | excluded=${record.excluded} | percent=${formatMetricPercent(record.percentage)} | status=${record.status} | source=${record.sourceCollection} | rule=${record.statusRule}`),
+      "Consistency warnings:",
+      ...(warnings.length ? warnings : ["No metric consistency warnings detected."]),
+      "Trust: Metric Integrity Inspector observes dashboard/health/provenance lineage only. It does not mutate semantic records, manufacture records, change scope, write storage, crawl, process queues, or change Study View output."
+    ];
+  }
+
+  function metricIntegrityDashboardLines() {
+    const records = metricIntegrityRecords();
+    const warnings = records.flatMap((record) => asArray(record.warnings));
+    const noCandidates = records.filter((record) => /no_candidates|active_no_records|unavailable_from_current_scope|zero grounded promotions|inactive dependency/i.test(record.status));
+    return [
+      "Metric Integrity Summary",
+      `Metric records evaluated: ${records.length}`,
+      `Metrics with no candidates/unavailable status: ${noCandidates.length}`,
+      `Consistency warnings: ${warnings.length}`,
+      "Status rule: zero-record subsystems report no candidates, inactive dependency, unavailable, or zero grounded promotions instead of 100% health.",
+      "Boundary: metric integrity is display-only and does not influence semantic output."
     ];
   }
 
@@ -15305,6 +15528,7 @@ createRevelationPartsSection(item.subEvents)
     const explicitAuthority = Boolean(record.authoritySource || record.authority || record.sourceAuthority || record.authorityPath);
     const explicitConfidence = Boolean(record.confidence || record.evidenceWeight || record.appAccuracy || record.status || record.promotionStatus);
     const explicitEvidence = Boolean(record.sourceEvidence || record.evidence || record.evidenceChain || record.sourceText || record.sourcePhrase || record.sourceReference || record.verseRange || record.sourceScope);
+    const authorityStatus = explicitAuthority ? "explicit authority" : (group.authoritySource ? "inherited authority" : "missing authority");
     return {
       explainabilityId: `explain.${normalizeText(group.recordType).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${index + 1}`,
       recordType: group.recordType,
@@ -15314,6 +15538,7 @@ createRevelationPartsSection(item.subEvents)
       consumedRecords: asArray(record.consumedRecords || record.supportingRecords || record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidenceLinks || record.timelineReferences).slice(0, 8),
       producedByStage: group.producedByStage,
       authoritySource: record.authoritySource || record.authority || record.sourceAuthority || group.authoritySource,
+      authorityStatus,
       authorityPath: asArray(record.authorityPath || [group.authoritySource]).join(" -> "),
       evidenceDistance: record.evidenceDistance ?? group.evidenceDistance,
       confidence,
@@ -15367,6 +15592,7 @@ createRevelationPartsSection(item.subEvents)
       `id=${record.recordId}`,
       `stage=${record.producedByStage}`,
       `authority=${record.authoritySource}`,
+      `authorityStatus=${record.authorityStatus}`,
       `distance=${record.evidenceDistance}`,
       `confidence=${normalizeText(record.confidence)}`,
       `provenance=${trimText(record.provenance, 80)}`,
@@ -15377,6 +15603,7 @@ createRevelationPartsSection(item.subEvents)
       `Explainability coverage: ${diagnostics.coverage}%`,
       `Records missing provenance: ${diagnostics.missingProvenance.length}`,
       `Records missing authority: ${diagnostics.missingAuthority.length}`,
+      "Authority labels: explicit authority means present on the source/runtime record; inherited authority means supplied by the explainability group/registry; missing authority means neither source nor group supplied authority.",
       `Records missing confidence: ${diagnostics.missingConfidence.length}`,
       `Records missing evidence chain: ${diagnostics.missingEvidenceChain.length}`,
       `Categories: ${languageCountLine(diagnostics.byType)}`,
@@ -15396,6 +15623,7 @@ createRevelationPartsSection(item.subEvents)
       `Explainable records: ${diagnostics.explainable.length}`,
       `Records missing provenance: ${diagnostics.missingProvenance.length}`,
       `Records missing authority: ${diagnostics.missingAuthority.length}`,
+      "Authority basis: explicit authority gaps remain visible even when provenance graph nodes inherit registry/governed authority for display.",
       `Records missing confidence: ${diagnostics.missingConfidence.length}`,
       `Records missing evidence chain: ${diagnostics.missingEvidenceChain.length}`,
       `Explainability coverage: ${diagnostics.coverage}%`,
@@ -15436,6 +15664,7 @@ createRevelationPartsSection(item.subEvents)
       label: `${recordType}: ${trimText(recordId, 80)}`,
       evidenceDistance: record.evidenceDistance ?? 8,
       authoritySource: record.authoritySource || "authority not recorded",
+      authorityStatus: record.authorityStatus || (/not recorded/i.test(normalizeText(record.authoritySource)) ? "missing authority" : "explicit authority"),
       confidence: record.confidence || "confidence not recorded",
       provenance: record.provenance || "provenance not recorded",
       status: record.missingProvenance || record.missingAuthority || record.missingConfidence ? "review" : "connected"
@@ -15535,7 +15764,7 @@ createRevelationPartsSection(item.subEvents)
     const edges = [...sourceEdges, ...registryEdges];
     const connectedNodeIds = new Set(edges.flatMap((edge) => [edge.sourceNode, edge.targetNode]));
     const missingProvenance = nodes.filter((node) => /not recorded/i.test(normalizeText(node.provenance)));
-    const missingAuthority = nodes.filter((node) => /not recorded/i.test(normalizeText(node.authoritySource)));
+    const missingAuthority = nodes.filter((node) => /missing authority|authority not recorded/i.test(normalizeText([node.authorityStatus, node.authoritySource].join(" "))));
     const missingConfidence = nodes.filter((node) => /not recorded/i.test(normalizeText(node.confidence)));
     const disconnected = nodes.filter((node) => !connectedNodeIds.has(node.provenanceNodeId));
     return {
@@ -15569,7 +15798,8 @@ createRevelationPartsSection(item.subEvents)
       `Missing authority nodes: ${graph.missingAuthority.length}`,
       `Missing confidence nodes: ${graph.missingConfidence.length}`,
       `Disconnected provenance nodes: ${graph.disconnected.length}`,
-      "Node shape: provenanceNodeId; recordType; recordId; label; evidenceDistance; authoritySource; confidence; provenance; status",
+      "Authority basis: provenance nodes use authorityStatus from explainability; inherited authority remains labeled and no longer hides raw source-record authority gaps.",
+      "Node shape: provenanceNodeId; recordType; recordId; label; evidenceDistance; authoritySource; authorityStatus; confidence; provenance; status",
       "Edge shape: provenanceEdgeId; sourceNode; targetNode; edgeType; evidenceFlow; authorityFlow; confidenceFlow; status",
       "Supported edge types: derived_from; informed_by; consumed_by; presented_by; constrained_by; attributed_to",
       "Sample provenance paths:",
@@ -15630,7 +15860,7 @@ createRevelationPartsSection(item.subEvents)
       authority: registeredAuthorityClasses().length
     };
     const resultForCount = (count, failSeverity = "medium") => count ? { result: "warning", severity: failSeverity } : { result: "pass", severity: "informational" };
-    const coverageFor = (label) => coverageRows.find((row) => row.label === label) || { coverage: 100, discovered: 0, promoted: 0, unresolved: 0 };
+    const coverageFor = (label) => coverageRows.find((row) => row.label === label) || { coverage: null, discovered: 0, promoted: 0, unresolved: 0, status: "active_no_records" };
     const records = [
       semanticVerificationRecord(
         "Evidence Integrity",
@@ -15758,7 +15988,7 @@ createRevelationPartsSection(item.subEvents)
         "Timeline references valid",
         coverageFor("Timeline Promotions").unresolved ? "warning" : "pass",
         coverageFor("Timeline Promotions").unresolved ? "low" : "informational",
-        `Timeline unresolved=${coverageFor("Timeline Promotions").unresolved}; coverage=${coverageFor("Timeline Promotions").coverage}%`,
+        `Timeline unresolved=${coverageFor("Timeline Promotions").unresolved}; coverage=${formatMetricPercent(coverageFor("Timeline Promotions").coverage)}; status=${coverageFor("Timeline Promotions").status}`,
         "Timeline Promotion Rules",
         "Promotion Coverage diagnostics",
         4
@@ -15768,7 +15998,7 @@ createRevelationPartsSection(item.subEvents)
         "Scene references valid",
         coverageFor("Scene Models").unresolved ? "warning" : "pass",
         coverageFor("Scene Models").unresolved ? "low" : "informational",
-        `Scene unresolved=${coverageFor("Scene Models").unresolved}; coverage=${coverageFor("Scene Models").coverage}%`,
+        `Scene unresolved=${coverageFor("Scene Models").unresolved}; coverage=${formatMetricPercent(coverageFor("Scene Models").coverage)}; status=${coverageFor("Scene Models").status}`,
         "Scene Promotion Rules",
         "Promotion Coverage diagnostics",
         4
@@ -16195,6 +16425,229 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function studyGuidanceCategories() {
+    return [
+      "Narrative Overview",
+      "Primary Participants",
+      "Key Events",
+      "Major Relationships",
+      "Journey Summary",
+      "Central Themes",
+      "Teaching Moments",
+      "Questions Raised by the Text",
+      "Cross-reference Opportunities",
+      "Areas Requiring Further Study",
+      "Explicit Commands",
+      "Explicit Promises",
+      "Explicit Warnings",
+      "Explicit Covenants",
+      "Explicit Prophecies"
+    ];
+  }
+
+  function studyGuidanceRecord(guidanceCategory, options = {}) {
+    const supportingEvidence = uniqueStudyList(asArray(options.supportingEvidence).map(normalizeText).filter(Boolean)).slice(0, 12);
+    const supportingJourneys = uniqueStudyList(asArray(options.supportingJourneys).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingThemes = uniqueStudyList(asArray(options.supportingThemes).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingRelationships = uniqueStudyList(asArray(options.supportingRelationships).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingEvents = uniqueStudyList(asArray(options.supportingEvents).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const hasSupport = supportingEvidence.length || supportingJourneys.length || supportingThemes.length || supportingRelationships.length || supportingEvents.length;
+    const status = options.status || (hasSupport ? "supported" : "unsupported");
+    return {
+      guidanceId: `study-guidance-${normalizeText(guidanceCategory).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      guidanceCategory,
+      sourceScope: currentStudyScopeLabel(),
+      supportingEvidence,
+      supportingJourneys,
+      supportingThemes,
+      supportingRelationships,
+      supportingEvents,
+      evidenceDistance: 8,
+      confidence: options.confidence || (status === "supported" ? "supported observation from existing scoped records" : "unresolved / requires further study"),
+      provenance: options.provenance || "I.C.E. Study Guidance Foundation from existing scoped semantic records",
+      explainabilityReference: options.explainabilityReference || "Semantic Explainability Inspector / Provenance Graph Inspector",
+      status,
+      guidanceMode: options.guidanceMode || "supported observation"
+    };
+  }
+
+  function studyGuidanceCueRecords(pattern) {
+    const sources = [
+      ...promotedTimelineRecords(),
+      ...promotedSceneRecords(),
+      ...promotedRelationshipRecords(),
+      ...actionChainPreviewRecords(),
+      ...causalityPreviewRecords(),
+      ...fulfillmentConfidencePreviewRecords(),
+      ...scopedSemanticRecords(studyData.passageFunctions),
+      ...scopedSemanticRecords(studyData.revelationPatterns),
+      ...scopedSemanticRecords(studyData.referenceRoles),
+      ...scopedSemanticRecords(studyData.sourceDiscoveryIndex)
+    ];
+    return sources.filter((record) => pattern.test(normalizeText(record)));
+  }
+
+  function studyGuidanceRecords() {
+    const journeys = journeyNarrativeArcRecords();
+    const themes = promotedThemeRecords();
+    const relationships = promotedRelationshipRecords();
+    const events = promotedTimelineRecords();
+    const scenes = promotedSceneRecords();
+    const questions = scopedSemanticRecords(studyData.semanticQuestions);
+    const actors = Array.from(studyReferenceActors({ includeTechnical: false }).values());
+    const teachingRecords = [
+      ...scopedSemanticRecords(studyData.teachingSemantics),
+      ...scopedSemanticRecords(studyData.principleRelationships),
+      ...scopedSemanticRecords(studyData.principleNetworks)
+    ];
+    const crossReferences = [
+      ...scopedSemanticRecords(studyData.referenceGraph),
+      ...scopedSemanticRecords(studyData.crossReferenceRelationships),
+      ...fulfillmentConfidencePreviewRecords().filter((record) => record.status !== "unresolved")
+    ];
+    const evidenceLabel = (record) => normalizeText(record.sourceReference || record.verseRange || record.sourceScope || record.sourcePhrase || record.evidence || record.label || record.id || record.recordId);
+    const eventLabel = (record) => normalizeText(record.eventName || record.eventType || record.timelineId || record.sourceReference);
+    const relationshipLabel = (record) => normalizeText(record.relationshipType || (record.sourceEntity && record.targetEntity ? `${record.sourceEntity} -> ${record.targetEntity}` : "") || record.relationshipId);
+    const themeLabel = (record) => normalizeText(record.themeName || record.themeId);
+    const journeyLabel = (record) => normalizeText(`${record.journeyType}${record.primaryParticipant && record.primaryParticipant !== "not resolved" ? ` - ${record.primaryParticipant}` : ""}`);
+    const explicitCue = (category, pattern, mode) => {
+      const cueRecords = studyGuidanceCueRecords(pattern);
+      return studyGuidanceRecord(category, {
+        supportingEvidence: cueRecords.map(evidenceLabel),
+        supportingEvents: cueRecords.map(eventLabel),
+        confidence: cueRecords.length ? "explicit source cue detected in existing scoped records" : "no explicit source cue detected",
+        provenance: `I.C.E. Study Guidance Foundation explicit-cue scan for ${category}`,
+        status: cueRecords.length ? "supported" : "unsupported",
+        guidanceMode: mode || "explicit"
+      });
+    };
+    return [
+      studyGuidanceRecord("Narrative Overview", {
+        supportingEvidence: [...scenes.map(evidenceLabel), ...events.map(evidenceLabel)],
+        supportingEvents: events.map(eventLabel),
+        supportingJourneys: journeys.map(journeyLabel),
+        confidence: scenes.length || events.length ? "supported narrative overview from scenes, timeline records, and journey arcs" : "requires further study",
+        provenance: "I.C.E. Study Guidance Foundation from Scene, Timeline, and Journey records"
+      }),
+      studyGuidanceRecord("Primary Participants", {
+        supportingEvidence: actors.map((item) => `${item.label || item.name || item.canonicalName}: ${asArray(item.roles).join(", ") || "role not recorded"}`),
+        confidence: actors.length ? "grounded actors summarized from Study Reference Index" : "no grounded actor summary available",
+        provenance: "I.C.E. Study Guidance Foundation from Study Reference Index actor records",
+        guidanceMode: "explicit / context"
+      }),
+      studyGuidanceRecord("Key Events", {
+        supportingEvidence: events.map(evidenceLabel),
+        supportingEvents: events.map(eventLabel),
+        confidence: events.length ? "supported by promoted Timeline records" : "no promoted timeline events available",
+        provenance: "I.C.E. Study Guidance Foundation from Timeline records"
+      }),
+      studyGuidanceRecord("Major Relationships", {
+        supportingEvidence: relationships.map(evidenceLabel),
+        supportingRelationships: relationships.map(relationshipLabel),
+        confidence: relationships.length ? "supported by promoted Relationship records" : "no promoted relationships available",
+        provenance: "I.C.E. Study Guidance Foundation from Relationship records"
+      }),
+      studyGuidanceRecord("Journey Summary", {
+        supportingEvidence: journeys.map((record) => `${record.journeyType}: ${record.provenance}`),
+        supportingJourneys: journeys.map(journeyLabel),
+        confidence: journeys.length ? "supported by Journey & Narrative Arc records" : "no journey arc records available",
+        provenance: "I.C.E. Study Guidance Foundation from Journey & Narrative Arc records"
+      }),
+      studyGuidanceRecord("Central Themes", {
+        supportingEvidence: themes.map(evidenceLabel),
+        supportingThemes: themes.map(themeLabel),
+        confidence: themes.length ? "supported by promoted Theme records" : "no promoted themes available",
+        provenance: "I.C.E. Study Guidance Foundation from Theme records"
+      }),
+      studyGuidanceRecord("Teaching Moments", {
+        supportingEvidence: teachingRecords.map(evidenceLabel),
+        confidence: teachingRecords.length ? "supported by teaching/principle records" : "no teaching moment records available",
+        provenance: "I.C.E. Study Guidance Foundation from Teaching and Principle records"
+      }),
+      studyGuidanceRecord("Questions Raised by the Text", {
+        supportingEvidence: questions.map((record) => normalizeText(record.question || record.semanticQuestion || record.prompt || record.derivedMeaning || record.id)),
+        confidence: questions.length ? "questions surfaced from existing Semantic Questions records" : "no scoped semantic questions available",
+        provenance: "I.C.E. Study Guidance Foundation from Semantic Questions records",
+        status: questions.length ? "supported" : "unresolved",
+        guidanceMode: "question"
+      }),
+      studyGuidanceRecord("Cross-reference Opportunities", {
+        supportingEvidence: crossReferences.map(evidenceLabel),
+        confidence: crossReferences.length ? "supported by reference graph, cross-reference, or fulfillment confidence records" : "no cross-reference opportunities available",
+        provenance: "I.C.E. Study Guidance Foundation from reference and fulfillment records"
+      }),
+      studyGuidanceRecord("Areas Requiring Further Study", {
+        supportingEvidence: [
+          ...semanticExplainabilityDiagnostics().missingProvenance.slice(0, 6).map((record) => `${record.recordType}: missing provenance`),
+          ...semanticExplainabilityDiagnostics().missingEvidenceChain.slice(0, 6).map((record) => `${record.recordType}: missing evidence chain`),
+          ...journeyNarrativeArcDiagnostics().unsupported.slice(0, 6).map((record) => `${record.journeyType}: unsupported journey preview`)
+        ],
+        confidence: "diagnostic questions only; no unsupported answers generated",
+        provenance: "I.C.E. Study Guidance Foundation from Explainability and Journey diagnostics",
+        status: "unresolved",
+        guidanceMode: "question"
+      }),
+      explicitCue("Explicit Commands", /\b(command|commanded|commandment|charge|charged|instruct|instruction|fear not|take|go|depart|arise|call)\b/i, "explicit"),
+      explicitCue("Explicit Promises", /\b(promise|promised|shall|will|blessed|blessing|inherit|receive)\b/i, "explicit"),
+      explicitCue("Explicit Warnings", /\b(warn|warning|beware|woe|flee|fear|lest|take heed)\b/i, "explicit"),
+      explicitCue("Explicit Covenants", /\b(covenant|promise|abraham|david|lineage|generation|begat)\b/i, "explicit"),
+      explicitCue("Explicit Prophecies", /\b(prophet|prophecy|prophesied|fulfilled|spoken by the prophet|as it is written|scripture)\b/i, "explicit")
+    ];
+  }
+
+  function studyGuidanceDiagnostics() {
+    const records = studyGuidanceRecords();
+    const supported = records.filter((record) => record.status === "supported");
+    const unsupported = records.filter((record) => record.status === "unsupported");
+    const unresolvedQuestions = records.filter((record) => record.status === "unresolved" || record.guidanceMode === "question");
+    const explicit = records.filter((record) => record.guidanceMode === "explicit");
+    const supportedObservation = records.filter((record) => record.guidanceMode === "supported observation" && record.status === "supported");
+    const coverage = records.length ? Math.round((supported.length / records.length) * 100) : 100;
+    return { records, supported, unsupported, unresolvedQuestions, explicit, supportedObservation, coverage };
+  }
+
+  function studyGuidanceInspectorLines() {
+    const diagnostics = studyGuidanceDiagnostics();
+    const sample = diagnostics.records.map((record) => [
+      record.guidanceCategory,
+      `status=${record.status}`,
+      `distance=${record.evidenceDistance}`,
+      `confidence=${record.confidence}`,
+      `evidence=${asArray(record.supportingEvidence).slice(0, 3).join("; ") || "none"}`,
+      `journeys=${asArray(record.supportingJourneys).slice(0, 3).join("; ") || "none"}`,
+      `themes=${asArray(record.supportingThemes).slice(0, 3).join("; ") || "none"}`,
+      `relationships=${asArray(record.supportingRelationships).slice(0, 3).join("; ") || "none"}`,
+      `explainability=${record.explainabilityReference}`
+    ].join(" | "));
+    return [
+      `Guidance records: ${diagnostics.records.length}`,
+      `Guidance coverage: ${diagnostics.coverage}%`,
+      `Explicit guidance count: ${diagnostics.explicit.length}`,
+      `Supported observation count: ${diagnostics.supportedObservation.length}`,
+      `Unresolved question count: ${diagnostics.unresolvedQuestions.length}`,
+      `Unsupported guidance count: ${diagnostics.unsupported.length}`,
+      `Guidance categories supported: ${studyGuidanceCategories().join("; ")}`,
+      "Record shape: guidanceId; guidanceCategory; sourceScope; supportingEvidence; supportingJourneys; supportingThemes; supportingRelationships; supportingEvents; evidenceDistance; confidence; provenance; explainabilityReference; status",
+      "Sample guidance records:",
+      ...(sample.length ? sample : ["No Study Guidance records generated for the current Study Scope."]),
+      "Trust: guidance organizes evidence only. It does not create evidence, doctrine, semantic authority, storage records, queue actions, crawling, scope changes, unsupported answers, or Study View behavior changes."
+    ];
+  }
+
+  function studyGuidanceDashboardLines() {
+    const diagnostics = studyGuidanceDiagnostics();
+    return [
+      "Study Guidance Summary",
+      `Guidance records: ${diagnostics.records.length}`,
+      `Guidance coverage: ${diagnostics.coverage}%`,
+      `Explicit guidance count: ${diagnostics.explicit.length}`,
+      `Supported observation count: ${diagnostics.supportedObservation.length}`,
+      `Unresolved question count: ${diagnostics.unresolvedQuestions.length}`,
+      `Unsupported guidance count: ${diagnostics.unsupported.length}`,
+      "Boundary: Study Guidance Foundation is runtime/display-only and may surface unanswered questions but may not fabricate answers."
+    ];
+  }
+
   function qaDashboardTrustLines() {
     const qaLines = editorArchitectQaLines();
     const issues = qaLines.filter((line) => /review trust records/i.test(line));
@@ -16216,10 +16669,12 @@ createRevelationPartsSection(item.subEvents)
       ...qaDashboardPromotionLines(),
       ...qaDashboardLanguageLines(),
       ...semanticHealthDashboardLines(),
+      ...metricIntegrityDashboardLines(),
       ...semanticExplainabilityDashboardLines(),
       ...provenanceGraphDashboardLines(),
       ...semanticVerificationDashboardLines(),
       ...journeyNarrativeArcDashboardLines(),
+      ...studyGuidanceDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
     ];
@@ -16714,10 +17169,12 @@ createRevelationPartsSection(item.subEvents)
       authorityRegistryLines: authorityRegistryInspectorLines(),
       architectureGraphLines: architectureGraphInspectorLines(),
       semanticHealthLines: semanticHealthMonitorLines(),
+      metricIntegrityLines: metricIntegrityInspectorLines(),
       semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
       provenanceGraphLines: provenanceGraphInspectorLines(),
       semanticVerificationLines: semanticVerificationInspectorLines(),
       journeyNarrativeArcLines: journeyNarrativeArcInspectorLines(),
+      studyGuidanceLines: studyGuidanceInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
       strongAlignmentLines: strongAlignmentInspectorLines(),
@@ -16770,10 +17227,12 @@ createRevelationPartsSection(item.subEvents)
       item.authorityRegistryLines,
       item.architectureGraphLines,
       item.semanticHealthLines,
+      item.metricIntegrityLines,
       item.semanticExplainabilityLines,
       item.provenanceGraphLines,
       item.semanticVerificationLines,
       item.journeyNarrativeArcLines,
+      item.studyGuidanceLines,
       item.morphologyLines,
       item.translationAlignmentLines,
       item.strongAlignmentLines,
@@ -16840,10 +17299,12 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Authority Registry Inspector", "", { list: item.authorityRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Authority Registry Inspector" }),
       createPassageFunctionSection("Architecture Graph Inspector", "", { list: item.architectureGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Architecture Graph Inspector" }),
       createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
+      createPassageFunctionSection("Metric Integrity Inspector", "", { list: item.metricIntegrityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Metric Integrity Inspector" }),
       createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
       createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
       createPassageFunctionSection("Semantic Verification Inspector", "", { list: item.semanticVerificationLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Verification Inspector" }),
       createPassageFunctionSection("Journey Inspector", "", { list: item.journeyNarrativeArcLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Journey Inspector" }),
+      createPassageFunctionSection("Study Guidance Inspector", "", { list: item.studyGuidanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Study Guidance Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
       createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
@@ -20087,19 +20548,22 @@ createRevelationPartsSection(item.subEvents)
 
   function themePromotionInspectorLines() {
     const candidates = themePromotionCandidates();
+    const groundedCandidates = candidates.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
     const promoted = promotedThemeRecords();
     const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
     const rejected = [];
-    const coverage = candidates.length ? Math.round((promoted.length / candidates.length) * 100) : 0;
+    const coverage = metricPercent(promoted.length, groundedCandidates.length);
     return [
-      `Discovered themes: ${candidates.length}`,
+      `Theme catalog entries: ${candidates.length}`,
+      `Grounded theme candidates: ${groundedCandidates.length}`,
       `Promoted themes: ${promoted.length}`,
       `Rejected themes: ${rejected.length}`,
       `Unresolved themes: ${unresolved.length}`,
-      `Coverage: ${coverage}%`,
+      `Coverage: ${formatMetricPercent(coverage)}`,
       promoted.length ? `Promoted examples: ${promoted.slice(0, 6).map((item) => `${item.themeName} | ${item.themeConfidence} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
       unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((item) => `${item.themeName} (${item.promotionReason})`).join(" | ")}` : "Unresolved examples: none",
-      "Boundary: Theme promotions summarize grounded lower-layer records only. They may not rewrite context, replace source meaning, create doctrine, infer theology without evidence, crawl, or process queues.",
+      "Denominator rule: Theme coverage = promoted grounded themes / grounded theme candidates. Catalog entries are listed separately and are not treated as grounded discoveries.",
+      "Boundary: Theme promotions summarize grounded primary/derived records only. They may not rewrite context, replace source meaning, create doctrine, infer theology without evidence, crawl, or process queues.",
       "Layer: ICE_STUDY_THEMES promoted from Context Lock, Timeline, Scene, Relationship, Teaching, and Principle records"
     ];
   }
