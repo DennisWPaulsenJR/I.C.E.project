@@ -15140,6 +15140,7 @@ createRevelationPartsSection(item.subEvents)
     const themeCatalog = themePromotionCandidates();
     const groundedThemes = themeCatalog.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
     const promotedThemes = promotedThemeRecords();
+    const principleDiagnostics = principleExtractionDiagnostics();
     const explainability = semanticExplainabilityDiagnostics();
     const provenance = provenanceGraphDiagnostics();
     const analyzed = analyzedPageHistory();
@@ -15192,6 +15193,17 @@ createRevelationPartsSection(item.subEvents)
         status: groundedThemes.length ? metricState({ denominator: groundedThemes.length, numerator: promotedThemes.length, unresolved: groundedThemes.length - promotedThemes.length }) : "zero grounded promotions",
         statusRule: "promoted grounded themes / grounded theme candidates; catalog entries are excluded from the denominator.",
         warnings: themeCatalog.length && !groundedThemes.length ? [`${themeCatalog.length} theme catalog entries were available but none had grounded current-scope support.`] : []
+      }),
+      metricRecord({
+        metricName: "Principle extraction coverage",
+        scopeBasis: "selected scope grounded principle candidates",
+        numerator: principleDiagnostics.promoted.length,
+        denominator: principleDiagnostics.groundedCandidates.length,
+        excluded: Math.max(0, principleDiagnostics.records.length - principleDiagnostics.groundedCandidates.length),
+        sourceCollection: "principleExtractionRecords",
+        status: principleDiagnostics.groundedCandidates.length ? metricState({ denominator: principleDiagnostics.groundedCandidates.length, numerator: principleDiagnostics.promoted.length, unresolved: principleDiagnostics.unresolved.length }) : "no_candidates",
+        statusRule: "promoted grounded principle records / grounded principle candidates; no principle catalog denominator is used.",
+        warnings: principleDiagnostics.groundedCandidates.length && !principleDiagnostics.promoted.length ? ["Grounded principle candidates exist but none were promoted under the current confidence rules."] : []
       }),
       metricRecord({
         metricName: "Pronoun versus downstream resolution",
@@ -16425,6 +16437,241 @@ createRevelationPartsSection(item.subEvents)
     ];
   }
 
+  function principleExtractionCategories() {
+    return [
+      "Explicit Principle",
+      "Explicit Command",
+      "Explicit Promise",
+      "Explicit Warning",
+      "Explicit Covenant Principle",
+      "Explicit Prophetic Principle",
+      "Supported Principle",
+      "Repeated Principle",
+      "Journey-Supported Principle",
+      "Relationship-Supported Principle",
+      "Theme-Supported Principle",
+      "Possible Principle",
+      "Unresolved Principle Candidate"
+    ];
+  }
+
+  function principleExtractionEvidenceLabel(record = {}) {
+    return normalizeText(record.sourcePhrase || record.sourceReference || record.verseRange || record.sourceScope || record.evidence || record.sourceGrounding || record.derivedMeaning || record.label || record.id || record.recordId);
+  }
+
+  function principleExtractionName(value = "", fallback = "Principle Candidate") {
+    const text = normalizeText(value).replace(/\s+/g, " ").trim();
+    return trimText(text || fallback, 96);
+  }
+
+  function principleExtractionRecord(principleName, principleCategory, options = {}) {
+    const supportingEvidence = uniqueStudyList(asArray(options.supportingEvidence).map(normalizeText).filter(Boolean)).slice(0, 12);
+    const supportingEvents = uniqueStudyList(asArray(options.supportingEvents).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingScenes = uniqueStudyList(asArray(options.supportingScenes).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingRelationships = uniqueStudyList(asArray(options.supportingRelationships).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingJourneys = uniqueStudyList(asArray(options.supportingJourneys).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingThemes = uniqueStudyList(asArray(options.supportingThemes).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportingCausality = uniqueStudyList(asArray(options.supportingCausality).map(normalizeText).filter(Boolean)).slice(0, 8);
+    const supportCount = supportingEvidence.length + supportingEvents.length + supportingScenes.length + supportingRelationships.length + supportingJourneys.length + supportingThemes.length + supportingCausality.length;
+    const confidence = options.confidence || (supportCount > 2 ? "Strongly Supported" : supportCount ? "Supported" : "Unresolved");
+    const status = options.status || (/explicit|strongly supported|supported/i.test(confidence) ? "promoted" : (/possible/i.test(confidence) ? "possible" : "unresolved"));
+    const name = principleExtractionName(principleName, principleCategory);
+    return {
+      principleId: `principle-preview-${normalizeText(principleCategory).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${normalizeText(name).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`.slice(0, 140),
+      principleName: name,
+      principleCategory,
+      sourceScope: currentStudyScopeLabel(),
+      sourceReference: options.sourceReference || supportingEvidence[0] || currentStudyScopeLabel(),
+      supportingEvidence,
+      supportingEvents,
+      supportingScenes,
+      supportingRelationships,
+      supportingJourneys,
+      supportingThemes,
+      supportingCausality,
+      evidenceDistance: 8,
+      confidence,
+      provenance: options.provenance || "I.C.E. Principle Extraction Foundation from existing scoped semantic records",
+      explainabilityReference: options.explainabilityReference || "Semantic Explainability Inspector / Provenance Graph Inspector",
+      verificationStatus: options.verificationStatus || (status === "promoted" ? "verified preview support" : "requires further study"),
+      status
+    };
+  }
+
+  function principleExtractionSourceRecords() {
+    return [
+      ...scopedSemanticRecords(studyData.teachingSemantics).map((record) => ({ ...record, principleSourceLayer: "Teaching Semantics" })),
+      ...scopedSemanticRecords(studyData.principleRelationships).map((record) => ({ ...record, principleSourceLayer: "Principle Relationships" })),
+      ...scopedSemanticRecords(studyData.principleNetworks).map((record) => ({ ...record, principleSourceLayer: "Principle Networks" })),
+      ...promotedThemeRecords().map((record) => ({ ...record, principleSourceLayer: "Theme Records" })),
+      ...promotedRelationshipRecords().map((record) => ({ ...record, principleSourceLayer: "Relationship Records" })),
+      ...journeyNarrativeArcRecords().map((record) => ({ ...record, principleSourceLayer: "Journey Records" })),
+      ...causalityPreviewRecords().map((record) => ({ ...record, principleSourceLayer: "Causality Records" })),
+      ...consequenceChainPreviewRecords().map((record) => ({ ...record, principleSourceLayer: "Consequence Chain Records" })),
+      ...scopedSemanticRecords(studyData.passageFunctions).map((record) => ({ ...record, principleSourceLayer: "Passage Functions" })),
+      ...scopedSemanticRecords(studyData.referenceRoles).map((record) => ({ ...record, principleSourceLayer: "Reference Roles" }))
+    ];
+  }
+
+  function principleExtractionCueRecords(pattern) {
+    return principleExtractionSourceRecords().filter((record) => pattern.test(normalizeText(record)));
+  }
+
+  function principleExtractionRecords() {
+    const teaching = scopedSemanticRecords(studyData.teachingSemantics);
+    const principles = scopedSemanticRecords(studyData.principleRelationships);
+    const networks = scopedSemanticRecords(studyData.principleNetworks);
+    const themes = promotedThemeRecords();
+    const relationships = promotedRelationshipRecords();
+    const journeys = journeyNarrativeArcRecords();
+    const causality = causalityPreviewRecords();
+    const consequences = consequenceChainPreviewRecords();
+    const sourceLabel = (record) => principleExtractionEvidenceLabel(record);
+    const eventLabel = (record) => normalizeText(record.eventName || record.eventType || record.timelineId || record.sourceReference);
+    const sceneLabel = (record) => normalizeText(record.sceneTitle || record.sceneType || record.sceneId || record.sourceReference);
+    const relationshipLabel = (record) => normalizeText(record.relationshipType || (record.sourceEntity && record.targetEntity ? `${record.sourceEntity} -> ${record.targetEntity}` : "") || record.relationshipId);
+    const journeyLabel = (record) => normalizeText(`${record.journeyType}${record.primaryParticipant && record.primaryParticipant !== "not resolved" ? ` - ${record.primaryParticipant}` : ""}`);
+    const themeLabel = (record) => normalizeText(record.themeName || record.themeId);
+    const cueRecord = (category, pattern, name, confidence = "Explicit") => {
+      const matches = principleExtractionCueRecords(pattern);
+      return principleExtractionRecord(name || category, category, {
+        supportingEvidence: matches.map(sourceLabel),
+        sourceReference: matches[0] ? sourceLabel(matches[0]) : "",
+        confidence: matches.length ? confidence : "Unresolved",
+        provenance: `I.C.E. Principle Extraction explicit-cue scan for ${category}`,
+        verificationStatus: matches.length ? "explicit source cue present in scoped records" : "no explicit source cue in scoped records",
+        status: matches.length ? "promoted" : "unresolved"
+      });
+    };
+    const records = [
+      cueRecord("Explicit Principle", /\b(blessed|therefore|wherefore|for this cause|principle|doctrine|teach|sayings)\b/i, "Explicitly stated teaching/principle"),
+      cueRecord("Explicit Command", /\b(command|commanded|commandment|charge|charged|instruct|fear not|take|go|depart|arise|call|pray|ask|seek|knock)\b/i, "Explicit command"),
+      cueRecord("Explicit Promise", /\b(promise|promised|shall|will|blessed|inherit|receive|reward|given unto you)\b/i, "Explicit promise"),
+      cueRecord("Explicit Warning", /\b(warn|warning|beware|woe|flee|fear|lest|take heed|judge not)\b/i, "Explicit warning"),
+      cueRecord("Explicit Covenant Principle", /\b(covenant|promise|abraham|david|lineage|generation|begat|kingdom)\b/i, "Explicit covenant principle"),
+      cueRecord("Explicit Prophetic Principle", /\b(prophet|prophecy|prophesied|fulfilled|spoken by the prophet|as it is written|scripture)\b/i, "Explicit prophetic principle")
+    ];
+    const teachingEvidence = [...teaching, ...principles, ...networks];
+    records.push(principleExtractionRecord("Teaching and principle support", "Supported Principle", {
+      supportingEvidence: teachingEvidence.map(sourceLabel),
+      confidence: teachingEvidence.length > 1 ? "Strongly Supported" : (teachingEvidence.length ? "Supported" : "Unresolved"),
+      provenance: "I.C.E. Principle Extraction from Teaching Semantics, Principle Relationships, and Principle Networks",
+      status: teachingEvidence.length ? "promoted" : "unresolved"
+    }));
+    const repeatedPrinciples = uniqueStudyList(principles.flatMap((record) => [record.principle, ...asArray(record.relatedPrinciples)]).map(normalizeText).filter(Boolean));
+    records.push(principleExtractionRecord(repeatedPrinciples[0] || "Repeated principle", "Repeated Principle", {
+      supportingEvidence: repeatedPrinciples,
+      confidence: repeatedPrinciples.length > 1 ? "Strongly Supported" : (repeatedPrinciples.length ? "Supported" : "Unresolved"),
+      provenance: "I.C.E. Principle Extraction from repeated principle relationship labels",
+      status: repeatedPrinciples.length ? "promoted" : "unresolved"
+    }));
+    records.push(principleExtractionRecord("Journey-supported principle", "Journey-Supported Principle", {
+      supportingEvidence: journeys.map((record) => `${record.journeyType}: ${record.confidence}`),
+      supportingJourneys: journeys.map(journeyLabel),
+      confidence: journeys.filter((record) => record.status === "supported").length > 1 ? "Strongly Supported" : (journeys.length ? "Supported" : "Unresolved"),
+      provenance: "I.C.E. Principle Extraction from Journey & Narrative Arc records",
+      status: journeys.length ? "promoted" : "unresolved"
+    }));
+    records.push(principleExtractionRecord("Relationship-supported principle", "Relationship-Supported Principle", {
+      supportingEvidence: relationships.map(sourceLabel),
+      supportingRelationships: relationships.map(relationshipLabel),
+      confidence: relationships.length > 1 ? "Strongly Supported" : (relationships.length ? "Supported" : "Unresolved"),
+      provenance: "I.C.E. Principle Extraction from promoted Relationship records",
+      status: relationships.length ? "promoted" : "unresolved"
+    }));
+    records.push(principleExtractionRecord("Theme-supported principle", "Theme-Supported Principle", {
+      supportingEvidence: themes.map(sourceLabel),
+      supportingThemes: themes.map(themeLabel),
+      confidence: themes.length > 1 ? "Strongly Supported" : (themes.length ? "Supported" : "Unresolved"),
+      provenance: "I.C.E. Principle Extraction from promoted Theme records",
+      status: themes.length ? "promoted" : "unresolved"
+    }));
+    records.push(principleExtractionRecord("Possible principle from causality/consequence support", "Possible Principle", {
+      supportingEvidence: [...causality.map(sourceLabel), ...consequences.map(sourceLabel)],
+      supportingCausality: [...causality.map((record) => normalizeText(record.causalityType || record.evidence || record.causalityId)), ...consequences.map((record) => normalizeText(record.resultingConsequence || record.consequenceId || record.evidence))],
+      confidence: causality.length || consequences.length ? "Possible" : "Unresolved",
+      provenance: "I.C.E. Principle Extraction from Causality and Consequence Chain previews",
+      verificationStatus: "possible support only; not displayed as fact",
+      status: causality.length || consequences.length ? "possible" : "unresolved"
+    }));
+    records.push(principleExtractionRecord("Unresolved principle candidate", "Unresolved Principle Candidate", {
+      supportingEvidence: semanticExplainabilityDiagnostics().missingEvidenceChain.slice(0, 8).map((record) => `${record.recordType}: missing evidence chain`),
+      confidence: "Unresolved",
+      provenance: "I.C.E. Principle Extraction from unresolved explainability diagnostics",
+      verificationStatus: "insufficient evidence; no principle promoted",
+      status: "unresolved"
+    }));
+    return records;
+  }
+
+  function principleExtractionDiagnostics() {
+    const records = principleExtractionRecords();
+    const groundedCandidates = records.filter((record) => asArray(record.supportingEvidence).length || asArray(record.supportingEvents).length || asArray(record.supportingScenes).length || asArray(record.supportingRelationships).length || asArray(record.supportingJourneys).length || asArray(record.supportingThemes).length || asArray(record.supportingCausality).length);
+    const promoted = records.filter((record) => record.status === "promoted");
+    const explicit = records.filter((record) => /explicit/i.test(record.confidence || record.principleCategory));
+    const stronglySupported = records.filter((record) => /strongly supported/i.test(record.confidence));
+    const supported = records.filter((record) => /^supported$/i.test(record.confidence) || /supported/i.test(record.principleCategory));
+    const possible = records.filter((record) => record.status === "possible" || /possible/i.test(record.confidence));
+    const unresolved = records.filter((record) => record.status === "unresolved" || /unresolved/i.test(record.confidence));
+    const unsupported = records.filter((record) => record.status === "unsupported");
+    const coverage = metricPercent(promoted.length, groundedCandidates.length);
+    const confidenceDistribution = records.reduce((counts, record) => {
+      const label = normalizeText(record.confidence || "Unresolved") || "Unresolved";
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+    return { records, groundedCandidates, promoted, explicit, stronglySupported, supported, possible, unresolved, unsupported, coverage, confidenceDistribution };
+  }
+
+  function principleExtractionInspectorLines() {
+    const diagnostics = principleExtractionDiagnostics();
+    const sample = diagnostics.records.map((record) => [
+      record.principleCategory,
+      `name=${record.principleName}`,
+      `status=${record.status}`,
+      `confidence=${record.confidence}`,
+      `distance=${record.evidenceDistance}`,
+      `evidence=${asArray(record.supportingEvidence).slice(0, 3).join("; ") || "none"}`,
+      `journeys=${asArray(record.supportingJourneys).slice(0, 3).join("; ") || "none"}`,
+      `themes=${asArray(record.supportingThemes).slice(0, 3).join("; ") || "none"}`,
+      `verification=${record.verificationStatus}`
+    ].join(" | "));
+    return [
+      `Principle records found: ${diagnostics.records.length}`,
+      `Grounded principle candidates: ${diagnostics.groundedCandidates.length}`,
+      `Principle coverage: ${formatMetricPercent(diagnostics.coverage)}`,
+      `Explicit count: ${diagnostics.explicit.length}`,
+      `Strongly supported count: ${diagnostics.stronglySupported.length}`,
+      `Supported count: ${diagnostics.supported.length}`,
+      `Possible count: ${diagnostics.possible.length}`,
+      `Unresolved count: ${diagnostics.unresolved.length}`,
+      `Unsupported count: ${diagnostics.unsupported.length}`,
+      `Principle categories supported: ${principleExtractionCategories().join("; ")}`,
+      `Confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      "Denominator rule: Principle coverage = grounded principle records promoted / grounded principle candidates. There is no principle catalog denominator.",
+      "Record shape: principleId; principleName; principleCategory; sourceScope; sourceReference; supportingEvidence; supportingEvents; supportingScenes; supportingRelationships; supportingJourneys; supportingThemes; supportingCausality; evidenceDistance; confidence; provenance; explainabilityReference; verificationStatus; status",
+      "Sample principle records:",
+      ...(sample.length ? sample : ["No Principle Extraction preview records generated for the current Study Scope."]),
+      "Trust: principle extraction observes and summarizes grounded records only. It does not create doctrine, mutate Context Lock, override authority, infer motives, write storage, crawl, process queues, or change Study View output."
+    ];
+  }
+
+  function principleExtractionDashboardLines() {
+    const diagnostics = principleExtractionDiagnostics();
+    return [
+      "Principle Extraction Summary",
+      `Principle record count: ${diagnostics.records.length}`,
+      `Principle coverage: ${formatMetricPercent(diagnostics.coverage)}`,
+      `Explicit principle count: ${diagnostics.explicit.length}`,
+      `Supported principle count: ${diagnostics.supported.length + diagnostics.stronglySupported.length}`,
+      `Possible principle count: ${diagnostics.possible.length}`,
+      `Unresolved principle count: ${diagnostics.unresolved.length}`,
+      `Unsupported principle count: ${diagnostics.unsupported.length}`,
+      `Principle confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      "Boundary: Principle Extraction Foundation is runtime/display-only and does not persist records, create doctrine, or change Study View output."
+    ];
+  }
+
   function studyGuidanceCategories() {
     return [
       "Narrative Overview",
@@ -16674,6 +16921,7 @@ createRevelationPartsSection(item.subEvents)
       ...provenanceGraphDashboardLines(),
       ...semanticVerificationDashboardLines(),
       ...journeyNarrativeArcDashboardLines(),
+      ...principleExtractionDashboardLines(),
       ...studyGuidanceDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
@@ -17174,6 +17422,7 @@ createRevelationPartsSection(item.subEvents)
       provenanceGraphLines: provenanceGraphInspectorLines(),
       semanticVerificationLines: semanticVerificationInspectorLines(),
       journeyNarrativeArcLines: journeyNarrativeArcInspectorLines(),
+      principleExtractionLines: principleExtractionInspectorLines(),
       studyGuidanceLines: studyGuidanceInspectorLines(),
       morphologyLines: morphologyInspectorLines(),
       translationAlignmentLines: translationAlignmentInspectorLines(),
@@ -17232,6 +17481,7 @@ createRevelationPartsSection(item.subEvents)
       item.provenanceGraphLines,
       item.semanticVerificationLines,
       item.journeyNarrativeArcLines,
+      item.principleExtractionLines,
       item.studyGuidanceLines,
       item.morphologyLines,
       item.translationAlignmentLines,
@@ -17304,6 +17554,7 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
       createPassageFunctionSection("Semantic Verification Inspector", "", { list: item.semanticVerificationLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Verification Inspector" }),
       createPassageFunctionSection("Journey Inspector", "", { list: item.journeyNarrativeArcLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Journey Inspector" }),
+      createPassageFunctionSection("Principle Extraction Inspector", "", { list: item.principleExtractionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Principle Extraction Inspector" }),
       createPassageFunctionSection("Study Guidance Inspector", "", { list: item.studyGuidanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Study Guidance Inspector" }),
       createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
       createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
