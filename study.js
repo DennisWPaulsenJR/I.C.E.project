@@ -12642,6 +12642,7 @@ createRevelationPartsSection(item.subEvents)
     return scopedComputationCached("promotionCoverageRows", () => {
     const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
     const themeDiagnostics = themePromotionDiagnostics();
+    const literaryDiagnostics = literaryPromotionDiagnostics();
     const fulfillmentRecords = [
       ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.fulfillmentMeaning, item.sourceGrounding].join(" ")))),
       ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding].join(" ")))),
@@ -12658,7 +12659,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Relationship Promotions", records: promotedRelationshipRecords(), discoveredFallback: relationshipPromotionCandidates().length || scopedRelationshipGraph.length },
       { label: "Theme Promotions", records: themeDiagnostics.promoted, discoveredFallback: themeDiagnostics.groundedCandidates.length },
       { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
-      { label: "Literary Structure Promotions", records: promotedLiteraryRecords(), discoveredFallback: literaryPromotionCandidates().length || promotedLiteraryRecords().length }
+      { label: "Literary Structure Promotions", records: literaryDiagnostics.promoted, discoveredFallback: literaryDiagnostics.groundedCandidates.length }
     ];
     return categories.map((category) => {
       const records = asArray(category.records);
@@ -15858,6 +15859,7 @@ createRevelationPartsSection(item.subEvents)
 
   function qaDashboardPromotionLines() {
     const themeDiagnostics = themePromotionDiagnostics();
+    const literaryDiagnostics = literaryPromotionDiagnostics();
     return [
       "Promotion Summary",
       ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${formatMetricPercent(row.coverage)}; status=${row.status}; denominator=${row.denominator}`),
@@ -15873,7 +15875,21 @@ createRevelationPartsSection(item.subEvents)
       `Theme duplicate-support exclusions: ${themeDiagnostics.duplicateSupportExclusions}`,
       `Theme support diversity: one=${themeDiagnostics.diversity.one}; two=${themeDiagnostics.diversity.two}; three_or_more=${themeDiagnostics.diversity.three_or_more}`,
       `Theme scope counts: ${languageCountLine(themeDiagnostics.scopeCounts)}`,
-      `Theme confidence distribution: ${languageCountLine(themeDiagnostics.confidenceDistribution)}`
+      `Theme confidence distribution: ${languageCountLine(themeDiagnostics.confidenceDistribution)}`,
+      `Grounded literary candidates: ${literaryDiagnostics.groundedCandidates.length}`,
+      `Promoted literary structures: ${literaryDiagnostics.promoted.length}`,
+      `Candidate-only structures: ${literaryDiagnostics.candidateOnly.length}`,
+      `Unresolved structures: ${literaryDiagnostics.unresolved.length}`,
+      `Low-risk promoted count: ${literaryDiagnostics.promoted.filter((item) => item.riskClass === "low").length}`,
+      `Medium-risk promoted count: ${literaryDiagnostics.promoted.filter((item) => item.riskClass === "medium").length}`,
+      `High-risk candidate count: ${literaryDiagnostics.highRiskCandidates.length}`,
+      `Boundary-complete count: ${literaryDiagnostics.boundaryComplete.length}`,
+      `Boundary-incomplete count: ${literaryDiagnostics.boundaryIncomplete.length}`,
+      `Repeated-pattern count: ${literaryDiagnostics.repeatedPatternCount}`,
+      `Literary duplicate-support exclusions: ${literaryDiagnostics.duplicateSupportExclusions}`,
+      `Literary scope counts: ${languageCountLine(literaryDiagnostics.scopeCounts)}`,
+      `Literary risk counts: ${languageCountLine(literaryDiagnostics.byRisk)}`,
+      `Literary confidence distribution: ${languageCountLine(literaryDiagnostics.confidenceDistribution)}`
     ];
   }
 
@@ -16226,6 +16242,7 @@ createRevelationPartsSection(item.subEvents)
     const themeCatalog = themeDiagnostics.candidates;
     const groundedThemes = themeDiagnostics.groundedCandidates;
     const promotedThemes = themeDiagnostics.promoted;
+    const literaryDiagnostics = literaryPromotionDiagnostics();
     const principleDiagnostics = principleExtractionDiagnostics();
     const guidanceDiagnostics = studyGuidanceDiagnostics();
     const explainability = semanticExplainabilityDiagnostics();
@@ -16370,6 +16387,53 @@ createRevelationPartsSection(item.subEvents)
         warnings: [
           promotedThemes.length ? `Theme support diversity: one=${themeDiagnostics.diversity.one}; two=${themeDiagnostics.diversity.two}; three_or_more=${themeDiagnostics.diversity.three_or_more}.` : ""
         ]
+      }),
+      metricRecord({
+        metricName: "Literary promotion coverage",
+        scopeBasis: "selected scope grounded literary candidates",
+        numerator: literaryDiagnostics.promoted.length,
+        denominator: literaryDiagnostics.groundedCandidates.length,
+        excluded: Math.max(0, literaryDiagnostics.candidates.length - literaryDiagnostics.groundedCandidates.length),
+        sourceCollection: "literaryPromotionDiagnostics; literaryPromotionCandidates; promotedLiteraryRecords",
+        status: literaryDiagnostics.groundedCandidates.length ? metricState({ denominator: literaryDiagnostics.groundedCandidates.length, numerator: literaryDiagnostics.promoted.length, unresolved: literaryDiagnostics.candidateOnly.length + literaryDiagnostics.unresolved.length }) : (literaryDiagnostics.candidates.length ? "candidate_only" : "no_candidates"),
+        statusRule: "promoted grounded literary records / grounded literary candidates; catalog entries are excluded from the denominator.",
+        warnings: [
+          literaryDiagnostics.candidateOnly.length ? `${literaryDiagnostics.candidateOnly.length} literary candidate(s) remain candidate-only and are excluded from promoted numerator.` : "",
+          literaryDiagnostics.highRiskCandidates.length ? `${literaryDiagnostics.highRiskCandidates.length} high-risk candidate(s) remain restrained as candidate-only.` : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Literary boundary completeness",
+        scopeBasis: "promoted and candidate literary records requiring boundaries",
+        numerator: literaryDiagnostics.boundaryComplete.length,
+        denominator: literaryDiagnostics.candidates.length,
+        excluded: literaryDiagnostics.boundaryIncomplete.length,
+        sourceCollection: "literaryPromotionCandidates.boundarySignals",
+        status: literaryDiagnostics.candidates.length ? metricState({ denominator: literaryDiagnostics.candidates.length, numerator: literaryDiagnostics.boundaryComplete.length, unresolved: literaryDiagnostics.boundaryIncomplete.length }) : "no_candidates",
+        statusRule: "literary records with grounded start/end boundaries / promoted and candidate literary records.",
+        warnings: literaryDiagnostics.boundaryIncomplete.length ? [`${literaryDiagnostics.boundaryIncomplete.length} literary candidate(s) have incomplete boundaries.`] : []
+      }),
+      metricRecord({
+        metricName: "Literary evidence completeness",
+        scopeBasis: "all literary candidates and promoted records",
+        numerator: literaryDiagnostics.evidenceComplete.length,
+        denominator: literaryDiagnostics.candidates.length,
+        excluded: Math.max(0, literaryDiagnostics.candidates.length - literaryDiagnostics.evidenceComplete.length),
+        sourceCollection: "literaryPromotionCandidates",
+        status: literaryDiagnostics.candidates.length ? metricState({ denominator: literaryDiagnostics.candidates.length, numerator: literaryDiagnostics.evidenceComplete.length, unresolved: literaryDiagnostics.candidates.length - literaryDiagnostics.evidenceComplete.length }) : "no_candidates",
+        statusRule: "literary records with evidence, provenance, confidence, scope, and risk class / all literary records.",
+        warnings: literaryDiagnostics.candidates.length && literaryDiagnostics.evidenceComplete.length < literaryDiagnostics.candidates.length ? ["One or more literary records are missing evidence completeness fields."] : []
+      }),
+      metricRecord({
+        metricName: "Literary high-risk restraint",
+        scopeBasis: "high-risk literary candidates",
+        numerator: literaryDiagnostics.highRiskCandidates.length,
+        denominator: literaryDiagnostics.highRiskCandidates.length + literaryDiagnostics.highRiskPromoted.length,
+        excluded: literaryDiagnostics.highRiskPromoted.length,
+        sourceCollection: "literaryPromotionCandidates.riskClass",
+        status: literaryDiagnostics.highRiskPromoted.length ? "unsupported" : (literaryDiagnostics.highRiskCandidates.length ? "candidate_only" : "no_candidates"),
+        statusRule: "high-risk structures should remain candidate-only unless exceptional explicit support is present.",
+        warnings: literaryDiagnostics.highRiskPromoted.length ? [`${literaryDiagnostics.highRiskPromoted.length} high-risk literary record(s) were promoted and require review.`] : []
       }),
       metricRecord({
         metricName: "Principle extraction coverage",
@@ -17188,6 +17252,7 @@ createRevelationPartsSection(item.subEvents)
     const themeRecords = promotedThemeRecords();
     const allThemeCandidates = themePromotionCandidates();
     const literaryRecords = promotedLiteraryRecords();
+    const allLiteraryCandidates = literaryPromotionCandidates();
     const causalityRecords = causalityPreviewRecords();
     const consequenceRecords = consequenceChainPreviewRecords();
     const fulfillmentRecords = fulfillmentConfidencePreviewRecords();
@@ -17427,9 +17492,99 @@ createRevelationPartsSection(item.subEvents)
       semanticVerificationRecord(
         "Semantic Integrity",
         "Literary support present",
-        literaryRecords.filter((record) => !asArray(record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidence).length && !record.evidence).length ? "warning" : "pass",
+        literaryRecords.filter((record) => !asArray(record.supportingEvents).length && !asArray(record.supportingScenes).length && !asArray(record.supportingRelationships).length && !asArray(record.supportingEvidence).length && !asArray(record.evidence).length).length ? "warning" : "pass",
         "low",
         `${literaryRecords.length} promoted literary record(s) reviewed for support`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary grounded structural support exists",
+        literaryRecords.filter((record) => !asArray(record.supportingEvidence).length && !asArray(record.supportingRecords).length && !asArray(record.boundarySignals).length).length ? "warning" : "pass",
+        "medium",
+        `${literaryRecords.length} promoted literary record(s) checked for grounded evidence/support records`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary start/end boundaries exist where required",
+        allLiteraryCandidates.filter((record) => record.promotionStatus !== "unresolved" && (!record.startReference || !record.endReference)).length ? "warning" : "pass",
+        "medium",
+        `${allLiteraryCandidates.filter((record) => record.promotionStatus !== "unresolved" && (!record.startReference || !record.endReference)).length} literary candidate(s) missing start or end reference`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary confidence does not exceed structural support",
+        literaryRecords.filter((record) => /Explicit|Strongly Supported/i.test(record.confidence || record.literaryConfidence || "") && asArray(record.supportSourceTypes).length < 2 && record.confidence !== "Explicit").length ? "warning" : "pass",
+        "medium",
+        "Strong literary confidence requires explicit or multiple independent structural support types.",
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "High-risk literary form remains candidate unless threshold met",
+        allLiteraryCandidates.filter((record) => record.riskClass === "high" && record.promotionStatus === "promoted").length ? "failure" : "pass",
+        allLiteraryCandidates.filter((record) => record.riskClass === "high" && record.promotionStatus === "promoted").length ? "high" : "informational",
+        `${allLiteraryCandidates.filter((record) => record.riskClass === "high" && record.promotionStatus === "candidate").length} high-risk literary candidate(s) retained as candidate-only`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Duplicate literary support is not counted as independent evidence",
+        literaryRecords.filter((record) => Number(record.duplicateSupportExclusions || 0) && asArray(record.supportSourceTypes).length < 2 && /Strongly Supported|Explicit/i.test(record.confidence || record.literaryConfidence || "")).length ? "warning" : "pass",
+        "medium",
+        `${allLiteraryCandidates.reduce((sum, record) => sum + (Number(record.duplicateSupportExclusions) || 0), 0)} duplicate literary support path(s) excluded`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Parable-internal and surrounding narrative boundaries remain separate",
+        allLiteraryCandidates.filter((record) => /parable/i.test(record.structureType || "") && !record.parableDistinction).length ? "warning" : "pass",
+        "medium",
+        `${allLiteraryCandidates.filter((record) => /parable/i.test(record.structureType || "")).length} parable-related literary candidate(s) reviewed`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Quoted source remains distinct from current speaker",
+        allLiteraryCandidates.filter((record) => asArray(record.supportingQuotations).length && !record.quotedSourceDistinction).length ? "warning" : "pass",
+        "medium",
+        `${allLiteraryCandidates.filter((record) => asArray(record.supportingQuotations).length).length} literary candidate(s) with quotation support reviewed`,
+        "Quotation Boundary Preview",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary scope is explicit",
+        allLiteraryCandidates.filter((record) => record.promotionStatus !== "unresolved" && (!record.scopeBasis || !record.sourceScope)).length ? "warning" : "pass",
+        "medium",
+        `${allLiteraryCandidates.filter((record) => record.promotionStatus !== "unresolved" && (!record.scopeBasis || !record.sourceScope)).length} literary candidate(s) missing scope basis or source scope`,
+        "Literary Promotion Rules",
+        "Literary Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Literary candidate is not presented as established",
+        allLiteraryCandidates.filter((record) => record.promotionStatus === "candidate" && /promoted|established/i.test(record.verificationStatus || "")).length ? "failure" : "pass",
+        "high",
+        `${allLiteraryCandidates.filter((record) => record.promotionStatus === "candidate").length} literary candidate-only record(s) remain candidate-labeled`,
         "Literary Promotion Rules",
         "Literary Promotion Inspector",
         6
@@ -22476,40 +22631,68 @@ createRevelationPartsSection(item.subEvents)
   }
   function literaryStructureCatalog() {
     return [
-      { name: "Genealogy", pattern: /genealogy|lineage|generation|begat|son of david|son of abraham/i },
-      { name: "Teaching Discourse", pattern: /teaching discourse|teach|teacher|discourse|sayings|instruction|doctrine/i },
-      { name: "Sermon", pattern: /sermon|mount|beatitude|disciples came unto him|opened his mouth/i },
-      { name: "Narrative Testimony", pattern: /narrative testimony|testimony|narrator|witness|record|book of the generation/i },
-      { name: "Dialogue", pattern: /dialogue|said unto|saying|answered|asked|besought|spake/i },
-      { name: "Prayer", pattern: /pray|prayer|after this manner|our father/i },
-      { name: "Fulfillment Quotation", pattern: /fulfilled|spoken of the lord|spoken by the prophet|that it might be fulfilled/i },
-      { name: "Prophecy Citation", pattern: /prophet|prophecy|written|spoken by|citation/i },
-      { name: "Beatitude Pattern", pattern: /blessed are|beatitude|poor in spirit|merciful|peacemakers|pure in heart/i },
-      { name: "Repeated Formula", pattern: /again|verily|ye have heard|but i say unto you|blessed are|begat/i },
-      { name: "Blessing Declaration", pattern: /blessed are|blessing|theirs is|they shall/i },
-      { name: "Woe Declaration", pattern: /\bwoe\b|hypocrites|condemn/i },
-      { name: "Miracle Narrative", pattern: /miracle|heal|healed|cleanse|cast out|devil|spirit|leper|sick/i },
-      { name: "Calling Narrative", pattern: /follow me|called|calling|disciple|come after/i },
-      { name: "Travel Narrative", pattern: /travel|journey|depart|return|came|went|flee|ship|sea|mountain|wilderness/i }
+      { name: "Genealogy", riskClass: "low", pattern: /genealogy|lineage|generation|begat|son of david|son of abraham/i },
+      { name: "Teaching Discourse", riskClass: "medium", pattern: /teaching discourse|teach|teacher|discourse|sayings|instruction|doctrine/i },
+      { name: "Sermon", riskClass: "medium", pattern: /sermon|mount|beatitude|disciples came unto him|opened his mouth/i },
+      { name: "Narrative Testimony", riskClass: "low", pattern: /narrative testimony|testimony|narrator|witness|record|book of the generation/i },
+      { name: "Dialogue", riskClass: "low", pattern: /dialogue|said unto|saying|answered|asked|besought|spake|speaker|audience/i },
+      { name: "Prayer", riskClass: "low", pattern: /pray|prayer|after this manner|our father/i },
+      { name: "Fulfillment Quotation", riskClass: "low", pattern: /fulfilled|spoken of the lord|spoken by the prophet|that it might be fulfilled/i },
+      { name: "Prophecy Citation", riskClass: "low", pattern: /prophet|prophecy|written|spoken by|citation/i },
+      { name: "Beatitude Pattern", riskClass: "low", pattern: /blessed are|beatitude|poor in spirit|merciful|peacemakers|pure in heart/i },
+      { name: "Repeated Formula", riskClass: "low", pattern: /again|verily|ye have heard|but i say unto you|blessed are|begat|it is written/i },
+      { name: "Blessing Declaration", riskClass: "low", pattern: /blessed are|blessing|theirs is|they shall/i },
+      { name: "Woe Declaration", riskClass: "low", pattern: /\bwoe\b|hypocrites|condemn/i },
+      { name: "Miracle Narrative", riskClass: "medium", pattern: /miracle|heal|healed|cleanse|cast out|devil|spirit|leper|sick/i },
+      { name: "Calling Narrative", riskClass: "medium", pattern: /follow me|called|calling|disciple|come after/i },
+      { name: "Travel Narrative", riskClass: "medium", pattern: /travel|journey|depart|return|came|went|flee|ship|sea|mountain|wilderness/i },
+      { name: "Parable", riskClass: "medium", pattern: /parable|likened unto|kingdom of heaven is like|similitude/i },
+      { name: "Parable Explanation", riskClass: "medium", pattern: /parable explanation|hear ye therefore|declare unto us|explain|interpretation/i },
+      { name: "Question and Answer Sequence", riskClass: "low", pattern: /question|answer|asked|answered|what think ye|why/i },
+      { name: "Command Sequence", riskClass: "low", pattern: /command|commanded|do ye|go|arise|take|follow|seek|ask|knock/i },
+      { name: "Warning Sequence", riskClass: "low", pattern: /warn|warning|beware|take heed|lest|woe/i },
+      { name: "Promise Sequence", riskClass: "low", pattern: /promise|shall be|they shall|ye shall|it shall/i },
+      { name: "Public Teaching", riskClass: "low", pattern: /multitude|public teaching|taught them|people|crowd/i },
+      { name: "Private Instruction", riskClass: "low", pattern: /disciples came|privately|apart|house|unto his disciples/i },
+      { name: "Conflict Exchange", riskClass: "medium", pattern: /conflict|accuse|tempt|pharisee|scribes|hypocrite|answering said/i },
+      { name: "Petition and Response", riskClass: "medium", pattern: /petition|besought|request|asked|answered|response|cried/i },
+      { name: "Framing Inclusio Candidate", riskClass: "high", pattern: /inclusio|framing|opening.*closing|beginning.*end/i },
+      { name: "Parallelism Candidate", riskClass: "high", pattern: /parallel|contrast|but i say|ye have heard|again ye have heard/i },
+      { name: "Chiasmus Candidate", riskClass: "high", pattern: /chiasm|chiastic|mirrored|a-b-b-a/i },
+      { name: "Refrain", riskClass: "medium", pattern: /refrain|repeated refrain|again|verily/i },
+      { name: "List Structure", riskClass: "low", pattern: /list|these|those|first|second|third|and.*and.*and/i },
+      { name: "Contrast Structure", riskClass: "medium", pattern: /contrast|but i say|nevertheless|rather|enemy|love/i },
+      { name: "Cause and Consequence Structure", riskClass: "medium", pattern: /therefore|wherefore|because|for this cause|consequence|result/i },
+      { name: "Citation and Interpretation Structure", riskClass: "medium", pattern: /it is written|spoken by|written|citation|interpretation|fulfilled/i },
+      { name: "Narrative Transition", riskClass: "low", pattern: /then|after this|when|and it came to pass|departed|came/i },
+      { name: "Scene Cycle", riskClass: "medium", pattern: /scene cycle|cycle|again|returned|went out/i }
     ];
   }
 
   function literaryPromotionSourceRecords() {
-    const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
+    const wrap = (layer, supportType, records, labelKey) => asArray(records).map((record) => ({
       layer,
+      supportType,
       record,
       label: normalizeText(record?.[labelKey] || record?.structureType || record?.themeName || record?.eventName || record?.sceneTitle || record?.relationshipType || record?.lockName || record?.passageFunction || record?.functionType || layer)
     }));
     return [
-      ...wrap("Context Lock", contextLockRecords(), "lockName"),
-      ...wrap("Timeline Promotions", promotedTimelineRecords(), "eventType"),
-      ...wrap("Ordered Events", scopedSemanticRecords(studyData.orderedEvents), "eventType"),
-      ...wrap("Scene Promotions", promotedSceneRecords(), "sceneType"),
-      ...wrap("Relationship Promotions", promotedRelationshipRecords(), "relationshipType"),
-      ...wrap("Theme Promotions", promotedThemeRecords(), "themeName"),
-      ...wrap("Passage Functions", scopedSemanticRecords(studyData.passageFunctions), "passageFunction"),
-      ...wrap("Teaching Semantics", scopedSemanticRecords(studyData.teachingSemantics), "teachingBlock"),
-      ...wrap("Source Discovery", scopedSemanticRecords(studyData.sourceDiscoveryIndex), "sourcePhrase")
+      ...wrap("Context Lock", "context", contextLockRecords(), "lockName"),
+      ...wrap("Timeline Promotions", "sequence", promotedTimelineRecords(), "eventType"),
+      ...wrap("Ordered Events", "sequence", scopedSemanticRecords(studyData.orderedEvents), "eventType"),
+      ...wrap("Scene Promotions", "scene", promotedSceneRecords(), "sceneType"),
+      ...wrap("Relationship Promotions", "relationship", promotedRelationshipRecords(), "relationshipType"),
+      ...wrap("Theme Promotions", "theme", promotedThemeRecords(), "themeName"),
+      ...wrap("Passage Functions", "source_structure", scopedSemanticRecords(studyData.passageFunctions), "passageFunction"),
+      ...wrap("Teaching Semantics", "discourse", scopedSemanticRecords(studyData.teachingSemantics), "teachingBlock"),
+      ...wrap("Source Discovery", "source_wording", scopedSemanticRecords(studyData.sourceDiscoveryIndex), "sourcePhrase"),
+      ...wrap("DOM Semantic Hints", "dom_structure", scopedSemanticRecords(studyData.domSemanticHints), "text"),
+      ...wrap("Quotation Boundaries", "quotation", quotationBoundaryPreviewRecords(), "quoteType"),
+      ...wrap("Speaker Detection", "speaker", speakerDetectionPreviewRecords().filter((record) => record.status === "resolved"), "detectedSpeaker"),
+      ...wrap("Audience Detection", "audience", audienceDetectionPreviewRecords().filter((record) => record.status === "resolved"), "detectedAudience"),
+      ...wrap("Dialogue Relationships", "dialogue", dialogueRelationshipPreviewRecords().filter((record) => record.status === "resolved"), "relationshipType"),
+      ...wrap("Grammatical Roles", "grammar", grammaticalRolePreviewRecords().filter((record) => record.status === "resolved"), "grammaticalRole"),
+      ...wrap("Causality Preview", "causality", causalityPreviewRecords().filter((record) => record.status === "resolved"), "causalityType")
     ];
   }
 
@@ -22536,6 +22719,14 @@ createRevelationPartsSection(item.subEvents)
       record.sourceGrounding,
       record.derivedMeaning,
       record.reasoningPath,
+      record.quoteType,
+      record.detectedSpeaker,
+      record.detectedAudience,
+      record.relationshipType,
+      record.boundaryType,
+      record.transitionType,
+      record.sequencePattern,
+      record.repeatedElements,
       record.verseRange,
       record.scopePath
     ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
@@ -22568,57 +22759,244 @@ createRevelationPartsSection(item.subEvents)
     ].flat(Infinity).filter(Boolean).join(" "));
   }
 
-  function literaryPromotionSupport(matches = []) {
+  function literaryPromotionSupportTypeLabel(type = "") {
+    const map = {
+      source_wording: "explicit source wording",
+      source_structure: "source structure",
+      dom_structure: "DOM/source boundary",
+      quotation: "quotation boundary",
+      speaker: "speaker transition",
+      audience: "audience transition",
+      dialogue: "dialogue record",
+      sequence: "ordered sequence",
+      scene: "scene flow",
+      discourse: "discourse organization",
+      grammar: "grammatical pattern",
+      relationship: "relationship",
+      causality: "cause/consequence",
+      theme: "theme support",
+      context: "context"
+    };
+    return map[type] || normalizeText(type || "support");
+  }
+
+  function literaryPromotionSupportText(item = {}) {
+    return normalizeText([
+      item.layer,
+      item.label,
+      literaryPromotionEvidence(item),
+      literaryPromotionRecordText(item),
+      literaryPromotionSourceReference(item.record || {})
+    ].flat(Infinity).filter(Boolean).join(" "));
+  }
+
+  function literaryPromotionSupportReference(item = {}) {
+    const record = item.record || {};
+    return literaryPromotionSourceReference(record) || literaryPromotionSourceScope(record) || currentStudyScopeLabel();
+  }
+
+  function literaryPromotionIndependenceKey(item = {}) {
+    const record = item.record || {};
+    const supportType = normalizeText(item.supportType || item.layer || "support").toLowerCase();
+    const reference = literaryPromotionSupportReference(item).toLowerCase();
+    const sourceId = normalizeText(record.id || record.eventId || record.sceneId || record.relationshipId || record.quoteId || record.speakerRecordId || record.audienceRecordId || record.dialogueRecordId || record.roleRecordId || record.sourceId || "").toLowerCase();
+    const evidence = literaryPromotionSupportText(item).toLowerCase().slice(0, 180);
+    return [supportType, reference, sourceId || evidence].join("::");
+  }
+
+  function literaryPromotionGroundedSupport(item = {}) {
+    const record = item.record || {};
+    const text = literaryPromotionSupportText(item);
+    if (!text) return false;
+    if (/approved literary structure catalog|catalog only|tradition only/i.test(text)) return false;
+    if (/unresolved|unsupported/i.test(normalizeText(record.status || record.promotionStatus || record.confidence)) && !/candidate|possible/i.test(normalizeText(record.status || record.confidence))) return false;
+    if (item.supportType === "theme" && !asArray(record.supportingEvidence || record.evidence).length) return false;
+    return true;
+  }
+
+  function literaryPromotionDedupedSupports(matches = []) {
+    const seen = new Set();
+    const accepted = [];
+    const duplicates = [];
+    asArray(matches).forEach((item) => {
+      if (!literaryPromotionGroundedSupport(item)) return;
+      const key = literaryPromotionIndependenceKey(item);
+      if (seen.has(key)) {
+        duplicates.push(item);
+        return;
+      }
+      seen.add(key);
+      accepted.push({ ...item, independenceKey: key });
+    });
+    return { accepted, duplicates };
+  }
+
+  function literaryPromotionSupportDistribution(records = []) {
+    return asArray(records).reduce((counts, item) => {
+      const label = literaryPromotionSupportTypeLabel(item.supportType);
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function literaryPromotionBoundarySignals(records = []) {
+    return uniqueStudyList(asArray(records).flatMap((item) => {
+      const record = item.record || {};
+      const text = literaryPromotionSupportText(item);
+      return [
+        record.startReference,
+        record.endReference,
+        record.sourceReference,
+        record.verseRange,
+        record.scopePath,
+        item.supportType === "quotation" ? `quotation:${record.quoteId || record.quoteType || item.label}` : "",
+        item.supportType === "scene" ? `scene:${record.sceneId || record.sceneType || item.label}` : "",
+        item.supportType === "sequence" ? `sequence:${record.sequenceNumber || record.eventType || item.label}` : "",
+        /then|after this|when|therefore|wherefore|and it came to pass/i.test(text) ? "explicit narrative transition" : "",
+        /blessed are|woe|verily|it is written|but i say unto you/i.test(text) ? "repeated formula boundary" : ""
+      ];
+    }).map(normalizeText).filter(Boolean));
+  }
+
+  function literaryPromotionRepeatedElements(records = []) {
+    const phrases = [];
+    asArray(records).forEach((item) => {
+      const text = literaryPromotionSupportText(item);
+      ["blessed are", "woe", "verily", "it is written", "but i say unto you", "begat", "then", "again", "kingdom of heaven is like"].forEach((phrase) => {
+        if (text.toLowerCase().includes(phrase)) phrases.push(phrase);
+      });
+    });
+    return uniqueStudyList(phrases);
+  }
+
+  function literaryPromotionPageRecordFromSupport(record = {}) {
+    const candidate = {
+      sourceTitle: record.sourceTitle || record.title || record.sourceContext?.sourceTitle || "",
+      activeUrl: record.activeUrl || record.sourceUrl || record.url || record.sourceContext?.sourceUrl || "",
+      sourceCaptureBook: record.sourceCaptureBook || record.book || record.sourceContext?.sourceCaptureBook || "",
+      sourceCaptureChapter: record.sourceCaptureChapter || record.chapter || record.sourceContext?.sourceCaptureChapter || "",
+      sourceCaptureId: record.sourceCaptureId || record.captureId || record.sourceContext?.sourceCaptureId || "",
+      analyzedAt: record.analyzedAt || record.generatedAt || record.updatedAt || ""
+    };
+    return validSourcePageRecord(candidate) ? candidate : null;
+  }
+
+  function literaryPromotionScopeBasis(matches = []) {
+    const activePage = activeSourcePageRecord();
+    const activeKey = pageRecordKey(activePage || {});
+    const activeLabel = normalizeText(activePage ? volumePageLabel(activePage) : "");
+    const references = uniqueStudyList(matches.map(literaryPromotionSupportReference).filter(Boolean));
+    const activeMatches = matches.filter((item) => {
+      const record = item.record || {};
+      const recordKey = pageRecordKey(literaryPromotionPageRecordFromSupport(record) || {});
+      const ref = literaryPromotionSupportReference(item);
+      return (activeKey && recordKey && activeKey === recordKey) || (activeLabel && ref.includes(activeLabel));
+    }).length;
+    if (matches.length && activeMatches === matches.length) return "active-page grounded";
+    if (matches.length && matches.every((item) => recordMatchesCurrentStudyScope(item.record || item))) return "selected-scope grounded";
+    if (references.some((ref) => /cross-reference|related|future|prior/i.test(ref))) return "cross-reference supported";
+    if (matches.length) return "retained-session supported";
+    return "catalog-only";
+  }
+
+  function literaryPromotionSupport(matches = [], structure = {}) {
     const explicitCount = matches.filter((item) => {
       const record = item.record || {};
-      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel, record.passageFunction, record.eventType].flat(Infinity).join(" ")).toLowerCase();
-      return /explicit|direct source|grounded observation|matthew \d|scripture\.|genealogy|teaching|fulfill|spoken|blessed are/.test(text);
+      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel, record.passageFunction, record.eventType, item.supportType].flat(Infinity).join(" ")).toLowerCase();
+      return /explicit|direct source|grounded observation|source wording|matthew \d|scripture\.|genealogy|teaching|fulfill|spoken|blessed are|woe|it is written|quotation|source_structure/.test(text);
     }).length;
-    const layers = new Set(matches.map((item) => item.layer).filter(Boolean));
-    if (explicitCount >= 1 && (matches.length >= 2 || layers.size >= 2)) return { label: "High", confidence: "explicit", inferenceLevel: "Grounded Observation", reason: "explicit source organization or repeated direct pattern evidence" };
-    if (matches.length >= 2 || layers.size >= 2) return { label: "Medium", confidence: "probable", inferenceLevel: "Supported Meaning", reason: "multiple current-scope lower-layer records support the structure" };
-    return { label: "Low", confidence: "possible", inferenceLevel: "Possible Meaning", reason: "single grounded structure signal in the current scope" };
+    const supportTypes = new Set(matches.map((item) => item.supportType).filter(Boolean));
+    const references = new Set(matches.map(literaryPromotionSupportReference).filter(Boolean));
+    const riskClass = structure.riskClass || "medium";
+    if (riskClass === "high") {
+      if (supportTypes.size >= 3 && references.size >= 2 && explicitCount >= 1) return { label: "Candidate", confidence: "Candidate", status: "candidate", inferenceLevel: "Possible Meaning", directness: "high-risk candidate with strong visible support", reason: "high-risk literary form remains candidate-only despite multiple structural signals" };
+      return { label: "Candidate", confidence: "Candidate", status: "candidate", inferenceLevel: "Possible Meaning", directness: "high-risk candidate", reason: "high-risk literary form remains candidate-only until exceptional explicit support is reviewed" };
+    }
+    if (riskClass === "low" && explicitCount >= 1) return { label: "Explicit", confidence: "Explicit", status: "promoted", inferenceLevel: "Grounded Observation", directness: "explicit structural signal", reason: "low-risk structure has explicit source/structure evidence" };
+    if (explicitCount >= 1 && supportTypes.size >= 2) return { label: "Strongly Supported", confidence: "Strongly Supported", status: "promoted", inferenceLevel: "Supported Meaning", directness: "explicit plus corroborated", reason: "explicit structural signal plus another independent support source type" };
+    if (supportTypes.size >= 2 && references.size >= 2) return { label: "Strongly Supported", confidence: "Strongly Supported", status: "promoted", inferenceLevel: "Supported Meaning", directness: "corroborated structural pattern", reason: "multiple independent structural signals support the form" };
+    if (supportTypes.size >= 2 || matches.length >= 2) return { label: "Supported", confidence: "Supported", status: "promoted", inferenceLevel: "Supported Meaning", directness: "supported structural path", reason: "grounded structural support exists without catalog-only promotion" };
+    if (matches.length === 1) return { label: "Candidate", confidence: "Candidate", status: riskClass === "low" ? "promoted" : "candidate", inferenceLevel: riskClass === "low" ? "Supported Meaning" : "Possible Meaning", directness: "single grounded structural path", reason: riskClass === "low" ? "low-risk structure promoted from one grounded structural path" : "single support path remains candidate for medium/high-risk form" };
+    return { label: "Unresolved", confidence: "Unresolved", status: "unresolved", inferenceLevel: "Unresolved", directness: "no grounded structural support", reason: "no grounded current-scope support" };
   }
 
   function literaryPromotionCandidate(structure = {}, matches = []) {
-    const first = matches[0]?.record || {};
-    const supportingEvents = uniqueStudyList(matches
+    const deduped = literaryPromotionDedupedSupports(matches);
+    const supports = deduped.accepted;
+    const first = supports[0]?.record || {};
+    const supportTypes = uniqueStudyList(supports.map((item) => literaryPromotionSupportTypeLabel(item.supportType)));
+    const boundarySignals = literaryPromotionBoundarySignals(supports);
+    const repeatedElements = literaryPromotionRepeatedElements(supports);
+    const supportingEvents = uniqueStudyList(supports
       .filter((item) => /Timeline|Ordered Events/.test(item.layer))
       .map((item) => item.record.eventName || item.record.eventType || item.label)).slice(0, 8);
-    const supportingScenes = uniqueStudyList(matches
+    const supportingScenes = uniqueStudyList(supports
       .filter((item) => /Scene/.test(item.layer))
       .map((item) => item.record.sceneTitle || item.record.sceneType || item.label)).slice(0, 8);
-    const supportingRelationships = uniqueStudyList(matches
+    const supportingRelationships = uniqueStudyList(supports
       .filter((item) => /Relationship/.test(item.layer))
       .map((item) => `${item.record.sourceEntity || item.record.eventA || "source"} -> ${item.record.targetEntity || item.record.eventB || "target"} | ${item.record.relationshipType || item.label}`)).slice(0, 8);
-    const supportingThemes = uniqueStudyList(matches
+    const supportingThemes = uniqueStudyList(supports
       .filter((item) => /Theme/.test(item.layer))
       .map((item) => item.record.themeName || item.label)).slice(0, 8);
-    const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
-    const evidenceItems = uniqueStudyList(matches.map(literaryPromotionEvidence).filter(Boolean)).slice(0, 8);
-    const support = literaryPromotionSupport(matches);
+    const supportingQuotations = uniqueStudyList(supports.filter((item) => item.supportType === "quotation").map((item) => item.record.quoteId || item.record.quoteType || item.label)).slice(0, 8);
+    const supportingSpeakers = uniqueStudyList(supports.filter((item) => item.supportType === "speaker").map((item) => item.record.detectedSpeaker || item.label)).slice(0, 8);
+    const supportingAudiences = uniqueStudyList(supports.filter((item) => item.supportType === "audience").map((item) => item.record.detectedAudience || item.label)).slice(0, 8);
+    const supportingDialogue = uniqueStudyList(supports.filter((item) => item.supportType === "dialogue").map((item) => item.record.relationshipType || item.record.dialogueRecordId || item.label)).slice(0, 8);
+    const supportingRecords = uniqueStudyList(supports.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
+    const evidenceItems = uniqueStudyList(supports.map(literaryPromotionEvidence).filter(Boolean)).slice(0, 8);
+    const support = literaryPromotionSupport(supports, structure);
     const sourceScope = literaryPromotionSourceScope(first);
     const sourceReference = literaryPromotionSourceReference(first);
-    const promotionStatus = matches.length && evidenceItems.length && sourceScope ? "promoted" : "unresolved";
+    const promotionStatus = support.status;
+    const supportDistribution = literaryPromotionSupportDistribution(supports);
+    const scopeBasis = literaryPromotionScopeBasis(supports);
+    const startReference = first.startReference || first.sourceReference || first.verseRange || boundarySignals[0] || sourceReference;
+    const endReference = first.endReference || first.sourceReference || first.verseRange || boundarySignals[boundarySignals.length - 1] || sourceReference;
+    const boundaryCompleteness = startReference && endReference ? "complete" : (boundarySignals.length ? "supported" : "unresolved");
+    const highRiskInsufficient = structure.riskClass === "high" && (supportTypes.length < 3 || boundarySignals.length < 2);
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       layer: "ICE_LITERARY_STRUCTURES",
+      literaryRecordId: `literary-promotion-${structure.name || "unresolved"}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
       literaryId: `literary-promotion-${structure.name || "unresolved"}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
       sourceScope,
       sourceReference,
+      startReference,
+      endReference,
+      structuralUnits: uniqueStudyList(supports.map(literaryPromotionSupportReference).filter(Boolean)).slice(0, 12),
+      literaryType: structure.name,
       structureType: structure.name,
+      supportingEvidence: evidenceItems,
+      supportingQuotations,
+      supportingSpeakers,
+      supportingAudiences,
+      supportingDialogue,
       supportingEvents,
       supportingScenes,
       supportingRelationships,
       supportingThemes,
       supportingRecords,
+      repeatedElements,
+      boundarySignals,
+      sequencePattern: supportTypes.join(" -> ") || "unresolved",
+      supportSourceTypes: supportTypes,
+      supportSourceDistribution: supportDistribution,
+      duplicateSupportExclusions: deduped.duplicates.length,
+      repetitionCount: repeatedElements.length,
+      riskClass: structure.riskClass || "medium",
+      directness: support.directness,
+      evidenceDistance: 6,
       evidence: evidenceItems,
       confidence: support.confidence,
       literaryConfidence: support.label,
-      provenance: `I.C.E. Literary Structure Promotion derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ") || "approved literary structure catalog"}`,
+      provenance: `I.C.E. Literary Structure Promotion v2 derived from ${uniqueStudyList(supports.map((item) => item.layer)).join(", ") || "approved literary structure catalog only"}`,
+      explainabilityReference: `literary-explainability-${normalizeText(structure.name || "unresolved").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      verificationStatus: promotionStatus === "promoted" ? "grounded structural support verified; catalog-only promotion blocked" : (promotionStatus === "candidate" ? "candidate-only structural support; not counted as promoted" : "catalog-only or unresolved; not promoted"),
       inferenceLevel: support.inferenceLevel,
       promotionStatus,
       promotionReason: promotionStatus === "promoted" ? support.reason : "No current-scope grounded record matched this literary structure category.",
+      status: promotionStatus,
       sourcePhrase: first.sourcePhrase || evidenceItems[0] || "",
       verseRange: first.verseRange || first.sourceReference || "",
       scopePath: first.scopePath || first.sourceScope || "",
@@ -22626,10 +23004,16 @@ createRevelationPartsSection(item.subEvents)
       sourceContext: first.sourceContext || {},
       activeScope: currentStudyScopeLabel(),
       evidenceWeight: promotionStatus === "promoted" ? `${support.label} Literary Structure Support` : "Unresolved Literary Structure Candidate",
+      scopeBasis,
+      boundaryCompleteness,
+      highRiskInsufficient,
+      parableDistinction: /parable/i.test(structure.name) ? "Parable frame, internal actors/dialogue, explanation, and later application remain distinct; symbolic meaning is not inferred." : "",
+      quotedSourceDistinction: supportingQuotations.length ? "Quoted source boundaries remain distinct from current-speaker discourse." : "",
       reasoningPath: [
-        "Approved literary structure selected from low-risk catalog",
-        "Current-scope grounded records searched for explicit source organization, discourse, genealogy, quotation, formula, or narrative markers",
-        `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
+        "Approved literary structure label selected from Literary Structure catalog",
+        "Current-scope grounded records searched for explicit source organization, discourse, genealogy, quotation, formula, scene, sequence, speaker/audience, dialogue, and boundary markers",
+        `${supports.length} deduplicated support record(s) accepted; ${deduped.duplicates.length} duplicate support path(s) excluded`,
+        `Risk class: ${structure.riskClass || "medium"}; boundary completeness: ${boundaryCompleteness}; scope basis: ${scopeBasis}`,
         "No inferred chiasmus, symbolism, typology, doctrine, crawling, or automatic analysis added"
       ],
       sourceGrounding: evidenceItems.join(" ") || `No current-scope source evidence matched ${structure.name}.`,
@@ -22652,22 +23036,92 @@ createRevelationPartsSection(item.subEvents)
       .slice(0, 24);
   }
 
-  function literaryPromotionInspectorLines() {
+  function literaryPromotionDiagnostics() {
     const candidates = literaryPromotionCandidates();
+    const groundedCandidates = candidates.filter((item) => asArray(item.supportingEvidence).length || asArray(item.supportingRecords).length);
     const promoted = promotedLiteraryRecords();
-    const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
-    const rejected = [];
-    const coverage = candidates.length ? Math.round((promoted.length / candidates.length) * 100) : 0;
+    const candidateOnly = candidates.filter((item) => item.promotionStatus === "candidate");
+    const unresolved = candidates.filter((item) => item.promotionStatus === "unresolved");
+    const supportDistribution = candidates.reduce((counts, item) => {
+      Object.entries(item.supportSourceDistribution || {}).forEach(([key, value]) => {
+        counts[key] = (counts[key] || 0) + value;
+      });
+      return counts;
+    }, {});
+    const byType = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.literaryType || item.structureType || "Unresolved") || "Unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const byRisk = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.riskClass || "medium") || "medium";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const confidenceDistribution = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.confidence || "Unresolved") || "Unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const scopeCounts = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.scopeBasis || "unlabeled") || "unlabeled";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const boundaryComplete = candidates.filter((item) => item.boundaryCompleteness === "complete");
+    const boundaryIncomplete = candidates.filter((item) => item.boundaryCompleteness !== "complete");
+    const repeatedPatternCount = candidates.filter((item) => Number(item.repetitionCount || 0) > 0).length;
+    const duplicateSupportExclusions = candidates.reduce((sum, item) => sum + (Number(item.duplicateSupportExclusions) || 0), 0);
+    const highRiskCandidates = candidates.filter((item) => item.riskClass === "high" && item.promotionStatus === "candidate");
+    const highRiskPromoted = candidates.filter((item) => item.riskClass === "high" && item.promotionStatus === "promoted");
+    const evidenceComplete = candidates.filter((item) => item.sourceScope && item.provenance && item.confidence && item.riskClass && asArray(item.supportingEvidence).length);
+    return {
+      candidates,
+      groundedCandidates,
+      promoted,
+      candidateOnly,
+      unresolved,
+      supportDistribution,
+      byType,
+      byRisk,
+      confidenceDistribution,
+      scopeCounts,
+      boundaryComplete,
+      boundaryIncomplete,
+      repeatedPatternCount,
+      duplicateSupportExclusions,
+      highRiskCandidates,
+      highRiskPromoted,
+      evidenceComplete,
+      coverage: metricPercent(promoted.length, groundedCandidates.length),
+      boundaryCompleteness: metricPercent(boundaryComplete.length, candidates.length),
+      evidenceCompleteness: metricPercent(evidenceComplete.length, candidates.length)
+    };
+  }
+
+  function literaryPromotionInspectorLines() {
+    const diagnostics = literaryPromotionDiagnostics();
     return [
-      `Discovered structures: ${candidates.length}`,
-      `Promoted structures: ${promoted.length}`,
-      `Rejected structures: ${rejected.length}`,
-      `Unresolved structures: ${unresolved.length}`,
-      `Coverage: ${coverage}%`,
-      promoted.length ? `Promoted examples: ${promoted.slice(0, 6).map((item) => `${item.structureType} | ${item.literaryConfidence} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
-      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((item) => `${item.structureType} (${item.promotionReason})`).join(" | ")}` : "Unresolved examples: none",
+      `Literary candidate count: ${diagnostics.candidates.length}`,
+      `Grounded candidate count: ${diagnostics.groundedCandidates.length}`,
+      `Promoted count: ${diagnostics.promoted.length}`,
+      `Candidate-only count: ${diagnostics.candidateOnly.length}`,
+      `Unresolved count: ${diagnostics.unresolved.length}`,
+      `Coverage: ${formatMetricPercent(diagnostics.coverage)}`,
+      `Counts by literary type: ${languageCountLine(diagnostics.byType)}`,
+      `Counts by risk class: ${languageCountLine(diagnostics.byRisk)}`,
+      `Confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      `Boundary completeness: ${formatMetricPercent(diagnostics.boundaryCompleteness)} (${diagnostics.boundaryComplete.length}/${diagnostics.candidates.length})`,
+      `Support-source distribution: ${languageCountLine(diagnostics.supportDistribution)}`,
+      `Repeated-pattern count: ${diagnostics.repeatedPatternCount}`,
+      `Duplicate-support exclusions: ${diagnostics.duplicateSupportExclusions}`,
+      `Scope basis: ${languageCountLine(diagnostics.scopeCounts)}`,
+      diagnostics.promoted.length ? `Sample promoted structures: ${diagnostics.promoted.slice(0, 6).map((item) => `${item.structureType} | ${item.literaryConfidence} | ${item.riskClass} | ${item.boundaryCompleteness} | ${item.scopeBasis}`).join(" | ")}` : "Sample promoted structures: none",
+      diagnostics.highRiskCandidates.length ? `Sample high-risk candidates: ${diagnostics.highRiskCandidates.slice(0, 4).map((item) => `${item.structureType} (${item.verificationStatus})`).join(" | ")}` : "Sample high-risk candidates: none",
+      diagnostics.boundaryIncomplete.length ? `Sample unresolved boundaries: ${diagnostics.boundaryIncomplete.slice(0, 4).map((item) => `${item.structureType}: ${item.boundaryCompleteness}`).join(" | ")}` : "Sample unresolved boundaries: none",
+      diagnostics.candidates.some((item) => /parable/i.test(item.structureType || "")) ? `Sample parable distinctions: ${diagnostics.candidates.filter((item) => /parable/i.test(item.structureType || "")).slice(0, 4).map((item) => item.parableDistinction || `${item.structureType}: distinction preserved`).join(" | ")}` : "Sample parable distinctions: none detected",
       "Boundary: Literary promotions summarize explicit source organization only. They may not infer chiasmus, symbolism, typology, fulfillment, doctrine, or broad canonical structure without evidence.",
-      "Layer: ICE_LITERARY_STRUCTURES promoted from Context, Timeline, Scene, Relationship, Theme, Passage Function, Teaching, Ordered Event, and Source Discovery records"
+      "Layer: ICE_LITERARY_STRUCTURES promoted from source wording, source/DOM structure, quotation, speaker, audience, dialogue, sequence, scene, discourse, grammar, relationship, causality, theme, and context records"
     ];
   }
   function studyThemeRecords() {
