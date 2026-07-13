@@ -13415,64 +13415,330 @@ createRevelationPartsSection(item.subEvents)
     return Object.keys(counts).length ? Object.entries(counts).map(([label, count]) => `${label}=${count}`).join("; ") : "none";
   }
 
-  function languagePreviewLemmaCandidate(token = "") {
+  const ENGLISH_SURFACE_IRREGULAR_MORPHOLOGY = {
+    man: { lemmaCandidate: "man", morphologyClass: "nominal", number: "singular" },
+    men: { lemmaCandidate: "man", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "man -> men" },
+    woman: { lemmaCandidate: "woman", morphologyClass: "nominal", number: "singular" },
+    women: { lemmaCandidate: "woman", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "woman -> women" },
+    child: { lemmaCandidate: "child", morphologyClass: "nominal", number: "singular" },
+    children: { lemmaCandidate: "child", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "child -> children" },
+    brother: { lemmaCandidate: "brother", morphologyClass: "nominal", number: "singular" },
+    brethren: { lemmaCandidate: "brother", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "brother -> brethren" },
+    foot: { lemmaCandidate: "foot", morphologyClass: "nominal", number: "singular" },
+    feet: { lemmaCandidate: "foot", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "foot -> feet" },
+    sheep: { lemmaCandidate: "sheep", morphologyClass: "nominal", number: "unresolved number", irregularFormEvidence: "sheep has unchanged singular/plural surface form" },
+    oxen: { lemmaCandidate: "ox", morphologyClass: "nominal", number: "plural", irregularFormEvidence: "ox -> oxen" },
+    went: { lemmaCandidate: "go", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "go -> went" },
+    gone: { lemmaCandidate: "go", morphologyClass: "verbal", tense: "past participle candidate", aspectCandidate: "participle_candidate", irregularFormEvidence: "go -> gone" },
+    spake: { lemmaCandidate: "speak", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "speak -> spake" },
+    spoken: { lemmaCandidate: "speak", morphologyClass: "verbal", tense: "past participle candidate", aspectCandidate: "participle_candidate", irregularFormEvidence: "speak -> spoken" },
+    am: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "present", person: "first", number: "singular", irregularFormEvidence: "be -> am" },
+    is: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "be -> is" },
+    are: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "present", number: "plural", irregularFormEvidence: "be -> are" },
+    art: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "present", person: "second", number: "singular", irregularFormEvidence: "be -> art" },
+    was: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "past", number: "singular", irregularFormEvidence: "be -> was" },
+    wast: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "past", person: "second", number: "singular", irregularFormEvidence: "be -> wast" },
+    were: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "past", number: "plural", irregularFormEvidence: "be -> were" },
+    wert: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "past", person: "second", number: "singular", irregularFormEvidence: "be -> wert" },
+    been: { lemmaCandidate: "be", morphologyClass: "verbal", tense: "past participle candidate", aspectCandidate: "participle_candidate", irregularFormEvidence: "be -> been" },
+    has: { lemmaCandidate: "have", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "have -> has" },
+    hath: { lemmaCandidate: "have", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "have -> hath" },
+    had: { lemmaCandidate: "have", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "have -> had" },
+    does: { lemmaCandidate: "do", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "do -> does" },
+    doth: { lemmaCandidate: "do", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "do -> doth" },
+    did: { lemmaCandidate: "do", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "do -> did" },
+    done: { lemmaCandidate: "do", morphologyClass: "verbal", tense: "past participle candidate", aspectCandidate: "participle_candidate", irregularFormEvidence: "do -> done" },
+    says: { lemmaCandidate: "say", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "say -> says" },
+    saith: { lemmaCandidate: "say", morphologyClass: "verbal", tense: "third-person singular present", person: "third", number: "singular", irregularFormEvidence: "say -> saith" },
+    said: { lemmaCandidate: "say", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "say -> said" },
+    begat: { lemmaCandidate: "beget", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "beget -> begat" },
+    begotten: { lemmaCandidate: "beget", morphologyClass: "verbal", tense: "past participle candidate", aspectCandidate: "participle_candidate", irregularFormEvidence: "beget -> begotten" },
+    came: { lemmaCandidate: "come", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "come -> came" },
+    brought: { lemmaCandidate: "bring", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "bring -> brought" },
+    took: { lemmaCandidate: "take", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "take -> took" },
+    gave: { lemmaCandidate: "give", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "give -> gave" },
+    sent: { lemmaCandidate: "send", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "send -> sent" },
+    arose: { lemmaCandidate: "arise", morphologyClass: "verbal", tense: "past", irregularFormEvidence: "arise -> arose" },
+    better: { lemmaCandidate: "good", morphologyClass: "degree", degree: "comparative", irregularFormEvidence: "good -> better" },
+    best: { lemmaCandidate: "good", morphologyClass: "degree", degree: "superlative", irregularFormEvidence: "good -> best" },
+    worse: { lemmaCandidate: "bad", morphologyClass: "degree", degree: "comparative", irregularFormEvidence: "bad -> worse" },
+    worst: { lemmaCandidate: "bad", morphologyClass: "degree", degree: "superlative", irregularFormEvidence: "bad -> worst" },
+    lesser: { lemmaCandidate: "less", morphologyClass: "degree", degree: "comparative", irregularFormEvidence: "less -> lesser" },
+    least: { lemmaCandidate: "little", morphologyClass: "degree", degree: "superlative", irregularFormEvidence: "little -> least" },
+    greater: { lemmaCandidate: "great", morphologyClass: "degree", degree: "comparative", irregularFormEvidence: "great -> greater" },
+    greatest: { lemmaCandidate: "great", morphologyClass: "degree", degree: "superlative", irregularFormEvidence: "great -> greatest" }
+  };
+
+  const ENGLISH_SURFACE_PRONOUN_MORPHOLOGY = {
+    i: { person: "first", number: "singular", grammaticalCase: "subject" },
+    me: { person: "first", number: "singular", grammaticalCase: "object" },
+    my: { person: "first", number: "singular", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    mine: { person: "first", number: "singular", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    we: { person: "first", number: "plural", grammaticalCase: "subject" },
+    us: { person: "first", number: "plural", grammaticalCase: "object" },
+    our: { person: "first", number: "plural", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    ours: { person: "first", number: "plural", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    thou: { person: "second", number: "singular", grammaticalCase: "subject" },
+    thee: { person: "second", number: "singular", grammaticalCase: "object" },
+    thy: { person: "second", number: "singular", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    thine: { person: "second", number: "singular", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    thyself: { person: "second", number: "singular", grammaticalCase: "reflexive", possessiveStatus: "not possessive" },
+    ye: { person: "second", number: "plural", grammaticalCase: "subject" },
+    you: { person: "second", number: "unresolved number", grammaticalCase: "unresolved case" },
+    your: { person: "second", number: "unresolved number", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    yours: { person: "second", number: "unresolved number", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    he: { person: "third", number: "singular", genderCandidate: "masculine", grammaticalCase: "subject" },
+    him: { person: "third", number: "singular", genderCandidate: "masculine", grammaticalCase: "object" },
+    his: { person: "third", number: "singular", genderCandidate: "masculine", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    himself: { person: "third", number: "singular", genderCandidate: "masculine", grammaticalCase: "reflexive" },
+    she: { person: "third", number: "singular", genderCandidate: "feminine", grammaticalCase: "subject" },
+    her: { person: "third", number: "singular", genderCandidate: "feminine", grammaticalCase: "ambiguous object/possessive", possessiveStatus: "unresolved possession" },
+    hers: { person: "third", number: "singular", genderCandidate: "feminine", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    herself: { person: "third", number: "singular", genderCandidate: "feminine", grammaticalCase: "reflexive" },
+    they: { person: "third", number: "plural", grammaticalCase: "subject" },
+    them: { person: "third", number: "plural", grammaticalCase: "object" },
+    their: { person: "third", number: "plural", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    theirs: { person: "third", number: "plural", grammaticalCase: "possessive", possessiveStatus: "possessive" },
+    themselves: { person: "third", number: "plural", grammaticalCase: "reflexive" },
+    whosoever: { person: "unresolved person", number: "unresolved number", grammaticalCase: "relative pronoun" },
+    whatsoever: { person: "unresolved person", number: "unresolved number", grammaticalCase: "relative pronoun" }
+  };
+
+  function languagePreviewLemmaCandidate(token = "", morphology = {}) {
     const value = normalizeText(token);
     const lower = value.toLowerCase();
-    if (!value || /^[^A-Za-z\d]+$/.test(value)) return "";
-    if (/^\d+$/.test(value)) return lower;
+    if (!value || /^[^A-Za-z\d]+$/.test(value) || /^\d+$/.test(value)) return "";
+    if (morphology.lemmaCandidate) return morphology.lemmaCandidate;
     if (/'s$/i.test(value)) return lower.replace(/'s$/i, "");
-    if (/ies$/i.test(value) && value.length > 4) return lower.replace(/ies$/i, "y");
-    if (/sses$/i.test(value)) return lower.replace(/es$/i, "");
-    if (/s$/i.test(value) && !/ss$/i.test(value) && value.length > 3) return lower.replace(/s$/i, "");
-    if (/ied$/i.test(value) && value.length > 4) return lower.replace(/ied$/i, "y");
-    if (/ed$/i.test(value) && value.length > 4) return lower.replace(/ed$/i, "");
-    if (/ing$/i.test(value) && value.length > 5) return lower.replace(/ing$/i, "");
-    return lower;
+    if (/s'$/i.test(value)) return lower.replace(/s'$/i, "s");
+    if (/ies$/i.test(value) && value.length > 4 && morphology.number === "plural") return lower.replace(/ies$/i, "y");
+    if (/sses$/i.test(value) && morphology.number === "plural") return lower.replace(/es$/i, "");
+    if (/s$/i.test(value) && !/ss$/i.test(value) && value.length > 3 && morphology.number === "plural") return lower.replace(/s$/i, "");
+    if (/ied$/i.test(value) && /past|participle/i.test(morphology.tense || "")) return lower.replace(/ied$/i, "y");
+    if (/ed$/i.test(value) && /past|participle/i.test(morphology.tense || "")) return lower.replace(/ed$/i, "");
+    if (/ing$/i.test(value) && /participle|gerund/i.test(morphology.aspectCandidate || morphology.tense || "")) return lower.replace(/ing$/i, "");
+    if (/er$/i.test(value) && morphology.degree === "comparative") return lower.replace(/er$/i, "");
+    if (/est$/i.test(value) && morphology.degree === "superlative") return lower.replace(/est$/i, "");
+    if (/^(noun|proper_noun|verb|adjective|adverb)$/i.test(morphology.posCategory || "")) return lower;
+    return "";
   }
 
-  function morphologyPreviewForRecord(record = {}, records = []) {
+  function morphologyAnalysisBase(record = {}, overrides = {}) {
+    const token = normalizeText(record.token);
+    return {
+      morphologyType: overrides.morphologyType || overrides.morphologyClass || "unresolved",
+      morphologyValue: overrides.morphologyValue || overrides.tense || overrides.number || overrides.degree || overrides.grammaticalCase || "unresolved",
+      morphologyClass: overrides.morphologyClass || "unresolved",
+      number: overrides.number || "",
+      person: overrides.person || "",
+      genderCandidate: overrides.genderCandidate || "",
+      grammaticalCase: overrides.grammaticalCase || "",
+      possessiveStatus: overrides.possessiveStatus || "not possessive",
+      tense: overrides.tense || "",
+      aspectCandidate: overrides.aspectCandidate || "",
+      voiceCandidate: overrides.voiceCandidate || "",
+      moodCandidate: overrides.moodCandidate || "",
+      degree: overrides.degree || "",
+      auxiliaryTokens: asArray(overrides.auxiliaryTokens),
+      suffixEvidence: overrides.suffixEvidence || "",
+      irregularFormEvidence: overrides.irregularFormEvidence || "",
+      contextEvidence: overrides.contextEvidence || "",
+      candidateAnalyses: asArray(overrides.candidateAnalyses),
+      rejectedAnalyses: asArray(overrides.rejectedAnalyses),
+      lemmaCandidate: overrides.lemmaCandidate || "",
+      confidence: overrides.confidence || "unresolved",
+      status: overrides.status || "unresolved",
+      evidence: overrides.evidence || `${token || "Token"} has no conservative English surface morphology analysis.`
+    };
+  }
+
+  function morphologyPreviewForRecord(record = {}, records = [], sentenceIds = new Map()) {
     const token = normalizeText(record.token);
     const lower = token.toLowerCase();
-    const previous = records.find((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex === record.tokenIndex - 1);
-    const next = records.find((item) => item.sourceIndex === record.sourceIndex && item.tokenIndex === record.tokenIndex + 1);
-    if (!token) return { morphologyType: "unresolved", morphologyValue: "unresolved", confidence: "unresolved", status: "unresolved", evidence: "No token available." };
-    if (/^[^A-Za-z\d]+$/.test(token)) return { morphologyType: "punctuation", morphologyValue: "punctuation", confidence: "strong / surface punctuation", status: "resolved", evidence: `${token} is punctuation.` };
-    if (/^\d+$/.test(token)) return { morphologyType: "number", morphologyValue: "numeric", confidence: "strong / surface numeric token", status: "resolved", evidence: `${token} is a numeric token.` };
-    if (/^(shall|shalt|will|wilt)$/i.test(token) && next && next.partOfSpeech === "verb") return { morphologyType: "tense", morphologyValue: "future marker", confidence: "strong / explicit English future marker before verb", status: "resolved", evidence: `${token} marks future orientation for ${next.token}.` };
-    if (/^(shall|shalt|will|wilt)$/i.test(token)) return { morphologyType: "tense", morphologyValue: "future marker", confidence: "supported / explicit English future marker", status: "resolved", evidence: `${token} is a surface future marker.` };
-    if (/'s$/i.test(token)) return { morphologyType: "case", morphologyValue: "possessive", confidence: "strong / possessive apostrophe marker", status: "resolved", evidence: `${token} has possessive apostrophe-s marking.` };
-    if (/^(greater|lesser|better|worse|more)$/i.test(token) || (/er$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 4)) return { morphologyType: "degree", morphologyValue: "comparative", confidence: "supported / conservative comparative surface form", status: "resolved", evidence: `${token} is recognized as comparative surface morphology.` };
-    if (/^(greatest|least|best|worst|most)$/i.test(token) || (/est$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 5)) return { morphologyType: "degree", morphologyValue: "superlative", confidence: "supported / conservative superlative surface form", status: "resolved", evidence: `${token} is recognized as superlative surface morphology.` };
-    if (/^(went|came|brought|said|spake|heard|saw|took|gave|sent|arose|begat|was|were|had|did)$/i.test(token) || (/ed$/i.test(token) && record.partOfSpeech === "verb" && token.length > 4)) return { morphologyType: "tense", morphologyValue: "past tense", confidence: "supported / conservative English past-tense surface form", status: "resolved", evidence: `${token} is recognized as past-tense surface morphology.` };
-    if (/^(is|are|am|art|hath|doth|saith)$/i.test(token) || (/s$/i.test(token) && record.partOfSpeech === "verb" && token.length > 3)) return { morphologyType: "tense", morphologyValue: "present tense", confidence: "supported / conservative English present-tense surface form", status: "resolved", evidence: `${token} is recognized as present-tense surface morphology.` };
-    if ((record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") && (/ies$/i.test(token) || (/s$/i.test(token) && !/ss$/i.test(token) && token.length > 3))) return { morphologyType: "number", morphologyValue: "plural", confidence: "supported / conservative English plural surface form", status: "resolved", evidence: `${token} is recognized as plural surface morphology.` };
-    if (record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") return { morphologyType: "number", morphologyValue: "singular", confidence: "limited / no plural or possessive marker detected", status: "resolved", evidence: `${token} has no conservative plural or possessive surface marker.` };
-    if (previous && /^(shall|shalt|will|wilt)$/i.test(previous.token) && record.partOfSpeech === "verb") return { morphologyType: "tense", morphologyValue: "future marker", confidence: "strong / previous token is explicit future marker", status: "resolved", evidence: `${record.token} is governed by previous future marker ${previous.token}.` };
-    return { morphologyType: "unresolved", morphologyValue: "unresolved", confidence: "unresolved / safe morphology fallback", status: "unresolved", evidence: "No conservative English surface morphology marker was detected." };
+    const sameSource = (item) => String(item.sourceIndex) === String(record.sourceIndex);
+    const previous = records.find((item) => sameSource(item) && Number(item.tokenIndex) === Number(record.tokenIndex) - 1);
+    const next = records.find((item) => sameSource(item) && Number(item.tokenIndex) === Number(record.tokenIndex) + 1);
+    const sentenceId = sentenceIds.get(record.tokenId) || "";
+    const sentenceRecords = sentenceId
+      ? records.filter((item) => sameSource(item) && sentenceIds.get(item.tokenId) === sentenceId).sort((a, b) => Number(a.tokenIndex || 0) - Number(b.tokenIndex || 0))
+      : [];
+    const priorAuxiliary = sentenceRecords.filter((item) => Number(item.tokenIndex) < Number(record.tokenIndex) && Number(record.tokenIndex) - Number(item.tokenIndex) <= 3 && /^(shall|shalt|will|wilt|hath|has|have|had|is|are|am|art|was|wast|were|wert|be|been|being)$/i.test(item.token || "")).slice(-2);
+    if (!token) return morphologyAnalysisBase(record, { status: "unresolved", evidence: "No token available." });
+    if (/^[^A-Za-z\d]+$/.test(token)) return morphologyAnalysisBase(record, { morphologyClass: "not_applicable", morphologyType: "not_applicable", morphologyValue: "punctuation", status: "not_applicable", confidence: "not_applicable / punctuation excluded from morphology denominator", evidence: `${token} is punctuation and is excluded from morphology resolution denominators.`, contextEvidence: "punctuation excluded from eligible denominator" });
+    if (/^\d+$/.test(token)) return morphologyAnalysisBase(record, { morphologyClass: "not_applicable", morphologyType: "not_applicable", morphologyValue: "number token", status: "not_applicable", confidence: "not_applicable / numeric token excluded from morphology denominator", evidence: `${token} is numeric and is excluded from English morphology resolution denominators.`, contextEvidence: "numeric token excluded from eligible denominator" });
+
+    const irregular = ENGLISH_SURFACE_IRREGULAR_MORPHOLOGY[lower];
+    if (irregular) {
+      return morphologyAnalysisBase(record, {
+        ...irregular,
+        morphologyType: irregular.morphologyClass,
+        morphologyValue: irregular.tense || irregular.number || irregular.degree || irregular.morphologyClass,
+        confidence: "strong / explicit irregular or KJV morphology registry",
+        status: /unresolved/.test(irregular.number || "") ? "ambiguous" : "resolved",
+        evidence: `${token} is resolved by the explicit English/KJV irregular morphology registry.`,
+        candidateAnalyses: [`explicit irregular mapping: ${irregular.irregularFormEvidence || `${lower} -> ${irregular.lemmaCandidate || lower}`}`],
+        rejectedAnalyses: ["weaker suffix rules skipped because explicit mapping has priority"]
+      });
+    }
+
+    const pronoun = ENGLISH_SURFACE_PRONOUN_MORPHOLOGY[lower];
+    if (pronoun) {
+      return morphologyAnalysisBase(record, {
+        ...pronoun,
+        lemmaCandidate: lower,
+        morphologyClass: "pronoun",
+        morphologyType: "pronoun morphology",
+        morphologyValue: [pronoun.person, pronoun.number, pronoun.grammaticalCase].filter(Boolean).join(" / "),
+        confidence: /unresolved|ambiguous/i.test(`${pronoun.number} ${pronoun.grammaticalCase}`) ? "supported / pronoun form with preserved ambiguity" : "strong / explicit pronoun morphology mapping",
+        status: /unresolved|ambiguous/i.test(`${pronoun.number} ${pronoun.grammaticalCase}`) ? "ambiguous" : "resolved",
+        evidence: `${token} is resolved by the closed scripture-English pronoun morphology map.`,
+        candidateAnalyses: ["pronoun morphology mapping"],
+        rejectedAnalyses: ["no entity or pronoun-reference resolution is performed by morphology"]
+      });
+    }
+
+    if (/^(shall|shalt|will|wilt)$/i.test(token)) {
+      return morphologyAnalysisBase(record, {
+        lemmaCandidate: /sh/i.test(lower) ? "shall" : "will",
+        morphologyClass: "verbal",
+        morphologyType: "tense/form",
+        morphologyValue: "future marker",
+        tense: "future marker",
+        moodCandidate: "modal construction",
+        auxiliaryTokens: next && next.partOfSpeech === "verb" ? [token, next.token] : [token],
+        contextEvidence: next && next.partOfSpeech === "verb" ? `${token} precedes nearby verb ${next.token}.` : `${token} is an explicit future/modal auxiliary.`,
+        confidence: next && next.partOfSpeech === "verb" ? "strong / auxiliary plus nearby verb" : "supported / explicit auxiliary marker",
+        status: "resolved",
+        evidence: `${token} is an explicit English future/modal marker. The auxiliary is not treated as the whole action.`
+      });
+    }
+
+    if (previous && /^(to)$/i.test(previous.token || "") && record.partOfSpeech === "verb") {
+      return morphologyAnalysisBase(record, {
+        lemmaCandidate: languagePreviewLemmaCandidate(token, { posCategory: record.partOfSpeech }),
+        morphologyClass: "verbal",
+        morphologyType: "mood/form",
+        morphologyValue: "infinitive candidate",
+        moodCandidate: "infinitive_candidate",
+        auxiliaryTokens: [previous.token, token],
+        contextEvidence: `${previous.token} + ${token} forms a conservative infinitive candidate because ${token} is POS-supported as a verb.`,
+        confidence: "supported / explicit to + verb structure",
+        status: "resolved",
+        evidence: `${token} is marked as an infinitive candidate; prepositional to without a verb is not treated as infinitive.`
+      });
+    }
+
+    if (priorAuxiliary.length && record.partOfSpeech === "verb") {
+      const aux = priorAuxiliary.map((item) => item.token);
+      const isFuture = aux.some((item) => /^(shall|shalt|will|wilt)$/i.test(item));
+      const isPerfect = aux.some((item) => /^(hath|has|have|had)$/i.test(item));
+      const isPassive = aux.some((item) => /^(is|are|am|art|was|wast|were|wert|be|been|being)$/i.test(item)) && (/ed$/i.test(token) || /^(called|written|spoken|sent|given|made|fulfilled|baptized)$/i.test(token));
+      if (isFuture || isPerfect || isPassive) {
+        return morphologyAnalysisBase(record, {
+          lemmaCandidate: languagePreviewLemmaCandidate(token, { tense: isPerfect || isPassive ? "past participle candidate" : "base form", posCategory: "verb" }),
+          morphologyClass: "verbal",
+          morphologyType: "tense/form",
+          morphologyValue: isFuture ? "modal construction" : (isPassive ? "passive candidate" : "past participle candidate"),
+          tense: isFuture ? "modal construction" : "past participle candidate",
+          aspectCandidate: isPerfect ? "participle_candidate" : "",
+          voiceCandidate: isPassive ? "passive_candidate" : "",
+          auxiliaryTokens: aux,
+          contextEvidence: `${aux.join(" ")} appears within the same sentence before ${token}.`,
+          confidence: "supported / auxiliary plus nearby verb structure",
+          status: "resolved",
+          evidence: `${token} is analyzed with nearby auxiliary support; English passive/perfect candidates are preview-only and not original-language voice authority.`
+        });
+      }
+    }
+
+    if (/'s$/i.test(token) || /s'$/i.test(token)) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { number: "singular" }), morphologyClass: "nominal", morphologyType: "possession", morphologyValue: /s'$/i.test(token) ? "possessive plural" : "possessive singular", number: /s'$/i.test(token) ? "plural" : "singular", possessiveStatus: /s'$/i.test(token) ? "possessive plural" : "possessive singular", suffixEvidence: "visible apostrophe possessive marker", confidence: "strong / visible possessive apostrophe", status: "resolved", evidence: `${token} has visible possessive morphology.` });
+    if (/^(greater|lesser|better|worse)$/i.test(token)) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { degree: "comparative" }), morphologyClass: "degree", morphologyType: "degree", morphologyValue: "comparative", degree: "comparative", confidence: "strong / explicit comparative list", status: "resolved", evidence: `${token} is a conservative comparative form.` });
+    if (/^(greatest|least|best|worst)$/i.test(token)) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { degree: "superlative" }), morphologyClass: "degree", morphologyType: "degree", morphologyValue: "superlative", degree: "superlative", confidence: "strong / explicit superlative list", status: "resolved", evidence: `${token} is a conservative superlative form.` });
+    if (/er$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 4) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { degree: "comparative" }), morphologyClass: "degree", morphologyType: "degree", morphologyValue: "comparative", degree: "comparative", suffixEvidence: "-er adjective suffix", confidence: "supported / adjective POS plus comparative suffix", status: "resolved", evidence: `${token} is an adjective with a conservative comparative suffix.` });
+    if (/est$/i.test(token) && record.partOfSpeech === "adjective" && token.length > 5) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { degree: "superlative" }), morphologyClass: "degree", morphologyType: "degree", morphologyValue: "superlative", degree: "superlative", suffixEvidence: "-est adjective suffix", confidence: "supported / adjective POS plus superlative suffix", status: "resolved", evidence: `${token} is an adjective with a conservative superlative suffix.` });
+    if (/ing$/i.test(token) && record.partOfSpeech === "verb") return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { tense: "present participle / gerund candidate", posCategory: "verb", aspectCandidate: "participle_candidate" }), morphologyClass: "verbal", morphologyType: "tense/form", morphologyValue: "present participle / gerund candidate", tense: "present participle / gerund candidate", aspectCandidate: "participle_candidate", suffixEvidence: "-ing verb suffix", confidence: "supported / verb POS plus -ing suffix", status: "ambiguous", evidence: `${token} may be a present participle or gerund; morphology preserves the ambiguity without forcing a grammatical role.`, candidateAnalyses: ["present participle candidate", "gerund/noun-like candidate"], rejectedAnalyses: ["no subject/object or doctrinal meaning inferred"] });
+    if (/ed$/i.test(token) && record.partOfSpeech === "verb" && token.length > 4) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { tense: "past", posCategory: "verb" }), morphologyClass: "verbal", morphologyType: "tense/form", morphologyValue: "past / participle candidate", tense: "past", aspectCandidate: "past participle candidate", suffixEvidence: "-ed verb suffix", confidence: "supported / verb POS plus -ed suffix", status: "ambiguous", evidence: `${token} may be finite past or a participle candidate; morphology preserves the ambiguity.`, candidateAnalyses: ["finite past candidate", "past participle candidate"], rejectedAnalyses: ["no English form promoted to Greek/Hebrew tense/aspect"] });
+    if (/s$/i.test(token) && record.partOfSpeech === "verb" && token.length > 3 && !/ss$/i.test(token)) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { posCategory: "verb", tense: "third-person singular present" }), morphologyClass: "verbal", morphologyType: "tense/form", morphologyValue: "third-person singular present", tense: "third-person singular present", person: "third", number: "singular", suffixEvidence: "-s verb suffix with verb POS", confidence: "supported / verb POS plus present suffix", status: "resolved", evidence: `${token} is a verb-form candidate with third-person singular present morphology.` });
+    if ((record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") && (/ies$/i.test(token) || (/s$/i.test(token) && !/ss$/i.test(token) && token.length > 3))) return morphologyAnalysisBase(record, { lemmaCandidate: languagePreviewLemmaCandidate(token, { number: "plural" }), morphologyClass: "nominal", morphologyType: "number", morphologyValue: "plural", number: "plural", suffixEvidence: "conservative plural suffix with noun/proper noun POS", confidence: "supported / POS-backed plural suffix", status: "resolved", evidence: `${token} is a noun/proper-noun token with conservative plural surface morphology.` });
+    if (/s$/i.test(token) && record.partOfSpeech === "unresolved" && token.length > 3 && !/ss$/i.test(token)) return morphologyAnalysisBase(record, { morphologyClass: "ambiguous", morphologyType: "ambiguous", morphologyValue: "noun plural or verb present candidate", suffixEvidence: "-s suffix without resolved POS", confidence: "ambiguous / suffix without POS support", status: "ambiguous", evidence: `${token} has an -s suffix, but POS does not safely distinguish plural noun from present verb.`, candidateAnalyses: ["plural noun candidate", "third-person singular verb candidate"], rejectedAnalyses: ["no suffix-only plural or verb resolution"] });
+    if (record.partOfSpeech === "noun" || record.partOfSpeech === "proper_noun") return morphologyAnalysisBase(record, { lemmaCandidate: lower, morphologyClass: "nominal", morphologyType: "number", morphologyValue: "singular", number: "singular", confidence: "limited / noun POS with no plural or possessive marker", status: "resolved", evidence: `${token} has noun/proper-noun POS support and no conservative plural or possessive marker.` });
+    if (record.partOfSpeech === "adjective" || record.partOfSpeech === "adverb") return morphologyAnalysisBase(record, { lemmaCandidate: lower, morphologyClass: "degree", morphologyType: "degree", morphologyValue: "positive", degree: "positive", confidence: "limited / adjective-adverb POS with no comparative or superlative marker", status: "resolved", evidence: `${token} is treated as positive degree because no conservative comparative or superlative marker was detected.` });
+    if (record.partOfSpeech === "verb") return morphologyAnalysisBase(record, { lemmaCandidate: lower, morphologyClass: "verbal", morphologyType: "tense/form", morphologyValue: "base form", tense: "base form", confidence: "limited / verb POS without tense suffix or auxiliary", status: "resolved", evidence: `${token} is POS-supported as a verb but has no stronger English surface tense/form marker.` });
+    return morphologyAnalysisBase(record, { status: "unresolved", confidence: "unresolved / safe morphology fallback", evidence: "No conservative English surface morphology marker was detected.", rejectedAnalyses: ["no suffix-only, semantic, doctrinal, or original-language morphology inference applied"] });
   }
 
   function morphologyPreviewRecords() {
     return scopedComputationCached("morphologyPreviewRecords", () => {
     const records = generatedLanguageRecords();
+    const sentenceIds = pronounResolutionSentenceMap(records);
     return records.map((record, index) => {
-      const morphology = morphologyPreviewForRecord(record, records);
+      const morphology = morphologyPreviewForRecord(record, records, sentenceIds);
       return {
         morphologyRecordId: `english_surface_v1.morphology.${index}`,
         sourceScope: record.sourceScope || currentStudyScopeLabel(),
         sourceReference: record.sourceReference || currentStudyScopeLabel(),
         tokenId: record.tokenId,
+        sentenceId: sentenceIds.get(record.tokenId) || "",
         token: record.token,
-        lemmaCandidate: languagePreviewLemmaCandidate(record.token),
+        normalizedToken: normalizeText(record.token).toLowerCase(),
+        lemmaCandidate: languagePreviewLemmaCandidate(record.token, { ...morphology, posCategory: record.partOfSpeech }),
+        posCategory: record.partOfSpeech || "unresolved",
         morphologyType: morphology.morphologyType,
         morphologyValue: morphology.morphologyValue,
+        morphologyClass: morphology.morphologyClass,
+        number: morphology.number,
+        person: morphology.person,
+        genderCandidate: morphology.genderCandidate,
+        grammaticalCase: morphology.grammaticalCase,
+        possessiveStatus: morphology.possessiveStatus,
+        tense: morphology.tense,
+        aspectCandidate: morphology.aspectCandidate,
+        voiceCandidate: morphology.voiceCandidate,
+        moodCandidate: morphology.moodCandidate,
+        degree: morphology.degree,
+        auxiliaryTokens: morphology.auxiliaryTokens,
+        suffixEvidence: morphology.suffixEvidence,
+        irregularFormEvidence: morphology.irregularFormEvidence,
+        contextEvidence: morphology.contextEvidence,
+        candidateAnalyses: morphology.candidateAnalyses,
+        rejectedAnalyses: morphology.rejectedAnalyses,
         evidence: morphology.evidence,
         confidence: morphology.confidence,
-        provenance: "I.C.E. English Surface Morphology preview from english_surface_v1 language and POS records",
+        provenance: morphology.irregularFormEvidence ? "I.C.E. English Surface Morphology preview from explicit KJV/irregular morphology registry plus english_surface_v1 language and POS records" : "I.C.E. English Surface Morphology preview from english_surface_v1 language, POS, sentence, suffix, and auxiliary records",
         evidenceDistance: "Distance 1: preview language morphology derived from source token surface forms only",
         status: morphology.status
       };
     });
     });
+  }
+
+  function morphologyEligibleRecords(records = morphologyPreviewRecords()) {
+    return asArray(records).filter((record) => record.status !== "not_applicable" && record.morphologyClass !== "not_applicable");
+  }
+
+  function morphologyResolutionSummary(records = morphologyPreviewRecords()) {
+    const list = asArray(records);
+    const eligible = morphologyEligibleRecords(list);
+    const resolved = eligible.filter((record) => record.status === "resolved");
+    const unresolved = eligible.filter((record) => record.status === "unresolved");
+    const ambiguous = eligible.filter((record) => record.status === "ambiguous");
+    const notApplicable = list.filter((record) => record.status === "not_applicable");
+    const lemmaEligible = eligible.filter((record) => /nominal|verbal|degree|pronoun/i.test(record.morphologyClass || ""));
+    const lemmaResolved = lemmaEligible.filter((record) => normalizeText(record.lemmaCandidate));
+    const irregularCandidates = eligible.filter((record) => record.irregularFormEvidence || ENGLISH_SURFACE_IRREGULAR_MORPHOLOGY[normalizeText(record.token).toLowerCase()]);
+    const irregularResolved = irregularCandidates.filter((record) => record.irregularFormEvidence && record.status === "resolved");
+    return {
+      total: list.length,
+      eligible: eligible.length,
+      resolved: resolved.length,
+      unresolved: unresolved.length,
+      ambiguous: ambiguous.length,
+      notApplicable: notApplicable.length,
+      lemmaEligible: lemmaEligible.length,
+      lemmaResolved: lemmaResolved.length,
+      irregularCandidates: irregularCandidates.length,
+      irregularResolved: irregularResolved.length
+    };
   }
 
   function morphologyTypeCounts(records = []) {
@@ -13485,21 +13751,43 @@ createRevelationPartsSection(item.subEvents)
 
   function morphologyInspectorLines() {
     const records = morphologyPreviewRecords();
-    const resolved = records.filter((record) => record.status === "resolved");
-    const unresolved = records.filter((record) => record.status === "unresolved");
-    const ambiguous = records.filter((record) => record.status === "ambiguous");
+    const summary = morphologyResolutionSummary(records);
+    const resolved = morphologyEligibleRecords(records).filter((record) => record.status === "resolved");
+    const unresolved = morphologyEligibleRecords(records).filter((record) => record.status === "unresolved");
+    const ambiguous = morphologyEligibleRecords(records).filter((record) => record.status === "ambiguous");
+    const countBy = (field) => records.reduce((counts, record) => {
+      const key = normalizeText(record[field] || "none") || "none";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const auxiliaryCount = records.filter((record) => asArray(record.auxiliaryTokens).length).length;
+    const passiveCount = records.filter((record) => record.voiceCandidate === "passive_candidate").length;
+    const imperativeCount = records.filter((record) => record.moodCandidate === "imperative_candidate").length;
     const lines = [
       `Morphology records found: ${records.length}`,
+      `Eligible tokens evaluated: ${summary.eligible}`,
+      `Not applicable tokens excluded: ${summary.notApplicable}`,
       `Resolved: ${resolved.length}`,
       `Unresolved: ${unresolved.length}`,
       `Ambiguous: ${ambiguous.length}`,
+      `Morphology class distribution: ${languageCountLine(countBy("morphologyClass"))}`,
+      `Tense/form distribution: ${languageCountLine(countBy("tense"))}`,
+      `Number distribution: ${languageCountLine(countBy("number"))}`,
+      `Pronoun morphology distribution: ${languageCountLine(countBy("grammaticalCase"))}`,
+      `Lemma candidates: ${summary.lemmaResolved}/${summary.lemmaEligible}`,
+      `Irregular mappings: ${summary.irregularResolved}/${summary.irregularCandidates}`,
+      `Auxiliary constructions: ${auxiliaryCount}`,
+      `Passive candidates: ${passiveCount}`,
+      `Imperative candidates: ${imperativeCount}`,
+      `Rejected analysis reasons: ${languageCountLine(records.flatMap((record) => asArray(record.rejectedAnalyses)).reduce((counts, reason) => { const key = trimText(reason, 60); if (key) counts[key] = (counts[key] || 0) + 1; return counts; }, {}))}`,
+      `Confidence distribution: ${languageCountLine(languageRecordConfidenceCounts(records))}`,
       `Morphology type counts: ${languageCountLine(morphologyTypeCounts(records))}`,
-      "Supported morphology: singular; plural; possessive; past tense; present tense; future marker; comparative; superlative; unresolved.",
-      "Boundary: preview-only English surface morphology. No Greek, Hebrew, Aramaic, Strong's, lexicon, subject/object inference, theological meaning, storage writes, Context Lock changes, or Study View changes."
+      "Supported morphology: singular; plural; possessive singular/plural; base/present/third-person-present/past/past-participle-candidate/present-participle-or-gerund/future/modal/infinitive candidates; positive/comparative/superlative; pronoun person/number/case; ambiguous; unresolved.",
+      "Boundary: preview-only English surface morphology. No Greek, Hebrew, Aramaic, Strong's, lexicon, subject/object inference, theological meaning, storage writes, Context Lock changes, downstream rewrites, or Study View changes."
     ];
-    lines.push(resolved.length ? `Sample resolved: ${resolved.slice(0, 8).map((record) => `${record.token}=${record.morphologyValue} (${record.sourceReference})`).join(" | ")}` : "Sample resolved: none");
+    lines.push(resolved.length ? `Sample resolved: ${resolved.slice(0, 8).map((record) => `${record.token}=${record.morphologyValue}; lemma=${record.lemmaCandidate || "none"} (${record.sourceReference})`).join(" | ")}` : "Sample resolved: none");
+    lines.push(ambiguous.length ? `Sample ambiguous: ${ambiguous.slice(0, 8).map((record) => `${record.token}: ${record.evidence}`).join(" | ")}` : "Sample ambiguous: none");
     lines.push(unresolved.length ? `Sample unresolved: ${unresolved.slice(0, 8).map((record) => `${record.token} (${record.sourceReference})`).join(" | ")}` : "Sample unresolved: none");
-    if (ambiguous.length) lines.push(`Sample ambiguous: ${ambiguous.slice(0, 5).map((record) => `${record.token}: ${record.evidence}`).join(" | ")}`);
     return lines;
   }
 
@@ -15791,6 +16079,7 @@ createRevelationPartsSection(item.subEvents)
     const authorityClasses = registeredAuthorityClasses();
     const architectureGraph = architectureGraphDiagnostics();
     const morphology = morphologyPreviewRecords();
+    const morphologySummary = morphologyResolutionSummary(morphology);
     const translationAlignment = translationAlignmentPreviewRecords();
     const strongAlignment = strongAlignmentPreviewRecords();
     const pronouns = pronounResolutionPreviewRecords();
@@ -15826,7 +16115,7 @@ createRevelationPartsSection(item.subEvents)
       qaDashboardLayerLine("Authority Registry", authorityClasses, { active: true }),
       `Architecture Graph: active; nodes=${architectureGraph.nodes.length}; edges=${architectureGraph.edges.length}; circular=${architectureGraph.circularDependencyCount}; authorityViolations=${architectureGraph.authorityViolations.length}; evidenceDistanceViolations=${architectureGraph.evidenceDistanceViolations.length}; orphans=${architectureGraph.orphanNodes.length}`,
       `POS: ${languageRecords.length ? "active" : "inactive"}; records=${languageRecords.length}; unresolved=${Number(posCounts.unresolved || 0)}; ambiguous=0`,
-      qaDashboardLayerLine("Morphology", morphology),
+      qaDashboardLayerLine("Morphology", morphology, { status: metricState({ denominator: morphologySummary.eligible, numerator: morphologySummary.resolved, unresolved: morphologySummary.unresolved, unsupported: morphologySummary.ambiguous }), coverage: metricPercent(morphologySummary.resolved, morphologySummary.eligible) }),
       qaDashboardLayerLine("Translation Alignment", translationAlignment),
       qaDashboardLayerLine("Strong Alignment", strongAlignment),
       qaDashboardLayerLine("Pronouns", pronouns),
@@ -15898,8 +16187,26 @@ createRevelationPartsSection(item.subEvents)
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const unresolvedPos = Number(posCounts.unresolved || 0);
     const unresolvedPosPercent = languageRecords.length ? Math.round((unresolvedPos / languageRecords.length) * 100) : 0;
-    const morphology = qaDashboardResolutionCounts(morphologyPreviewRecords());
-    const morphologyUnresolvedPercent = morphology.total ? Math.round((morphology.unresolved / morphology.total) * 100) : 0;
+    const morphologyRecords = morphologyPreviewRecords();
+    const morphology = morphologyResolutionSummary(morphologyRecords);
+    const morphologyUnresolvedPercent = morphology.eligible ? Math.round((morphology.unresolved / morphology.eligible) * 100) : 0;
+    const morphologyClassCounts = morphologyRecords.reduce((counts, record) => {
+      const key = normalizeText(record.morphologyClass || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const morphologyDegreeCounts = morphologyRecords.reduce((counts, record) => {
+      const key = normalizeText(record.degree || "none") || "none";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const morphologyNumberCounts = morphologyRecords.reduce((counts, record) => {
+      const key = normalizeText(record.number || "none") || "none";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const morphologyPronounRecords = morphologyRecords.filter((record) => record.morphologyClass === "pronoun");
+    const morphologyAuxiliaryCount = morphologyRecords.filter((record) => asArray(record.auxiliaryTokens).length).length;
     const translationAlignmentRecords = translationAlignmentPreviewRecords();
     const translationAlignment = {
       total: translationAlignmentRecords.length,
@@ -15970,7 +16277,16 @@ createRevelationPartsSection(item.subEvents)
       `Language adapter name: english_surface_v1`,
       `Language records generated: ${languageRecords.length}`,
       `POS unresolved: ${unresolvedPos} (${unresolvedPosPercent}%)`,
-      `Morphology: found=${morphology.total}; resolved=${morphology.resolved}; unresolved=${morphology.unresolved} (${morphologyUnresolvedPercent}%); ambiguous=${morphology.ambiguous}`,
+      `Morphology: found=${morphology.total}; eligible=${morphology.eligible}; resolved=${morphology.resolved}; unresolved=${morphology.unresolved} (${morphologyUnresolvedPercent}%); ambiguous=${morphology.ambiguous}; not-applicable=${morphology.notApplicable}`,
+      `Morphology classes: ${languageCountLine(morphologyClassCounts)}`,
+      `Nominal morphology: resolved=${morphologyRecords.filter((record) => record.morphologyClass === "nominal" && record.status === "resolved").length}; unresolved=${morphologyRecords.filter((record) => record.morphologyClass === "nominal" && record.status === "unresolved").length}; ambiguous=${morphologyRecords.filter((record) => record.morphologyClass === "nominal" && record.status === "ambiguous").length}` ,
+      `Verbal morphology: resolved=${morphologyRecords.filter((record) => record.morphologyClass === "verbal" && record.status === "resolved").length}; unresolved=${morphologyRecords.filter((record) => record.morphologyClass === "verbal" && record.status === "unresolved").length}; ambiguous=${morphologyRecords.filter((record) => record.morphologyClass === "verbal" && record.status === "ambiguous").length}`,
+      `Pronoun morphology: records=${morphologyPronounRecords.length}; resolved=${morphologyPronounRecords.filter((record) => record.status === "resolved").length}; ambiguous=${morphologyPronounRecords.filter((record) => record.status === "ambiguous").length}`,
+      `Degree morphology: ${languageCountLine(morphologyDegreeCounts)}`,
+      `Number morphology: ${languageCountLine(morphologyNumberCounts)}`,
+      `Lemma coverage: ${morphology.lemmaResolved}/${morphology.lemmaEligible}`,
+      `Irregular-form coverage: ${morphology.irregularResolved}/${morphology.irregularCandidates}`,
+      `Auxiliary constructions: ${morphologyAuxiliaryCount}; passive candidates=${morphologyRecords.filter((record) => record.voiceCandidate === "passive_candidate").length}; ambiguous morphology=${morphology.ambiguous}`,
       `Translation alignment: found=${translationAlignment.total}; aligned=${translationAlignment.aligned}; possible=${translationAlignment.possible}; unresolved=${translationAlignment.unresolved}; ambiguous=${translationAlignment.ambiguous}`,
       `Strong alignment: found=${strongAlignment.total}; explicit=${strongAlignment.explicit}; translation=${strongAlignment.translation}; possible=${strongAlignment.possible}; unresolved=${strongAlignment.unresolved}`,
       `Pronouns: found=${pronouns.total}; resolved=${pronouns.resolved}; unresolved=${pronouns.unresolved}; ambiguous=${pronouns.ambiguous}`,
@@ -16058,7 +16374,7 @@ createRevelationPartsSection(item.subEvents)
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const posUnresolved = Number(posCounts.unresolved || 0);
     const posResolved = Math.max(0, languageRecords.length - posUnresolved);
-    const morphology = qaDashboardResolutionCounts(morphologyPreviewRecords());
+    const morphology = morphologyResolutionSummary(morphologyPreviewRecords());
     const pronouns = qaDashboardResolutionCounts(pronounResolutionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
     const quotationUnresolved = quotations.filter((record) => /unresolved/i.test(normalizeText(record.quoteType || record.status))).length;
@@ -16085,7 +16401,7 @@ createRevelationPartsSection(item.subEvents)
     const languageScores = [
       semanticHealthPercent(posResolved, languageRecords.length),
       semanticHealthPercent(pronouns.resolved, pronouns.total),
-      semanticHealthPercent(morphology.resolved, morphology.total),
+      semanticHealthPercent(morphology.resolved, morphology.eligible),
       semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length),
       semanticHealthPercent(speakers.resolved, speakers.total),
       semanticHealthPercent(audiences.resolved, audiences.total),
@@ -16114,7 +16430,7 @@ createRevelationPartsSection(item.subEvents)
     const metrics = [
       semanticHealthMetric("Language Health", "POS resolution rate", semanticHealthPercent(posResolved, languageRecords.length), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(posResolved, languageRecords.length))),
       semanticHealthMetric("Language Health", "Pronoun resolution rate", semanticHealthPercent(pronouns.resolved, pronouns.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(pronouns.resolved, pronouns.total), 35)),
-      semanticHealthMetric("Language Health", "Morphology resolution rate", semanticHealthPercent(morphology.resolved, morphology.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(morphology.resolved, morphology.total))),
+      semanticHealthMetric("Language Health", "Morphology resolution rate", semanticHealthPercent(morphology.resolved, morphology.eligible), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(morphology.resolved, morphology.eligible)), 8, { numerator: morphology.resolved, denominator: morphology.eligible, denominatorRule: "resolved morphology records / morphology-eligible tokens; punctuation and numeric tokens are excluded", excludedRecords: morphology.notApplicable }),
       semanticHealthMetric("Language Health", "Quotation resolution rate", semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(Math.max(0, quotations.length - quotationUnresolved), quotations.length))),
       semanticHealthMetric("Language Health", "Speaker resolution rate", semanticHealthPercent(speakers.resolved, speakers.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(speakers.resolved, speakers.total), 35)),
       semanticHealthMetric("Language Health", "Audience resolution rate", semanticHealthPercent(audiences.resolved, audiences.total), "percentage", currentStudyScopeLabel(), semanticHealthStatus(semanticHealthPercent(audiences.resolved, audiences.total), 35)),
@@ -16211,6 +16527,9 @@ createRevelationPartsSection(item.subEvents)
     const speakerRecords = speakerDetectionPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerRecords);
     const speakerRejectedCandidateCount = speakerRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
+    const morphologyRecords = morphologyPreviewRecords();
+    const morphologySummary = morphologyResolutionSummary(morphologyRecords);
+    const morphologyRejectedAnalyses = morphologyRecords.reduce((sum, record) => sum + asArray(record.rejectedAnalyses).length, 0);
     const audienceRecords = audienceDetectionPreviewRecords();
     const audiences = qaDashboardResolutionCounts(audienceRecords);
     const immediateAudienceCandidates = immediateAudienceCandidateRecords(audienceRecords);
@@ -16264,6 +16583,43 @@ createRevelationPartsSection(item.subEvents)
         status: sourceDiscovery.length ? "active_with_records" : "unavailable_from_current_scope",
         statusRule: "Source Discovery may be unavailable even when retained or derived scoped records exist; no records are fabricated to raise coverage.",
         warnings: sourceLineageWarnings
+      }),
+      metricRecord({
+        metricName: "Morphology resolution",
+        scopeBasis: "selected scope English Surface morphology preview",
+        numerator: morphologySummary.resolved,
+        denominator: morphologySummary.eligible,
+        excluded: morphologySummary.notApplicable,
+        sourceCollection: "morphologyPreviewRecords; generatedLanguageRecords",
+        status: morphologySummary.eligible ? metricState({ denominator: morphologySummary.eligible, numerator: morphologySummary.resolved, unresolved: morphologySummary.unresolved, unsupported: morphologySummary.ambiguous }) : "no_candidates",
+        statusRule: "resolved morphology records / morphology-eligible source tokens; punctuation and numeric tokens are excluded from the denominator rather than counted as unresolved.",
+        warnings: [
+          morphologySummary.notApplicable ? `${morphologySummary.notApplicable} punctuation/numeric token(s) were excluded as not_applicable.` : "",
+          morphologySummary.ambiguous ? `${morphologySummary.ambiguous} morphology record(s) remain ambiguous by design; noun/verb -s, participle/adjective, and gerund ambiguity are not collapsed.` : "",
+          morphologyRejectedAnalyses ? `${morphologyRejectedAnalyses} rejected morphology analysis note(s) preserve overclaim safeguards.` : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Lemma candidate coverage",
+        scopeBasis: "selected scope morphology-eligible source tokens",
+        numerator: morphologySummary.lemmaResolved,
+        denominator: morphologySummary.lemmaEligible,
+        excluded: Math.max(0, morphologySummary.eligible - morphologySummary.lemmaEligible),
+        sourceCollection: "morphologyPreviewRecords.lemmaCandidate",
+        status: morphologySummary.lemmaEligible ? metricState({ denominator: morphologySummary.lemmaEligible, numerator: morphologySummary.lemmaResolved, unresolved: morphologySummary.lemmaEligible - morphologySummary.lemmaResolved }) : "no_candidates",
+        statusRule: "tokens with grounded lemma candidate / tokens eligible for lemma resolution; source wording is preserved and lemma does not replace the token.",
+        warnings: morphologySummary.lemmaEligible && morphologySummary.lemmaResolved < morphologySummary.lemmaEligible ? [`${morphologySummary.lemmaEligible - morphologySummary.lemmaResolved} lemma-eligible token(s) remain unresolved or ambiguous.`] : []
+      }),
+      metricRecord({
+        metricName: "Irregular form coverage",
+        scopeBasis: "selected scope English/KJV irregular form candidates",
+        numerator: morphologySummary.irregularResolved,
+        denominator: morphologySummary.irregularCandidates,
+        excluded: 0,
+        sourceCollection: "ENGLISH_SURFACE_IRREGULAR_MORPHOLOGY; morphologyPreviewRecords.irregularFormEvidence",
+        status: morphologySummary.irregularCandidates ? metricState({ denominator: morphologySummary.irregularCandidates, numerator: morphologySummary.irregularResolved, unresolved: morphologySummary.irregularCandidates - morphologySummary.irregularResolved }) : "no_candidates",
+        statusRule: "recognized irregular/KJV morphology mappings / irregular-form candidates encountered in scoped tokens; explicit mappings outrank weaker suffix rules.",
+        warnings: morphologySummary.irregularCandidates && morphologySummary.irregularResolved < morphologySummary.irregularCandidates ? [`${morphologySummary.irregularCandidates - morphologySummary.irregularResolved} irregular candidate(s) were not resolved because ambiguity was preserved.`] : []
       }),
       metricRecord({
         metricName: "Speaker resolution rate",
