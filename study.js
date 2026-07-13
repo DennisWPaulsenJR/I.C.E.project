@@ -110,6 +110,111 @@ document.addEventListener("DOMContentLoaded", async () => {
     editor: ["overview", "editor", "inference", "evidence", "relationship", "technical"]
   };
   let selectedPresentationModules = new Set(PRESENTATION_MODULE_PRESETS.all);
+  const studyGroupOpenState = new Map();
+
+  function currentPresentationModeLabel() {
+    const selected = Array.from(selectedPresentationModules).sort().join("|");
+    const matchesPreset = (preset) => PRESENTATION_MODULE_PRESETS[preset].slice().sort().join("|") === selected;
+    if (matchesPreset("study")) return "Summary View";
+    if (matchesPreset("editor")) return "Editor Detail";
+    if (matchesPreset("all")) return "Full Technical View";
+    if (matchesPreset("evidence")) return "Evidence View";
+    return "Custom View";
+  }
+
+  const STUDY_PANEL_GROUPS = [
+    { id: "studyGroupOverview", navLabel: "Overview", title: "Study Overview" },
+    { id: "studyGroupContext", navLabel: "Context", title: "Context and Scope" },
+    { id: "studyGroupEntities", navLabel: "Entities", title: "Entities and Relationships" },
+    { id: "studyGroupNarrative", navLabel: "Narrative", title: "Narrative and Events" },
+    { id: "studyGroupLanguage", navLabel: "Language", title: "Language and Discourse" },
+    { id: "studyGroupPrinciples", navLabel: "Principles", title: "Themes, Principles, and Guidance" },
+    { id: "studyGroupQa", navLabel: "QA", title: "Trust, QA, and Verification" },
+    { id: "studyGroupArchitecture", navLabel: "Architecture", title: "Architecture and Registries" }
+  ];
+
+  const STUDY_PANEL_SECTION_GROUPS = {
+    "Study Scope": "Study Overview",
+    "Queue Summary": "Study Overview",
+    "Study Reference Index": "Study Overview",
+    "Cross-Reference Relationship Summary": "Study Overview",
+    "Study Progression": "Study Overview",
+    "Current Page": "Study Overview",
+    "Source Context": "Context and Scope",
+    "Context Lock": "Context and Scope",
+    "Meaning Staging": "Context and Scope",
+    "Study Scope Hierarchy": "Context and Scope",
+    "Scope Perspectives": "Context and Scope",
+    "Scope Integrity": "Context and Scope",
+    "Source Adapter": "Context and Scope",
+    "Entity Scope Focus": "Context and Scope",
+    "Verse Scope Focus": "Context and Scope",
+    "Entity Roles": "Entities and Relationships",
+    "Entity Registry": "Entities and Relationships",
+    "Mention Index": "Entities and Relationships",
+    "Actors": "Entities and Relationships",
+    "Interactions": "Entities and Relationships",
+    "Canonical Identities": "Entities and Relationships",
+    "Relationship Graph": "Entities and Relationships",
+    "Entity Relation Roles": "Entities and Relationships",
+    "Ontology Roles": "Entities and Relationships",
+    "Scripture Knowledge Graph": "Entities and Relationships",
+    "Focused Graph": "Entities and Relationships",
+    "Timeline Events": "Narrative and Events",
+    "Timeline Relationships": "Narrative and Events",
+    "Timeline Sequence": "Narrative and Events",
+    "Guided Study Journeys": "Narrative and Events",
+    "Journey Nodes": "Narrative and Events",
+    "Journey Paths": "Narrative and Events",
+    "Journey Hubs": "Narrative and Events",
+    "Scenes": "Narrative and Events",
+    "Ordered Events": "Narrative and Events",
+    "Semantic Events": "Narrative and Events",
+    "Semantic Flow Chains": "Narrative and Events",
+    "Movement Semantics": "Narrative and Events",
+    "Semantic Causality": "Narrative and Events",
+    "Narrative Timeline": "Narrative and Events",
+    "Passage Functions": "Narrative and Events",
+    "Timeline": "Narrative and Events",
+    "Teaching / Discourse Structure": "Language and Discourse",
+    "Reference Roles": "Language and Discourse",
+    "Source Discovery": "Language and Discourse",
+    "Reference Graph": "Language and Discourse",
+    "DOM Semantic Hints": "Language and Discourse",
+    "Revelation Patterns": "Language and Discourse",
+    "Semantic Distinctions": "Language and Discourse",
+    "Semantic Ambiguities": "Language and Discourse",
+    "Origin Authority Paths": "Language and Discourse",
+    "Semantic Continuity": "Language and Discourse",
+    "Guided Study": "Themes, Principles, and Guidance",
+    "Focused Study Views": "Themes, Principles, and Guidance",
+    "Study Exploration Paths": "Themes, Principles, and Guidance",
+    "Study Themes": "Themes, Principles, and Guidance",
+    "Semantic Questions": "Themes, Principles, and Guidance",
+    "Library Awareness": "Themes, Principles, and Guidance",
+    "Principle Relationships": "Themes, Principles, and Guidance",
+    "Principle Networks": "Themes, Principles, and Guidance",
+    "Principles": "Themes, Principles, and Guidance",
+    "Prophecy Links": "Themes, Principles, and Guidance",
+    "Focus Lens": "Themes, Principles, and Guidance",
+    "Scope Lens": "Themes, Principles, and Guidance",
+    "Depth Lens": "Themes, Principles, and Guidance",
+    "View Lens": "Themes, Principles, and Guidance",
+    "Semantic Coverage": "Trust, QA, and Verification",
+    "Semantic Resolution Explanation": "Trust, QA, and Verification",
+    "Session Continuity Review": "Trust, QA, and Verification",
+    "Trust & Verification": "Trust, QA, and Verification",
+    "Editor / Architect Evaluation": "Architecture and Registries"
+  };
+
+  function editorArchitectLazyInspectorCount() {
+    return 38;
+  }
+
+  function editorArchitectInitialSummarySectionCount() {
+    return 17;
+  }
+
   const DEFERRED_SECTION_SUMMARIES = {
     "Study Reference Index": "Compact current-scope index of actors, entities, locations, events, narrative types, ordered flow, and inference levels.",
     "Cross-Reference Relationship Summary": "Counts Prior, Current, Future, and Related cross-reference relationship records for the current Study Scope.",
@@ -280,8 +385,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const scopedComputationStats = {
     hits: 0,
     misses: 0,
+    invalidations: 0,
+    lastInvalidationReason: "not invalidated yet",
     slowComputations: [],
     lazySectionsRendered: 0,
+    initialInspectorsRendered: 0,
     renderTimings: []
   };
 
@@ -331,6 +439,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function invalidateScopedComputationCache(reason = "scope/data refresh") {
     scopedComputationCache.clear();
+    scopedComputationStats.invalidations += 1;
+    scopedComputationStats.lastInvalidationReason = reason;
     scopedComputationStats.slowComputations = [];
     scopedComputationStats.renderTimings.push({ label: `cache invalidated: ${reason}`, elapsed: 0 });
     scopedComputationStats.renderTimings = scopedComputationStats.renderTimings.slice(-8);
@@ -8328,7 +8438,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             recordRenderTiming(`Lazy section: ${title}`, nowForDiagnostics() - started);
           } catch (error) {
             lazyBody.textContent = `Load failed: ${error.message}`;
+            lazyBody.dataset.loadError = "true";
+            lazyBody.dataset.inspectorTitle = title;
             showDiagnosticMessage(`Lazy section load failed in ${title}: ${error.message}`);
+            console.error(`I.C.E. lazy inspector failed: ${title}`, error);
           }
         });
         details.appendChild(lazyBody);
@@ -15867,6 +15980,22 @@ createRevelationPartsSection(item.subEvents)
     return "healthy";
   }
 
+  function immediateAudienceCandidateRecords(records = audienceDetectionPreviewRecords()) {
+    return asArray(records).filter((record) =>
+      /Immediate Physical Audience|Direct Address Audience|Narrative Audience/i.test(record.audienceLevel || "")
+    );
+  }
+
+  function extendedAudienceCandidateRecords(records = audienceDetectionPreviewRecords()) {
+    return asArray(records).filter((record) =>
+      /Intended Hearers|Reader Audience|Universal \/ General Application|Parable Internal Audience/i.test(record.audienceLevel || "")
+    );
+  }
+
+  function groundedAudienceRecords(records = []) {
+    return asArray(records).filter((record) => record.status === "resolved" && record.detectedAudience);
+  }
+
   function semanticHealthMetric(healthCategory, metricName, metricValue, metricType, metricScope, status = "informational", evidenceDistance = 8, options = {}) {
     const healthMetricId = `health.${normalizeText(healthCategory).toLowerCase().replace(/[^a-z0-9]+/g, ".")}.${normalizeText(metricName).toLowerCase().replace(/[^a-z0-9]+/g, ".")}`;
     return {
@@ -15906,10 +16035,10 @@ createRevelationPartsSection(item.subEvents)
     const speakers = qaDashboardResolutionCounts(speakerDetectionPreviewRecords());
     const audienceRecords = audienceDetectionPreviewRecords();
     const audiences = qaDashboardResolutionCounts(audienceRecords);
-    const immediateAudienceCandidates = audienceRecords.filter((record) => /Immediate Physical Audience|Direct Address Audience|Narrative Audience/i.test(record.audienceLevel || ""));
-    const extendedAudienceCandidates = audienceRecords.filter((record) => /Intended Hearers|Reader Audience|Universal \/ General Application|Parable Internal Audience/i.test(record.audienceLevel || ""));
-    const groundedImmediateAudiences = immediateAudienceCandidates.filter((record) => record.status === "resolved" && record.detectedAudience);
-    const groundedExtendedAudiences = extendedAudienceCandidates.filter((record) => record.status === "resolved" && record.detectedAudience);
+    const immediateAudienceCandidates = immediateAudienceCandidateRecords(audienceRecords);
+    const extendedAudienceCandidates = extendedAudienceCandidateRecords(audienceRecords);
+    const groundedImmediateAudiences = groundedAudienceRecords(immediateAudienceCandidates);
+    const groundedExtendedAudiences = groundedAudienceRecords(extendedAudienceCandidates);
     const audienceTransitionCount = audienceRecords.filter((record) => record.transitionType && record.transitionType !== "no_transition").length;
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
@@ -16052,7 +16181,13 @@ createRevelationPartsSection(item.subEvents)
     const speakerRecords = speakerDetectionPreviewRecords();
     const speakers = qaDashboardResolutionCounts(speakerRecords);
     const speakerRejectedCandidateCount = speakerRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
-    const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
+    const audienceRecords = audienceDetectionPreviewRecords();
+    const audiences = qaDashboardResolutionCounts(audienceRecords);
+    const immediateAudienceCandidates = immediateAudienceCandidateRecords(audienceRecords);
+    const extendedAudienceCandidates = extendedAudienceCandidateRecords(audienceRecords);
+    const groundedImmediateAudiences = groundedAudienceRecords(immediateAudienceCandidates);
+    const groundedExtendedAudiences = groundedAudienceRecords(extendedAudienceCandidates);
+    const audienceTransitionCount = audienceRecords.filter((record) => record.transitionType && record.transitionType !== "no_transition").length;
     const quotations = quotationBoundaryPreviewRecords();
     const dialogueRecords = dialogueRelationshipPreviewRecords();
     const dialogue = qaDashboardResolutionCounts(dialogueRecords);
@@ -16397,19 +16532,35 @@ createRevelationPartsSection(item.subEvents)
       guidance: studyGuidanceRecords().length
     };
     const largestCollections = Object.entries(collectionCounts).sort((left, right) => right[1] - left[1]).slice(0, 6);
+    const totalCacheRequests = scopedComputationStats.hits + scopedComputationStats.misses;
+    const cacheHitRate = totalCacheRequests ? Math.round((scopedComputationStats.hits / totalCacheRequests) * 100) : null;
+    const lazyEligible = editorArchitectLazyInspectorCount();
+    const deferredRatio = lazyEligible ? Math.round((scopedComputationStats.lazySectionsRendered / lazyEligible) * 100) : null;
+    const cacheStampParts = scopedComputationCacheStamp().split("::");
     return [
       "Performance Diagnostics",
       "Likely pre-optimization bottlenecks: eager Editor / Architect inspector generation; repeated language/QA/health/provenance computations; collapsed sections building full DOM bodies before expansion.",
+      `Current view mode: ${currentPresentationModeLabel()}`,
       `Total panel render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "renderStudy")?.elapsed ?? "not measured yet"} ms`,
+      `Initial summary render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "Study Scope")?.elapsed ?? "not measured yet"} ms`,
+      `Study View render time: ${scopedComputationStats.renderTimings.filter((item) => /Study Reference Index|Cross-Reference Relationship Summary|Study Scope|Queue Summary/.test(item.label)).map((item) => `${item.label}=${item.elapsed}ms`).join("; ") || "not measured yet"}`,
       `Editor / Architect render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "Editor / Architect Evaluation")?.elapsed ?? "not measured yet"} ms`,
-      `Lazy sections rendered count: ${scopedComputationStats.lazySectionsRendered}`,
+      `Deferred render time: ${scopedComputationStats.renderTimings.filter((item) => /^Lazy section:/.test(item.label)).map((item) => `${item.label.replace(/^Lazy section:\s*/, "")}=${item.elapsed}ms`).join("; ") || "not measured yet"}`,
+      `Inspectors rendered initially: ${editorArchitectInitialSummarySectionCount()} summary/detail section(s); ${scopedComputationStats.initialInspectorsRendered} full deferred inspector(s)`,
+      `Inspectors rendered lazily: ${scopedComputationStats.lazySectionsRendered}`,
+      `Deferred Inspector Ratio: ${formatMetricPercent(deferredRatio)} (${scopedComputationStats.lazySectionsRendered}/${lazyEligible})`,
       `Cached collection count: ${scopedComputationCache.size}`,
       `Cache hits: ${scopedComputationStats.hits}`,
       `Cache misses: ${scopedComputationStats.misses}`,
+      `Cache Hit Rate: ${formatMetricPercent(cacheHitRate)} (${scopedComputationStats.hits}/${totalCacheRequests || 0})`,
+      `Cache invalidations: ${scopedComputationStats.invalidations}`,
+      `Last cache invalidation: ${scopedComputationStats.lastInvalidationReason}`,
+      `Current cache key/revision summary: scope=${cacheStampParts[0] || "not recorded"}; active=${cacheStampParts[1] || "not recorded"}; analyzed=${cacheStampParts[2] || "none"}; timestamp=${cacheStampParts[3] || "not recorded"}`,
       `Largest scoped collection counts: ${largestCollections.map(([label, count]) => `${label}=${count}`).join("; ") || "none"}`,
       `Slowest display computations: ${scopedComputationStats.slowComputations.length ? scopedComputationStats.slowComputations.map((item) => `${item.key}=${item.elapsed}ms`).join("; ") : "none over threshold"}`,
       `Slowest render timings: ${scopedComputationStats.renderTimings.length ? scopedComputationStats.renderTimings.map((item) => `${item.label}=${item.elapsed}ms`).join("; ") : "not measured yet"}`,
-      "Empty/loading states: Not rendered yet; Loading details; No candidates; No records; Dependency unavailable; Scope changed; refresh required.",
+      "Performance metric definitions: Initial Render Time = visible summary and essential controls usable; Full Detail Render Time = accumulated lazy section render timings after expansion; Cache Hit Rate = cache hits / cache requests; Deferred Inspector Ratio = lazy-rendered inspectors / eligible lazy inspectors.",
+      "Empty/loading states: Summary ready; Details not rendered yet; Loading details; No records; No candidates; Dependency unavailable; Scope changed - refreshing; Cached for current scope.",
       "Boundary: diagnostics are display-only. Cache is runtime-scoped and does not write semantic storage, change Context Lock, alter Study View output, crawl, or process queues."
     ];
   }
@@ -24649,13 +24800,13 @@ createRevelationPartsSection(item.subEvents)
 
   function deferredSectionStatusLine(label) {
     const count = deferredSectionRecordCount(label);
-    if (count == null) return "Summary visible now; expand to load details.";
-    return count > 0 ? `${count} record(s) ready; expand to view details.` : "No records found for this section.";
+    if (count == null) return "Details not rendered.";
+    return count > 0 ? `${count} record(s) · Details not rendered.` : "No records · Details not rendered.";
   }
 
   function deferredSectionCountLabel(label) {
     const count = deferredSectionRecordCount(label);
-    return count == null ? "summary" : `${count} record(s)`;
+    return count == null ? "Not loaded" : `${count} record(s)`;
   }
 
   function createDeferredSectionDetails(entry, options = {}) {
@@ -24671,7 +24822,9 @@ createRevelationPartsSection(item.subEvents)
     title.textContent = entry.label;
     const status = document.createElement("span");
     status.className = "deferred-study-section-status";
-    status.textContent = deferredSectionStatusLine(entry.label);
+    status.textContent = options.loadedNodes
+      ? `${deferredSectionCountLabel(entry.label)} · Details rendered.`
+      : deferredSectionStatusLine(entry.label);
     summary.append(title, status);
 
     const body = document.createElement("div");
@@ -24683,15 +24836,15 @@ createRevelationPartsSection(item.subEvents)
       purpose.textContent = DEFERRED_SECTION_SUMMARIES[entry.label] || "Details are available on demand.";
       const note = document.createElement("p");
       note.className = "deferred-study-section-note";
-      note.textContent = "Full records load when this section is opened; no background crawling or report generation runs on panel open.";
+      note.textContent = "Details are deferred until opened; no background crawling or report generation runs on panel open.";
       body.append(purpose, note);
       appendScopedRecordDiagnostics(body, entry.label);
       details.addEventListener("toggle", () => {
         if (!details.open || loadedDeferredSections.has(entry.label)) return;
         note.textContent = "Loading details...";
         loadDeferredSection(entry.label).catch((error) => {
-          note.textContent = `Load failed: ${error.message}`;
-          showDiagnosticMessage(`Load failed: ${error.message}`);
+          note.textContent = `Load failed in ${entry.label}: ${error.message}`;
+          showDiagnosticMessage(`Load failed in ${entry.label}: ${error.message}`);
         });
       }, { once: false });
     }
@@ -24835,6 +24988,169 @@ createRevelationPartsSection(item.subEvents)
     return moduleIds.some((id) => selectedPresentationModules.has(id));
   }
 
+  function currentSearchTerm() {
+    return normalizeText(document.getElementById("searchInput")?.value || "").toLowerCase();
+  }
+
+  function studyGroupDefinitionByTitle(title = "") {
+    return STUDY_PANEL_GROUPS.find((group) => group.title === title) || STUDY_PANEL_GROUPS[STUDY_PANEL_GROUPS.length - 1];
+  }
+
+  function studyGroupTitleForSection(label = "") {
+    return STUDY_PANEL_SECTION_GROUPS[label] || "Architecture and Registries";
+  }
+
+  function studyGroupStateKey(groupTitle = "") {
+    return `${currentPresentationModeLabel()}::${groupTitle}`;
+  }
+
+  function defaultStudyGroupOpen(groupTitle = "") {
+    const mode = currentPresentationModeLabel();
+    if (mode === "Summary View") {
+      return ["Study Overview", "Context and Scope", "Themes, Principles, and Guidance"].includes(groupTitle);
+    }
+    if (mode === "Editor Detail") {
+      return [
+        "Study Overview",
+        "Context and Scope",
+        "Entities and Relationships",
+        "Narrative and Events",
+        "Themes, Principles, and Guidance"
+      ].includes(groupTitle);
+    }
+    if (mode === "Full Technical View") return true;
+    return ["Study Overview", "Context and Scope"].includes(groupTitle);
+  }
+
+  function ensureStudyGroupNavigation(shell) {
+    let navigation = document.getElementById("studyGroupNavigation");
+    if (!navigation) {
+      navigation = document.createElement("nav");
+      navigation.id = "studyGroupNavigation";
+      navigation.className = "study-group-navigation";
+      navigation.setAttribute("aria-label", "Study panel groups");
+      const firstSection = shell.querySelector(".study-section");
+      shell.insertBefore(navigation, firstSection || shell.firstChild);
+    }
+    clearElement(navigation);
+    STUDY_PANEL_GROUPS.forEach((group) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = group.navLabel;
+      button.dataset.studyGroupTarget = group.id;
+      button.addEventListener("click", () => {
+        const details = document.getElementById(group.id);
+        if (!details) return;
+        details.open = true;
+        studyGroupOpenState.set(studyGroupStateKey(group.title), true);
+        details.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+      navigation.appendChild(button);
+    });
+    return navigation;
+  }
+
+  function ensureStudyGroupShell(shell, group) {
+    let details = document.getElementById(group.id);
+    if (!details) {
+      details = document.createElement("details");
+      details.id = group.id;
+      details.className = "study-section-group";
+      details.dataset.studyGroupTitle = group.title;
+      const summary = document.createElement("summary");
+      summary.className = "study-section-group-summary";
+      summary.innerHTML = [
+        `<span class="study-section-group-title">${group.title}</span>`,
+        `<span class="study-section-group-status" data-study-group-status></span>`,
+        `<span class="study-section-group-counts" data-study-group-counts></span>`,
+        `<span class="study-section-group-matches" data-study-group-matches></span>`
+      ].join("");
+      const body = document.createElement("div");
+      body.className = "study-section-group-body";
+      details.append(summary, body);
+      const diagnostics = document.getElementById("diagnosticPanel");
+      shell.insertBefore(details, diagnostics || null);
+      details.addEventListener("toggle", () => {
+        studyGroupOpenState.set(studyGroupStateKey(group.title), details.open);
+      });
+    }
+    const stateKey = studyGroupStateKey(group.title);
+    details.open = studyGroupOpenState.has(stateKey) ? studyGroupOpenState.get(stateKey) : defaultStudyGroupOpen(group.title);
+    return details;
+  }
+
+  function sectionMatchesStudyGroupSearch(section, entry, term = "") {
+    if (!term) return false;
+    const summary = DEFERRED_SECTION_SUMMARIES[entry.label] || "";
+    return [
+      entry.label,
+      summary,
+      section?.querySelector(".section-heading")?.textContent || "",
+      section?.querySelector(".deferred-study-section-status")?.textContent || ""
+    ].some((value) => normalizeText(value).toLowerCase().includes(term));
+  }
+
+  function updateStudyGroupSummary(details, group, entries, term = "") {
+    const visibleEntries = entries.filter((entry) => {
+      const section = document.getElementById(entry.sectionId);
+      return section && !section.hidden;
+    });
+    const counts = visibleEntries.map((entry) => deferredSectionRecordCount(entry.label));
+    const rendered = visibleEntries.filter((entry) => loadedDeferredSections.has(entry.label) || STARTUP_RENDERER_LABELS.has(entry.label)).length;
+    const notLoaded = counts.filter((count) => count == null).length;
+    const recordTotal = counts.reduce((sum, count) => sum + (typeof count === "number" ? count : 0), 0);
+    const matchCount = visibleEntries.filter((entry) => sectionMatchesStudyGroupSearch(document.getElementById(entry.sectionId), entry, term)).length;
+    const warningCount = visibleEntries.filter((entry) => {
+      const count = deferredSectionRecordCount(entry.label);
+      const section = document.getElementById(entry.sectionId);
+      return section?.querySelector(".lazy-semantic-section-body[data-load-error='true']") ||
+        (count === 0 && ["Trust, QA, and Verification", "Context and Scope"].includes(group.title));
+    }).length;
+    const status = details.querySelector("[data-study-group-status]");
+    const countLabel = details.querySelector("[data-study-group-counts]");
+    const matchLabel = details.querySelector("[data-study-group-matches]");
+    if (status) {
+      status.textContent = visibleEntries.length
+        ? `${warningCount ? `${warningCount} warning(s)` : "Ready"}`
+        : "Hidden by view";
+    }
+    if (countLabel) {
+      countLabel.textContent = [
+        `${visibleEntries.length} section(s)`,
+        `${rendered} rendered`,
+        notLoaded ? `${notLoaded} not loaded` : "",
+        recordTotal ? `${recordTotal} record(s)` : ""
+      ].filter(Boolean).join(" · ");
+    }
+    if (matchLabel) {
+      matchLabel.textContent = term ? `${matchCount} match(es)` : "";
+    }
+    details.hidden = visibleEntries.length === 0;
+    details.dataset.warningCount = String(warningCount);
+    details.dataset.matchCount = String(matchCount);
+  }
+
+  function applyStudyPanelInformationArchitecture(term = currentSearchTerm()) {
+    const shell = document.querySelector(".study-shell");
+    if (!shell) return;
+    ensureStudyGroupNavigation(shell);
+    const entriesByGroup = new Map(STUDY_PANEL_GROUPS.map((group) => [group.title, []]));
+    studySectionRenderers().forEach((entry) => {
+      const section = document.getElementById(entry.sectionId);
+      if (!section) return;
+      const groupTitle = studyGroupTitleForSection(entry.label);
+      const group = studyGroupDefinitionByTitle(groupTitle);
+      const details = ensureStudyGroupShell(shell, group);
+      const body = details.querySelector(".study-section-group-body");
+      if (body && section.parentElement !== body) body.appendChild(section);
+      entriesByGroup.get(group.title)?.push(entry);
+    });
+    STUDY_PANEL_GROUPS.forEach((group) => {
+      const details = ensureStudyGroupShell(shell, group);
+      updateStudyGroupSummary(details, group, entriesByGroup.get(group.title) || [], term);
+    });
+  }
+
   function applyPresentationModuleVisibility() {
     studySectionRenderers().forEach((entry) => {
       const section = document.getElementById(entry.sectionId);
@@ -24844,6 +25160,7 @@ createRevelationPartsSection(item.subEvents)
     });
     const diagnostics = document.getElementById("diagnosticPanel");
     if (diagnostics) diagnostics.hidden = !selectedPresentationModules.has("technical");
+    applyStudyPanelInformationArchitecture();
   }
 
   function updatePresentationModuleControls() {
@@ -24862,6 +25179,12 @@ createRevelationPartsSection(item.subEvents)
   function initializePresentationModuleControls() {
     const container = document.getElementById("presentationModuleControls");
     if (!container) return;
+    const allButton = document.getElementById("showAllModules");
+    const studyButton = document.getElementById("showStudyModules");
+    const editorButton = document.getElementById("showEditorModules");
+    if (allButton) allButton.textContent = "Full Technical View";
+    if (studyButton) studyButton.textContent = "Summary View";
+    if (editorButton) editorButton.textContent = "Editor Detail";
     clearElement(container);
     PRESENTATION_MODULES.forEach((module) => {
       const label = document.createElement("label");
@@ -24904,10 +25227,9 @@ createRevelationPartsSection(item.subEvents)
         renderDeferredSectionPlaceholder(entry);
       }
     });
-    if (fullStudyDataLoaded) {
-      safeRenderSection("Diagnostics", renderDiagnostics, term);
-    }
+    safeRenderSection("Diagnostics", renderDiagnostics, term);
     applyPresentationModuleVisibility();
+    applyStudyPanelInformationArchitecture(term);
     recordRenderTiming("renderStudy", nowForDiagnostics() - renderStarted);
   }
 
@@ -24935,6 +25257,9 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function renderDiagnostics() {
+    const statusValue = (value, loadedFallback = "Not loaded") => normalizeText(value) || loadedFallback;
+    const diagnosticCount = (value, available = fullStudyDataLoaded) => available ? value : "Not loaded";
+    const activeDiagnosticPage = activeSourcePageRecord() || {};
     const captureCount = (studyData.latestCapture?.text ? 1 : 0) +
       countItems(studyData.captureHistory);
     const timelineCount = countItems(studyData.timelineItems);
@@ -24981,7 +25306,10 @@ createRevelationPartsSection(item.subEvents)
     const semanticQuestionsCount = countItems(studyData.semanticQuestions);
     const trustVerificationCount = countItems(studyData.trustVerification);
     const resolutionExplanationCount = countItems(resolutionExplanationRecords());
-    const activeAdapterName = studyData.activeAdapter?.adapterName || "None";
+    const activeAdapterName = statusValue(
+      studyData.activeAdapter?.adapterName || studyData.activeAdapter?.adapterId || activeDiagnosticPage.activeAdapterName || studyData.analysisStatus?.activeAdapterName,
+      fullStudyDataLoaded ? "Not detected" : "Not loaded"
+    );
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
@@ -24989,73 +25317,73 @@ createRevelationPartsSection(item.subEvents)
       principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + viewLensCount + journeyNodesCount + journeyPathsCount + journeyHubsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
     const message = document.getElementById("diagnosticMessage");
 
-    setElementText("diagnosticCaptures", captureCount);
-    setElementText("diagnosticTimeline", timelineCount);
-    setElementText("diagnosticEvents", eventCount);
-    setElementText("diagnosticOrderedEvents", orderedCount);
-    setElementText("diagnosticActors", actorCount);
-    setElementText("diagnosticInteractions", interactionCount);
-    setElementText("diagnosticScenes", sceneCount);
-    setElementText("diagnosticSemanticEvents", semanticEventCount);
-    setElementText("diagnosticSemanticFlowChains", semanticFlowChainCount);
-    setElementText("diagnosticEntityRegistry", entityRegistryCount);
-    setElementText("diagnosticRelationshipGraph", relationshipGraphCount);
-    setElementText("diagnosticCanonicalIdentities", canonicalIdentityCount);
-    setElementText("diagnosticEntityClasses", entityClassCount);
-    setElementText("diagnosticMentions", mentionCount);
-    setElementText("diagnosticDomHints", domHintCount);
-    setElementText("diagnosticSourceDiscovery", sourceDiscoveryCount);
-    setElementText("diagnosticReferenceGraph", referenceGraphCount);
-    setElementText("diagnosticPassageFunctions", passageFunctionCount);
-    setElementText("diagnosticRevelationPatterns", revelationPatternCount);
-    setElementText("diagnosticReferenceRoles", referenceRoleCount);
-    setElementText("diagnosticSemanticDistinctions", semanticDistinctionCount);
-    setElementText("diagnosticOntologyRoles", ontologyRoleCount);
-    setElementText("diagnosticSemanticAmbiguities", semanticAmbiguityCount);
-    setElementText("diagnosticOriginAuthorityPaths", originAuthorityPathCount);
-    setElementText("diagnosticEntityRelationRoles", entityRelationRoleCount);
-    setElementText("diagnosticSemanticContinuity", semanticContinuityCount);
-    setElementText("diagnosticMovementSemantics", movementSemanticsCount);
-    setElementText("diagnosticSemanticCausality", semanticCausalityCount);
-    setElementText("diagnosticTeachingSemantics", teachingSemanticsCount);
-    setElementText("diagnosticPrincipleRelationships", principleRelationshipsCount);
-    setElementText("diagnosticPrincipleNetworks", principleNetworksCount);
-    setElementText("diagnosticFocusLens", focusLensCount);
-    setElementText("diagnosticScopeLens", scopeLensCount);
-    setElementText("diagnosticDepthLens", depthLensCount);
-    setElementText("diagnosticViewLens", viewLensCount);
-    setElementText("diagnosticJourneyNodes", journeyNodesCount);
-    setElementText("diagnosticJourneyPaths", journeyPathsCount);
-    setElementText("diagnosticJourneyHubs", journeyHubsCount);
+    setElementText("diagnosticCaptures", diagnosticCount(captureCount));
+    setElementText("diagnosticTimeline", diagnosticCount(timelineCount));
+    setElementText("diagnosticEvents", diagnosticCount(eventCount));
+    setElementText("diagnosticOrderedEvents", diagnosticCount(orderedCount));
+    setElementText("diagnosticActors", diagnosticCount(actorCount));
+    setElementText("diagnosticInteractions", diagnosticCount(interactionCount));
+    setElementText("diagnosticScenes", diagnosticCount(sceneCount));
+    setElementText("diagnosticSemanticEvents", diagnosticCount(semanticEventCount));
+    setElementText("diagnosticSemanticFlowChains", diagnosticCount(semanticFlowChainCount));
+    setElementText("diagnosticEntityRegistry", diagnosticCount(entityRegistryCount));
+    setElementText("diagnosticRelationshipGraph", diagnosticCount(relationshipGraphCount));
+    setElementText("diagnosticCanonicalIdentities", diagnosticCount(canonicalIdentityCount));
+    setElementText("diagnosticEntityClasses", diagnosticCount(entityClassCount));
+    setElementText("diagnosticMentions", diagnosticCount(mentionCount));
+    setElementText("diagnosticDomHints", diagnosticCount(domHintCount));
+    setElementText("diagnosticSourceDiscovery", diagnosticCount(sourceDiscoveryCount));
+    setElementText("diagnosticReferenceGraph", diagnosticCount(referenceGraphCount));
+    setElementText("diagnosticPassageFunctions", diagnosticCount(passageFunctionCount));
+    setElementText("diagnosticRevelationPatterns", diagnosticCount(revelationPatternCount));
+    setElementText("diagnosticReferenceRoles", diagnosticCount(referenceRoleCount));
+    setElementText("diagnosticSemanticDistinctions", diagnosticCount(semanticDistinctionCount));
+    setElementText("diagnosticOntologyRoles", diagnosticCount(ontologyRoleCount));
+    setElementText("diagnosticSemanticAmbiguities", diagnosticCount(semanticAmbiguityCount));
+    setElementText("diagnosticOriginAuthorityPaths", diagnosticCount(originAuthorityPathCount));
+    setElementText("diagnosticEntityRelationRoles", diagnosticCount(entityRelationRoleCount));
+    setElementText("diagnosticSemanticContinuity", diagnosticCount(semanticContinuityCount));
+    setElementText("diagnosticMovementSemantics", diagnosticCount(movementSemanticsCount));
+    setElementText("diagnosticSemanticCausality", diagnosticCount(semanticCausalityCount));
+    setElementText("diagnosticTeachingSemantics", diagnosticCount(teachingSemanticsCount));
+    setElementText("diagnosticPrincipleRelationships", diagnosticCount(principleRelationshipsCount));
+    setElementText("diagnosticPrincipleNetworks", diagnosticCount(principleNetworksCount));
+    setElementText("diagnosticFocusLens", diagnosticCount(focusLensCount));
+    setElementText("diagnosticScopeLens", diagnosticCount(scopeLensCount));
+    setElementText("diagnosticDepthLens", diagnosticCount(depthLensCount));
+    setElementText("diagnosticViewLens", diagnosticCount(viewLensCount));
+    setElementText("diagnosticJourneyNodes", diagnosticCount(journeyNodesCount));
+    setElementText("diagnosticJourneyPaths", diagnosticCount(journeyPathsCount));
+    setElementText("diagnosticJourneyHubs", diagnosticCount(journeyHubsCount));
     setElementText("diagnosticJourneyRecordsByPage", journeyRecordsByPage.length
       ? journeyRecordsByPage.map((item) => `${item.label}: ${item.nodes} node(s), ${item.paths} path(s), ${item.hubs} hub(s)`).join(" | ")
-      : "None");
+      : fullStudyDataLoaded ? "No scoped journey records" : "Not loaded");
     setElementText("diagnosticRetainedJourneyPages", journeySnapshotState.retained.length
       ? journeySnapshotState.retained.map((item) => item.label).join(", ")
-      : "None");
+      : fullStudyDataLoaded ? "No retained journey pages" : "Not loaded");
     setElementText("diagnosticExcludedJourneyPages", journeySnapshotState.excluded.length
       ? journeySnapshotState.excluded.map((item) => item.label).join(", ")
-      : "None");
+      : fullStudyDataLoaded ? "No excluded journey pages" : "Not loaded");
     setElementText("diagnosticJourneyExclusionReason", journeySnapshotState.excluded.length
       ? journeySnapshotState.excluded.map((item) => `${item.label}: ${item.reason}`).join(" | ")
-      : "None");
-    setElementText("diagnosticSemanticQuestions", semanticQuestionsCount);
-    setElementText("diagnosticTrustVerification", trustVerificationCount);
+      : "Not applicable");
+    setElementText("diagnosticSemanticQuestions", diagnosticCount(semanticQuestionsCount));
+    setElementText("diagnosticTrustVerification", diagnosticCount(trustVerificationCount));
     setElementText("diagnosticAdapter", activeAdapterName);
-    setElementText("diagnosticAnalysisReason", studyData.analysisStatus?.reason || "None");
-    setElementText("diagnosticAnalysisBuild", studyData.analysisStatus?.analysisBuildMarker || "None");
-    setElementText("diagnosticActiveUrl", trimText(studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url || "None", 140));
+    setElementText("diagnosticAnalysisReason", statusValue(studyData.analysisStatus?.reason, fullStudyDataLoaded ? "Not recorded" : "Not loaded"));
+    setElementText("diagnosticAnalysisBuild", statusValue(studyData.analysisStatus?.analysisBuildMarker, fullStudyDataLoaded ? "Not recorded" : "Not loaded"));
+    setElementText("diagnosticActiveUrl", trimText(statusValue(activeDiagnosticPage.activeUrl || studyData.analysisStatus?.activeUrl || studyData.latestCapture?.url, fullStudyDataLoaded ? "Not recorded" : "Not loaded"), 140));
     setElementText("diagnosticSourceCapture", [
-      studyData.analysisStatus?.sourceCaptureTitle || studyData.latestCapture?.title || "Untitled",
-      studyData.analysisStatus?.sourceCaptureBook || "",
-      studyData.analysisStatus?.sourceCaptureChapter ? `chapter ${studyData.analysisStatus.sourceCaptureChapter}` : "",
-      studyData.analysisStatus?.sourceCaptureId || studyData.latestCapture?.id || "no capture id"
+      activeDiagnosticPage.sourceTitle || activeDiagnosticPage.title || studyData.analysisStatus?.sourceCaptureTitle || studyData.latestCapture?.title || (fullStudyDataLoaded ? "Untitled capture" : "Not loaded"),
+      activeDiagnosticPage.sourceCaptureBook || activeDiagnosticPage.book || studyData.analysisStatus?.sourceCaptureBook || "",
+      activeDiagnosticPage.sourceCaptureChapter || activeDiagnosticPage.chapter || studyData.analysisStatus?.sourceCaptureChapter ? `chapter ${activeDiagnosticPage.sourceCaptureChapter || activeDiagnosticPage.chapter || studyData.analysisStatus?.sourceCaptureChapter}` : "",
+      activeDiagnosticPage.sourceCaptureId || activeDiagnosticPage.captureId || studyData.analysisStatus?.sourceCaptureId || studyData.latestCapture?.id || (fullStudyDataLoaded ? "no capture id" : "")
     ].filter(Boolean).join(" | "));
-    setElementText("diagnosticBuilderScope", studyData.analysisStatus?.derivedBuildersScope || "None");
-    setElementText("diagnosticMatthew2Builders", String(Boolean(studyData.analysisStatus?.matthew2DerivedBuildersRan)));
+    setElementText("diagnosticBuilderScope", statusValue(studyData.analysisStatus?.derivedBuildersScope, fullStudyDataLoaded ? "Not recorded" : "Not loaded"));
+    setElementText("diagnosticMatthew2Builders", fullStudyDataLoaded ? String(Boolean(studyData.analysisStatus?.matthew2DerivedBuildersRan)) : "Not loaded");
     setElementText("diagnosticDerivedLayerCounts", studyData.analysisStatus?.derivedLayerCounts
       ? Object.entries(studyData.analysisStatus.derivedLayerCounts).map(([key, value]) => `${key}: ${value}`).join(" | ")
-      : [
+      : fullStudyDataLoaded ? [
         `passageFunctions: ${passageFunctionCount}`,
         `revelationPatterns: ${revelationPatternCount}`,
         `ontologyRoles: ${ontologyRoleCount}`,
@@ -25077,10 +25405,10 @@ createRevelationPartsSection(item.subEvents)
         `journeyHubs: ${journeyHubsCount}`,
         `semanticQuestions: ${semanticQuestionsCount}`,
         `trustVerification: ${trustVerificationCount}`
-      ].join(" | "));
-    setElementText("diagnosticPrinciples", principleCount);
-    setElementText("diagnosticProphecyLinks", prophecyLinkCount);
-    setElementText("diagnosticLastAnalysis", studyData.analysisStatus?.analyzedAt || "Never");
+      ].join(" | ") : "Not loaded");
+    setElementText("diagnosticPrinciples", diagnosticCount(principleCount));
+    setElementText("diagnosticProphecyLinks", diagnosticCount(prophecyLinkCount));
+    setElementText("diagnosticLastAnalysis", statusValue(activeDiagnosticPage.analyzedAt || studyData.analysisStatus?.analyzedAt, fullStudyDataLoaded ? "No completed analysis timestamp" : "Not loaded"));
 
     if (totalRenderable === 0) {
       showDiagnosticMessage("No local study data was found. Run Full Analysis from the popup, then refresh this page.");
@@ -25108,10 +25436,17 @@ createRevelationPartsSection(item.subEvents)
     const entry = sectionEntryByLabel(label);
     if (!entry) return;
     showDiagnosticMessage(`Loading ${label}...`);
-    await ensureFullStudyDataLoaded();
-    loadedDeferredSections.add(label);
-    renderStudy();
-    showDiagnosticMessage("");
+    try {
+      await ensureFullStudyDataLoaded();
+      loadedDeferredSections.add(label);
+      renderStudy();
+      showDiagnosticMessage("");
+    } catch (error) {
+      console.error(`I.C.E. deferred section load failed: ${label}`, error);
+      showDiagnosticMessage(`Load failed in ${label}: ${error.message}`);
+      applyStudyPanelInformationArchitecture();
+      throw error;
+    }
   }
 
   async function loadStudyScopeDiagnostics() {
@@ -25188,7 +25523,8 @@ createRevelationPartsSection(item.subEvents)
     const loadButton = event.target.closest("button[data-load-study-section]");
     if (loadButton) {
       event.preventDefault();
-      loadDeferredSection(loadButton.dataset.loadStudySection).catch((error) => showDiagnosticMessage(`Load failed: ${error.message}`));
+      const label = loadButton.dataset.loadStudySection || "deferred section";
+      loadDeferredSection(label).catch((error) => showDiagnosticMessage(`Load failed in ${label}: ${error.message}`));
       return;
     }
     const diagnosticsButton = event.target.closest("button[data-load-study-scope-diagnostics]");
