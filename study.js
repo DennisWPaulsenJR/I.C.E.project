@@ -12641,7 +12641,7 @@ createRevelationPartsSection(item.subEvents)
   function promotionCoverageRows() {
     return scopedComputationCached("promotionCoverageRows", () => {
     const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
-    const groundedThemeCandidates = themePromotionCandidates().filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
+    const themeDiagnostics = themePromotionDiagnostics();
     const fulfillmentRecords = [
       ...scopedSemanticRecords(studyData.passageFunctions).filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.passageFunction, item.functionType, item.plainMeaning, item.fulfillmentMeaning, item.sourceGrounding].join(" ")))),
       ...scopedRelationshipGraph.filter((item) => /fulfill|prophec|messianic/i.test(normalizeText([item.relationshipType, item.semanticCategory, item.sourcePhrase, item.sourceGrounding].join(" ")))),
@@ -12656,7 +12656,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
       { label: "Knowledge Graph Promotions", records: knowledgeGraphRecords(), discoveredFallback: scopedSemanticRecords(studyData.knowledgeGraph).length },
       { label: "Relationship Promotions", records: promotedRelationshipRecords(), discoveredFallback: relationshipPromotionCandidates().length || scopedRelationshipGraph.length },
-      { label: "Theme Promotions", records: promotedThemeRecords(), discoveredFallback: groundedThemeCandidates.length || promotedThemeRecords().length },
+      { label: "Theme Promotions", records: themeDiagnostics.promoted, discoveredFallback: themeDiagnostics.groundedCandidates.length },
       { label: "Fulfillment Promotions", records: fulfillmentRecords, discoveredFallback: fulfillmentRecords.length },
       { label: "Literary Structure Promotions", records: promotedLiteraryRecords(), discoveredFallback: literaryPromotionCandidates().length || promotedLiteraryRecords().length }
     ];
@@ -15857,9 +15857,23 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function qaDashboardPromotionLines() {
+    const themeDiagnostics = themePromotionDiagnostics();
     return [
       "Promotion Summary",
-      ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${formatMetricPercent(row.coverage)}; status=${row.status}; denominator=${row.denominator}`)
+      ...promotionCoverageRows().map((row) => `${row.label}: discovered=${row.discovered}; promoted=${row.promoted}; rejected=${row.rejected}; unresolved=${row.unresolved}; coverage=${formatMetricPercent(row.coverage)}; status=${row.status}; denominator=${row.denominator}`),
+      `Grounded theme candidates: ${themeDiagnostics.groundedCandidates.length}`,
+      `Promoted themes: ${themeDiagnostics.promoted.length}`,
+      `Catalog-only themes: ${themeDiagnostics.catalogOnly.length}`,
+      `Explicit themes: ${themeDiagnostics.explicit.length}`,
+      `Strongly supported themes: ${themeDiagnostics.stronglySupported.length}`,
+      `Supported themes: ${themeDiagnostics.supported.length}`,
+      `Possible themes: ${themeDiagnostics.possible.length}`,
+      `Unresolved themes: ${themeDiagnostics.unresolved.length}`,
+      `Theme support-source counts: ${languageCountLine(themeDiagnostics.supportDistribution)}`,
+      `Theme duplicate-support exclusions: ${themeDiagnostics.duplicateSupportExclusions}`,
+      `Theme support diversity: one=${themeDiagnostics.diversity.one}; two=${themeDiagnostics.diversity.two}; three_or_more=${themeDiagnostics.diversity.three_or_more}`,
+      `Theme scope counts: ${languageCountLine(themeDiagnostics.scopeCounts)}`,
+      `Theme confidence distribution: ${languageCountLine(themeDiagnostics.confidenceDistribution)}`
     ];
   }
 
@@ -16208,9 +16222,10 @@ createRevelationPartsSection(item.subEvents)
     }
     const subjectObject = qaDashboardResolutionCounts(subjectObjectPreviewRecords());
     const actionChains = qaDashboardResolutionCounts(actionChainPreviewRecords());
-    const themeCatalog = themePromotionCandidates();
-    const groundedThemes = themeCatalog.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
-    const promotedThemes = promotedThemeRecords();
+    const themeDiagnostics = themePromotionDiagnostics();
+    const themeCatalog = themeDiagnostics.candidates;
+    const groundedThemes = themeDiagnostics.groundedCandidates;
+    const promotedThemes = themeDiagnostics.promoted;
     const principleDiagnostics = principleExtractionDiagnostics();
     const guidanceDiagnostics = studyGuidanceDiagnostics();
     const explainability = semanticExplainabilityDiagnostics();
@@ -16322,11 +16337,39 @@ createRevelationPartsSection(item.subEvents)
         scopeBasis: "selected scope grounded theme candidates",
         numerator: promotedThemes.length,
         denominator: groundedThemes.length,
-        excluded: Math.max(0, themeCatalog.length - groundedThemes.length),
-        sourceCollection: "themePromotionCandidates; promotedThemeRecords",
-        status: groundedThemes.length ? metricState({ denominator: groundedThemes.length, numerator: promotedThemes.length, unresolved: groundedThemes.length - promotedThemes.length }) : "zero grounded promotions",
+        excluded: themeDiagnostics.catalogOnly.length,
+        sourceCollection: "themePromotionDiagnostics; themePromotionCandidates; promotedThemeRecords",
+        status: groundedThemes.length ? metricState({ denominator: groundedThemes.length, numerator: promotedThemes.length, unresolved: themeDiagnostics.possible.length + themeDiagnostics.unresolved.length }) : (themeCatalog.length ? "catalog_only" : "no_candidates"),
         statusRule: "promoted grounded themes / grounded theme candidates; catalog entries are excluded from the denominator.",
-        warnings: themeCatalog.length && !groundedThemes.length ? [`${themeCatalog.length} theme catalog entries were available but none had grounded current-scope support.`] : []
+        warnings: [
+          themeCatalog.length && !groundedThemes.length ? `${themeCatalog.length} theme catalog entries were available but none had grounded current-scope support.` : "",
+          themeDiagnostics.catalogOnly.length ? `${themeDiagnostics.catalogOnly.length} catalog-only theme candidate(s) were not promoted.` : "",
+          themeDiagnostics.possible.length ? `${themeDiagnostics.possible.length} possible theme candidate(s) remain possible and are excluded from promoted numerator.` : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Theme evidence completeness",
+        scopeBasis: "promoted theme records",
+        numerator: themeDiagnostics.evidenceComplete.length,
+        denominator: promotedThemes.length,
+        excluded: Math.max(0, promotedThemes.length - themeDiagnostics.evidenceComplete.length),
+        sourceCollection: "promotedThemeRecords",
+        status: promotedThemes.length ? metricState({ denominator: promotedThemes.length, numerator: themeDiagnostics.evidenceComplete.length, unresolved: promotedThemes.length - themeDiagnostics.evidenceComplete.length }) : "no_candidates",
+        statusRule: "promoted themes with evidence, provenance, confidence, and source scope / promoted themes.",
+        warnings: promotedThemes.length && themeDiagnostics.evidenceComplete.length < promotedThemes.length ? ["One or more promoted themes are missing evidence completeness fields."] : []
+      }),
+      metricRecord({
+        metricName: "Theme support diversity",
+        scopeBasis: "promoted theme support-source types",
+        numerator: (themeDiagnostics.diversity.two || 0) + (themeDiagnostics.diversity.three_or_more || 0),
+        denominator: promotedThemes.length,
+        excluded: themeDiagnostics.diversity.one || 0,
+        sourceCollection: "promotedThemeRecords.supportSourceTypes",
+        status: promotedThemes.length ? metricState({ denominator: promotedThemes.length, numerator: (themeDiagnostics.diversity.two || 0) + (themeDiagnostics.diversity.three_or_more || 0), unresolved: themeDiagnostics.diversity.one || 0 }) : "no_candidates",
+        statusRule: "promoted themes with two or more independent support-source types / promoted themes.",
+        warnings: [
+          promotedThemes.length ? `Theme support diversity: one=${themeDiagnostics.diversity.one}; two=${themeDiagnostics.diversity.two}; three_or_more=${themeDiagnostics.diversity.three_or_more}.` : ""
+        ]
       }),
       metricRecord({
         metricName: "Principle extraction coverage",
@@ -17143,6 +17186,7 @@ createRevelationPartsSection(item.subEvents)
     const coverageRows = promotionCoverageRows();
     const relationshipRecords = promotedRelationshipRecords();
     const themeRecords = promotedThemeRecords();
+    const allThemeCandidates = themePromotionCandidates();
     const literaryRecords = promotedLiteraryRecords();
     const causalityRecords = causalityPreviewRecords();
     const consequenceRecords = consequenceChainPreviewRecords();
@@ -17313,9 +17357,69 @@ createRevelationPartsSection(item.subEvents)
       semanticVerificationRecord(
         "Semantic Integrity",
         "Theme support present",
-        themeRecords.filter((record) => !asArray(record.supportingEvents || record.supportingScenes || record.supportingRelationships || record.evidence).length && !record.evidence).length ? "warning" : "pass",
+        themeRecords.filter((record) => !asArray(record.supportingEvents).length && !asArray(record.supportingScenes).length && !asArray(record.supportingRelationships).length && !asArray(record.supportingEvidence).length && !asArray(record.evidence).length).length ? "warning" : "pass",
         "low",
         `${themeRecords.length} promoted theme record(s) reviewed for support`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Theme has grounded support",
+        themeRecords.filter((record) => !asArray(record.supportingEvidence).length && !asArray(record.supportingRecords).length).length ? "warning" : "pass",
+        "medium",
+        `${themeRecords.length} promoted theme record(s) checked for grounded evidence/support records`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Theme does not derive from catalog alone",
+        themeRecords.filter((record) => /catalog-only/i.test(record.scopeBasis || record.verificationStatus || record.provenance)).length ? "failure" : "pass",
+        themeRecords.filter((record) => /catalog-only/i.test(record.scopeBasis || record.verificationStatus || record.provenance)).length ? "high" : "informational",
+        `${allThemeCandidates.filter((record) => record.scopeBasis === "catalog-only").length} catalog-only candidate(s) kept unpromoted`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Theme confidence does not exceed support confidence",
+        themeRecords.filter((record) => /Explicit/i.test(record.confidence || "") && asArray(record.supportSourceTypes).length < 2).length ? "warning" : "pass",
+        "medium",
+        "Explicit theme confidence requires explicit source/teaching evidence plus another independent support source type.",
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Theme scope is explicit",
+        themeRecords.filter((record) => !record.scopeBasis || !record.sourceScope).length ? "warning" : "pass",
+        "medium",
+        `${themeRecords.filter((record) => !record.scopeBasis || !record.sourceScope).length} promoted theme record(s) missing scope basis or source scope`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Possible support is not shown as explicit",
+        allThemeCandidates.filter((record) => record.promotionStatus === "possible" && /explicit/i.test(record.confidence || record.themeConfidence || "")).length ? "failure" : "pass",
+        "high",
+        `${allThemeCandidates.filter((record) => record.promotionStatus === "possible").length} possible theme candidate(s) remain possible`,
+        "Theme Promotion Rules",
+        "Theme Promotion Inspector",
+        6
+      ),
+      semanticVerificationRecord(
+        "Semantic Integrity",
+        "Duplicate theme support is not counted as independent evidence",
+        themeRecords.filter((record) => Number(record.duplicateSupportExclusions || 0) && asArray(record.supportSourceTypes).length < 2 && /Strongly Supported|Explicit/i.test(record.confidence || record.themeConfidence || "")).length ? "warning" : "pass",
+        "medium",
+        `${themeRecords.reduce((sum, record) => sum + (Number(record.duplicateSupportExclusions) || 0), 0)} duplicate theme support path(s) excluded`,
         "Theme Promotion Rules",
         "Theme Promotion Inspector",
         6
@@ -21958,21 +22062,30 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function studyThemeSourceRecords() {
-    const wrap = (layer, records, labelKey) => asArray(records).map((record) => ({
+    const wrap = (layer, supportType, records, labelKey, options = {}) => asArray(records).map((record) => ({
       layer,
+      supportType,
       record,
+      confidenceCap: options.confidenceCap || "",
       label: normalizeText(record?.[labelKey] || record?.themeName || record?.eventName || record?.sceneTitle || record?.sourceEntity || record?.targetEntity || record?.corePrinciple || record?.teachingTopic || record?.principle || record?.relationshipType || record?.lockName || layer)
     }));
     return [
-      ...wrap("Context Lock", contextLockRecords(), "lockName"),
-      ...wrap("Timeline Promotions", promotedTimelineRecords(), "eventName"),
-      ...wrap("Timeline Events", timelineEventsRecords(), "eventName"),
-      ...wrap("Scene Promotions", promotedSceneRecords(), "sceneTitle"),
-      ...wrap("Relationship Promotions", promotedRelationshipRecords(), "relationshipType"),
-      ...wrap("Teaching Semantics", scopedSemanticRecords(studyData.teachingSemantics), "teachingTopic"),
-      ...wrap("Principle Networks", scopedSemanticRecords(studyData.principleNetworks), "corePrinciple"),
-      ...wrap("Principle Relationships", scopedSemanticRecords(studyData.principleRelationships), "principle"),
-      ...wrap("Semantic Causality", scopedSemanticRecords(studyData.semanticCausality), "sequenceType")
+      ...wrap("Context Lock", "context", contextLockRecords(), "lockName"),
+      ...wrap("Timeline Promotions", "event", promotedTimelineRecords(), "eventName"),
+      ...wrap("Timeline Events", "event", timelineEventsRecords(), "eventName"),
+      ...wrap("Scene Promotions", "event", promotedSceneRecords(), "sceneTitle"),
+      ...wrap("Relationship Promotions", "relationship", promotedRelationshipRecords(), "relationshipType"),
+      ...wrap("Teaching Semantics", "teaching", scopedSemanticRecords(studyData.teachingSemantics), "teachingTopic"),
+      ...wrap("Principle Networks", "principle", scopedSemanticRecords(studyData.principleNetworks), "corePrinciple"),
+      ...wrap("Principle Relationships", "principle", scopedSemanticRecords(studyData.principleRelationships), "principle"),
+      ...wrap("Dialogue Relationships", "dialogue", dialogueRelationshipPreviewRecords().filter((record) => record.status === "resolved"), "relationshipType"),
+      ...wrap("Journey Nodes", "journey", journeyNodesRecords(), "nodeName"),
+      ...wrap("Journey Paths", "journey", journeyPathRecords(), "pathName"),
+      ...wrap("Journey Hubs", "journey", journeyHubRecords(), "hubName"),
+      ...wrap("Causality Preview", "causality", causalityPreviewRecords().filter((record) => record.status === "resolved"), "causalityType"),
+      ...wrap("Consequence Chains", "consequence", consequenceChainPreviewRecords().filter((record) => record.status === "resolved"), "resultingConsequence"),
+      ...wrap("Passage Functions", "literary", scopedSemanticRecords(studyData.passageFunctions), "passageFunction"),
+      ...wrap("Source Discovery", "explicit_source", scopedSemanticRecords(studyData.sourceDiscoveryIndex), "sourcePhrase")
     ];
   }
 
@@ -22017,6 +22130,113 @@ createRevelationPartsSection(item.subEvents)
     ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
   }
 
+  function themePromotionSupportTypeLabel(type = "") {
+    const map = {
+      explicit_source: "explicit source wording",
+      principle: "verified principle/source principle",
+      dialogue: "grounded dialogue",
+      journey: "journey",
+      relationship: "relationship",
+      event: "event/timeline/scene",
+      teaching: "teaching record",
+      causality: "causality",
+      consequence: "consequence",
+      literary: "literary/source structure",
+      context: "context"
+    };
+    return map[type] || normalizeText(type || "support");
+  }
+
+  function themePromotionSupportText(item = {}) {
+    return normalizeText([
+      item.layer,
+      item.label,
+      themePromotionEvidence(item),
+      studyThemeRecordText(item),
+      themePromotionSourceReference(item.record || {})
+    ].flat(Infinity).filter(Boolean).join(" "));
+  }
+
+  function themePromotionSupportReference(item = {}) {
+    const record = item.record || {};
+    return themePromotionSourceReference(record) || themePromotionSourceScope(record) || currentStudyScopeLabel();
+  }
+
+  function themePromotionIndependenceKey(item = {}) {
+    const record = item.record || {};
+    const supportType = normalizeText(item.supportType || item.layer || "support").toLowerCase();
+    const reference = themePromotionSupportReference(item).toLowerCase();
+    const sourceId = normalizeText(record.id || record.eventId || record.sceneId || record.relationshipId || record.dialogueRecordId || record.journeyId || record.causalityId || record.consequenceId || record.themeId || record.sourceId || "").toLowerCase();
+    const evidence = themePromotionSupportText(item).toLowerCase().slice(0, 180);
+    return [supportType, reference, sourceId || evidence].join("::");
+  }
+
+  function themePromotionGroundedSupport(item = {}) {
+    const record = item.record || {};
+    const text = themePromotionSupportText(item);
+    const reference = themePromotionSupportReference(item);
+    if (!text && !reference) return false;
+    if (/ontology only|catalog only|approved theme catalog/i.test(text)) return false;
+    if (/unresolved|unsupported/i.test(normalizeText(record.status || record.promotionStatus || record.confidence)) && !/possible/i.test(normalizeText(record.status || record.confidence))) return false;
+    if (item.supportType === "context" && !/(authority|speaker|audience|participant|location|source|context|lock)/i.test(text)) return false;
+    return true;
+  }
+
+  function themePromotionDedupedSupports(matches = []) {
+    const seen = new Set();
+    const accepted = [];
+    const duplicates = [];
+    asArray(matches).forEach((item) => {
+      if (!themePromotionGroundedSupport(item)) return;
+      const key = themePromotionIndependenceKey(item);
+      if (seen.has(key)) {
+        duplicates.push(item);
+        return;
+      }
+      seen.add(key);
+      accepted.push({ ...item, independenceKey: key });
+    });
+    return { accepted, duplicates };
+  }
+
+  function themePromotionSupportDistribution(records = []) {
+    return asArray(records).reduce((counts, item) => {
+      const label = themePromotionSupportTypeLabel(item.supportType);
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function themePromotionPageRecordFromSupport(record = {}) {
+    const candidate = {
+      sourceTitle: record.sourceTitle || record.title || record.sourceContext?.sourceTitle || "",
+      activeUrl: record.activeUrl || record.sourceUrl || record.url || record.sourceContext?.sourceUrl || "",
+      sourceCaptureBook: record.sourceCaptureBook || record.book || record.sourceContext?.sourceCaptureBook || "",
+      sourceCaptureChapter: record.sourceCaptureChapter || record.chapter || record.sourceContext?.sourceCaptureChapter || "",
+      sourceCaptureId: record.sourceCaptureId || record.captureId || record.sourceContext?.sourceCaptureId || "",
+      analyzedAt: record.analyzedAt || record.generatedAt || record.updatedAt || ""
+    };
+    return validSourcePageRecord(candidate) ? candidate : null;
+  }
+
+  function themePromotionScopeBasis(matches = []) {
+    const activePage = activeSourcePageRecord();
+    const activeKey = pageRecordKey(activePage || {});
+    const activeLabel = normalizeText(activePage ? volumePageLabel(activePage) : "");
+    const references = uniqueStudyList(matches.map(themePromotionSupportReference).filter(Boolean));
+    const activeMatches = matches.filter((item) => {
+      const record = item.record || {};
+      const recordKey = pageRecordKey(themePromotionPageRecordFromSupport(record) || {});
+      const ref = themePromotionSupportReference(item);
+      return (activeKey && recordKey && activeKey === recordKey) || (activeLabel && ref.includes(activeLabel));
+    }).length;
+    if (matches.length && activeMatches === matches.length) return "active-page grounded";
+    if (matches.length && matches.every((item) => recordMatchesCurrentStudyScope(item.record || item))) return "selected-scope grounded";
+    if (references.some((ref) => /cross-reference|related|future|prior/i.test(ref))) return "cross-reference supported";
+    if (matches.length) return "retained-session supported";
+    return "catalog-only";
+  }
+
   function studyThemeReferenceLabel(item = {}) {
     const record = item.record || {};
     return normalizeText(record.verseRange || record.scopePath || record.sourceContext?.sourceTitle || record.sourceUrl || "");
@@ -22055,57 +22275,81 @@ createRevelationPartsSection(item.subEvents)
   function themePromotionSupportLevel(matches = []) {
     const explicitCount = matches.filter((item) => {
       const record = item.record || {};
-      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel].flat(Infinity).join(" ")).toLowerCase();
-      return /explicit|direct source|grounded observation|matthew \d|scripture\./.test(text);
+      const text = normalizeText([record.sourcePhrase, record.verseRange, record.evidence, record.confidence, record.inferenceLevel, record.passageFunction, item.supportType].flat(Infinity).join(" ")).toLowerCase();
+      return /explicit|direct source|grounded observation|source wording|command|promise|warning|covenant|fulfilled|matthew \d|scripture\.|explicit_source/.test(text);
     }).length;
-    const layers = new Set(matches.map((item) => item.layer).filter(Boolean));
-    if (explicitCount >= 1 && (matches.length >= 2 || layers.size >= 2)) return { label: "High", confidence: "explicit", reason: "explicit teaching/source evidence or repeated direct references across grounded records" };
-    if (matches.length >= 2 || layers.size >= 2) return { label: "Medium", confidence: "probable", reason: "multiple independent supporting records in the current scope" };
-    return { label: "Low", confidence: "possible", reason: "single supporting semantic signal in the current scope" };
+    const supportTypes = new Set(matches.map((item) => item.supportType).filter(Boolean));
+    const references = new Set(matches.map(themePromotionSupportReference).filter(Boolean));
+    if (explicitCount >= 1 && supportTypes.size >= 2) return { label: "Explicit", confidence: "Explicit", status: "promoted", inferenceLevel: "Grounded Observation", reason: "explicit source/teaching evidence plus another independent grounded support type" };
+    if (supportTypes.size >= 2 && references.size >= 2) return { label: "Strongly Supported", confidence: "Strongly Supported", status: "promoted", inferenceLevel: "Supported Meaning", reason: "multiple independent support types and distinct source references support the theme" };
+    if (supportTypes.size >= 2 || matches.length >= 2) return { label: "Supported", confidence: "Supported", status: "promoted", inferenceLevel: "Supported Meaning", reason: "grounded semantic support exists without catalog-only promotion" };
+    if (matches.length === 1) return { label: "Possible", confidence: "Possible", status: "possible", inferenceLevel: "Possible Meaning", reason: "single grounded support path; kept possible until corroborated" };
+    return { label: "Unresolved", confidence: "Unresolved", status: "unresolved", inferenceLevel: "Unresolved", reason: "no grounded current-scope support" };
   }
 
   function themePromotionCandidate(theme = {}, matches = []) {
-    const first = matches[0]?.record || {};
-    const relatedTimelineEvents = uniqueStudyList(matches
+    const deduped = themePromotionDedupedSupports(matches);
+    const supports = deduped.accepted;
+    const first = supports[0]?.record || {};
+    const relatedTimelineEvents = uniqueStudyList(supports
       .filter((item) => /Timeline/.test(item.layer))
       .map((item) => item.record.eventName || item.label)).slice(0, 8);
-    const supportingScenes = uniqueStudyList(matches
+    const supportingScenes = uniqueStudyList(supports
       .filter((item) => /Scene/.test(item.layer))
       .map((item) => item.record.sceneTitle || item.record.sceneId || item.label)).slice(0, 8);
-    const supportingRelationships = uniqueStudyList(matches
+    const supportingRelationships = uniqueStudyList(supports
       .filter((item) => /Relationship/.test(item.layer))
       .map((item) => `${item.record.sourceEntity || item.record.eventA || "source"} -> ${item.record.targetEntity || item.record.eventB || "target"} | ${item.record.relationshipType || item.label}`)).slice(0, 10);
-    const relatedPrinciples = uniqueStudyList(matches
+    const relatedPrinciples = uniqueStudyList(supports
       .flatMap((item) => [item.record.corePrinciple, item.record.principle, item.record.teachingTopic, ...asArray(item.record.relatedPrinciples)])
       .map((value) => normalizeText(value))
       .filter(Boolean)).slice(0, 10);
-    const supportingVerses = uniqueStudyList(matches.map((item) => themePromotionSourceReference(item.record)).filter(Boolean)).slice(0, 10);
-    const supportingRecords = uniqueStudyList(matches.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
-    const evidenceItems = uniqueStudyList(matches.map(themePromotionEvidence).filter(Boolean)).slice(0, 8);
-    const support = themePromotionSupportLevel(matches);
+    const supportingVerses = uniqueStudyList(supports.map((item) => themePromotionSourceReference(item.record)).filter(Boolean)).slice(0, 10);
+    const supportingRecords = uniqueStudyList(supports.map((item) => `${item.layer}: ${item.label}`).filter(Boolean)).slice(0, 12);
+    const evidenceItems = uniqueStudyList(supports.map(themePromotionEvidence).filter(Boolean)).slice(0, 8);
+    const support = themePromotionSupportLevel(supports);
     const sourceScope = themePromotionSourceScope(first);
     const sourceReference = themePromotionSourceReference(first);
-    const promotionStatus = matches.length && evidenceItems.length && sourceScope ? "promoted" : "unresolved";
+    const promotionStatus = support.status;
+    const supportDistribution = themePromotionSupportDistribution(supports);
+    const scopeBasis = themePromotionScopeBasis(supports);
+    const supportTypes = uniqueStudyList(supports.map((item) => themePromotionSupportTypeLabel(item.supportType)));
+    const supportingDialogue = uniqueStudyList(supports.filter((item) => item.supportType === "dialogue").map((item) => item.label || item.record.dialogueRecordId)).slice(0, 8);
+    const supportingJourneys = uniqueStudyList(supports.filter((item) => item.supportType === "journey").map((item) => item.record.journeyType || item.record.journeyId || item.label)).slice(0, 8);
+    const supportingCausality = uniqueStudyList(supports.filter((item) => item.supportType === "causality" || item.supportType === "consequence").map((item) => item.record.causalityType || item.record.resultingConsequence || item.record.evidence || item.label)).slice(0, 8);
+    const supportingLiteraryRecords = uniqueStudyList(supports.filter((item) => item.supportType === "literary").map((item) => item.record.structureType || item.record.passageFunction || item.label)).slice(0, 8);
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       layer: "ICE_STUDY_THEMES",
       themeId: `theme-promotion-${theme.name || "unresolved"}`.replace(/[^a-z0-9-]+/gi, "-").toLowerCase(),
       id: `study-theme-${normalizeText(theme.name || "unresolved").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       sourceScope,
       sourceReference,
       themeName: theme.name,
+      supportingEvidence: evidenceItems,
+      supportingPrinciples: relatedPrinciples,
+      supportingDialogue,
+      supportingJourneys,
       supportingEvents: relatedTimelineEvents,
       supportingScenes,
       supportingRelationships,
+      supportingCausality,
+      supportingLiteraryRecords,
       supportingRecords,
       supportingVerses,
       relatedTimelineEvents,
       relatedJourneyNodes: [],
       relatedPrinciples,
       evidence: evidenceItems,
+      supportSourceTypes: supportTypes,
+      supportSourceDistribution: supportDistribution,
+      duplicateSupportExclusions: deduped.duplicates.length,
+      recurrenceCount: uniqueStudyList(supports.map(themePromotionSupportReference).filter(Boolean)).length,
+      directness: support.label,
+      scopeBasis,
       sourcePhrase: first.sourcePhrase || evidenceItems[0] || "",
-      derivedMeaning: promotionStatus === "promoted" ? `${theme.name} is a promoted current-scope theme based only on grounded semantic records.` : `${theme.name} has no grounded current-scope promotion support yet.`,
-      whyThisThemeExists: promotionStatus === "promoted" ? `${theme.name} appears across ${matches.length} current-scope grounded record(s).` : `${theme.name} is in the approved theme catalog but has no grounded current-scope support yet.`,
+      derivedMeaning: promotionStatus === "promoted" ? `${theme.name} is a promoted ${scopeBasis} theme based only on grounded semantic records.` : `${theme.name} has ${supports.length ? "possible but incomplete" : "no"} grounded current-scope promotion support yet.`,
+      whyThisThemeExists: promotionStatus === "promoted" ? `${theme.name} is supported by ${supports.length} deduplicated grounded record(s) across ${supportTypes.length} support source type(s).` : `${theme.name} is ${supports.length ? "possible from one grounded path" : "catalog-only/unresolved"} and is not promoted as a grounded theme.`,
       verseRange: first.verseRange || first.sourceReference || "",
       scopePath: first.scopePath || first.sourceScope || "",
       sourceUrl: first.sourceUrl || first.sourceContext?.sourceUrl || "",
@@ -22114,18 +22358,23 @@ createRevelationPartsSection(item.subEvents)
       themeConfidence: support.label,
       promotionStatus,
       promotionReason: promotionStatus === "promoted" ? support.reason : "No current-scope grounded record matched this theme category.",
-      provenance: `I.C.E. Theme Promotion derived from ${uniqueStudyList(matches.map((item) => item.layer)).join(", ") || "approved theme catalog"}`,
-      inferenceLevel: support.confidence === "explicit" ? "Supported Meaning" : "Possible Meaning",
+      provenance: `I.C.E. Theme Promotion v2 derived from ${uniqueStudyList(supports.map((item) => item.layer)).join(", ") || "approved theme catalog only"}`,
+      explainabilityReference: `theme-explainability-${normalizeText(theme.name || "unresolved").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      verificationStatus: promotionStatus === "promoted" ? "grounded support verified; catalog-only promotion blocked" : (supports.length ? "possible support only; not counted as promoted" : "catalog-only; not promoted"),
+      evidenceDistance: 6,
+      inferenceLevel: support.inferenceLevel,
       evidenceWeight: promotionStatus === "promoted" ? `${support.label} Theme Support` : "Unresolved Theme Candidate",
       reasoningPath: [
         "Approved theme label selected from Theme Promotion catalog",
-        "Current-scope grounded records searched: Context Lock, Timeline, Scene, Relationship, Teaching, Principle, and Causality records",
-        `${matches.length} supporting record(s) matched without searching outside analyzed scope`,
+        "Current-scope grounded records searched: explicit source wording, teaching, principles, dialogue, journeys, relationships, events, causality, consequence, and literary/source structure records",
+        `${supports.length} deduplicated support record(s) accepted; ${deduped.duplicates.length} duplicate support path(s) excluded`,
+        `Scope basis: ${scopeBasis}`,
         "No doctrine generation, crawling, automatic analysis, or out-of-scope theme discovery added"
       ],
       sourceGrounding: evidenceItems.join(" ") || `No current-scope source evidence matched ${theme.name}.`,
       activeScope: currentStudyScopeLabel(),
-      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Themes summarize lower-layer records and may not rewrite Context Lock, source meaning, or doctrine.`
+      scopeBoundary: `Current Study Scope only: ${currentStudyScopeLabel()}. Themes summarize primary/derived records and may not rewrite Context Lock, source meaning, or doctrine.`,
+      status: promotionStatus
     };
   }
 
@@ -22144,25 +22393,85 @@ createRevelationPartsSection(item.subEvents)
       .slice(0, 24);
   }
 
-  function themePromotionInspectorLines() {
+  function themePromotionDiagnostics() {
     const candidates = themePromotionCandidates();
-    const groundedCandidates = candidates.filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
+    const groundedCandidates = candidates.filter((item) => asArray(item.supportingEvidence).length || asArray(item.supportingRecords).length);
     const promoted = promotedThemeRecords();
-    const unresolved = candidates.filter((item) => item.promotionStatus !== "promoted");
-    const rejected = [];
-    const coverage = metricPercent(promoted.length, groundedCandidates.length);
+    const catalogOnly = candidates.filter((item) => item.scopeBasis === "catalog-only");
+    const possible = candidates.filter((item) => item.promotionStatus === "possible" || /possible/i.test(item.confidence));
+    const unresolved = candidates.filter((item) => item.promotionStatus === "unresolved");
+    const explicit = promoted.filter((item) => /explicit/i.test(item.themeConfidence || item.confidence));
+    const stronglySupported = promoted.filter((item) => /strongly supported/i.test(item.themeConfidence || item.confidence));
+    const supported = promoted.filter((item) => /^supported$/i.test(item.themeConfidence || item.confidence));
+    const supportDistribution = candidates.reduce((counts, item) => {
+      Object.entries(item.supportSourceDistribution || {}).forEach(([key, value]) => {
+        counts[key] = (counts[key] || 0) + value;
+      });
+      return counts;
+    }, {});
+    const diversity = promoted.reduce((counts, item) => {
+      const supportTypeCount = asArray(item.supportSourceTypes).length;
+      const key = supportTypeCount >= 3 ? "three_or_more" : supportTypeCount === 2 ? "two" : "one";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, { one: 0, two: 0, three_or_more: 0 });
+    const scopeCounts = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.scopeBasis || "unlabeled") || "unlabeled";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const confidenceDistribution = candidates.reduce((counts, item) => {
+      const key = normalizeText(item.confidence || "Unresolved") || "Unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const duplicateSupportExclusions = candidates.reduce((sum, item) => sum + (Number(item.duplicateSupportExclusions) || 0), 0);
+    const evidenceComplete = promoted.filter((item) => item.sourceScope && item.provenance && item.confidence && asArray(item.supportingEvidence).length);
+    return {
+      candidates,
+      groundedCandidates,
+      promoted,
+      catalogOnly,
+      possible,
+      unresolved,
+      explicit,
+      stronglySupported,
+      supported,
+      supportDistribution,
+      diversity,
+      scopeCounts,
+      confidenceDistribution,
+      duplicateSupportExclusions,
+      evidenceComplete,
+      coverage: metricPercent(promoted.length, groundedCandidates.length),
+      evidenceCompleteness: metricPercent(evidenceComplete.length, promoted.length)
+    };
+  }
+
+  function themePromotionInspectorLines() {
+    const diagnostics = themePromotionDiagnostics();
     return [
-      `Theme catalog entries: ${candidates.length}`,
-      `Grounded theme candidates: ${groundedCandidates.length}`,
-      `Promoted themes: ${promoted.length}`,
-      `Rejected themes: ${rejected.length}`,
-      `Unresolved themes: ${unresolved.length}`,
-      `Coverage: ${formatMetricPercent(coverage)}`,
-      promoted.length ? `Promoted examples: ${promoted.slice(0, 6).map((item) => `${item.themeName} | ${item.themeConfidence} (${item.sourceReference || item.sourceScope})`).join(" | ")}` : "Promoted examples: none",
-      unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 6).map((item) => `${item.themeName} (${item.promotionReason})`).join(" | ")}` : "Unresolved examples: none",
+      `Theme candidate count: ${diagnostics.candidates.length}`,
+      `Grounded theme candidate count: ${diagnostics.groundedCandidates.length}`,
+      `Promoted theme count: ${diagnostics.promoted.length}`,
+      `Catalog-only count: ${diagnostics.catalogOnly.length}`,
+      `Explicit count: ${diagnostics.explicit.length}`,
+      `Strongly supported count: ${diagnostics.stronglySupported.length}`,
+      `Supported count: ${diagnostics.supported.length}`,
+      `Possible count: ${diagnostics.possible.length}`,
+      `Unresolved count: ${diagnostics.unresolved.length}`,
+      `Coverage: ${formatMetricPercent(diagnostics.coverage)}`,
+      `Theme evidence completeness: ${formatMetricPercent(diagnostics.evidenceCompleteness)}`,
+      `Support-source distribution: ${languageCountLine(diagnostics.supportDistribution)}`,
+      `Support diversity: one=${diagnostics.diversity.one}; two=${diagnostics.diversity.two}; three_or_more=${diagnostics.diversity.three_or_more}`,
+      `Duplicate-support exclusions: ${diagnostics.duplicateSupportExclusions}`,
+      `Scope basis: ${languageCountLine(diagnostics.scopeCounts)}`,
+      `Confidence distribution: ${languageCountLine(diagnostics.confidenceDistribution)}`,
+      diagnostics.promoted.length ? `Sample promoted themes: ${diagnostics.promoted.slice(0, 6).map((item) => `${item.themeName} | ${item.themeConfidence} | ${item.scopeBasis} | support=${asArray(item.supportSourceTypes).join("+") || "none"} | recurrence=${item.recurrenceCount}`).join(" | ")}` : "Sample promoted themes: none",
+      diagnostics.unresolved.length || diagnostics.possible.length ? `Sample rejected/unresolved candidates: ${[...diagnostics.possible, ...diagnostics.unresolved].slice(0, 6).map((item) => `${item.themeName} (${item.verificationStatus})`).join(" | ")}` : "Sample rejected/unresolved candidates: none",
       "Denominator rule: Theme coverage = promoted grounded themes / grounded theme candidates. Catalog entries are listed separately and are not treated as grounded discoveries.",
       "Boundary: Theme promotions summarize grounded primary/derived records only. They may not rewrite context, replace source meaning, create doctrine, infer theology without evidence, crawl, or process queues.",
-      "Layer: ICE_STUDY_THEMES promoted from Context Lock, Timeline, Scene, Relationship, Teaching, and Principle records"
+      "Layer: ICE_STUDY_THEMES promoted from explicit source wording, teaching, principles, dialogue, journeys, relationships, events, causality, consequence, and literary/source records"
     ];
   }
   function literaryStructureCatalog() {
