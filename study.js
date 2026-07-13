@@ -272,6 +272,70 @@ document.addEventListener("DOMContentLoaded", async () => {
     return toDisplayText(text).replace(/\s+/g, " ").trim();
   }
 
+  function nowForDiagnostics() {
+    return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+  }
+
+  const scopedComputationCache = new Map();
+  const scopedComputationStats = {
+    hits: 0,
+    misses: 0,
+    slowComputations: [],
+    lazySectionsRendered: 0,
+    renderTimings: []
+  };
+
+  function scopedComputationCacheStamp() {
+    const active = studyData.activeSourcePage || {};
+    const status = studyData.analysisStatus || {};
+    const analyzed = asArray(studyData.canonicalAnalyzedPages).map(volumePageLabel).join("|");
+    return [
+      currentStudyScopeLabel(),
+      volumePageLabel(active),
+      analyzed,
+      status.analyzedAt || active.analyzedAt || active.updatedAt || "",
+      asArray(studyData.captureHistory).length,
+      asArray(studyData.sourceDiscoveryIndex).length,
+      asArray(studyData.mentionIndex).length,
+      asArray(studyData.orderedEvents).length,
+      asArray(studyData.relationshipGraph).length
+    ].join("::");
+  }
+
+  function scopedComputationCached(key, producer) {
+    const cacheKey = `${key}::${scopedComputationCacheStamp()}`;
+    if (scopedComputationCache.has(cacheKey)) {
+      scopedComputationStats.hits += 1;
+      return scopedComputationCache.get(cacheKey);
+    }
+    scopedComputationStats.misses += 1;
+    const started = nowForDiagnostics();
+    const value = producer();
+    const elapsed = Math.round((nowForDiagnostics() - started) * 10) / 10;
+    scopedComputationCache.set(cacheKey, value);
+    if (elapsed >= 8) {
+      scopedComputationStats.slowComputations.push({ key, elapsed });
+      scopedComputationStats.slowComputations = scopedComputationStats.slowComputations
+        .sort((left, right) => right.elapsed - left.elapsed)
+        .slice(0, 8);
+    }
+    return value;
+  }
+
+  function recordRenderTiming(label, elapsed) {
+    scopedComputationStats.renderTimings.push({ label, elapsed: Math.round(elapsed * 10) / 10 });
+    scopedComputationStats.renderTimings = scopedComputationStats.renderTimings
+      .sort((left, right) => right.elapsed - left.elapsed)
+      .slice(0, 8);
+  }
+
+  function invalidateScopedComputationCache(reason = "scope/data refresh") {
+    scopedComputationCache.clear();
+    scopedComputationStats.slowComputations = [];
+    scopedComputationStats.renderTimings.push({ label: `cache invalidated: ${reason}`, elapsed: 0 });
+    scopedComputationStats.renderTimings = scopedComputationStats.renderTimings.slice(-8);
+  }
+
   function trimText(text, maxLength = 160) {
     const normalized = normalizeText(text);
     if (normalized.length <= maxLength) return normalized;
@@ -8219,7 +8283,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createPassageFunctionSection(title, content, options = {}) {
-    if (!content && !options.list?.length && !options.navItems?.length) return null;
+    if (!content && !options.list?.length && !options.navItems?.length && !options.lazyContentFactory && !options.lazyListFactory) return null;
     const bodyOptions = { ...options };
     if (bodyOptions.humanContext == null) {
       bodyOptions.humanContext = hasHumanBeingDisplayContext([title, content, options.list, asArray(options.navItems).map((item) => item.label), options.summaryLabel]);
@@ -8239,7 +8303,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       const summary = document.createElement("summary");
       summary.textContent = options.summaryLabel || progressiveDisclosureSummaryLabel(title);
       details.appendChild(summary);
-      details.appendChild(semanticSectionBody(content, bodyOptions));
+      if (options.lazyContentFactory || options.lazyListFactory) {
+        const lazyBody = document.createElement("div");
+        lazyBody.className = "semantic-section-body lazy-semantic-section-body";
+        lazyBody.textContent = options.lazyPlaceholder || "Not rendered yet. Expand to load details for the current Study Scope.";
+        details.addEventListener("toggle", () => {
+          if (!details.open || lazyBody.dataset.loaded === "true") return;
+          lazyBody.textContent = "Loading details...";
+          const started = nowForDiagnostics();
+          try {
+            const lazyOptions = { ...bodyOptions };
+            let lazyContent = "";
+            if (options.lazyListFactory) {
+              lazyOptions.list = asArray(options.lazyListFactory());
+              lazyContent = "";
+            } else {
+              lazyContent = options.lazyContentFactory();
+            }
+            const rendered = semanticSectionBody(lazyContent, lazyOptions);
+            clearElement(lazyBody);
+            lazyBody.appendChild(rendered);
+            lazyBody.dataset.loaded = "true";
+            scopedComputationStats.lazySectionsRendered += 1;
+            recordRenderTiming(`Lazy section: ${title}`, nowForDiagnostics() - started);
+          } catch (error) {
+            lazyBody.textContent = `Load failed: ${error.message}`;
+            showDiagnosticMessage(`Lazy section load failed in ${title}: ${error.message}`);
+          }
+        });
+        details.appendChild(lazyBody);
+      } else {
+        details.appendChild(semanticSectionBody(content, bodyOptions));
+      }
       section.appendChild(details);
       return section;
     }
@@ -12431,6 +12526,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function promotionCoverageRows() {
+    return scopedComputationCached("promotionCoverageRows", () => {
     const scopedRelationshipGraph = scopedSemanticRecords(studyData.relationshipGraph).filter((record) => relationshipGraphRecordAllowedInCurrentScope(record));
     const groundedThemeCandidates = themePromotionCandidates().filter((item) => asArray(item.supportingRecords).length || asArray(item.evidence).length || asArray(item.supportingEvents).length || asArray(item.supportingScenes).length || asArray(item.supportingRelationships).length);
     const fulfillmentRecords = [
@@ -12470,6 +12566,7 @@ createRevelationPartsSection(item.subEvents)
         scopeBasis: "selected scope / retained scoped records",
         denominatorRule: `${category.label} coverage = promoted records / grounded candidates; zero candidates are no candidates, not perfect health`
       };
+    });
     });
   }
 
@@ -13121,6 +13218,7 @@ createRevelationPartsSection(item.subEvents)
     return { partOfSpeech: "unresolved", confidence: "unresolved / safe fallback" };
   }
   function languagePreviewSourceEntries() {
+    return scopedComputationCached("languagePreviewSourceEntries", () => {
     const entries = [];
     scopedSemanticRecords(studyData.domSemanticHints).forEach((hint, index) => {
       const text = normalizeText(hint.text || hint.sourcePhrase || hint.label || "");
@@ -13141,9 +13239,11 @@ createRevelationPartsSection(item.subEvents)
       if (text) entries.push({ text, sourceReference: currentStudyScopeLabel(), sourceScope: currentStudyScopeLabel(), sourceIndex: 0 });
     }
     return entries;
+    });
   }
 
   function generatedLanguageRecords() {
+    return scopedComputationCached("generatedLanguageRecords", () => {
     const adapterId = "english_surface_v1";
     const maxRecords = 750;
     const records = [];
@@ -13169,6 +13269,7 @@ createRevelationPartsSection(item.subEvents)
       });
     });
     return records;
+    });
   }
 
   function languageRecordLabelCounts(records = []) {
@@ -13237,6 +13338,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function morphologyPreviewRecords() {
+    return scopedComputationCached("morphologyPreviewRecords", () => {
     const records = generatedLanguageRecords();
     return records.map((record, index) => {
       const morphology = morphologyPreviewForRecord(record, records);
@@ -13255,6 +13357,7 @@ createRevelationPartsSection(item.subEvents)
         evidenceDistance: "Distance 1: preview language morphology derived from source token surface forms only",
         status: morphology.status
       };
+    });
     });
   }
 
@@ -13301,6 +13404,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function translationAlignmentPreviewRecords() {
+    return scopedComputationCached("translationAlignmentPreviewRecords", () => {
     const entries = languagePreviewSourceEntries();
     const records = [];
     TRANSLATION_ALIGNMENT_CONCEPTS.forEach((concept) => {
@@ -13333,6 +13437,7 @@ createRevelationPartsSection(item.subEvents)
       seen.add(key);
       return true;
     }).slice(0, 500);
+    });
   }
 
   function translationAlignmentInspectorLines() {
@@ -13415,6 +13520,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function strongAlignmentPreviewRecords() {
+    return scopedComputationCached("strongAlignmentPreviewRecords", () => {
     const records = [
       ...strongAlignmentRecordsFromTranslationAlignment(),
       ...strongAlignmentRecordsFromLanguage()
@@ -13426,6 +13532,7 @@ createRevelationPartsSection(item.subEvents)
       seen.add(key);
       return true;
     }).slice(0, 500);
+    });
   }
 
   function strongAlignmentInspectorLines() {
@@ -13767,6 +13874,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function pronounResolutionPreviewRecords() {
+    return scopedComputationCached("pronounResolutionPreviewRecords", () => {
     const records = generatedLanguageRecords();
     const sentenceIds = pronounResolutionSentenceMap(records);
     const pronouns = records.filter((record) => record.partOfSpeech === "pronoun" && pronounResolutionSupportedPronoun(record.token));
@@ -13798,6 +13906,7 @@ createRevelationPartsSection(item.subEvents)
           : "No grounded candidate found from quote speaker/audience, explicit role, Context Lock, same-sentence, or adjacent-sentence evidence.",
         confidence: "unresolved"
       });
+    });
     });
   }
 
@@ -13868,6 +13977,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function quotationBoundaryPreviewRecords() {
+    return scopedComputationCached("quotationBoundaryPreviewRecords", () => {
     const records = generatedLanguageRecords();
     const grouped = records.reduce((groups, record) => {
       const key = String(record.sourceIndex ?? "source");
@@ -13938,6 +14048,7 @@ createRevelationPartsSection(item.subEvents)
       }
     });
     return previewRecords.slice(0, 120);
+    });
   }
 
   function quotationBoundaryInspectorLines() {
@@ -14126,6 +14237,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function speakerDetectionPreviewRecords() {
+    return scopedComputationCached("speakerDetectionPreviewRecords", () => {
     const languageRecords = generatedLanguageRecords();
     const sentenceIds = pronounResolutionSentenceMap(languageRecords);
     const quotes = quotationBoundaryPreviewRecords().filter((record) => record.quoteType === "direct quotation" || record.quoteType === "unresolved");
@@ -14182,6 +14294,7 @@ createRevelationPartsSection(item.subEvents)
       }));
     });
     return output;
+    });
   }
 
   function speakerDetectionInspectorLines() {
@@ -14492,6 +14605,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function audienceDetectionPreviewRecords() {
+    return scopedComputationCached("audienceDetectionPreviewRecords", () => {
     const records = [];
     [
       ...audienceDetectionContextRecords(),
@@ -14507,6 +14621,7 @@ createRevelationPartsSection(item.subEvents)
       status: "unresolved"
     }));
     return audienceDetectionApplyTransitions(records).slice(0, 160);
+    });
   }
 
   function audienceDetectionInspectorLines() {
@@ -14576,16 +14691,52 @@ createRevelationPartsSection(item.subEvents)
   }
   function dialogueRelationshipTypeFromQuote(quote = {}) {
     const text = normalizeText(quote.segmentPreview || "");
-    if (!text) return "speaker -> audience";
-    if (/\?$/.test(text) || /\b(ask|asked|question)\b/i.test(text)) return "question -> audience";
-    if (/\b(request|requested|beseech|beseeched|pray thee|prayed|desire|desired)\b/i.test(text)) return "request -> recipient";
-    if (/\b(command|commanded|go|come|follow|hear|repent|beware|take heed|pray|seek|ask|knock)\b/i.test(text)) return "command -> audience";
-    if (/\b(blessed|bless)\b/i.test(text)) return "blessing -> audience";
-    if (/\b(woe)\b/i.test(text)) return "woe declaration -> audience";
-    if (/\b(warn|beware|take heed)\b/i.test(text)) return "warning -> audience";
-    if (/\b(for|because|therefore|wherefore|this means|signifieth)\b/i.test(text)) return "explanation -> audience";
-    if (/\b(teach|taught|saying)\b/i.test(text)) return "teacher -> hearers";
-    return "speaker -> audience";
+    if (!text) return "Statement";
+    if (/\bit is written\b|\bas it is written\b|\bscripture\b|\bspoken by the prophet\b/i.test(text)) return "Quoted Source Citation";
+    if (/\b(woe)\b/i.test(text)) return "Woe Declaration";
+    if (/\b(blessed|bless)\b/i.test(text)) return "Blessing";
+    if (/\b(warn|beware|take heed|lest|except|perish|destroy)\b/i.test(text)) return "Warning";
+    if (/\b(thou shalt not|ye shall not|forbid|not\s+\w+)\b/i.test(text)) return "Prohibition";
+    if (/\b(command|commanded|go|come|follow|hear|repent|pray|seek|ask|knock|give|take)\b/i.test(text)) return "Command";
+    if (/\?$/.test(text) || /\b(ask|asked|question|why|what|where|when|how)\b/i.test(text)) return "Question";
+    if (/\b(answered|answer)\b/i.test(text)) return "Answer";
+    if (/\b(request|requested|beseech|beseeched|pray thee|prayed|desire|desired)\b/i.test(text)) return "Request";
+    if (/\b(promise|shall receive|shall have|will give|shall be)\b/i.test(text)) return "Promise";
+    if (/\b(teach|taught|doctrine|sayings|therefore whosoever|hear these sayings)\b/i.test(text)) return "Teaching";
+    if (/\b(for|because|therefore|wherefore|this means|signifieth|interpret|parable)\b/i.test(text)) return "Explanation";
+    if (/\b(rebuke|hypocrite|fool|condemn|wherefore didst thou)\b/i.test(text)) return "Rebuke";
+    if (/\b(father|pray|prayer)\b/i.test(text)) return "Prayer";
+    if (/\b(prophet|prophesy|fulfilled|shall come to pass)\b/i.test(text)) return "Prophecy";
+    if (/\b(testify|witness|verily)\b/i.test(text)) return "Testimony";
+    if (/\b(come unto|follow me|let him hear|whosoever)\b/i.test(text)) return "Invitation";
+    return "Statement";
+  }
+
+  function dialogueRelationshipRelationshipType(dialogueType = "Statement") {
+    const map = {
+      Statement: "speaker -> audience",
+      Question: "question -> audience",
+      Answer: "answer -> audience",
+      Command: "command -> audience",
+      Request: "request -> recipient",
+      Response: "response -> prior dialogue",
+      Warning: "warning -> audience",
+      Promise: "promise -> audience",
+      Teaching: "teacher -> hearers",
+      Explanation: "explanation -> audience",
+      Rebuke: "rebuke -> audience",
+      Blessing: "blessing -> audience",
+      "Woe Declaration": "woe declaration -> audience",
+      Prophecy: "prophecy -> hearers",
+      Prayer: "prayer -> addressed entity",
+      Testimony: "testimony -> audience",
+      Invitation: "invitation -> audience",
+      Prohibition: "prohibition -> audience",
+      "Conversation Continuation": "conversation continuation",
+      "Narration Boundary": "narration boundary",
+      "Quoted Source Citation": "quoted source citation"
+    };
+    return map[dialogueType] || "speaker -> audience";
   }
 
   function dialogueRelationshipAudienceForQuote(quote = {}, audiences = []) {
@@ -14601,46 +14752,119 @@ createRevelationPartsSection(item.subEvents)
     return null;
   }
 
+  function dialogueRelationshipExtendedAudiencesForQuote(quote = {}, audiences = []) {
+    return audiences
+      .filter((record) => record.status === "resolved" && /Intended Hearers|Reader Audience|Universal \/ General Application|Parable Internal Audience/i.test(record.audienceLevel || ""))
+      .filter((record) => !record.quoteId || record.quoteId === quote.quoteId || normalizeText(record.sourceReference || "").toLowerCase() === normalizeText(quote.sourceReference || "").toLowerCase())
+      .slice(0, 8);
+  }
+
+  function dialogueRelationshipContinuityState(current = {}, previous = null, speaker = {}, audience = {}) {
+    if (current.dialogueType === "Quoted Source Citation") return "quoted_source_segment";
+    if (!previous) return "new_conversation";
+    if (previous.sourceReference !== current.sourceReference) return "new_conversation";
+    if (audience?.transitionType && audience.transitionType !== "no_transition") return audience.transitionType;
+    if (previous.speaker && current.speaker && previous.speaker !== current.speaker) return "explicit_speaker_change";
+    if (previous.immediateAudience && current.immediateAudience && previous.immediateAudience !== current.immediateAudience) return "explicit_audience_change";
+    if (previous.speaker && current.speaker && previous.speaker === current.speaker) return "continued_same_speaker";
+    return "unresolved";
+  }
+
+  function dialogueRelationshipCanRespondTo(dialogue = {}, previous = null) {
+    if (!previous || previous.sourceReference !== dialogue.sourceReference) return false;
+    if (!/Question|Request|Command|Warning|Statement/i.test(previous.dialogueType || "")) return false;
+    if (!/Answer|Response/i.test(dialogue.dialogueType || "")) return false;
+    if (dialogue.speaker && previous.speaker && dialogue.speaker === previous.speaker && dialogue.dialogueType !== "Answer") return false;
+    return true;
+  }
+
+  function dialogueRelationshipNarrationBoundary(quote = {}) {
+    if (quote.quoteType === "unresolved") return "unresolved quotation boundary";
+    const text = normalizeText(quote.segmentPreview || "");
+    if (/\bit is written\b|\bas it is written\b|\bscripture\b/i.test(text)) return "quoted source citation boundary";
+    return "";
+  }
+
   function dialogueRelationshipPreviewRecords() {
+    return scopedComputationCached("dialogueRelationshipPreviewRecords", () => {
     const quotes = quotationBoundaryPreviewRecords().filter((record) => record.quoteType === "direct quotation" || record.quoteType === "unresolved");
     const speakers = speakerDetectionPreviewRecords();
     const audiences = audienceDetectionPreviewRecords();
-    return quotes.map((quote, index) => {
+    const pronouns = pronounResolutionPreviewRecords();
+    const records = [];
+    quotes.forEach((quote, index) => {
       const speaker = speakers.find((record) => record.quoteId === quote.quoteId);
       const audience = dialogueRelationshipAudienceForQuote(quote, audiences);
+      const extendedAudiences = dialogueRelationshipExtendedAudiencesForQuote(quote, audiences);
+      const dialogueType = dialogueRelationshipTypeFromQuote(quote);
+      const relationshipType = dialogueRelationshipRelationshipType(dialogueType);
+      const boundary = dialogueRelationshipNarrationBoundary(quote);
+      const previous = records[records.length - 1] || null;
       let status = "unresolved";
-      let relationshipType = "speaker -> audience";
       let speakerName = "";
       let audienceName = "";
       let evidence = "No single grounded speaker and audience pair found for this quotation boundary.";
       let confidence = "unresolved";
+      const rejectedCandidates = [];
       if (speaker?.status === "ambiguous" || audience?.status === "ambiguous") {
         status = "ambiguous";
         evidence = [speaker?.status === "ambiguous" ? speaker.evidence : "", audience?.status === "ambiguous" ? audience.evidence : ""].filter(Boolean).join(" ") || "Speaker or audience candidates are ambiguous.";
         confidence = "ambiguous / multiple grounded candidates";
-      } else if (speaker?.status === "resolved" && audience?.status === "resolved") {
+      } else if (speaker?.status === "resolved" && (audience?.status === "resolved" || /Quoted Source Citation|Prayer/.test(dialogueType))) {
         status = "resolved";
-        relationshipType = dialogueRelationshipTypeFromQuote(quote);
         speakerName = speaker.detectedSpeaker;
-        audienceName = audience.detectedAudience;
-        evidence = `${speakerName} -> ${audienceName}; ${relationshipType}; ${quote.segmentPreview || quote.sourceReference || currentStudyScopeLabel()}`;
-        confidence = relationshipType === "speaker -> audience" ? "supported / resolved speaker and audience" : "supported / explicit quote wording plus resolved speaker and audience";
+        audienceName = audience?.detectedAudience || "";
+        evidence = `${speakerName}${audienceName ? ` -> ${audienceName}` : ""}; ${dialogueType}; ${quote.segmentPreview || quote.sourceReference || currentStudyScopeLabel()}`;
+        confidence = audienceName ? "supported / resolved speaker, immediate audience, and explicit speech evidence" : "supported / resolved speaker and explicit quoted-source or prayer evidence";
+      } else {
+        if (!speaker || speaker.status !== "resolved") rejectedCandidates.push({ value: speaker?.detectedSpeaker || "", reason: "grounded speaker unavailable" });
+        if (!audience || audience.status !== "resolved") rejectedCandidates.push({ value: audience?.detectedAudience || "", reason: "grounded immediate/direct audience unavailable" });
       }
-      return {
-        dialogueRecordId: `english_surface_v1.dialogue.${index}.${quote.quoteId}`,
+      const dialogueId = `english_surface_v1.dialogue.${index}.${quote.quoteId}`;
+      const record = {
+        dialogueId,
+        dialogueRecordId: dialogueId,
+        dialogueType,
         sourceScope: quote.sourceScope || currentStudyScopeLabel(),
         sourceReference: quote.sourceReference || currentStudyScopeLabel(),
+        sentenceId: speaker?.sentenceId || "",
         quoteId: quote.quoteId,
+        sceneId: "",
+        speakerRecordId: speaker?.speakerRecordId || "",
         relationshipType,
         speaker: speakerName,
+        audienceRecordIds: audience?.audienceRecordId ? [audience.audienceRecordId] : [],
+        immediateAudience: audienceName,
+        extendedAudience: extendedAudiences.map((record) => record.detectedAudience).filter(Boolean),
+        addressedEntity: audienceName,
+        quotedSource: /Quoted Source Citation/i.test(dialogueType) ? "scripture/source citation distinguished from current speaker" : "",
+        speechPredicate: speaker?.speechPredicate || "",
+        parentDialogueId: previous?.dialogueId || "",
+        responseToDialogueId: "",
+        continuityState: "unresolved",
+        audienceTransitionType: audience?.transitionType || "no_transition",
+        supportingSpeakerRecord: speaker?.speakerRecordId || "",
+        supportingAudienceRecords: audience?.audienceRecordId ? [audience.audienceRecordId] : [],
+        supportingPronounRecords: pronouns.filter((record) => record.quoteId === quote.quoteId).map((record) => record.tokenId).slice(0, 8),
+        supportingSubjectObjectRecords: [],
+        narrationBoundary: boundary,
         audience: audienceName,
         evidence,
+        evidenceDistance: "Distance 7: advisory dialogue relationship derived from quotation, speaker, audience, pronoun, grammar, and subject/object preview records",
         confidence,
         provenance: "I.C.E. dialogue relationship preview from quotation boundaries, speaker preview, audience preview, Context Lock, and explicit source wording",
+        explainabilityReference: `explainability.dialogue.${index}`,
+        verificationStatus: status === "resolved" ? "preview_verified_grounding" : "preview_requires_review",
         inferenceLevel: status === "resolved" ? "Supported Meaning / preview only" : "Unresolved / preview only",
         hierarchyBoundary: "Dialogue relationships may support future class-of-being, authority, and Exaltation lenses, but may not flatten entity hierarchy, redefine entity ontology, alter Context Lock roles, or turn claimed/figurative entities into established divine beings.",
+        rejectedCandidates,
         status
       };
+      record.continuityState = dialogueRelationshipContinuityState(record, previous, speaker, audience);
+      if (dialogueRelationshipCanRespondTo(record, previous)) record.responseToDialogueId = previous.dialogueId;
+      records.push(record);
+    });
+    return records;
     });
   }
 
@@ -14650,22 +14874,61 @@ createRevelationPartsSection(item.subEvents)
     const unresolved = records.filter((record) => record.status === "unresolved");
     const ambiguous = records.filter((record) => record.status === "ambiguous");
     const typeCounts = records.reduce((counts, record) => {
-      const key = normalizeText(record.relationshipType || "unresolved") || "unresolved";
+      const key = normalizeText(record.dialogueType || record.relationshipType || "unresolved") || "unresolved";
       counts[key] = (counts[key] || 0) + 1;
       return counts;
     }, {});
+    const speakerAttributionCounts = records.reduce((counts, record) => {
+      const speaker = speakerDetectionPreviewRecords().find((item) => item.speakerRecordId === record.speakerRecordId);
+      const key = normalizeText(speaker?.attributionType || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const immediateAudienceCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.immediateAudience ? "grounded_immediate_audience" : "missing_immediate_audience") || "missing_immediate_audience";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const confidenceCounts = records.reduce((counts, record) => {
+      const key = normalizeText(record.confidence || "unresolved") || "unresolved";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const responseLinks = records.filter((record) => record.responseToDialogueId);
+    const continuity = records.filter((record) => record.continuityState && record.continuityState !== "new_conversation" && record.continuityState !== "unresolved");
+    const narrationBoundaries = records.filter((record) => record.narrationBoundary);
+    const quotedSource = records.filter((record) => record.dialogueType === "Quoted Source Citation" || record.quotedSource);
+    const audienceTransitions = records.filter((record) => record.audienceTransitionType && record.audienceTransitionType !== "no_transition");
+    const dependencyUnavailable = records.filter((record) => record.status === "dependency_unavailable");
+    const rejectedCount = records.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
     const lines = [
-      `Dialogue records found: ${records.length}`,
+      `Dialogue candidate count: ${records.length}`,
+      `Grounded dialogue records: ${resolved.length}`,
       `Resolved: ${resolved.length}`,
       `Unresolved: ${unresolved.length}`,
       `Ambiguous: ${ambiguous.length}`,
-      `Relationship type counts: ${languageCountLine(typeCounts)}`,
-      "Supported relationship types: speaker -> audience; teacher -> hearers; command -> audience; question -> audience; request -> recipient; warning -> audience; explanation -> audience; blessing -> audience; woe declaration -> audience.",
-      "Explicit-only future types reserved: request -> response; command -> response; prophecy -> hearers; healing statement -> recipient.",
+      `Dependency-unavailable records: ${dependencyUnavailable.length}`,
+      `Dialogue type distribution: ${languageCountLine(typeCounts)}`,
+      `Speaker attribution types: ${languageCountLine(speakerAttributionCounts)}`,
+      `Immediate audience levels: ${languageCountLine(immediateAudienceCounts)}`,
+      `Extended audience classifications: ${records.filter((record) => asArray(record.extendedAudience).length).length}`,
+      `Response-link count: ${responseLinks.length}`,
+      `Conversation-chain count: ${continuity.length}`,
+      `Narration-boundary count: ${narrationBoundaries.length}`,
+      `Quoted-source distinction count: ${quotedSource.length}`,
+      `Audience-transition count: ${audienceTransitions.length}`,
+      `Rejected candidate reasons: ${rejectedCount}`,
+      `Confidence distribution: ${languageCountLine(confidenceCounts)}`,
+      "Supported dialogue types: Statement; Question; Answer; Command; Request; Response; Warning; Promise; Teaching; Explanation; Rebuke; Blessing; Woe Declaration; Prophecy; Prayer; Testimony; Invitation; Prohibition; Conversation Continuation; Narration Boundary; Quoted Source Citation.",
+      "Audience boundary: immediate audience remains primary; extended audience, reader audience, generalized application, and parable-internal participants remain separate.",
       "Hierarchy boundary: dialogue relationships may support future class-of-being, authority, and Exaltation lenses, but may not flatten entity hierarchy or redefine entity ontology.",
-      "Boundary: preview-only. Dialogue relationships do not rewrite source text, create speakers, create audiences, create doctrine, override Context Lock, write storage, process queues, crawl, or alter Study View output."
+      "False-link safeguards: no dialogue from scene co-presence alone, no invented response relation, no private-speech universalization, no conversation merging across boundaries, no ontology-only participation.",
+      "Boundary: preview-only. Dialogue relationships do not rewrite source text, create speakers, create audiences, create doctrine, override Context Lock, mutate downstream semantic records, write storage, process queues, crawl, or alter Study View output."
     ];
-    lines.push(resolved.length ? `Resolved examples: ${resolved.slice(0, 5).map((record) => `${record.speaker} -> ${record.audience} | ${record.relationshipType} (${record.sourceReference})`).join(" | ")}` : "Resolved examples: none");
+    lines.push(resolved.length ? `Sample grounded dialogues: ${resolved.slice(0, 5).map((record) => `${record.speaker} -> ${record.immediateAudience || record.quotedSource || "quoted source"} | ${record.dialogueType} (${record.sourceReference})`).join(" | ")}` : "Sample grounded dialogues: none");
+    lines.push(responseLinks.length ? `Sample response chains: ${responseLinks.slice(0, 5).map((record) => `${record.dialogueId} responds to ${record.responseToDialogueId}`).join(" | ")}` : "Sample response chains: none");
+    lines.push(quotedSource.length ? `Sample quoted-source distinctions: ${quotedSource.slice(0, 4).map((record) => `${record.speaker || "speaker unresolved"} -> ${record.quotedSource || record.dialogueType}`).join(" | ")}` : "Sample quoted-source distinctions: none");
+    lines.push(records.some((record) => /parable/i.test(`${record.audienceTransitionType} ${asArray(record.extendedAudience).join(" ")}`)) ? "Sample parable distinctions: parable/internal audience markers remain extended or transition metadata, not immediate physical audience." : "Sample parable distinctions: none detected");
     lines.push(unresolved.length ? `Unresolved examples: ${unresolved.slice(0, 5).map((record) => `${record.quoteId} (${record.sourceReference})`).join(" | ")}` : "Unresolved examples: none");
     if (ambiguous.length) lines.push(`Ambiguous examples: ${ambiguous.slice(0, 5).map((record) => `${record.quoteId}: ${record.evidence}`).join(" | ")}`);
     return lines;
@@ -14711,6 +14974,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function grammaticalRolePreviewRecords() {
+    return scopedComputationCached("grammaticalRolePreviewRecords", () => {
     const languageRecords = generatedLanguageRecords();
     const records = [];
     const usedTokenRoles = new Set();
@@ -14815,6 +15079,7 @@ createRevelationPartsSection(item.subEvents)
         if (!hasRole) addRole(record, "unresolved", { status: "unresolved", relatedEntity: record.token });
       });
     return records;
+    });
   }
 
   function grammaticalRoleInspectorLines() {
@@ -14844,6 +15109,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function subjectObjectPreviewRecords() {
+    return scopedComputationCached("subjectObjectPreviewRecords", () => {
     const languageRecords = generatedLanguageRecords();
     const records = [];
     const bySource = languageRecords.reduce((groups, record) => {
@@ -14902,6 +15168,7 @@ createRevelationPartsSection(item.subEvents)
       });
     });
     return records.slice(0, 500);
+    });
   }
 
   function subjectObjectInspectorLines() {
@@ -14952,6 +15219,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function actionChainPreviewRecords() {
+    return scopedComputationCached("actionChainPreviewRecords", () => {
     const records = [];
     subjectObjectPreviewRecords().forEach((item, index) => {
       records.push(actionChainRecord({
@@ -15021,6 +15289,7 @@ createRevelationPartsSection(item.subEvents)
       seen.add(key);
       return true;
     }).slice(0, 500);
+    });
   }
 
   function actionChainInspectorLines() {
@@ -15087,6 +15356,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function causalityPreviewRecords() {
+    return scopedComputationCached("causalityPreviewRecords", () => {
     const actionChains = actionChainPreviewRecords();
     const sourceEntries = languagePreviewSourceEntries();
     const sourceTextFor = (record = {}) => {
@@ -15123,6 +15393,7 @@ createRevelationPartsSection(item.subEvents)
       }
     });
     return records.slice(0, 500);
+    });
   }
 
   function causalityInspectorLines() {
@@ -15169,6 +15440,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function consequenceChainPreviewRecords() {
+    return scopedComputationCached("consequenceChainPreviewRecords", () => {
     const causalityRecords = causalityPreviewRecords().filter((record) => record.status === "resolved");
     const groups = causalityRecords.reduce((bucket, record) => {
       const key = normalizeText(record.sourceReference || record.sourceScope || currentStudyScopeLabel());
@@ -15196,6 +15468,7 @@ createRevelationPartsSection(item.subEvents)
       }
     });
     return chains.slice(0, 500);
+    });
   }
 
   function consequenceChainInspectorLines() {
@@ -15289,7 +15562,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function fulfillmentConfidencePreviewRecords() {
-    return fulfillmentConfidenceSourceRecords().map((source, index) => fulfillmentConfidenceRecord(source, index)).slice(0, 500);
+    return scopedComputationCached("fulfillmentConfidencePreviewRecords", () => fulfillmentConfidenceSourceRecords().map((source, index) => fulfillmentConfidenceRecord(source, index)).slice(0, 500));
   }
 
   function fulfillmentConfidenceInspectorLines() {
@@ -15537,7 +15810,18 @@ createRevelationPartsSection(item.subEvents)
     const causality = qaDashboardResolutionCounts(causalityPreviewRecords());
     const consequenceChains = qaDashboardResolutionCounts(consequenceChainPreviewRecords());
     const speakerStatus = speakers.total ? metricState({ denominator: speakers.total, numerator: speakers.resolved, unresolved: speakers.unresolved }) : "no_candidates";
-    const dialogueStatus = speakers.total ? metricState({ denominator: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).total, numerator: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).resolved, unresolved: qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords()).unresolved }) : "inactive dependency";
+    const dialogueRecords = dialogueRelationshipPreviewRecords();
+    const dialogueCounts = qaDashboardResolutionCounts(dialogueRecords);
+    const dialogueStatus = speakers.total ? metricState({ denominator: dialogueCounts.total, numerator: dialogueCounts.resolved, unresolved: dialogueCounts.unresolved, unsupported: dialogueCounts.ambiguous }) : "inactive dependency";
+    const dialogueTypeCounts = dialogueRecords.reduce((counts, record) => {
+      const key = normalizeText(record.dialogueType || "Statement") || "Statement";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const dialogueResponseLinks = dialogueRecords.filter((record) => record.responseToDialogueId).length;
+    const dialogueContinuity = dialogueRecords.filter((record) => record.continuityState && !/new_conversation|unresolved/i.test(record.continuityState)).length;
+    const dialogueNarrationBoundaries = dialogueRecords.filter((record) => record.narrationBoundary).length;
+    const dialogueQuotedSources = dialogueRecords.filter((record) => record.dialogueType === "Quoted Source Citation" || record.quotedSource).length;
     return [
       "Language Preview Summary",
       `Language adapter name: english_surface_v1`,
@@ -15558,6 +15842,9 @@ createRevelationPartsSection(item.subEvents)
       `Audience levels: ${languageCountLine(audienceLevelCounts)}`,
       `Audience transitions: ${audienceTransitionCount}; dependency-unavailable=${audienceDependencyUnavailable}`,
       `Dialogue dependency: status=${dialogueStatus}; rule=dialogue requires grounded speaker and audience support`,
+      `Dialogue candidates: ${dialogueCounts.total}; grounded=${dialogueCounts.resolved}; unresolved=${dialogueCounts.unresolved}; ambiguous=${dialogueCounts.ambiguous}; dependency-unavailable=${dialogueRecords.filter((record) => record.status === "dependency_unavailable").length}`,
+      `Dialogue type counts: ${languageCountLine(dialogueTypeCounts)}`,
+      `Dialogue links: responses=${dialogueResponseLinks}; continuity=${dialogueContinuity}; narration-boundaries=${dialogueNarrationBoundaries}; quoted-source=${dialogueQuotedSources}`,
       `Grammatical roles: found=${grammar.total}; resolved=${grammar.resolved}; unresolved=${grammar.unresolved}; ambiguous=${grammar.ambiguous}`,
       `Subject/Object: found=${subjectObject.total}; resolved=${subjectObject.resolved}; unresolved=${subjectObject.unresolved}; ambiguous=${subjectObject.ambiguous}`,
       `Action chains: found=${actionChains.total}; resolved=${actionChains.resolved}; unresolved=${actionChains.unresolved}; ambiguous=${actionChains.ambiguous}`,
@@ -15607,6 +15894,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function semanticHealthMetrics() {
+    return scopedComputationCached("semanticHealthMetrics", () => {
     const languageRecords = generatedLanguageRecords();
     const posCounts = languageRecordPartOfSpeechCounts(languageRecords);
     const posUnresolved = Number(posCounts.unresolved || 0);
@@ -15694,6 +15982,7 @@ createRevelationPartsSection(item.subEvents)
       semanticHealthMetric("Semantic Health Summary", "Overall semantic health score", overallScore, "percentage", currentStudyScopeLabel(), semanticHealthStatus(overallScore))
     ];
     return metrics;
+    });
   }
 
   function semanticHealthMonitorLines() {
@@ -15752,6 +16041,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function metricIntegrityRecords() {
+    return scopedComputationCached("metricIntegrityRecords", () => {
     const coverageRows = promotionCoverageRows();
     const coverage = (label) => coverageRows.find((row) => row.label === label) || {};
     const sourceDiscovery = scopedSemanticRecords(studyData.sourceDiscoveryIndex);
@@ -15764,7 +16054,13 @@ createRevelationPartsSection(item.subEvents)
     const speakerRejectedCandidateCount = speakerRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
     const audiences = qaDashboardResolutionCounts(audienceDetectionPreviewRecords());
     const quotations = quotationBoundaryPreviewRecords();
-    const dialogue = qaDashboardResolutionCounts(dialogueRelationshipPreviewRecords());
+    const dialogueRecords = dialogueRelationshipPreviewRecords();
+    const dialogue = qaDashboardResolutionCounts(dialogueRecords);
+    const groundedDialogueRecords = dialogueRecords.filter((record) => record.status === "resolved" && record.speaker && (record.quoteId || record.speechPredicate));
+    const participantRequiredDialogues = dialogueRecords.filter((record) => !/Quoted Source Citation|Prayer|Narration Boundary/i.test(record.dialogueType || ""));
+    const participantCompleteDialogues = participantRequiredDialogues.filter((record) => record.status === "resolved" && record.speaker && record.immediateAudience);
+    const responseCandidates = dialogueRecords.filter((record) => /Answer|Response/i.test(record.dialogueType || ""));
+    const linkedResponses = responseCandidates.filter((record) => record.responseToDialogueId);
     const pronounRecords = pronounResolutionPreviewRecords();
     const pronouns = qaDashboardResolutionCounts(pronounRecords);
     const pronounRejectedCandidateCount = pronounRecords.reduce((sum, record) => sum + asArray(record.rejectedCandidates).length, 0);
@@ -15821,13 +16117,42 @@ createRevelationPartsSection(item.subEvents)
       metricRecord({
         metricName: "Dialogue relationship availability",
         scopeBasis: "selected scope language preview",
-        numerator: dialogue.resolved,
+        numerator: groundedDialogueRecords.length,
         denominator: dialogue.total,
         excluded: Math.max(0, quotations.length + audiences.total - dialogue.total),
         sourceCollection: "dialogueRelationshipPreviewRecords; quotationBoundaryPreviewRecords; audienceDetectionPreviewRecords",
-        status: dialogue.total ? metricState({ denominator: dialogue.total, numerator: dialogue.resolved, unresolved: dialogue.unresolved }) : (speakers.total ? "active_no_records" : "inactive dependency"),
-        statusRule: "dialogue relationships require quotation/speaker/audience support; missing speaker candidates make dialogue unavailable rather than healthy.",
-        warnings: !speakers.total && (quotations.length || audiences.total) ? ["Quotations or audiences exist without speaker candidates; dialogue status depends on speaker attribution availability."] : []
+        status: dialogue.total ? metricState({ denominator: dialogue.total, numerator: groundedDialogueRecords.length, unresolved: dialogue.unresolved, unsupported: dialogue.ambiguous }) : (speakers.total ? "active_no_records" : "inactive dependency"),
+        statusRule: "grounded dialogue records with grounded speaker plus explicit speech evidence / dialogue candidates in the current scope; zero candidates are not perfect resolution.",
+        warnings: [
+          !speakers.total && (quotations.length || audiences.total) ? "Quotations or audiences exist without speaker candidates; dialogue status depends on speaker attribution availability." : "",
+          dialogue.ambiguous ? `${dialogue.ambiguous} dialogue records remain ambiguous by design and are not linked or promoted.` : "",
+          dialogueRecords.some((record) => record.quotedSource) ? "Quoted source citation records preserve current speaker versus quoted source distinction." : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Dialogue participant completeness",
+        scopeBasis: "selected scope grounded dialogue participants",
+        numerator: participantCompleteDialogues.length,
+        denominator: participantRequiredDialogues.length,
+        excluded: Math.max(0, dialogueRecords.length - participantRequiredDialogues.length),
+        sourceCollection: "dialogueRelationshipPreviewRecords; speakerDetectionPreviewRecords; audienceDetectionPreviewRecords",
+        status: participantRequiredDialogues.length ? metricState({ denominator: participantRequiredDialogues.length, numerator: participantCompleteDialogues.length, unresolved: participantRequiredDialogues.filter((record) => !record.immediateAudience || !record.speaker).length, unsupported: participantRequiredDialogues.filter((record) => record.status === "ambiguous").length }) : "no_candidates",
+        statusRule: "dialogue records with grounded speaker and immediate audience / dialogue records requiring participant attribution; extended audiences do not replace immediate audience.",
+        warnings: [
+          participantRequiredDialogues.some((record) => asArray(record.extendedAudience).length && !record.immediateAudience) ? "Extended audience exists without immediate audience on some records; extended audience is not used as immediate participant." : "",
+          participantRequiredDialogues.some((record) => /parable/i.test(`${record.audienceTransitionType} ${asArray(record.extendedAudience).join(" ")}`)) ? "Parable/internal audience metadata remains separate from surrounding dialogue participants." : ""
+        ]
+      }),
+      metricRecord({
+        metricName: "Response-link accuracy",
+        scopeBasis: "selected scope response dialogue candidates",
+        numerator: linkedResponses.length,
+        denominator: responseCandidates.length,
+        excluded: Math.max(0, dialogueRecords.length - responseCandidates.length),
+        sourceCollection: "dialogueRelationshipPreviewRecords",
+        status: responseCandidates.length ? metricState({ denominator: responseCandidates.length, numerator: linkedResponses.length, unresolved: responseCandidates.length - linkedResponses.length }) : "no_candidates",
+        statusRule: "grounded answer/response records linked to supported parent dialogue / response candidates; adjacent speech is not treated as a response without explicit support.",
+        warnings: responseCandidates.length && !linkedResponses.length ? ["Response candidates exist but no supported parent links were created under conservative continuity rules."] : []
       }),
       metricRecord({
         metricName: "Immediate audience resolution",
@@ -15940,6 +16265,7 @@ createRevelationPartsSection(item.subEvents)
         warnings: [`Active=${active ? volumePageLabel(active) : "not recorded"}; selected=${currentStudyScopeLabel()}; retained=${analyzed.length ? analyzed.map(volumePageLabel).join(" | ") : "none"}`]
       })
     ];
+    });
   }
 
   function metricIntegrityInspectorLines() {
@@ -15970,6 +16296,121 @@ createRevelationPartsSection(item.subEvents)
       `Consistency warnings: ${warnings.length}`,
       "Status rule: zero-record subsystems report no candidates, inactive dependency, unavailable, or zero grounded promotions instead of 100% health.",
       "Boundary: metric integrity is display-only and does not influence semantic output."
+    ];
+  }
+
+  function readableStatusBand({ percentage = null, warnings = 0, failures = 0, status = "" } = {}) {
+    const normalizedStatus = normalizeText(status).toLowerCase();
+    if (failures || /failure|constitutional|unsupported/.test(normalizedStatus)) return "Failure";
+    if (/inactive dependency/.test(normalizedStatus)) return "Inactive Dependency";
+    if (/no_candidates|active_no_records|zero grounded promotions/.test(normalizedStatus)) return "No Candidates";
+    if (percentage === null || percentage === undefined || /unavailable/.test(normalizedStatus)) return "Limited Data";
+    if (warnings || percentage < 50 || /warning|unresolved/.test(normalizedStatus)) return "Needs Attention";
+    if (percentage < 80) return "Good";
+    return "Healthy";
+  }
+
+  function systemMetricsOverviewLines() {
+    const verification = semanticVerificationDiagnostics();
+    const architecture = architectureGraphDiagnostics();
+    const health = semanticHealthMetrics();
+    const healthValue = (name) => health.find((metric) => metric.metricName === name)?.metricValue ?? null;
+    const promotion = promotionCoverageRows();
+    const coverage = (label) => promotion.find((row) => row.label === label)?.coverage ?? null;
+    const explainability = semanticExplainabilityDiagnostics();
+    const provenance = provenanceGraphDiagnostics();
+    const journeys = journeyNarrativeArcDiagnostics();
+    const principles = principleExtractionDiagnostics();
+    const guidance = studyGuidanceDiagnostics();
+    const metric = (label, value, status, meaning, warnings = 0) => `${label}: ${formatMetricPercent(value)} | ${status} | ${meaning}${warnings ? ` | warnings=${warnings}` : ""}`;
+    const constitutionalFailures = verification.constitutionalViolations.length;
+    const architectureWarnings = architecture.circularDependencyCount + architecture.authorityViolations.length + architecture.evidenceDistanceViolations.length + architecture.orphanNodes.length;
+    const semanticCoverage = averageMetricValues([
+      coverage("Timeline Promotions"),
+      coverage("Scene Models"),
+      coverage("Relationship Promotions"),
+      coverage("Theme Promotions"),
+      coverage("Literary Structure Promotions")
+    ]);
+    const languageResolution = averageMetricValues([
+      healthValue("POS resolution rate"),
+      healthValue("Pronoun resolution rate"),
+      healthValue("Morphology resolution rate"),
+      healthValue("Speaker resolution rate"),
+      healthValue("Audience resolution rate"),
+      healthValue("Subject/Object resolution rate")
+    ]);
+    return [
+      "System Metrics Overview",
+      metric("Constitutional Integrity", constitutionalFailures ? 0 : 100, readableStatusBand({ percentage: constitutionalFailures ? 0 : 100, failures: constitutionalFailures }), constitutionalFailures ? `${constitutionalFailures} constitutional violation(s) detected` : "No constitutional violations detected"),
+      metric("Architecture Health", Math.max(0, 100 - architectureWarnings * 10), readableStatusBand({ percentage: Math.max(0, 100 - architectureWarnings * 10), warnings: architectureWarnings }), architectureWarnings ? "Architecture graph has warnings to inspect" : "Architecture graph checks are clean", architectureWarnings),
+      metric("Semantic Coverage", semanticCoverage, readableStatusBand({ percentage: semanticCoverage }), "Promotion coverage across timeline, scene, relationship, theme, and literary structures"),
+      metric("Language Resolution", languageResolution, readableStatusBand({ percentage: languageResolution }), "POS, pronoun, morphology, speaker, audience, and subject/object preview resolution"),
+      metric("Provenance Completeness", metricPercent(provenance.nodes.length - provenance.missingProvenance.length, provenance.nodes.length), readableStatusBand({ percentage: metricPercent(provenance.nodes.length - provenance.missingProvenance.length, provenance.nodes.length), warnings: provenance.missingProvenance.length }), "Record lineage back to source evidence remains visible", provenance.missingProvenance.length),
+      metric("Explainability Coverage", explainability.coverage, readableStatusBand({ percentage: explainability.coverage, warnings: explainability.missingEvidenceChain.length + explainability.missingAuthority.length }), "Derived records can explain origin, authority, confidence, and evidence distance", explainability.missingEvidenceChain.length + explainability.missingAuthority.length),
+      metric("Verification Score", verification.scores.overall, readableStatusBand({ percentage: verification.scores.overall, warnings: verification.warnings, failures: verification.failures }), "Constitutional verification pass/warning/failure balance", verification.warnings + verification.failures),
+      metric("Journey Coverage", journeys.coverage, readableStatusBand({ percentage: journeys.coverage, warnings: journeys.unsupported.length }), "Supported journey arcs over detected journey candidates", journeys.unsupported.length),
+      metric("Principle Coverage", principles.coverage, readableStatusBand({ percentage: principles.coverage, warnings: principles.unresolved.length }), "Grounded principle promotions over grounded candidates", principles.unresolved.length),
+      metric("Guidance Coverage", guidance.coverage, readableStatusBand({ percentage: guidance.coverage, warnings: guidance.unresolved.length + guidance.unsupported.length }), "Verified guidance over grounded guidance candidates", guidance.unresolved.length + guidance.unsupported.length),
+      "Status bands: Healthy; Good; Needs Attention; Limited Data; No Candidates; Inactive Dependency; Warning; Failure."
+    ];
+  }
+
+  function averageMetricValues(values = []) {
+    const scored = asArray(values).filter((value) => typeof value === "number");
+    return scored.length ? Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length) : null;
+  }
+
+  function quickBottleneckSummaryLines() {
+    const records = metricIntegrityRecords();
+    const ranked = records
+      .map((record) => {
+        const percentage = typeof record.percentage === "number" ? record.percentage : null;
+        const warningCount = asArray(record.warnings).length;
+        const score = /failure|unsupported|unresolved|inactive dependency|zero grounded promotions|no_candidates/i.test(record.status || "") ? 100 : 0;
+        return { record, weight: score + warningCount * 25 + (percentage === null ? 15 : Math.max(0, 70 - percentage)) };
+      })
+      .sort((left, right) => right.weight - left.weight)
+      .slice(0, 5);
+    return [
+      "Quick Bottleneck Summary",
+      ...(ranked.length ? ranked.map(({ record }) => `${record.metricName}: ${formatMetricPercent(record.percentage)} | status=${record.status} | ${record.warnings[0] || record.statusRule || "Review metric details."}`) : ["No metric bottlenecks detected from current scoped records."]),
+      "Boundary: bottlenecks are derived from Metric Integrity records only; no priority is invented outside current metrics."
+    ];
+  }
+
+  function performanceDiagnosticsLines() {
+    const collectionCounts = {
+      languageRecords: generatedLanguageRecords().length,
+      pronouns: pronounResolutionPreviewRecords().length,
+      speakers: speakerDetectionPreviewRecords().length,
+      audiences: audienceDetectionPreviewRecords().length,
+      dialogue: dialogueRelationshipPreviewRecords().length,
+      morphology: morphologyPreviewRecords().length,
+      actionChains: actionChainPreviewRecords().length,
+      causality: causalityPreviewRecords().length,
+      consequenceChains: consequenceChainPreviewRecords().length,
+      explainability: semanticExplainabilityRecords().length,
+      provenanceNodes: provenanceGraphDiagnostics().nodes.length,
+      verification: semanticVerificationRecords().length,
+      principles: principleExtractionRecords().length,
+      guidance: studyGuidanceRecords().length
+    };
+    const largestCollections = Object.entries(collectionCounts).sort((left, right) => right[1] - left[1]).slice(0, 6);
+    return [
+      "Performance Diagnostics",
+      "Likely pre-optimization bottlenecks: eager Editor / Architect inspector generation; repeated language/QA/health/provenance computations; collapsed sections building full DOM bodies before expansion.",
+      `Total panel render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "renderStudy")?.elapsed ?? "not measured yet"} ms`,
+      `Editor / Architect render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "Editor / Architect Evaluation")?.elapsed ?? "not measured yet"} ms`,
+      `Lazy sections rendered count: ${scopedComputationStats.lazySectionsRendered}`,
+      `Cached collection count: ${scopedComputationCache.size}`,
+      `Cache hits: ${scopedComputationStats.hits}`,
+      `Cache misses: ${scopedComputationStats.misses}`,
+      `Largest scoped collection counts: ${largestCollections.map(([label, count]) => `${label}=${count}`).join("; ") || "none"}`,
+      `Slowest display computations: ${scopedComputationStats.slowComputations.length ? scopedComputationStats.slowComputations.map((item) => `${item.key}=${item.elapsed}ms`).join("; ") : "none over threshold"}`,
+      `Slowest render timings: ${scopedComputationStats.renderTimings.length ? scopedComputationStats.renderTimings.map((item) => `${item.label}=${item.elapsed}ms`).join("; ") : "not measured yet"}`,
+      "Empty/loading states: Not rendered yet; Loading details; No candidates; No records; Dependency unavailable; Scope changed; refresh required.",
+      "Boundary: diagnostics are display-only. Cache is runtime-scoped and does not write semantic storage, change Context Lock, alter Study View output, crawl, or process queues."
     ];
   }
 
@@ -16259,8 +16700,8 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function semanticExplainabilityRecords() {
-    return semanticExplainabilitySourceGroups()
-      .flatMap((group) => asArray(group.records).slice(0, 180).map((record, index) => semanticExplainabilityRecord(group, record, index)));
+    return scopedComputationCached("semanticExplainabilityRecords", () => semanticExplainabilitySourceGroups()
+      .flatMap((group) => asArray(group.records).slice(0, 180).map((record, index) => semanticExplainabilityRecord(group, record, index))));
   }
 
   function semanticExplainabilityDiagnostics() {
@@ -16374,6 +16815,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function provenanceGraphDiagnostics() {
+    return scopedComputationCached("provenanceGraphDiagnostics", () => {
     const explainability = semanticExplainabilityDiagnostics();
     const derivedNodes = explainability.records.map((record, index) => provenanceGraphNodeFromExplainability(record, index));
     const sourceNode = {
@@ -16479,6 +16921,7 @@ createRevelationPartsSection(item.subEvents)
       missingConfidence,
       disconnected
     };
+    });
   }
 
   function provenanceGraphInspectorLines() {
@@ -16542,6 +16985,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function semanticVerificationRecords() {
+    return scopedComputationCached("semanticVerificationRecords", () => {
     const explainability = semanticExplainabilityDiagnostics();
     const provenance = provenanceGraphDiagnostics();
     const architecture = architectureGraphDiagnostics();
@@ -16827,6 +17271,7 @@ createRevelationPartsSection(item.subEvents)
       )
     ];
     return records;
+    });
   }
 
   function semanticVerificationDiagnostics() {
@@ -17007,6 +17452,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function journeyNarrativeArcRecords() {
+    return scopedComputationCached("journeyNarrativeArcRecords", () => {
     const sources = journeyNarrativeArcSourceRecords();
     const scenes = promotedSceneRecords();
     const timelines = promotedTimelineRecords();
@@ -17069,6 +17515,7 @@ createRevelationPartsSection(item.subEvents)
         sourceScope: currentStudyScopeLabel()
       };
     }).sort((left, right) => right.sourceRecordCount - left.sourceRecordCount || left.journeyType.localeCompare(right.journeyType));
+    });
   }
 
   function journeyNarrativeArcDiagnostics() {
@@ -17208,6 +17655,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function principleExtractionRecords() {
+    return scopedComputationCached("principleExtractionRecords", () => {
     const teaching = scopedSemanticRecords(studyData.teachingSemantics);
     const principles = scopedSemanticRecords(studyData.principleRelationships);
     const networks = scopedSemanticRecords(studyData.principleNetworks);
@@ -17292,6 +17740,7 @@ createRevelationPartsSection(item.subEvents)
       status: "unresolved"
     }));
     return records;
+    });
   }
 
   function principleExtractionDiagnostics() {
@@ -17433,6 +17882,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function studyGuidanceRecords() {
+    return scopedComputationCached("studyGuidanceRecords", () => {
     const journeys = journeyNarrativeArcRecords();
     const themes = promotedThemeRecords();
     const relationships = promotedRelationshipRecords();
@@ -17585,6 +18035,7 @@ createRevelationPartsSection(item.subEvents)
         guidanceMode: "question"
       })
     ];
+    });
   }
 
   function studyGuidanceDiagnostics() {
@@ -17672,7 +18123,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function qaArchitectureDashboardLines() {
-    return [
+    return scopedComputationCached("qaArchitectureDashboardLines", () => [
       "QA Architecture Results Dashboard",
       ...qaDashboardCurrentScopeLines(),
       ...qaDashboardArchitectureLayerLines(),
@@ -17688,7 +18139,7 @@ createRevelationPartsSection(item.subEvents)
       ...studyGuidanceDashboardLines(),
       ...qaDashboardTrustLines(),
       "Boundary: dashboard is display-only and summarizes existing scoped records. It does not crawl, analyze, process queues, mutate scope, mutate storage, rewrite Context Lock, alter semantic records, or change Study View output."
-    ];
+    ]);
   }
   function languageAdapterInspectorLines() {
     const adapters = registeredLanguageAdapters();
@@ -18164,43 +18615,8 @@ createRevelationPartsSection(item.subEvents)
       locations: entityLines.locations,
       promotionLines: editorArchitectPromotionLines(),
       promotionCoverageLines: editorArchitectPromotionCoverageLines(),
-      timelinePromotionLines: timelinePromotionInspectorLines(),
-      scenePromotionLines: scenePromotionInspectorLines(),
-      relationshipPromotionLines: relationshipPromotionInspectorLines(),
-      themePromotionLines: themePromotionInspectorLines(),
-      literaryPromotionLines: literaryPromotionInspectorLines(),
-      languageAdapterLines: languageAdapterInspectorLines(),
-      greekAdapterLines: greekAdapterInspectorLines(),
-      hebrewAdapterLines: hebrewAdapterInspectorLines(),
-      perspectiveModelLines: perspectiveModelInspectorLines(),
-      lensRegistryLines: lensRegistryInspectorLines(),
-      expertRegistryLines: expertRegistryInspectorLines(),
-      corpusRegistryLines: corpusRegistryInspectorLines(),
-      ontologyRegistryLines: ontologyRegistryInspectorLines(),
-      authorityRegistryLines: authorityRegistryInspectorLines(),
-      architectureGraphLines: architectureGraphInspectorLines(),
-      semanticHealthLines: semanticHealthMonitorLines(),
-      metricIntegrityLines: metricIntegrityInspectorLines(),
-      semanticExplainabilityLines: semanticExplainabilityInspectorLines(),
-      provenanceGraphLines: provenanceGraphInspectorLines(),
-      semanticVerificationLines: semanticVerificationInspectorLines(),
-      journeyNarrativeArcLines: journeyNarrativeArcInspectorLines(),
-      principleExtractionLines: principleExtractionInspectorLines(),
-      studyGuidanceLines: studyGuidanceInspectorLines(),
-      morphologyLines: morphologyInspectorLines(),
-      translationAlignmentLines: translationAlignmentInspectorLines(),
-      strongAlignmentLines: strongAlignmentInspectorLines(),
-      pronounResolutionLines: pronounResolutionInspectorLines(),
-      quotationBoundaryLines: quotationBoundaryInspectorLines(),
-      speakerDetectionLines: speakerDetectionInspectorLines(),
-      audienceDetectionLines: audienceDetectionInspectorLines(),
-      dialogueRelationshipLines: dialogueRelationshipInspectorLines(),
-      grammaticalRoleLines: grammaticalRoleInspectorLines(),
-      subjectObjectLines: subjectObjectInspectorLines(),
-      actionChainLines: actionChainInspectorLines(),
-      causalityLines: causalityInspectorLines(),
-      consequenceChainLines: consequenceChainInspectorLines(),
-      fulfillmentConfidenceLines: fulfillmentConfidenceInspectorLines(),
+      systemMetricsOverviewLines: systemMetricsOverviewLines(),
+      quickBottleneckLines: quickBottleneckSummaryLines(),
       qaDashboardLines: qaArchitectureDashboardLines(),
       inferenceLines: editorArchitectInferenceLines(),
       provenanceLines: editorArchitectProvenanceLines(),
@@ -18221,6 +18637,8 @@ createRevelationPartsSection(item.subEvents)
       item.technicalActors,
       item.entities,
       item.locations,
+      item.systemMetricsOverviewLines,
+      item.quickBottleneckLines,
       item.promotionLines,
       item.promotionCoverageLines,
       item.timelinePromotionLines,
@@ -18270,6 +18688,18 @@ createRevelationPartsSection(item.subEvents)
     ].flat(Infinity).map((value) => normalizeText(value)).join(" ");
   }
 
+  function createLazyInspectorSection(title, lineFactory, options = {}) {
+    return createPassageFunctionSection(title, "", {
+      plainList: true,
+      preserveExact: true,
+      collapsed: true,
+      summaryLabel: options.summaryLabel || `Show ${title}`,
+      lazyListFactory: () => scopedComputationCached(`inspectorLines.${title}`, lineFactory),
+      lazyPlaceholder: options.lazyPlaceholder || "Not rendered yet. Expand to load current-scope inspector details.",
+      ...options
+    });
+  }
+
   function createEditorArchitectEvaluationCard(item = {}) {
     const card = document.createElement("article");
     card.className = "study-card semantic-card editor-architect-card";
@@ -18288,6 +18718,8 @@ createRevelationPartsSection(item.subEvents)
     copyDashboardButton.textContent = "Copy QA Dashboard";
     copyDashboardButton.addEventListener("click", () => copyPlainTextReport("QA Architecture Dashboard", asArray(item.qaDashboardLines).join("\n")).catch((error) => showDiagnosticMessage(`QA dashboard copy failed: ${error.message}`)));
     [
+      createPassageFunctionSection("System Metrics Overview", "", { list: item.systemMetricsOverviewLines, plainList: true, preserveExact: true }),
+      createPassageFunctionSection("Quick Bottleneck Summary", "", { list: item.quickBottleneckLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("QA Architecture Results Dashboard", "", { list: item.qaDashboardLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Context Inspector", "", { list: item.contextLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Entity Classification Inspector - Actors", "", { list: item.actors, plainList: true, divineContext: true, preferHolySpirit: true }),
@@ -18296,47 +18728,48 @@ createRevelationPartsSection(item.subEvents)
       createPassageFunctionSection("Entity Classification Inspector - Locations", "", { list: item.locations, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Semantic Promotion Inspector", "", { list: item.promotionLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Promotion Coverage Inspector", "", { list: item.promotionCoverageLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Promotion Coverage Inspector" }),
-      createPassageFunctionSection("Timeline Promotion Inspector", "", { list: item.timelinePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Timeline Promotion Inspector" }),
-      createPassageFunctionSection("Scene Promotion Inspector", "", { list: item.scenePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Scene Promotion Inspector" }),
-      createPassageFunctionSection("Relationship Promotion Inspector", "", { list: item.relationshipPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Relationship Promotion Inspector" }),
-      createPassageFunctionSection("Theme Promotion Inspector", "", { list: item.themePromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Theme Promotion Inspector" }),
-      createPassageFunctionSection("Literary Promotion Inspector", "", { list: item.literaryPromotionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Literary Promotion Inspector" }),
-      createPassageFunctionSection("Language Adapter Inspector", "", { list: item.languageAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Language Adapter Inspector" }),
-      createPassageFunctionSection("Greek Adapter Inspector", "", { list: item.greekAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Greek Adapter Inspector" }),
-      createPassageFunctionSection("Hebrew Adapter Inspector", "", { list: item.hebrewAdapterLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Hebrew Adapter Inspector" }),
-      createPassageFunctionSection("Perspective Model Inspector", "", { list: item.perspectiveModelLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Perspective Model Inspector" }),
-      createPassageFunctionSection("Lens Registry Inspector", "", { list: item.lensRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Lens Registry Inspector" }),
-      createPassageFunctionSection("Expert Registry Inspector", "", { list: item.expertRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Expert Registry Inspector" }),
-      createPassageFunctionSection("Corpus Registry Inspector", "", { list: item.corpusRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Corpus Registry Inspector" }),
-      createPassageFunctionSection("Ontology Registry Inspector", "", { list: item.ontologyRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Ontology Registry Inspector" }),
-      createPassageFunctionSection("Authority Registry Inspector", "", { list: item.authorityRegistryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Authority Registry Inspector" }),
-      createPassageFunctionSection("Architecture Graph Inspector", "", { list: item.architectureGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Architecture Graph Inspector" }),
-      createPassageFunctionSection("Semantic Health Inspector", "", { list: item.semanticHealthLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Health Inspector" }),
-      createPassageFunctionSection("Metric Integrity Inspector", "", { list: item.metricIntegrityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Metric Integrity Inspector" }),
-      createPassageFunctionSection("Semantic Explainability Inspector", "", { list: item.semanticExplainabilityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Explainability Inspector" }),
-      createPassageFunctionSection("Provenance Graph Inspector", "", { list: item.provenanceGraphLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Graph Inspector" }),
-      createPassageFunctionSection("Semantic Verification Inspector", "", { list: item.semanticVerificationLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Semantic Verification Inspector" }),
-      createPassageFunctionSection("Journey Inspector", "", { list: item.journeyNarrativeArcLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Journey Inspector" }),
-      createPassageFunctionSection("Principle Extraction Inspector", "", { list: item.principleExtractionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Principle Extraction Inspector" }),
-      createPassageFunctionSection("Study Guidance Inspector", "", { list: item.studyGuidanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Study Guidance Inspector" }),
-      createPassageFunctionSection("Morphology Inspector", "", { list: item.morphologyLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Morphology Inspector" }),
-      createPassageFunctionSection("Translation Alignment Inspector", "", { list: item.translationAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Translation Alignment Inspector" }),
-      createPassageFunctionSection("Strong Alignment Inspector", "", { list: item.strongAlignmentLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Strong Alignment Inspector" }),
-      createPassageFunctionSection("Pronoun Resolution Inspector", "", { list: item.pronounResolutionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Pronoun Resolution Inspector" }),
-      createPassageFunctionSection("Quotation Boundary Inspector", "", { list: item.quotationBoundaryLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Quotation Boundary Inspector" }),
-      createPassageFunctionSection("Speaker Detection Inspector", "", { list: item.speakerDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Speaker Detection Inspector" }),
-      createPassageFunctionSection("Audience Detection Inspector", "", { list: item.audienceDetectionLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Audience Detection Inspector" }),
-      createPassageFunctionSection("Dialogue Relationship Inspector", "", { list: item.dialogueRelationshipLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Dialogue Relationship Inspector" }),
-      createPassageFunctionSection("Grammatical Role Inspector", "", { list: item.grammaticalRoleLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Grammatical Role Inspector" }),
-      createPassageFunctionSection("Subject/Object Inspector", "", { list: item.subjectObjectLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Subject/Object Inspector" }),
-      createPassageFunctionSection("Action Chain Inspector", "", { list: item.actionChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Action Chain Inspector" }),
-      createPassageFunctionSection("Causality Inspector", "", { list: item.causalityLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Causality Inspector" }),
-      createPassageFunctionSection("Consequence Chain Inspector", "", { list: item.consequenceChainLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Consequence Chain Inspector" }),
-      createPassageFunctionSection("Fulfillment Confidence Inspector", "", { list: item.fulfillmentConfidenceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Fulfillment Confidence Inspector" }),
+      createLazyInspectorSection("Timeline Promotion Inspector", timelinePromotionInspectorLines),
+      createLazyInspectorSection("Scene Promotion Inspector", scenePromotionInspectorLines),
+      createLazyInspectorSection("Relationship Promotion Inspector", relationshipPromotionInspectorLines),
+      createLazyInspectorSection("Theme Promotion Inspector", themePromotionInspectorLines),
+      createLazyInspectorSection("Literary Promotion Inspector", literaryPromotionInspectorLines),
+      createLazyInspectorSection("Language Adapter Inspector", languageAdapterInspectorLines),
+      createLazyInspectorSection("Greek Adapter Inspector", greekAdapterInspectorLines),
+      createLazyInspectorSection("Hebrew Adapter Inspector", hebrewAdapterInspectorLines),
+      createLazyInspectorSection("Perspective Model Inspector", perspectiveModelInspectorLines),
+      createLazyInspectorSection("Lens Registry Inspector", lensRegistryInspectorLines),
+      createLazyInspectorSection("Expert Registry Inspector", expertRegistryInspectorLines),
+      createLazyInspectorSection("Corpus Registry Inspector", corpusRegistryInspectorLines),
+      createLazyInspectorSection("Ontology Registry Inspector", ontologyRegistryInspectorLines),
+      createLazyInspectorSection("Authority Registry Inspector", authorityRegistryInspectorLines),
+      createLazyInspectorSection("Architecture Graph Inspector", architectureGraphInspectorLines),
+      createLazyInspectorSection("Semantic Health Inspector", semanticHealthMonitorLines),
+      createLazyInspectorSection("Metric Integrity Inspector", metricIntegrityInspectorLines),
+      createLazyInspectorSection("Semantic Explainability Inspector", semanticExplainabilityInspectorLines),
+      createLazyInspectorSection("Provenance Graph Inspector", provenanceGraphInspectorLines),
+      createLazyInspectorSection("Semantic Verification Inspector", semanticVerificationInspectorLines),
+      createLazyInspectorSection("Journey Inspector", journeyNarrativeArcInspectorLines),
+      createLazyInspectorSection("Principle Extraction Inspector", principleExtractionInspectorLines),
+      createLazyInspectorSection("Study Guidance Inspector", studyGuidanceInspectorLines),
+      createLazyInspectorSection("Morphology Inspector", morphologyInspectorLines),
+      createLazyInspectorSection("Translation Alignment Inspector", translationAlignmentInspectorLines),
+      createLazyInspectorSection("Strong Alignment Inspector", strongAlignmentInspectorLines),
+      createLazyInspectorSection("Pronoun Resolution Inspector", pronounResolutionInspectorLines),
+      createLazyInspectorSection("Quotation Boundary Inspector", quotationBoundaryInspectorLines),
+      createLazyInspectorSection("Speaker Detection Inspector", speakerDetectionInspectorLines),
+      createLazyInspectorSection("Audience Detection Inspector", audienceDetectionInspectorLines),
+      createLazyInspectorSection("Dialogue Relationship Inspector", dialogueRelationshipInspectorLines),
+      createLazyInspectorSection("Grammatical Role Inspector", grammaticalRoleInspectorLines),
+      createLazyInspectorSection("Subject/Object Inspector", subjectObjectInspectorLines),
+      createLazyInspectorSection("Action Chain Inspector", actionChainInspectorLines),
+      createLazyInspectorSection("Causality Inspector", causalityInspectorLines),
+      createLazyInspectorSection("Consequence Chain Inspector", consequenceChainInspectorLines),
+      createLazyInspectorSection("Fulfillment Confidence Inspector", fulfillmentConfidenceInspectorLines),
       createPassageFunctionSection("Inference Ladder Inspector", "", { list: item.inferenceLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Provenance Inspector", "", { list: item.provenanceLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show Provenance Inspector" }),
       createPassageFunctionSection("Relationship Inspector", "", { list: item.relationshipLines, plainList: true, divineContext: true, preferHolySpirit: true }),
       createPassageFunctionSection("QA / Trust Inspector", "", { list: item.qaLines, plainList: true, preserveExact: true }),
+      createLazyInspectorSection("Performance Diagnostics", performanceDiagnosticsLines),
       createEvidenceWeightSection({ evidenceType: item.evidenceWeight, evidenceStrength: "inspection view reuses existing scoped records without creating or mutating semantic data", sourceGrounding: item.scopeBoundary, supportingRecords: ["Context Lock", "Entity Classification", "Meaning Staging", "Evidence Chains", "Relationship layers", "Trust records"] }),
       createPassageFunctionSection("Raw / Technical Section", "", { list: item.rawTechnicalLines, plainList: true, preserveExact: true, collapsed: true, summaryLabel: "Show raw / technical details" }),
       createWordingProvenanceSection({ source: item.provenance, label: "Editor / Architect Evaluation", layer: "Editor / Architect View / ICE_EDITOR_ARCHITECT_VIEW", storageKey: "Not persisted in this phase", scopePath: item.activeScope, rule: "Editor / Architect View is display-only. Switching views does not re-analyze, mutate scope, modify Context Lock, alter semantic records, crawl, or process queues." })
@@ -23986,11 +24419,14 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function safeRenderSection(label, renderer, term) {
+    const started = nowForDiagnostics();
     try {
       renderer(term);
     } catch (error) {
       console.error(`I.C.E. Study Panel section render failed: ${label}`, error);
       showDiagnosticMessage(`Study Panel section render error in ${label}: ${error.message}`);
+    } finally {
+      recordRenderTiming(label, nowForDiagnostics() - started);
     }
   }
 
@@ -24453,6 +24889,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function renderStudy() {
+    const renderStarted = nowForDiagnostics();
     const searchInput = document.getElementById("searchInput");
     const term = normalizeText(searchInput?.value || "").toLowerCase();
     studySectionRenderers().forEach((entry) => {
@@ -24471,6 +24908,7 @@ createRevelationPartsSection(item.subEvents)
       safeRenderSection("Diagnostics", renderDiagnostics, term);
     }
     applyPresentationModuleVisibility();
+    recordRenderTiming("renderStudy", nowForDiagnostics() - renderStarted);
   }
 
   async function loadStudyData(options = {}) {
@@ -24482,6 +24920,7 @@ createRevelationPartsSection(item.subEvents)
       ...studyData,
       ...mapped
     });
+    invalidateScopedComputationCache(options.full ? "full storage load" : "startup storage load");
     if (options.full) fullStudyDataLoaded = true;
 
     console.debug("I.C.E. study data loaded", {
