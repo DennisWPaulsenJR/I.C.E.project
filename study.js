@@ -392,7 +392,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     lazySectionsRendered: 0,
     initialInspectorsRendered: 0,
     renderTimings: [],
-    inspectorDetailTimings: []
+    inspectorDetailTimings: [],
+    inspectorExpansionOrder: 0
   };
   const inspectorDetailCache = new Map();
   let pendingProgressiveRenderPromises = [];
@@ -442,7 +443,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function recordInspectorDetailTiming(metric = {}) {
+    scopedComputationStats.inspectorExpansionOrder += 1;
     scopedComputationStats.inspectorDetailTimings.push({
+      expansionOrder: Number(metric.expansionOrder || scopedComputationStats.inspectorExpansionOrder),
       inspectorId: metric.inspectorId || "",
       inspectorName: metric.inspectorName || "Unknown inspector",
       totalExpansionTime: Math.round(Number(metric.totalExpansionTime || 0) * 10) / 10,
@@ -456,11 +459,48 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderedItemCount: Number(metric.renderedItemCount || 0),
       hiddenItemCount: Number(metric.hiddenItemCount || 0),
       provenanceBlocksRendered: Number(metric.provenanceBlocksRendered || 0),
-      errorCount: Number(metric.errorCount || 0)
+      nestedDetailsRendered: Number(metric.nestedDetailsRendered || 0),
+      totalOpenInspectors: Number(metric.totalOpenInspectors || 0),
+      mountedInspectorCount: Number(metric.mountedInspectorCount || 0),
+      cachedInspectorCount: Number(metric.cachedInspectorCount ?? inspectorDetailCache.size),
+      totalRenderedInspectorCount: Number(metric.totalRenderedInspectorCount || loadedDeferredSections.size),
+      domNodeCount: Number(metric.domNodeCount || 0),
+      panelHeight: Number(metric.panelHeight || 0),
+      errorCount: Number(metric.errorCount || 0),
+      slowdownCorrelation: metric.slowdownCorrelation || ""
     });
     scopedComputationStats.inspectorDetailTimings = scopedComputationStats.inspectorDetailTimings
-      .sort((left, right) => right.totalExpansionTime - left.totalExpansionTime)
       .slice(0, 16);
+  }
+
+  function inspectorMountStats() {
+    if (typeof document === "undefined") {
+      return {
+        totalOpenInspectors: 0,
+        mountedInspectorCount: 0,
+        domNodeCount: 0,
+        panelHeight: 0,
+        nestedDetailsRendered: 0
+      };
+    }
+    const openInspectors = document.querySelectorAll("details[data-deferred-inspector][open], details[data-lazy-inspector][open]").length;
+    const mountedInspectors = Array.from(document.querySelectorAll(".deferred-study-section-body, .lazy-semantic-section-body"))
+      .filter((body) => body.childNodes.length > 0 && body.dataset.detached !== "true" && body.dataset.loaded !== "false").length;
+    return {
+      totalOpenInspectors: openInspectors,
+      mountedInspectorCount: mountedInspectors,
+      domNodeCount: document.querySelectorAll("*").length,
+      panelHeight: Math.round(document.body?.scrollHeight || 0),
+      nestedDetailsRendered: document.querySelectorAll("details[data-lazy-record-detail='true'] .lazy-semantic-section-body[data-loaded='true']").length
+    };
+  }
+
+  function inspectorSlowdownCorrelation(stats = {}) {
+    const nodes = Number(stats.domNodeCount || 0);
+    const mounted = Number(stats.mountedInspectorCount || 0);
+    if (nodes > 5000 || mounted > 20) return "possible mounted DOM/layout correlation";
+    if (stats.totalOpenInspectors > 8) return "possible open inspector count correlation";
+    return "not enough mounted-content pressure detected";
   }
 
   function invalidateScopedComputationCache(reason = "scope/data refresh") {
@@ -8524,27 +8564,120 @@ document.addEventListener("DOMContentLoaded", async () => {
       summary.textContent = options.summaryLabel || progressiveDisclosureSummaryLabel(title);
       details.appendChild(summary);
       if (options.lazyContentFactory || options.lazyListFactory) {
+        details.dataset.lazyInspector = title;
         const lazyBody = document.createElement("div");
         lazyBody.className = "semantic-section-body lazy-semantic-section-body";
         lazyBody.textContent = options.lazyPlaceholder || "Not rendered yet. Expand to load details for the current Study Scope.";
         details.addEventListener("toggle", () => {
+          if (!details.open && lazyBody.dataset.loaded === "true" && lazyBody.dataset.detached !== "true") {
+            lazyBody.dataset.detachedHtml = lazyBody.innerHTML;
+            clearElement(lazyBody);
+            lazyBody.textContent = "Details cached for current scope. Reopen to restore without recomputing.";
+            lazyBody.dataset.detached = "true";
+            return;
+          }
+          if (details.open && lazyBody.dataset.loaded === "true" && lazyBody.dataset.detached === "true") {
+            const domStarted = nowForDiagnostics();
+            clearElement(lazyBody);
+            lazyBody.innerHTML = lazyBody.dataset.detachedHtml || "";
+            lazyBody.dataset.detached = "false";
+            recordInspectorDetailTiming({
+              inspectorId: normalizeText(title).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              inspectorName: title,
+              totalExpansionTime: nowForDiagnostics() - domStarted,
+              domInsertionTime: nowForDiagnostics() - domStarted,
+              cacheState: "dom-restore",
+              recordCount: lazyBody.querySelectorAll("li, .study-card").length,
+              renderedItemCount: lazyBody.querySelectorAll("li, .study-card").length,
+              ...inspectorMountStats()
+            });
+            return;
+          }
           if (!details.open || lazyBody.dataset.loaded === "true") return;
           lazyBody.textContent = "Loading details...";
           const started = nowForDiagnostics();
+          let listLength = 0;
+          let cacheState = "miss";
           try {
             const lazyOptions = { ...bodyOptions };
             let lazyContent = "";
+            const cacheKey = [
+              scopedComputationCacheStamp(),
+              "editor-lazy",
+              normalizeText(title).toLowerCase(),
+              normalizeText(options.summaryLabel || "").toLowerCase()
+            ].join("::");
+            const cached = inspectorDetailCache.get(cacheKey);
+            if (cached) {
+              cacheState = "hit";
+              const domStarted = nowForDiagnostics();
+              clearElement(lazyBody);
+              lazyBody.innerHTML = cached.html;
+              lazyBody.dataset.loaded = "true";
+              const domInsertionTime = nowForDiagnostics() - domStarted;
+              const mountStats = inspectorMountStats();
+              recordInspectorDetailTiming({
+                inspectorId: normalizeText(title).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                inspectorName: title,
+                totalExpansionTime: nowForDiagnostics() - started,
+                recordPreparationTime: 0,
+                htmlGenerationTime: 0,
+                domInsertionTime,
+                cacheState,
+                recordCount: cached.recordCount || 0,
+                renderedItemCount: cached.renderedItemCount || 0,
+                hiddenItemCount: cached.hiddenItemCount || 0,
+                provenanceBlocksRendered: lazyBody.querySelectorAll(".ice-provenance").length,
+                ...mountStats,
+                slowdownCorrelation: inspectorSlowdownCorrelation(mountStats)
+              });
+              recordRenderTiming(`Lazy section cache hit: ${title}`, nowForDiagnostics() - started);
+              return;
+            }
+            const recordPreparationStarted = nowForDiagnostics();
             if (options.lazyListFactory) {
               lazyOptions.list = asArray(options.lazyListFactory());
+              listLength = lazyOptions.list.length;
               lazyContent = "";
             } else {
               lazyContent = options.lazyContentFactory();
+              listLength = lazyContent ? 1 : 0;
             }
+            const recordPreparationTime = nowForDiagnostics() - recordPreparationStarted;
+            const htmlStarted = nowForDiagnostics();
             const rendered = semanticSectionBody(lazyContent, lazyOptions);
+            const htmlGenerationTime = nowForDiagnostics() - htmlStarted;
+            const domStarted = nowForDiagnostics();
             clearElement(lazyBody);
             lazyBody.appendChild(rendered);
             lazyBody.dataset.loaded = "true";
+            const domInsertionTime = nowForDiagnostics() - domStarted;
+            inspectorDetailCache.set(cacheKey, {
+              html: lazyBody.innerHTML,
+              recordCount: listLength,
+              renderedItemCount: listLength,
+              hiddenItemCount: 0,
+              createdAt: Date.now()
+            });
             scopedComputationStats.lazySectionsRendered += 1;
+            const mountStats = inspectorMountStats();
+            recordInspectorDetailTiming({
+              inspectorId: normalizeText(title).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              inspectorName: title,
+              totalExpansionTime: nowForDiagnostics() - started,
+              recordPreparationTime,
+              provenancePreparationTime: 0,
+              htmlGenerationTime,
+              domInsertionTime,
+              groupSummaryRefreshTime: 0,
+              cacheState,
+              recordCount: listLength,
+              renderedItemCount: listLength,
+              hiddenItemCount: 0,
+              provenanceBlocksRendered: lazyBody.querySelectorAll(".ice-provenance").length,
+              ...mountStats,
+              slowdownCorrelation: inspectorSlowdownCorrelation(mountStats)
+            });
             recordRenderTiming(`Lazy section: ${title}`, nowForDiagnostics() - started);
           } catch (error) {
             lazyBody.textContent = `Load failed: ${error.message}`;
@@ -17112,8 +17245,12 @@ createRevelationPartsSection(item.subEvents)
     const cacheStampParts = scopedComputationCacheStamp().split("::");
     const inspectorTimings = scopedComputationStats.inspectorDetailTimings;
     const canonicalTiming = inspectorTimings.find((item) => item.inspectorName === "Canonical Identities");
+    const mountStats = inspectorMountStats();
+    const slowestExpansion = inspectorTimings.length
+      ? inspectorTimings.slice().sort((left, right) => right.totalExpansionTime - left.totalExpansionTime)[0]
+      : null;
     const inspectorTimingLines = inspectorTimings.length
-      ? inspectorTimings.map((item) => `${item.inspectorName}: records=${item.recordCount}; rendered=${item.renderedItemCount}; hidden=${item.hiddenItemCount}; total=${item.totalExpansionTime}ms; preparation=${item.recordPreparationTime}ms; provenance=${item.provenancePreparationTime}ms; html=${item.htmlGenerationTime}ms; dom=${item.domInsertionTime}ms; groupSummary=${item.groupSummaryRefreshTime}ms; cache=${item.cacheState}; provenanceBlocksRendered=${item.provenanceBlocksRendered}; errors=${item.errorCount}`)
+      ? inspectorTimings.map((item) => `#${item.expansionOrder} ${item.inspectorName}: open=${item.totalOpenInspectors}; mounted=${item.mountedInspectorCount}; domNodes=${item.domNodeCount}; panelHeight=${item.panelHeight}; records=${item.recordCount}; rendered=${item.renderedItemCount}; hidden=${item.hiddenItemCount}; total=${item.totalExpansionTime}ms; preparation=${item.recordPreparationTime}ms; provenance=${item.provenancePreparationTime}ms; html=${item.htmlGenerationTime}ms; dom=${item.domInsertionTime}ms; groupSummary=${item.groupSummaryRefreshTime}ms; cache=${item.cacheState}; nestedRendered=${item.nestedDetailsRendered}; provenanceBlocksRendered=${item.provenanceBlocksRendered}; slowdown=${item.slowdownCorrelation}; errors=${item.errorCount}`)
       : ["No inspector expansion measured yet."];
     return [
       "Performance Diagnostics",
@@ -17128,6 +17265,11 @@ createRevelationPartsSection(item.subEvents)
       `Inspectors rendered initially: ${editorArchitectInitialSummarySectionCount()} summary/detail section(s); ${scopedComputationStats.initialInspectorsRendered} full deferred inspector(s)`,
       `Inspectors rendered lazily: ${scopedComputationStats.lazySectionsRendered}`,
       `Deferred Inspector Ratio: ${formatMetricPercent(deferredRatio)} (${scopedComputationStats.lazySectionsRendered}/${lazyEligible})`,
+      `Current open inspectors: ${mountStats.totalOpenInspectors}`,
+      `Current mounted inspector bodies: ${mountStats.mountedInspectorCount}`,
+      `Current DOM node count: ${mountStats.domNodeCount}`,
+      `Current panel height: ${mountStats.panelHeight}`,
+      `Current nested details rendered: ${mountStats.nestedDetailsRendered}`,
       `Cached collection count: ${scopedComputationCache.size}`,
       `Inspector detail cache entries: ${inspectorDetailCache.size}`,
       `Cache hits: ${scopedComputationStats.hits}`,
@@ -17138,6 +17280,8 @@ createRevelationPartsSection(item.subEvents)
       `Current cache key/revision summary: scope=${cacheStampParts[0] || "not recorded"}; active=${cacheStampParts[1] || "not recorded"}; analyzed=${cacheStampParts[2] || "none"}; timestamp=${cacheStampParts[3] || "not recorded"}`,
       `Largest scoped collection counts: ${largestCollections.map(([label, count]) => `${label}=${count}`).join("; ") || "none"}`,
       `Canonical Identities expansion: ${canonicalTiming ? `records=${canonicalTiming.recordCount}; rendered=${canonicalTiming.renderedItemCount}; hidden=${canonicalTiming.hiddenItemCount}; total=${canonicalTiming.totalExpansionTime}ms; prep=${canonicalTiming.recordPreparationTime}ms; html=${canonicalTiming.htmlGenerationTime}ms; dom=${canonicalTiming.domInsertionTime}ms; cache=${canonicalTiming.cacheState}; provenanceBlocksRendered=${canonicalTiming.provenanceBlocksRendered}` : "Not measured"}`,
+      `Slowest inspector expansion: ${slowestExpansion ? `#${slowestExpansion.expansionOrder} ${slowestExpansion.inspectorName}=${slowestExpansion.totalExpansionTime}ms; open=${slowestExpansion.totalOpenInspectors}; mounted=${slowestExpansion.mountedInspectorCount}; domNodes=${slowestExpansion.domNodeCount}; cache=${slowestExpansion.cacheState}; slowdown=${slowestExpansion.slowdownCorrelation}` : "Not measured"}`,
+      `Mounted-content correlation: ${inspectorTimings.some((item) => /mounted DOM|open inspector/i.test(item.slowdownCorrelation || "")) ? "possible correlation detected in current session metrics" : "not detected yet; open more inspectors to measure"}`,
       "Inspector expansion measurements:",
       ...inspectorTimingLines,
       `Slowest display computations: ${scopedComputationStats.slowComputations.length ? scopedComputationStats.slowComputations.map((item) => `${item.key}=${item.elapsed}ms`).join("; ") : "none over threshold"}`,
@@ -26053,6 +26197,7 @@ createRevelationPartsSection(item.subEvents)
     card.className = "study-card deferred-study-section-card";
     const details = document.createElement("details");
     details.className = "deferred-study-section-details";
+    details.dataset.deferredInspector = entry.label;
     if (options.open) details.open = true;
 
     const summary = document.createElement("summary");
@@ -26070,6 +26215,35 @@ createRevelationPartsSection(item.subEvents)
     body.className = "deferred-study-section-body";
     if (options.loadedNodes) {
       options.loadedNodes.forEach((node) => body.appendChild(node));
+      details.addEventListener("toggle", () => {
+        if (!details.open && body.dataset.detached !== "true") {
+          body.dataset.detachedHtml = body.innerHTML;
+          clearElement(body);
+          body.textContent = "Details cached for current scope. Reopen to restore without recomputing.";
+          body.dataset.detached = "true";
+          return;
+        }
+        if (details.open && body.dataset.detached === "true") {
+          const started = nowForDiagnostics();
+          clearElement(body);
+          body.innerHTML = body.dataset.detachedHtml || "";
+          body.dataset.detached = "false";
+          const mountStats = inspectorMountStats();
+          recordInspectorDetailTiming({
+            inspectorId: entry.sectionId || normalizeText(entry.label).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            inspectorName: entry.label,
+            totalExpansionTime: nowForDiagnostics() - started,
+            domInsertionTime: nowForDiagnostics() - started,
+            cacheState: "dom-restore",
+            recordCount: deferredSectionRecordCount(entry.label) || 0,
+            renderedItemCount: Math.min(deferredSectionRecordCount(entry.label) || 0, DISPLAY_LIMIT),
+            hiddenItemCount: Math.max(0, (deferredSectionRecordCount(entry.label) || 0) - DISPLAY_LIMIT),
+            provenanceBlocksRendered: body.querySelectorAll(".ice-provenance").length,
+            ...mountStats,
+            slowdownCorrelation: inspectorSlowdownCorrelation(mountStats)
+          });
+        }
+      });
     } else {
       const purpose = document.createElement("p");
       purpose.textContent = DEFERRED_SECTION_SUMMARIES[entry.label] || "Details are available on demand.";
@@ -26160,6 +26334,7 @@ createRevelationPartsSection(item.subEvents)
       if (count) count.textContent = cached.countText || deferredSectionCountLabel(entry.label);
       const domInsertionTime = nowForDiagnostics() - domStarted;
       loadedDeferredSections.add(entry.label);
+      const mountStats = inspectorMountStats();
       recordInspectorDetailTiming({
         inspectorId,
         inspectorName: entry.label,
@@ -26174,7 +26349,9 @@ createRevelationPartsSection(item.subEvents)
         renderedItemCount: Math.min(recordCount, DISPLAY_LIMIT),
         hiddenItemCount,
         provenanceBlocksRendered: 0,
-        errorCount: container.querySelectorAll("[data-load-error='true']").length
+        errorCount: container.querySelectorAll("[data-load-error='true']").length,
+        ...mountStats,
+        slowdownCorrelation: inspectorSlowdownCorrelation(mountStats)
       });
       recordRenderTiming(`Deferred section cache hit: ${entry.label}`, nowForDiagnostics() - totalStarted);
       return;
@@ -26203,6 +26380,7 @@ createRevelationPartsSection(item.subEvents)
     });
     loadedDeferredSections.add(entry.label);
     const provenanceBlocksRendered = container.querySelectorAll(".ice-provenance").length;
+    const mountStats = inspectorMountStats();
     recordInspectorDetailTiming({
       inspectorId,
       inspectorName: entry.label,
@@ -26217,7 +26395,9 @@ createRevelationPartsSection(item.subEvents)
       renderedItemCount: Math.min(recordCount, DISPLAY_LIMIT),
       hiddenItemCount,
       provenanceBlocksRendered,
-      errorCount: container.querySelectorAll("[data-load-error='true']").length
+      errorCount: container.querySelectorAll("[data-load-error='true']").length,
+      ...mountStats,
+      slowdownCorrelation: inspectorSlowdownCorrelation(mountStats)
     });
     recordRenderTiming(`Deferred section detail: ${entry.label}`, nowForDiagnostics() - totalStarted);
   }
