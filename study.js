@@ -382,6 +382,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const scopedComputationCache = new Map();
+  const lazyRecordDetailFactories = new Map();
   const scopedComputationStats = {
     hits: 0,
     misses: 0,
@@ -390,8 +391,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     slowComputations: [],
     lazySectionsRendered: 0,
     initialInspectorsRendered: 0,
-    renderTimings: []
+    renderTimings: [],
+    inspectorDetailTimings: []
   };
+  const inspectorDetailCache = new Map();
+  let pendingProgressiveRenderPromises = [];
 
   function scopedComputationCacheStamp() {
     const active = studyData.activeSourcePage || {};
@@ -437,8 +441,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       .slice(0, 8);
   }
 
+  function recordInspectorDetailTiming(metric = {}) {
+    scopedComputationStats.inspectorDetailTimings.push({
+      inspectorId: metric.inspectorId || "",
+      inspectorName: metric.inspectorName || "Unknown inspector",
+      totalExpansionTime: Math.round(Number(metric.totalExpansionTime || 0) * 10) / 10,
+      recordPreparationTime: Math.round(Number(metric.recordPreparationTime || 0) * 10) / 10,
+      provenancePreparationTime: Math.round(Number(metric.provenancePreparationTime || 0) * 10) / 10,
+      htmlGenerationTime: Math.round(Number(metric.htmlGenerationTime || 0) * 10) / 10,
+      domInsertionTime: Math.round(Number(metric.domInsertionTime || 0) * 10) / 10,
+      groupSummaryRefreshTime: Math.round(Number(metric.groupSummaryRefreshTime || 0) * 10) / 10,
+      cacheState: metric.cacheState || "miss",
+      recordCount: Number(metric.recordCount || 0),
+      renderedItemCount: Number(metric.renderedItemCount || 0),
+      hiddenItemCount: Number(metric.hiddenItemCount || 0),
+      provenanceBlocksRendered: Number(metric.provenanceBlocksRendered || 0),
+      errorCount: Number(metric.errorCount || 0)
+    });
+    scopedComputationStats.inspectorDetailTimings = scopedComputationStats.inspectorDetailTimings
+      .sort((left, right) => right.totalExpansionTime - left.totalExpansionTime)
+      .slice(0, 16);
+  }
+
   function invalidateScopedComputationCache(reason = "scope/data refresh") {
     scopedComputationCache.clear();
+    inspectorDetailCache.clear();
+    lazyRecordDetailFactories.clear();
     scopedComputationStats.invalidations += 1;
     scopedComputationStats.lastInvalidationReason = reason;
     scopedComputationStats.slowComputations = [];
@@ -1159,6 +1187,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     return card;
   }
 
+  function createLazyNestedRecordDetails(summaryText, lineFactory, options = {}) {
+    const details = document.createElement("details");
+    details.className = "semantic-section semantic-section-collapsible lazy-record-detail";
+    details.dataset.lazyRecordDetail = "true";
+    const detailKey = options.detailKey || `lazy-detail:${summaryText || "detail"}:${lazyRecordDetailFactories.size}`;
+    details.dataset.lazyRecordDetailKey = detailKey;
+    lazyRecordDetailFactories.set(detailKey, lineFactory);
+    const summary = document.createElement("summary");
+    summary.textContent = summaryText || "Show Detail";
+    const body = document.createElement("div");
+    body.className = "semantic-section-body lazy-semantic-section-body";
+    body.textContent = "Not rendered yet. Expand to load detail for this record only.";
+    details.addEventListener("toggle", () => {
+      if (!details.open || body.dataset.loaded === "true") return;
+      const started = nowForDiagnostics();
+      try {
+        const factory = lazyRecordDetailFactories.get(detailKey);
+        if (!factory) throw new Error("Lazy record detail factory is unavailable for the current scope.");
+        const lines = asArray(factory()).map((line) => normalizeText(line)).filter(Boolean);
+        clearElement(body);
+        body.appendChild(semanticSectionBody("", { list: lines, plainList: true, preserveExact: true }));
+        body.dataset.loaded = "true";
+        recordRenderTiming(`Lazy nested detail: ${summaryText}`, nowForDiagnostics() - started);
+      } catch (error) {
+        body.textContent = `Load failed: ${error.message}`;
+        body.dataset.loadError = "true";
+        console.error("I.C.E. lazy nested record detail failed", error);
+      }
+    });
+    details.append(summary, body);
+    return details;
+  }
+
   function sourceVerseBookTitle(value = "") {
     const normalized = normalizeText(value).replace(/[_-]+/g, " ");
     if (!normalized) return "";
@@ -1400,12 +1461,48 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    for (const item of items.slice(0, DISPLAY_LIMIT)) {
-      container.appendChild(renderItem(item));
-    }
+    const visibleItems = items.slice(0, DISPLAY_LIMIT);
+    const initialBatchSize = Math.min(2, visibleItems.length);
+    const appendRenderedItem = (item, index) => {
+      try {
+        container.appendChild(renderItem(item));
+      } catch (error) {
+        console.error("I.C.E. record detail render failed", { hiddenLabel, index, item, error });
+        container.appendChild(createCard(
+          `Render error in ${hiddenLabel} ${index + 1}`,
+          `Record detail failed to render: ${error.message}`,
+          "record-level failure isolated"
+        ));
+      }
+    };
 
-    if (items.length > DISPLAY_LIMIT) {
-      appendEmpty(container, `${items.length - DISPLAY_LIMIT} more ${hiddenLabel}(s) hidden by preview limit. Use search/filter or show more later.`);
+    visibleItems.slice(0, initialBatchSize).forEach(appendRenderedItem);
+
+    const appendHiddenNotice = () => {
+      if (items.length > DISPLAY_LIMIT) {
+        appendEmpty(container, `${items.length - DISPLAY_LIMIT} more ${hiddenLabel}(s) hidden by preview limit. Use search/filter or show more later.`);
+      }
+    };
+
+    if (visibleItems.length > initialBatchSize) {
+      const progress = document.createElement("p");
+      progress.className = "deferred-study-section-note";
+      progress.textContent = `Rendering ${visibleItems.length - initialBatchSize} more visible ${hiddenLabel}(s)...`;
+      container.appendChild(progress);
+      const schedule = typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback) => window.setTimeout(callback, 16);
+      const promise = new Promise((resolve) => {
+        schedule(() => {
+          progress.remove();
+          visibleItems.slice(initialBatchSize).forEach((item, index) => appendRenderedItem(item, initialBatchSize + index));
+          appendHiddenNotice();
+          resolve();
+        });
+      });
+      pendingProgressiveRenderPromises.push(promise);
+    } else {
+      appendHiddenNotice();
     }
   }
 
@@ -6681,7 +6778,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const aliases = asArray(identity.aliases).slice(0, 5).join(", ") || "No aliases yet";
       const surfaces = asArray(identity.surfaceForms).slice(0, 4).join(", ");
       const entityClass = classifyEntityDisplay(identity);
-      return createCard(
+      const card = createCard(
         identity.canonicalName || "Canonical identity",
         [
           entityClass ? `${entityClassLabel(entityClass)}` : "Class Unclassified",
@@ -6693,6 +6790,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         ].filter(Boolean).join("\n"),
         `${identity.entityType || "entity"} | ${displayAppConfidence(identity.confidence || "probable")}`
       );
+      const detailKey = `canonical-identity:${normalizeText(identity.id || identity.canonicalName || identity.displayName || asArray(identity.surfaceForms)[0] || "unknown").toLowerCase()}`;
+      card.appendChild(createLazyNestedRecordDetails("Show Evidence / Provenance", () => [
+        `Record identity: ${identity.canonicalName || identity.displayName || identity.id || "Canonical identity"}`,
+        `Source forms: ${asArray(identity.surfaceForms).join(", ") || "not recorded"}`,
+        `Aliases: ${asArray(identity.aliases).join(", ") || "not recorded"}`,
+        `Entity type: ${identity.entityType || "entity"}`,
+        `Identity scope: ${identity.identityScope || "source-mentioned"}`,
+        `Confidence: ${identity.confidence || "probable"}`,
+        `Source scope: ${identity.scopePath || identity.verseRange || currentStudyScopeLabel()}`,
+        `Provenance: ${identity.provenance || identity.derivedFrom || "I.C.E. Canonical Identities"}`,
+        `Boundary: nested evidence/provenance is generated only when this disclosure is opened; canonical identity display remains preview-only and does not rewrite entity classification.`
+      ], { detailKey }));
+      return card;
     }, "No canonical identities match.", "identity");
   }
   function mentionSearchText(item) {
@@ -17000,9 +17110,15 @@ createRevelationPartsSection(item.subEvents)
     const lazyEligible = editorArchitectLazyInspectorCount();
     const deferredRatio = lazyEligible ? Math.round((scopedComputationStats.lazySectionsRendered / lazyEligible) * 100) : null;
     const cacheStampParts = scopedComputationCacheStamp().split("::");
+    const inspectorTimings = scopedComputationStats.inspectorDetailTimings;
+    const canonicalTiming = inspectorTimings.find((item) => item.inspectorName === "Canonical Identities");
+    const inspectorTimingLines = inspectorTimings.length
+      ? inspectorTimings.map((item) => `${item.inspectorName}: records=${item.recordCount}; rendered=${item.renderedItemCount}; hidden=${item.hiddenItemCount}; total=${item.totalExpansionTime}ms; preparation=${item.recordPreparationTime}ms; provenance=${item.provenancePreparationTime}ms; html=${item.htmlGenerationTime}ms; dom=${item.domInsertionTime}ms; groupSummary=${item.groupSummaryRefreshTime}ms; cache=${item.cacheState}; provenanceBlocksRendered=${item.provenanceBlocksRendered}; errors=${item.errorCount}`)
+      : ["No inspector expansion measured yet."];
     return [
       "Performance Diagnostics",
       "Likely pre-optimization bottlenecks: eager Editor / Architect inspector generation; repeated language/QA/health/provenance computations; collapsed sections building full DOM bodies before expansion.",
+      "Canonical Identities bottleneck finding: expansion previously routed through loadDeferredSection -> renderStudy, rebuilding all section placeholders/loaded wrappers and group/navigation visibility for a 13-record detail view; the record count was not the primary bottleneck.",
       `Current view mode: ${currentPresentationModeLabel()}`,
       `Total panel render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "renderStudy")?.elapsed ?? "not measured yet"} ms`,
       `Initial summary render time: ${scopedComputationStats.renderTimings.find((item) => item.label === "Study Scope")?.elapsed ?? "not measured yet"} ms`,
@@ -17013,6 +17129,7 @@ createRevelationPartsSection(item.subEvents)
       `Inspectors rendered lazily: ${scopedComputationStats.lazySectionsRendered}`,
       `Deferred Inspector Ratio: ${formatMetricPercent(deferredRatio)} (${scopedComputationStats.lazySectionsRendered}/${lazyEligible})`,
       `Cached collection count: ${scopedComputationCache.size}`,
+      `Inspector detail cache entries: ${inspectorDetailCache.size}`,
       `Cache hits: ${scopedComputationStats.hits}`,
       `Cache misses: ${scopedComputationStats.misses}`,
       `Cache Hit Rate: ${formatMetricPercent(cacheHitRate)} (${scopedComputationStats.hits}/${totalCacheRequests || 0})`,
@@ -17020,11 +17137,14 @@ createRevelationPartsSection(item.subEvents)
       `Last cache invalidation: ${scopedComputationStats.lastInvalidationReason}`,
       `Current cache key/revision summary: scope=${cacheStampParts[0] || "not recorded"}; active=${cacheStampParts[1] || "not recorded"}; analyzed=${cacheStampParts[2] || "none"}; timestamp=${cacheStampParts[3] || "not recorded"}`,
       `Largest scoped collection counts: ${largestCollections.map(([label, count]) => `${label}=${count}`).join("; ") || "none"}`,
+      `Canonical Identities expansion: ${canonicalTiming ? `records=${canonicalTiming.recordCount}; rendered=${canonicalTiming.renderedItemCount}; hidden=${canonicalTiming.hiddenItemCount}; total=${canonicalTiming.totalExpansionTime}ms; prep=${canonicalTiming.recordPreparationTime}ms; html=${canonicalTiming.htmlGenerationTime}ms; dom=${canonicalTiming.domInsertionTime}ms; cache=${canonicalTiming.cacheState}; provenanceBlocksRendered=${canonicalTiming.provenanceBlocksRendered}` : "Not measured"}`,
+      "Inspector expansion measurements:",
+      ...inspectorTimingLines,
       `Slowest display computations: ${scopedComputationStats.slowComputations.length ? scopedComputationStats.slowComputations.map((item) => `${item.key}=${item.elapsed}ms`).join("; ") : "none over threshold"}`,
       `Slowest render timings: ${scopedComputationStats.renderTimings.length ? scopedComputationStats.renderTimings.map((item) => `${item.label}=${item.elapsed}ms`).join("; ") : "not measured yet"}`,
-      "Performance metric definitions: Initial Render Time = visible summary and essential controls usable; Full Detail Render Time = accumulated lazy section render timings after expansion; Cache Hit Rate = cache hits / cache requests; Deferred Inspector Ratio = lazy-rendered inspectors / eligible lazy inspectors.",
+      "Performance metric definitions: Initial Render Time = visible summary and essential controls usable; Inspector Expansion Time = targeted on-demand detail render for one opened inspector; Cache Hit Rate = cache hits / cache requests; Deferred Inspector Ratio = lazy-rendered inspectors / eligible lazy inspectors.",
       "Empty/loading states: Summary ready; Details not rendered yet; Loading details; No records; No candidates; Dependency unavailable; Scope changed - refreshing; Cached for current scope.",
-      "Boundary: diagnostics are display-only. Cache is runtime-scoped and does not write semantic storage, change Context Lock, alter Study View output, crawl, or process queues."
+      "Boundary: diagnostics are display-only. Detail cache is runtime-scoped HTML/display output only and does not write semantic storage, change Context Lock, alter Study View output, crawl, or process queues."
     ];
   }
 
@@ -26002,6 +26122,106 @@ createRevelationPartsSection(item.subEvents)
     container.appendChild(createDeferredSectionDetails(entry, { open: true, loadedNodes }));
   }
 
+  async function waitForNewProgressiveRenderPromises(startIndex = 0) {
+    const pending = pendingProgressiveRenderPromises.slice(startIndex);
+    if (!pending.length) return;
+    await Promise.allSettled(pending);
+    if (startIndex === 0) pendingProgressiveRenderPromises = [];
+    else pendingProgressiveRenderPromises = pendingProgressiveRenderPromises.slice(0, startIndex);
+  }
+
+  function deferredInspectorCacheKey(label, term = "") {
+    return [
+      scopedComputationCacheStamp(),
+      normalizeText(label).toLowerCase(),
+      normalizeText(term).toLowerCase(),
+      "preview",
+      DISPLAY_LIMIT
+    ].join("::");
+  }
+
+  async function renderDeferredSectionDetail(entry, term = "") {
+    const section = document.getElementById(entry.sectionId);
+    const container = section?.querySelector(".card-grid");
+    const count = section?.querySelector(".count-label");
+    if (!container) return;
+    const inspectorId = entry.sectionId || normalizeText(entry.label).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const totalStarted = nowForDiagnostics();
+    const recordPrepStarted = nowForDiagnostics();
+    const recordCount = deferredSectionRecordCount(entry.label) || 0;
+    const recordPreparationTime = nowForDiagnostics() - recordPrepStarted;
+    const hiddenItemCount = Math.max(0, recordCount - DISPLAY_LIMIT);
+    const cacheKey = deferredInspectorCacheKey(entry.label, term);
+    const cached = inspectorDetailCache.get(cacheKey);
+    if (cached) {
+      const domStarted = nowForDiagnostics();
+      clearElement(container);
+      container.innerHTML = cached.html;
+      if (count) count.textContent = cached.countText || deferredSectionCountLabel(entry.label);
+      const domInsertionTime = nowForDiagnostics() - domStarted;
+      loadedDeferredSections.add(entry.label);
+      recordInspectorDetailTiming({
+        inspectorId,
+        inspectorName: entry.label,
+        totalExpansionTime: nowForDiagnostics() - totalStarted,
+        recordPreparationTime,
+        provenancePreparationTime: 0,
+        htmlGenerationTime: 0,
+        domInsertionTime,
+        groupSummaryRefreshTime: 0,
+        cacheState: "hit",
+        recordCount,
+        renderedItemCount: Math.min(recordCount, DISPLAY_LIMIT),
+        hiddenItemCount,
+        provenanceBlocksRendered: 0,
+        errorCount: container.querySelectorAll("[data-load-error='true']").length
+      });
+      recordRenderTiming(`Deferred section cache hit: ${entry.label}`, nowForDiagnostics() - totalStarted);
+      return;
+    }
+
+    const htmlStarted = nowForDiagnostics();
+    const progressiveStartIndex = pendingProgressiveRenderPromises.length;
+    delete container.dataset.deferredSection;
+    safeRenderSection(entry.label, entry.renderer, term);
+    await waitForNewProgressiveRenderPromises(progressiveStartIndex);
+    const htmlGenerationTime = nowForDiagnostics() - htmlStarted;
+    const loadedNodes = Array.from(container.childNodes);
+    const domStarted = nowForDiagnostics();
+    clearElement(container);
+    container.appendChild(createDeferredSectionDetails(entry, { open: true, loadedNodes }));
+    if (count) count.textContent = deferredSectionCountLabel(entry.label);
+    const domInsertionTime = nowForDiagnostics() - domStarted;
+    const html = container.innerHTML;
+    inspectorDetailCache.set(cacheKey, {
+      html,
+      countText: count?.textContent || deferredSectionCountLabel(entry.label),
+      recordCount,
+      renderedItemCount: Math.min(recordCount, DISPLAY_LIMIT),
+      hiddenItemCount,
+      createdAt: Date.now()
+    });
+    loadedDeferredSections.add(entry.label);
+    const provenanceBlocksRendered = container.querySelectorAll(".ice-provenance").length;
+    recordInspectorDetailTiming({
+      inspectorId,
+      inspectorName: entry.label,
+      totalExpansionTime: nowForDiagnostics() - totalStarted,
+      recordPreparationTime,
+      provenancePreparationTime: 0,
+      htmlGenerationTime,
+      domInsertionTime,
+      groupSummaryRefreshTime: 0,
+      cacheState: "miss",
+      recordCount,
+      renderedItemCount: Math.min(recordCount, DISPLAY_LIMIT),
+      hiddenItemCount,
+      provenanceBlocksRendered,
+      errorCount: container.querySelectorAll("[data-load-error='true']").length
+    });
+    recordRenderTiming(`Deferred section detail: ${entry.label}`, nowForDiagnostics() - totalStarted);
+  }
+
   function createDeferredStudyScopeDiagnosticsDetails() {
     const details = document.createElement("details");
     details.className = "study-scope-source-diagnostics";
@@ -26557,8 +26777,8 @@ createRevelationPartsSection(item.subEvents)
     showDiagnosticMessage(`Loading ${label}...`);
     try {
       await ensureFullStudyDataLoaded();
-      loadedDeferredSections.add(label);
-      renderStudy();
+      const term = normalizeText(document.getElementById("searchInput")?.value || "").toLowerCase();
+      await renderDeferredSectionDetail(entry, term);
       showDiagnosticMessage("");
     } catch (error) {
       console.error(`I.C.E. deferred section load failed: ${label}`, error);
@@ -26573,6 +26793,28 @@ createRevelationPartsSection(item.subEvents)
     await ensureFullStudyDataLoaded();
     safeRenderSection("Study Scope", renderVolumeContext, normalizeText(document.getElementById("searchInput")?.value || "").toLowerCase());
     showDiagnosticMessage("");
+  }
+
+  function handleLazyRecordDetailToggle(event) {
+    const details = event.target?.closest?.("details[data-lazy-record-detail='true']");
+    if (!details || !details.open) return;
+    const body = details.querySelector(".lazy-semantic-section-body");
+    if (!body || body.dataset.loaded === "true") return;
+    const started = nowForDiagnostics();
+    try {
+      const detailKey = details.dataset.lazyRecordDetailKey || "";
+      const factory = lazyRecordDetailFactories.get(detailKey);
+      if (!factory) throw new Error("Lazy record detail factory is unavailable for the current scope.");
+      const lines = asArray(factory()).map((line) => normalizeText(line)).filter(Boolean);
+      clearElement(body);
+      body.appendChild(semanticSectionBody("", { list: lines, plainList: true, preserveExact: true }));
+      body.dataset.loaded = "true";
+      recordRenderTiming("Lazy nested detail: cached record", nowForDiagnostics() - started);
+    } catch (error) {
+      body.textContent = `Load failed: ${error.message}`;
+      body.dataset.loadError = "true";
+      console.error("I.C.E. cached lazy nested record detail failed", error);
+    }
   }
 
   function scheduleRenderStudy(delay = 140) {
@@ -26667,6 +26909,7 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
   document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
   document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
+  document.addEventListener("toggle", handleLazyRecordDetailToggle, true);
   document.getElementById("closeSourceVerseDialog")?.addEventListener("click", () => document.getElementById("sourceVerseDialog")?.close());
   document.getElementById("sourceVerseDialog")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) event.currentTarget.close();
