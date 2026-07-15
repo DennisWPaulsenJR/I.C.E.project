@@ -413,12 +413,28 @@ body {
   color: #5f6b7a;
 }
 
+.card-grid.scope-snapshot-grid,
 .scope-snapshot-grid {
   grid-template-columns: 1fr;
+  min-width: 0;
+  width: 100%;
 }
 
 .scope-snapshot-card {
   border-color: #bfd0df;
+  min-width: 0;
+  width: 100%;
+}
+
+.scope-snapshot-section[data-snapshot-presentation="active"],
+.scope-snapshot-grid[data-snapshot-presentation="active"] {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.study-section-group[data-contains-active-snapshot="true"] .scope-snapshot-section {
+  grid-column: 1 / -1;
 }
 
 .scope-snapshot-topbar {
@@ -681,7 +697,8 @@ body {
   stroke-width: 3;
 }
 
-.scope-snapshot-cluster.selected rect {
+.scope-snapshot-cluster.selected rect,
+.scope-snapshot-cluster.selected .scope-snapshot-anchor-ring {
   stroke: #071632;
   stroke-width: 3;
 }
@@ -700,7 +717,23 @@ body {
   stroke-width: 1.5;
 }
 
-.scope-snapshot-cluster.warning rect {
+.scope-snapshot-anchor-ring {
+  fill: color-mix(in srgb, var(--snapshot-node-color) 14%, #ffffff);
+  stroke: var(--snapshot-node-color, #25364d);
+  stroke-width: 1.8;
+}
+
+.scope-snapshot-type_cluster .scope-snapshot-anchor-ring {
+  stroke-dasharray: 4 2;
+}
+
+.scope-snapshot-scene_cluster .scope-snapshot-anchor-ring {
+  fill: color-mix(in srgb, var(--snapshot-node-color) 22%, #ffffff);
+  stroke-width: 2.4;
+}
+
+.scope-snapshot-cluster.warning rect,
+.scope-snapshot-cluster.warning .scope-snapshot-anchor-ring {
   fill: #fff1ec;
   stroke: #ef3b38;
 }
@@ -720,8 +753,9 @@ body {
 .scope-snapshot-lower-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(320px, 2fr) minmax(250px, 1fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   margin-top: 12px;
+  min-width: 0;
 }
 
 .scope-snapshot-detail-panel,
@@ -730,13 +764,16 @@ body {
   border: 1px solid #d8dde6;
   border-radius: 8px;
   background: #ffffff;
+  box-sizing: border-box;
+  min-width: 0;
   padding: 12px;
 }
 
 .scope-snapshot-detail-panel {
   display: grid;
   gap: 12px;
-  grid-template-columns: auto minmax(220px, 1.2fr) minmax(180px, .9fr) minmax(200px, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
+  overflow-anchor: none;
   scroll-margin-top: 86px;
 }
 
@@ -813,6 +850,11 @@ body {
   outline: none;
 }
 
+.scope-snapshot-detail-actions button:disabled {
+  cursor: progress;
+  opacity: .68;
+}
+
 .scope-snapshot-related-list h5,
 .scope-snapshot-lazy-detail h5 {
   color: #17202a;
@@ -821,12 +863,13 @@ body {
 }
 
 .scope-snapshot-related-list ol,
-.scope-snapshot-lazy-detail ul {
+.scope-snapshot-lazy-detail ul,
+.scope-snapshot-lazy-detail ol {
   color: #445064;
   font-size: .78rem;
   line-height: 1.4;
   margin: 0;
-  max-height: 118px;
+  max-height: 210px;
   overflow: auto;
   padding-left: 18px;
 }
@@ -836,10 +879,47 @@ body {
   font-weight: 800;
 }
 
+.scope-snapshot-related-list li[data-snapshot-related-id] {
+  cursor: pointer;
+}
+
+.scope-snapshot-related-list li[data-snapshot-related-id]:hover,
+.scope-snapshot-related-list li[data-snapshot-related-id]:focus-visible {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 .scope-snapshot-lazy-detail {
   border-top: 1px solid #e5e7eb;
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
+  overflow-anchor: none;
   padding-top: 8px;
+}
+
+.scope-snapshot-lazy-detail[hidden] {
+  display: none;
+}
+
+.scope-snapshot-detail-lines li {
+  margin-bottom: 4px;
+}
+
+.scope-snapshot-back-route {
+  background: #ffffff;
+  border: 1px solid #9db5d1;
+  border-radius: 6px;
+  color: #1f334d;
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  margin: 8px 0;
+  padding: 5px 8px;
+}
+
+.scope-snapshot-inspector-target {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .22);
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
 }
 
 .scope-snapshot-legend-grid {
@@ -874,17 +954,41 @@ body {
   background: linear-gradient(90deg, #eef4fb 0, #ffffff 100%);
   border: 1px solid #d8dde6;
   border-radius: 6px;
+  box-sizing: border-box;
+  cursor: ew-resize;
   height: 74px;
   margin-bottom: 10px;
   overflow: hidden;
   position: relative;
 }
 
+.scope-snapshot-minimap-viewport {
+  background: rgba(37, 99, 235, .12);
+  border: 2px solid #2563eb;
+  border-radius: 5px;
+  bottom: 4px;
+  box-sizing: border-box;
+  cursor: grab;
+  left: 0;
+  max-width: 100%;
+  position: absolute;
+  top: 4px;
+  width: 100%;
+  z-index: 2;
+}
+
+.scope-snapshot-minimap-track[data-no-overflow="true"] .scope-snapshot-minimap-viewport {
+  cursor: default;
+}
+
 .scope-snapshot-minimap-track span {
   border-radius: 999px;
+  box-sizing: border-box;
   height: 4px;
   position: absolute;
+  transform: translateX(-50%);
   width: 18px;
+  z-index: 1;
 }
 
 .scope-snapshot-minimap-track span.selected {
@@ -900,15 +1004,51 @@ body {
   padding: 24px 10px;
 }
 
-.scope-snapshot-scope-meter {
+.scope-breadth-control {
+  box-sizing: border-box;
+  min-width: 0;
   width: 100%;
 }
 
-.scope-snapshot-meter-labels {
-  color: #5f6b7a;
-  display: flex;
-  font-size: .75rem;
-  justify-content: space-between;
+.scope-breadth-segmented-control {
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  width: 100%;
+}
+
+.scope-breadth-segmented-control button {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #25364d;
+  cursor: pointer;
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 800;
+  line-height: 1.2;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  padding: 7px 6px;
+  text-align: center;
+}
+
+.scope-breadth-segmented-control button:hover,
+.scope-breadth-segmented-control button:focus-visible {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.scope-breadth-segmented-control button.selected,
+.scope-breadth-segmented-control button[aria-pressed="true"] {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .2);
 }
 
 .scope-snapshot-minimap p,
@@ -922,6 +1062,17 @@ body {
 .scope-snapshot-footer {
   margin-top: 12px;
   text-align: center;
+}
+
+#ice-overlay-root {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 1200;
+}
+
+#ice-overlay-root > * {
+  pointer-events: auto;
 }
 
 @media (max-width: 900px) {

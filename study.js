@@ -366,10 +366,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const scopeSnapshotViewState = {
     graphMode: "linear",
     scopeMode: "active_page",
+    snapshotVisualBreadth: "active_page",
     zoomMode: "auto",
     detailLevel: "auto",
-    scopeBreadth: 34,
-    selectedGraphId: ""
+    scopeBreadth: 0,
+    selectedGraphId: "",
+    detailCache: new Map(),
+    expandedAnchorId: "",
+    miniMapDragging: false,
+    miniMapDragOffset: null,
+    miniMapSuppressClick: false,
+    miniMapSyncFrame: 0,
+    miniMapResizeObserver: null,
+    miniMapDiagnostics: null,
+    layoutDiagnostics: [],
+    savedPresentationState: null
   };
   const scopeSnapshotGraphCache = new Map();
   let scopeSnapshotLastCacheState = "not requested";
@@ -538,6 +549,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function invalidateScopedComputationCache(reason = "scope/data refresh") {
     scopedComputationCache.clear();
     scopeSnapshotGraphCache.clear();
+    scopeSnapshotViewState.detailCache.clear();
     scopeSnapshotLastCacheState = `cleared: ${reason}`;
     inspectorDetailCache.clear();
     lazyRecordDetailFactories.clear();
@@ -12615,31 +12627,53 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotCurrentModeLabel() {
-    return scopeSnapshotViewState.scopeMode === "stored_session"
+    const breadth = scopeSnapshotViewState.snapshotVisualBreadth || scopeSnapshotViewState.scopeMode;
+    return breadth === "stored_session"
       ? "Stored Session"
-      : scopeSnapshotViewState.scopeMode === "selected_scope"
+      : breadth === "selected_scope"
         ? "Selected Scope"
         : "Active Page";
   }
 
   function scopeSnapshotScopePages() {
-    if (scopeSnapshotViewState.scopeMode === "stored_session") return analyzedPageHistory();
-    if (scopeSnapshotViewState.scopeMode === "selected_scope") return currentStudyScopePages();
+    const breadth = scopeSnapshotViewState.snapshotVisualBreadth || scopeSnapshotViewState.scopeMode;
+    if (breadth === "stored_session") return analyzedPageHistory();
+    if (breadth === "selected_scope") return currentStudyScopePages();
     const active = activeSourcePageRecord();
     return active ? [active] : currentStudyScopePages().slice(0, 1);
   }
 
-  function scopeSnapshotScopeModeFromBreadth(value = scopeSnapshotViewState.scopeBreadth) {
-    const breadth = Number(value) || 0;
-    if (breadth >= 72) return "stored_session";
-    if (breadth >= 42) return "selected_scope";
+  function scopeSnapshotScopeModeFromBreadth(value = scopeSnapshotViewState.snapshotVisualBreadth || scopeSnapshotViewState.scopeBreadth) {
+    if (typeof value === "string") {
+      const normalized = normalizeText(value).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+      if (normalized === "stored_session" || normalized === "selected_scope" || normalized === "active_page") return normalized;
+    }
+    const breadth = Math.round(Number(value) || 0);
+    if (breadth >= 2) return "stored_session";
+    if (breadth >= 1) return "selected_scope";
     return "active_page";
   }
 
+  function scopeSnapshotBreadthValueFromMode(mode = "active_page") {
+    if (mode === "stored_session") return 2;
+    if (mode === "selected_scope") return 1;
+    return 0;
+  }
+
   function scopeSnapshotSetBreadth(value) {
-    const breadth = Math.max(0, Math.min(100, Number(value) || 0));
-    scopeSnapshotViewState.scopeBreadth = breadth;
-    scopeSnapshotViewState.scopeMode = scopeSnapshotScopeModeFromBreadth(breadth);
+    const mode = scopeSnapshotScopeModeFromBreadth(value);
+    scopeSnapshotViewState.snapshotVisualBreadth = mode;
+    scopeSnapshotViewState.scopeMode = mode;
+    scopeSnapshotViewState.scopeBreadth = scopeSnapshotBreadthValueFromMode(mode);
+    return mode;
+  }
+
+  function scopeSnapshotBreadthOptions() {
+    return [
+      { value: 0, mode: "active_page", label: "Active Page" },
+      { value: 1, mode: "selected_scope", label: "Selected Scope" },
+      { value: 2, mode: "stored_session", label: "Stored Session" }
+    ];
   }
 
   function scopeSnapshotLaneStyle(laneId = "") {
@@ -12712,6 +12746,124 @@ createRevelationPartsSection(item.subEvents)
     if (node.evidence) score += 6;
     if (node.reference?.verses?.length) score += 4;
     return score;
+  }
+
+  function scopeSnapshotAnchorKey(node = {}) {
+    const reference = node.reference || {};
+    const book = normalizeText(reference.book || "source").toLowerCase();
+    const chapter = Number(reference.chapter || 0) || "unknown";
+    const verses = asArray(reference.verses).map(Number).filter(Boolean);
+    const verseKey = verses.length ? verses.join("-") : "chapter";
+    return `${book}:${chapter}:${verseKey}`;
+  }
+
+  function scopeSnapshotAnchorLabel(node = {}) {
+    const reference = node.reference || {};
+    if (reference.label) return reference.label;
+    if (reference.chapter && asArray(reference.verses).length) return `${reference.book || "Source"} ${reference.chapter}:${asArray(reference.verses).join("-")}`;
+    if (reference.chapter) return `${reference.book || "Source"} ${reference.chapter}`;
+    return "Unpositioned source";
+  }
+
+  function scopeSnapshotClusterThresholds(lod = SCOPE_SNAPSHOT_LOD_STATES[2]) {
+    if (lod.level <= 1) return { individualMax: 1, clusterMin: 2, typeClusterMin: 6, sceneClusterMin: 13, labelBudget: 0 };
+    if (lod.level === 2) return { individualMax: 1, clusterMin: 2, typeClusterMin: 6, sceneClusterMin: 13, labelBudget: 2 };
+    if (lod.level === 3) return { individualMax: 2, clusterMin: 3, typeClusterMin: 6, sceneClusterMin: 13, labelBudget: 6 };
+    return { individualMax: 999, clusterMin: 999, typeClusterMin: 999, sceneClusterMin: 999, labelBudget: 24 };
+  }
+
+  function scopeSnapshotTypeCounts(nodes = []) {
+    return asArray(nodes).reduce((counts, node) => {
+      const key = normalizeText(node.recordType || node.laneId || "record");
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function scopeSnapshotAnchorSummary(nodes = []) {
+    const typeCounts = scopeSnapshotTypeCounts(nodes);
+    return Object.entries(typeCounts)
+      .sort((left, right) => right[1] - left[1])
+      .map(([type, count]) => `${type}: ${count}`)
+      .join("; ");
+  }
+
+  function scopeSnapshotBuildLaneAnchors(lane = {}, positionedNodes = [], lod = SCOPE_SNAPSHOT_LOD_STATES[2]) {
+    const thresholds = scopeSnapshotClusterThresholds(lod);
+    const groups = new Map();
+    positionedNodes.forEach((node) => {
+      const key = scopeSnapshotAnchorKey(node);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(node);
+    });
+    const anchors = Array.from(groups.entries()).map(([key, children], index) => {
+      const sortedChildren = children.slice().sort((left, right) => scopeSnapshotNodePriority(right) - scopeSnapshotNodePriority(left));
+      const xValues = sortedChildren.map((child) => Number(child.x || 0));
+      const warningCount = sortedChildren.filter((child) => /unresolved|ambiguous|warning/i.test([child.status, child.confidence, child.label].join(" "))).length;
+      const recordCount = sortedChildren.length;
+      const clusterMode = recordCount >= thresholds.sceneClusterMin
+        ? "scene_cluster"
+        : recordCount >= thresholds.typeClusterMin
+          ? "type_cluster"
+          : recordCount >= thresholds.clusterMin
+            ? "cluster"
+            : "individual";
+      const anchorId = `snapshot-anchor-${lane.id}-${key.replace(/[^a-z0-9:_-]+/gi, "-")}-${index}`;
+      return {
+        anchorId,
+        clusterId: anchorId,
+        anchorKey: key,
+        laneId: lane.id,
+        x: xValues.reduce((sum, value) => sum + value, 0) / Math.max(1, xValues.length),
+        recordCount,
+        clusterMode,
+        referenceLabel: scopeSnapshotAnchorLabel(sortedChildren[0]),
+        sourceRange: sortedChildren[0]?.reference?.label || scopeSnapshotAnchorLabel(sortedChildren[0]),
+        dominantRecordTypes: Object.entries(scopeSnapshotTypeCounts(sortedChildren)).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([type]) => type),
+        dominantClasses: [lane.label],
+        confidenceDistribution: sortedChildren.reduce((counts, child) => {
+          const key = normalizeText(child.confidence || "grounded");
+          counts[key] = (counts[key] || 0) + 1;
+          return counts;
+        }, {}),
+        warningCount,
+        childRecordIds: sortedChildren.map((child) => child.id),
+        representativeRecords: sortedChildren,
+        summary: scopeSnapshotAnchorSummary(sortedChildren),
+        status: warningCount ? "warning_cluster" : clusterMode
+      };
+    }).sort((left, right) => Number(left.x || 0) - Number(right.x || 0));
+    const expandedAnchor = anchors.find((anchor) => anchor.anchorId === scopeSnapshotViewState.expandedAnchorId || anchor.clusterId === scopeSnapshotViewState.expandedAnchorId);
+    const individual = [];
+    const clusters = [];
+    anchors.forEach((anchor) => {
+      const expanded = expandedAnchor && expandedAnchor.anchorId === anchor.anchorId;
+      if (anchor.clusterMode === "individual" || expanded) {
+        anchor.representativeRecords.forEach((node, childIndex) => {
+          individual.push({
+            ...node,
+            anchorId: anchor.anchorId,
+            anchorRecordCount: anchor.recordCount,
+            anchorChildIndex: childIndex,
+            anchorExpanded: Boolean(expanded),
+            anchorClusterMode: anchor.clusterMode
+          });
+        });
+      } else {
+        clusters.push(anchor);
+      }
+    });
+    const clusteredCount = clusters.reduce((sum, anchor) => sum + anchor.recordCount, 0);
+    return {
+      anchors,
+      individual,
+      clusters,
+      clusteredCount,
+      expandedAnchorId: expandedAnchor?.anchorId || "",
+      largestClusterSize: Math.max(0, ...anchors.map((anchor) => anchor.recordCount)),
+      averageRecordsPerAnchor: anchors.length ? Math.round((positionedNodes.length / anchors.length) * 10) / 10 : 0,
+      thresholds
+    };
   }
 
   function scopeSnapshotClusterRecords(lane = {}, positionedNodes = [], budget = 12, lod = SCOPE_SNAPSHOT_LOD_STATES[2]) {
@@ -13022,14 +13174,19 @@ createRevelationPartsSection(item.subEvents)
     const laneNodes = visibleLanes.map((lane) => {
       const lanePositioned = positioned.filter((node) => node.laneId === lane.id);
       const budget = Math.min(SCOPE_SNAPSHOT_PREVIEW_LIMIT, scopeSnapshotLaneBudget(lod, lane));
-      const clustered = scopeSnapshotClusterRecords(lane, lanePositioned, budget, lod);
+      const clustered = scopeSnapshotBuildLaneAnchors(lane, lanePositioned, lod);
       const labelPlan = scopeSnapshotLabelPlan(lane, clustered.individual, clustered.clusters, lod);
       return {
         ...lane,
         budget,
+        anchors: clustered.anchors,
         nodes: clustered.individual,
         clusters: clustered.clusters,
         labelPlan,
+        averageRecordsPerAnchor: clustered.averageRecordsPerAnchor,
+        largestClusterSize: clustered.largestClusterSize,
+        clusterThresholds: clustered.thresholds,
+        expandedAnchorId: clustered.expandedAnchorId,
         totalNodes: allNodes.filter((node) => node.laneId === lane.id).length,
         positionedCount: lanePositioned.length,
         clusteredCount: clustered.clusteredCount,
@@ -13045,6 +13202,10 @@ createRevelationPartsSection(item.subEvents)
     const collisionCountBeforeResolution = laneNodes.reduce((sum, lane) => sum + Number(lane.labelPlan?.collisionCountBeforeResolution || 0), 0);
     const unresolvedCollisionCount = laneNodes.reduce((sum, lane) => sum + Number(lane.labelPlan?.unresolvedCollisionCount || 0), 0);
     const maximumLaneDensity = Math.max(0, ...laneNodes.map((lane) => lane.positionedCount));
+    const anchorCount = laneNodes.reduce((sum, lane) => sum + asArray(lane.anchors).length, 0);
+    const largestCluster = Math.max(0, ...laneNodes.flatMap((lane) => asArray(lane.anchors).map((anchor) => anchor.recordCount)));
+    const averageRecordsPerCluster = clusterCount ? Math.round((clusteredRecordCount / clusterCount) * 10) / 10 : 0;
+    const collisionReduction = Math.max(0, positioned.length - laneNodes.reduce((sum, lane) => sum + lane.nodes.length + lane.clusters.length, 0));
     const evidenceComplete = allNodes.filter((node) => node.evidence || node.provenance).length;
     const coverage = metricPercent(positioned.length, allNodes.length);
     const fitScopeOverflow = scopeSnapshotViewState.zoomMode !== "auto" && scopeSnapshotViewState.zoomMode !== "fit" && scopeSnapshotViewState.detailLevel === "more";
@@ -13070,7 +13231,12 @@ createRevelationPartsSection(item.subEvents)
       unpositioned,
       hiddenLaneNodes,
       clusterCount,
+      anchorCount,
       clusteredRecordCount,
+      averageRecordsPerCluster,
+      largestCluster,
+      collisionReduction,
+      expandedClusterCount: scopeSnapshotViewState.expandedAnchorId ? 1 : 0,
       laneCount: visibleLanes.length,
       nodeCount: allNodes.length,
       visibleNodeCount: laneNodes.reduce((sum, lane) => sum + lane.nodes.length + lane.clusters.length, 0),
@@ -13097,10 +13263,10 @@ createRevelationPartsSection(item.subEvents)
     const cacheKey = [
       scopedComputationCacheStamp(),
       scopeSnapshotViewState.graphMode,
-      scopeSnapshotViewState.scopeMode,
+      scopeSnapshotViewState.snapshotVisualBreadth,
       scopeSnapshotViewState.zoomMode,
       scopeSnapshotViewState.detailLevel,
-      Math.round(scopeSnapshotViewState.scopeBreadth),
+      scopeSnapshotViewState.expandedAnchorId,
       scopeSnapshotViewportBucket()
     ].join("::");
     if (scopeSnapshotGraphCache.has(cacheKey)) {
@@ -13146,6 +13312,16 @@ createRevelationPartsSection(item.subEvents)
     return index % 6 === 0;
   }
 
+  function scopeSnapshotRadialOffset(index = 0, count = 1, expanded = false) {
+    if (count <= 1) return { x: 0, y: 0 };
+    const radius = expanded ? Math.min(28, 13 + count * 2) : 9;
+    const angle = (-Math.PI / 2) + (Math.PI * 2 * index) / Math.max(2, count);
+    return {
+      x: Math.round(Math.cos(angle) * radius * 10) / 10,
+      y: Math.round(Math.sin(angle) * radius * 10) / 10
+    };
+  }
+
   function scopeSnapshotSvg(model = {}) {
     const laneHeight = 58;
     const top = 58;
@@ -13167,6 +13343,7 @@ createRevelationPartsSection(item.subEvents)
         : "";
       const nodes = sortedNodes.map((node, nodeIndex) => {
         const x = xFor(node.x);
+        const radial = scopeSnapshotRadialOffset(Number(node.anchorChildIndex || 0), Number(node.anchorRecordCount || 1), Boolean(node.anchorExpanded || Number(node.anchorRecordCount || 1) > 1));
         const label = escapeHtml(trimText(node.label, 32));
         const search = escapeHtml(node.label);
         const nodeClass = [
@@ -13175,11 +13352,12 @@ createRevelationPartsSection(item.subEvents)
           scopeSnapshotViewState.selectedGraphId === node.id ? "selected" : ""
         ].filter(Boolean).join(" ");
         const ariaPressed = scopeSnapshotViewState.selectedGraphId === node.id ? " aria-pressed=\"true\"" : "";
-        const offsetY = (nodeIndex % 3 - 1) * 8;
+        const offsetY = radial.y || 0;
+        const offsetX = radial.x || 0;
         const labelText = lane.labelPlan?.visibleLabelIds?.has(node.id)
           ? `<text class="scope-snapshot-node-label" x="0" y="-10" text-anchor="middle">${label}</text>`
           : "";
-        return `<g class="${nodeClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-node-id="${escapeHtml(node.id)}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(node.label)} | ${escapeHtml(node.reference?.label || "unpositioned")} | ${escapeHtml(node.provenance)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
+        return `<g class="${nodeClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-node-id="${escapeHtml(node.id)}" data-snapshot-anchor-id="${escapeHtml(node.anchorId || "")}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x + offsetX} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(node.label)} | ${escapeHtml(node.reference?.label || "unpositioned")} | ${escapeHtml(node.provenance)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
       }).join("");
       const clusters = asArray(lane.clusters).map((cluster, clusterIndex) => {
         const x = xFor(cluster.x);
@@ -13188,11 +13366,19 @@ createRevelationPartsSection(item.subEvents)
           : "";
         const clusterClass = [
           "scope-snapshot-cluster",
+          `scope-snapshot-${cluster.clusterMode || "cluster"}`,
           cluster.warningCount ? "warning" : "",
           scopeSnapshotViewState.selectedGraphId === cluster.clusterId ? "selected" : ""
         ].filter(Boolean).join(" ");
         const ariaPressed = scopeSnapshotViewState.selectedGraphId === cluster.clusterId ? " aria-pressed=\"true\"" : "";
-        return `<g class="${clusterClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-cluster-id="${escapeHtml(cluster.clusterId)}" data-target-section="${escapeHtml(lane.targetSection)}" data-search-term="${escapeHtml(lane.label)}" transform="translate(${x} ${y + 14 + (clusterIndex % 2) * 7})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(lane.label)} cluster | ${cluster.recordCount} record(s) | range ${escapeHtml(cluster.sourceRange)} | warnings ${cluster.warningCount}</title>${labelText}<rect x="-10" y="-8" width="20" height="16" rx="6"></rect><text class="scope-snapshot-cluster-count" x="0" y="4" text-anchor="middle">${cluster.recordCount}</text></g>`;
+        const clusterTitle = [
+          `${lane.label} anchor`,
+          cluster.referenceLabel || cluster.sourceRange,
+          `${cluster.recordCount} record(s)`,
+          cluster.summary || "",
+          `warnings ${cluster.warningCount}`
+        ].filter(Boolean).join(" | ");
+        return `<g class="${clusterClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-cluster-id="${escapeHtml(cluster.clusterId)}" data-snapshot-anchor-id="${escapeHtml(cluster.anchorId || cluster.clusterId)}" data-target-section="${escapeHtml(lane.targetSection)}" data-search-term="${escapeHtml(lane.label)}" transform="translate(${x} ${y + 12})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(clusterTitle)}</title>${labelText}<circle class="scope-snapshot-anchor-ring" r="${cluster.clusterMode === "scene_cluster" ? 15 : cluster.clusterMode === "type_cluster" ? 13 : 11}"></circle><text class="scope-snapshot-cluster-count" x="0" y="4" text-anchor="middle">${cluster.recordCount}</text></g>`;
       }).join("");
       return `<g class="scope-snapshot-lane"><rect class="scope-snapshot-lane-band" x="0" y="${y - 28}" width="${width}" height="${laneHeight}" rx="0"></rect><rect class="scope-snapshot-lane-header" x="0" y="${y - 28}" width="${laneLabelWidth - 6}" height="${laneHeight}"></rect><text class="scope-snapshot-lane-symbol" x="24" y="${y + 5}" fill="${style.color}">${escapeHtml(style.symbol)}</text><text class="scope-snapshot-lane-label" x="54" y="${y - 1}">${escapeHtml(lane.label)}</text><text class="scope-snapshot-lane-count" x="${laneLabelWidth - 24}" y="${y + 5}">${lane.totalNodes}</text><line x1="${laneLabelWidth}" y1="${y}" x2="${width - 28}" y2="${y}"></line>${connector}${nodes}${clusters}</g>`;
     }).join("");
@@ -13206,6 +13392,7 @@ createRevelationPartsSection(item.subEvents)
   function scopeSnapshotSummaryLines(model = scopeSnapshotGraphModel()) {
     const selectionDiagnostics = scopedComputationStats.scopeSnapshotSelection || {};
     const latestSelectionTiming = asArray(selectionDiagnostics.timings)[0] || null;
+    const latestViewportTiming = asArray(selectionDiagnostics.viewportTimings)[0] || null;
     return [
       "Linear Scope Snapshot",
       `Mode: ${model.graphMode}`,
@@ -13215,9 +13402,10 @@ createRevelationPartsSection(item.subEvents)
       `Scope meter: ${Math.round(scopeSnapshotViewState.scopeBreadth)} (${scopeSnapshotCurrentModeLabel()}); presentation-only breadth control`,
       `Active scope: ${model.activeScope}`,
       `Axis: ${model.axisGranularity}; ${model.startReference} to ${model.endReference}`,
-      `Nodes: eligible=${model.nodeCount}; individually rendered=${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}; clustered=${model.clusteredRecordCount}; unpositioned=${model.unpositionedCount}; visible objects=${model.visibleNodeCount}; clusters=${model.clusterCount}`,
+      `Nodes: eligible=${model.nodeCount}; anchors=${model.anchorCount}; individually rendered=${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}; clustered=${model.clusteredRecordCount}; unpositioned=${model.unpositionedCount}; visible objects=${model.visibleNodeCount}; clusters=${model.clusterCount}`,
+      `LOD clustering: largestCluster=${model.largestCluster}; averageRecordsPerCluster=${model.averageRecordsPerCluster}; expandedClusters=${model.expandedClusterCount}; collisionReduction=${model.collisionReduction}`,
       `Labels: visible=${model.visibleLabelCount}; suppressed=${model.suppressedLabelCount}; collisions before resolution=${model.collisionCountBeforeResolution}; unresolved collisions=${model.unresolvedCollisionCount}`,
-      ...model.lanes.map((lane) => `${lane.label}: total=${lane.totalNodes}; individual=${lane.nodes.length}; clusters=${asArray(lane.clusters).length}; clusteredRecords=${lane.clusteredCount}; positioned=${lane.positionedCount}; unpositioned=${lane.unpositionedCount}; budget=${lane.budget}`),
+      ...model.lanes.map((lane) => `${lane.label}: total=${lane.totalNodes}; anchors=${asArray(lane.anchors).length}; individual=${lane.nodes.length}; clusters=${asArray(lane.clusters).length}; clusteredRecords=${lane.clusteredCount}; positioned=${lane.positionedCount}; unpositioned=${lane.unpositionedCount}; largestCluster=${lane.largestClusterSize}; avgRecordsPerAnchor=${lane.averageRecordsPerAnchor}; thresholds individual<=${lane.clusterThresholds?.individualMax}, cluster>=${lane.clusterThresholds?.clusterMin}, type>=${lane.clusterThresholds?.typeClusterMin}, scene>=${lane.clusterThresholds?.sceneClusterMin}`),
       `Coverage: ${formatMetricPercent(model.coverage)}`,
       `Snapshot completeness: ${formatMetricPercent(model.snapshotCompleteness)}`,
       `Evidence completeness: ${formatMetricPercent(metricPercent(model.evidenceComplete, model.nodeCount))}`,
@@ -13250,6 +13438,8 @@ createRevelationPartsSection(item.subEvents)
     for (const lane of asArray(model.lanes)) {
       const cluster = asArray(lane.clusters).find((item) => item.clusterId === id);
       if (cluster) return { type: "cluster", item: { ...cluster, lane } };
+      const anchor = asArray(lane.anchors).find((item) => item.anchorId === id || item.clusterId === id);
+      if (anchor) return { type: "cluster", item: { ...anchor, lane } };
     }
     return { type: "none", item: null };
   }
@@ -13329,6 +13519,7 @@ createRevelationPartsSection(item.subEvents)
     const actions = document.createElement("div");
     actions.className = "scope-snapshot-detail-actions";
     [
+      ["read_detail", "Read Selected Detail"],
       ["back_to_graph", "Back to selected graph item"],
       ["open_inspector", "Open Inspector"],
       ["show_evidence", "Show Source Evidence"],
@@ -13338,6 +13529,7 @@ createRevelationPartsSection(item.subEvents)
       button.type = "button";
       button.dataset.scopeSnapshotAction = action;
       button.textContent = label;
+      if (action === "show_evidence" || action === "show_provenance") button.setAttribute("aria-expanded", "false");
       actions.appendChild(button);
     });
     content.appendChild(actions);
@@ -13392,11 +13584,12 @@ createRevelationPartsSection(item.subEvents)
     content.append(title, meta, summary);
     const actions = document.createElement("div");
     actions.className = "scope-snapshot-detail-actions";
-    [["zoom_in", "Zoom In"], ["open_inspector", "Open Inspector"], ["back_to_graph", "Back to selected graph item"]].forEach(([action, label]) => {
+    [["read_detail", "Read Selected Detail"], ["zoom_in", "Zoom In"], ["open_inspector", "Open Inspector"], ["show_evidence", "Show Source Evidence"], ["show_provenance", "Show Provenance"], ["back_to_graph", "Back to selected graph item"]].forEach(([action, label]) => {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.scopeSnapshotAction = action;
       button.textContent = label;
+      if (action === "show_evidence" || action === "show_provenance") button.setAttribute("aria-expanded", "false");
       actions.appendChild(button);
     });
     content.appendChild(actions);
@@ -13437,48 +13630,179 @@ createRevelationPartsSection(item.subEvents)
     return node ? { type: "node", item: node } : { type: "none", item: null };
   }
 
-  function appendScopeSnapshotLazyDetail(kind = "evidence") {
-    const panel = document.getElementById("scopeSnapshotSelectedPanel");
-    if (!panel) return;
-    const existing = panel.querySelector(`[data-scope-snapshot-lazy-detail="${kind}"]`);
-    if (existing) {
-      existing.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      return;
+  function scopeSnapshotRawField(record = {}, keys = []) {
+    for (const key of keys) {
+      const value = record?.[key];
+      if (Array.isArray(value) && value.length) return value.map((item) => normalizeText(typeof item === "object" ? JSON.stringify(item) : item)).filter(Boolean).join(" | ");
+      if (value && typeof value === "object") return JSON.stringify(value);
+      const text = normalizeText(value);
+      if (text) return text;
     }
-    const started = nowForDiagnostics();
-    const model = scopeSnapshotGraphModel();
-    const selection = selectedScopeSnapshotGraphRecord(model);
-    const section = document.createElement("div");
-    section.className = "scope-snapshot-lazy-detail";
+    return "";
+  }
+
+  function scopeSnapshotDetailRecord(selection = {}) {
+    if (selection.type === "cluster") return asArray(selection.item?.representativeRecords)[0]?.record || {};
+    return selection.item?.record || {};
+  }
+
+  function scopeSnapshotEvidenceLines(selection = {}, model = {}) {
+    const item = selection.item || {};
+    const record = scopeSnapshotDetailRecord(selection);
+    if (selection.type === "cluster") {
+      return [
+        `Selection type: Presentation cluster`,
+        `Source scope: ${model.activeScope || "current Study Scope"}`,
+        `Cluster range: ${item.sourceRange || "not recorded"}`,
+        `Record count: ${item.recordCount || 0}`,
+        `Evidence type: grouped scoped snapshot candidates`,
+        `Source adapter: ${activeSourcePageRecord()?.sourceAdapter || activeSourcePageRecord()?.adapter || "current source adapter not recorded"}`,
+        `Evidence distance: presentation summary over existing scoped records`,
+        `Confidence: display cluster; child records retain individual confidence`,
+        `Verification state: ${item.warningCount ? "review warnings present" : "verified presentation grouping"}`,
+        ...asArray(item.representativeRecords).slice(0, 6).map((node) => `Child evidence: ${node.label} | ${node.reference?.label || model.activeScope} | ${node.evidence || node.provenance || "evidence not recorded on snapshot node"}`)
+      ];
+    }
+    return [
+      `Selected record id: ${item.id || "not recorded"}`,
+      `Canonical source reference: ${item.reference?.label || scopeSnapshotRawField(record, ["sourceReference", "sourceScope", "reference", "scriptureReference"]) || model.activeScope || "not recorded"}`,
+      `Exact source excerpt: ${scopeSnapshotRawField(record, ["sourceText", "sourceExcerpt", "sourcePhrase", "quote", "text", "evidence"]) || item.evidence || "No exact excerpt recorded on this snapshot node."}`,
+      `Evidence type: ${scopeSnapshotRawField(record, ["evidenceType", "recordType", "eventType", "relationshipType", "themeName", "guidanceCategory"]) || item.recordType || "scoped semantic record"}`,
+      `Source adapter: ${scopeSnapshotRawField(record, ["sourceAdapter", "adapter", "translation"]) || activeSourcePageRecord()?.sourceAdapter || activeSourcePageRecord()?.adapter || "not recorded"}`,
+      `Source scope: ${scopeSnapshotRawField(record, ["sourceScope", "scope", "activeScope"]) || model.activeScope || "current Study Scope"}`,
+      `Evidence distance: ${scopeSnapshotRawField(record, ["evidenceDistance", "semanticDistance"]) || "snapshot presentation over existing scoped record"}`,
+      `Confidence: ${item.confidence || scopeSnapshotRawField(record, ["confidence", "evidenceWeight"]) || "not recorded"}`,
+      `Verification state: ${/unresolved|ambiguous/i.test(item.status || "") ? "review" : "verified display record"}`,
+      scopeSnapshotRawField(record, ["supportingQuotation", "quotation", "quoteId"]) ? `Supporting quotation: ${scopeSnapshotRawField(record, ["supportingQuotation", "quotation", "quoteId"])}` : "",
+      scopeSnapshotRawField(record, ["eventId", "relatedEvent", "supportingEvents"]) ? `Supporting event: ${scopeSnapshotRawField(record, ["eventId", "relatedEvent", "supportingEvents"])}` : "",
+      scopeSnapshotRawField(record, ["relationshipId", "supportingRelationships"]) ? `Supporting relationship: ${scopeSnapshotRawField(record, ["relationshipId", "supportingRelationships"])}` : "",
+      scopeSnapshotRawField(record, ["supportingThemes", "supportingPrinciples", "themeName"]) ? `Supporting theme/principle source: ${scopeSnapshotRawField(record, ["supportingThemes", "supportingPrinciples", "themeName"])}` : ""
+    ].filter(Boolean);
+  }
+
+  function scopeSnapshotProvenanceLines(selection = {}, model = {}) {
+    const item = selection.item || {};
+    const record = scopeSnapshotDetailRecord(selection);
+    const path = [
+      "Primary Evidence",
+      item.recordType === "orderedEvent" ? "Ordered Event" : "",
+      item.recordType === "timeline" ? "Timeline Promotion" : "",
+      item.recordType === "relationship" || item.recordType === "dialogue" ? "Relationship / Dialogue Record" : "",
+      item.recordType === "theme" ? "Theme Promotion" : "",
+      item.recordType === "principle" ? "Principle Extraction" : "",
+      item.recordType === "journey" ? "Journey / Narrative Arc" : "",
+      item.recordType === "actor" ? "Study Reference Index Actor Summary" : "",
+      item.recordType === "unresolved" ? "Unresolved / QA Preview Record" : "",
+      "Linear Scope Snapshot Node"
+    ].filter(Boolean);
+    if (selection.type === "cluster") {
+      return [
+        "Originating source record: clustered child records retain individual provenance",
+        `Builder / promotion path: Primary Evidence -> Scoped semantic records -> Lane clustering -> Snapshot cluster`,
+        `Intermediate derived layers: ${asArray(item.dominantRecordTypes).join(", ") || "mixed scoped records"}`,
+        "Authority source: presentation authority only; child records remain authoritative for meaning.",
+        "Confidence inheritance: not inherited by cluster; inspect child records for confidence.",
+        `Verification status: ${item.warningCount ? "review warnings present" : "verified presentation grouping"}`,
+        `Evidence chain: ${asArray(item.representativeRecords).slice(0, 6).map((node) => node.reference?.label || node.label).join(" -> ") || "not recorded"}`,
+        item.recordCount > asArray(item.representativeRecords).length ? `Show Full Provenance Chain: ${item.recordCount - asArray(item.representativeRecords).length} additional child record(s) available through zoom/detail.` : "Show Full Provenance Chain: representative child records shown above."
+      ];
+    }
+    return [
+      `Originating source record: ${scopeSnapshotRawField(record, ["sourceId", "sourceRecord", "sourceReference", "sourceScope"]) || item.reference?.label || model.activeScope || "not recorded"}`,
+      `Builder / promotion path: ${path.join(" -> ")}`,
+      `Intermediate derived layers: ${scopeSnapshotRawField(record, ["promotionRule", "producedByStage", "semanticSourceLayer", "sourceCollection"]) || item.recordType || "snapshot node builder"}`,
+      `Authority source: ${scopeSnapshotRawField(record, ["authoritySource", "authority", "authorityPath"]) || "primary evidence plus current scoped semantic record"}`,
+      `Confidence inheritance: ${scopeSnapshotRawField(record, ["confidence", "confidencePath", "confidenceSummary"]) || item.confidence || "not recorded"}`,
+      `Verification status: ${/unresolved|ambiguous/i.test(item.status || "") ? "review" : "verified display record"}`,
+      `Evidence chain: ${scopeSnapshotRawField(record, ["evidenceChain", "supportingEvidence", "evidenceLinks"]) || [item.reference?.label, item.recordType, "Snapshot Node"].filter(Boolean).join(" -> ")}`,
+      item.provenance ? `Recorded provenance: ${item.provenance}` : "Missing provenance warning: snapshot node has no explicit provenance beyond its source record.",
+      "Show Full Provenance Chain: use Open Inspector for the native record inspector and full scoped lineage."
+    ];
+  }
+
+  function createScopeSnapshotDetailSection(kind = "evidence", lines = []) {
+    const section = document.createElement("section");
+    section.className = `scope-snapshot-lazy-detail ${kind === "provenance" ? "ice-provenance" : "ice-evidence-weight"}`;
     section.dataset.scopeSnapshotLazyDetail = kind;
     const heading = document.createElement("h5");
     heading.textContent = kind === "provenance" ? "Provenance" : "Source Evidence";
-    const list = document.createElement("ul");
-    const values = [];
-    if (selection.type === "cluster") {
-      asArray(selection.item.representativeRecords).slice(0, 8).forEach((record) => {
-        values.push(`${record.label}: ${kind === "provenance" ? (record.provenance || "provenance not recorded") : (record.evidence || record.reference?.label || "evidence not recorded")}`);
-      });
-      if (selection.item.recordCount > values.length) values.push(`${selection.item.recordCount - values.length} additional child record(s) retain individual ${kind}.`);
-    } else if (selection.item) {
-      values.push(kind === "provenance"
-        ? (selection.item.provenance || "Provenance remains available in the native inspector.")
-        : (selection.item.evidence || selection.item.reference?.label || "Evidence remains available in the native inspector."));
-    }
-    values.filter(Boolean).forEach((value) => {
-      const li = document.createElement("li");
-      li.textContent = normalizeText(value);
-      list.appendChild(li);
+    const list = document.createElement("ol");
+    list.className = "scope-snapshot-detail-lines";
+    asArray(lines).filter(Boolean).forEach((line) => {
+      const item = document.createElement("li");
+      item.textContent = normalizeText(line);
+      list.appendChild(item);
     });
     if (!list.children.length) {
-      const li = document.createElement("li");
-      li.textContent = `${heading.textContent} is not recorded on this snapshot display record. Native inspector detail remains authoritative.`;
-      list.appendChild(li);
+      const item = document.createElement("li");
+      item.textContent = `${heading.textContent} is not recorded for this snapshot node. Native inspector detail remains authoritative.`;
+      list.appendChild(item);
     }
     section.append(heading, list);
-    panel.appendChild(section);
-    section.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    recordRenderTiming(`Scope Snapshot lazy ${kind}`, nowForDiagnostics() - started);
+    return section;
+  }
+
+  function setScopeSnapshotDetailButtonState(kind = "evidence", expanded = false) {
+    const action = kind === "provenance" ? "show_provenance" : "show_evidence";
+    const button = document.querySelector(`#scopeSnapshotSelectedPanel [data-scope-snapshot-action="${action}"]`);
+    if (!button) return;
+    button.textContent = expanded
+      ? (kind === "provenance" ? "Hide Provenance" : "Hide Source Evidence")
+      : (kind === "provenance" ? "Show Provenance" : "Show Source Evidence");
+    button.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
+  function toggleScopeSnapshotLazyDetail(kind = "evidence") {
+    const panel = document.getElementById("scopeSnapshotSelectedPanel");
+    if (!panel) return;
+    const existing = panel.querySelector(`[data-scope-snapshot-lazy-detail="${kind}"]`);
+    const viewportBefore = scopeSnapshotViewportState();
+    if (existing) {
+      const isHidden = existing.hidden;
+      existing.hidden = !isHidden;
+      setScopeSnapshotDetailButtonState(kind, isHidden);
+      restoreScopeSnapshotViewport(viewportBefore, `toggle ${kind}`);
+      return;
+    }
+    const started = nowForDiagnostics();
+    try {
+      const model = scopeSnapshotGraphModel();
+      const selection = selectedScopeSnapshotGraphRecord(model);
+      const cacheKey = [
+        scopedComputationCacheStamp(),
+        "scope-snapshot-detail",
+        kind,
+        scopeSnapshotViewState.selectedGraphId || selection.item?.id || "default"
+      ].join("::");
+      let html = scopeSnapshotViewState.detailCache.get(cacheKey);
+      let section;
+      if (html) {
+        section = document.createElement("section");
+        section.className = `scope-snapshot-lazy-detail ${kind === "provenance" ? "ice-provenance" : "ice-evidence-weight"}`;
+        section.dataset.scopeSnapshotLazyDetail = kind;
+        section.innerHTML = html;
+      } else {
+        const lines = kind === "provenance"
+          ? scopeSnapshotProvenanceLines(selection, model)
+          : scopeSnapshotEvidenceLines(selection, model);
+        section = createScopeSnapshotDetailSection(kind, lines);
+        scopeSnapshotViewState.detailCache.set(cacheKey, section.innerHTML);
+      }
+      panel.appendChild(section);
+      setScopeSnapshotDetailButtonState(kind, true);
+      restoreScopeSnapshotViewport(viewportBefore, `show ${kind}`);
+      recordRenderTiming(`Scope Snapshot lazy ${kind}`, nowForDiagnostics() - started);
+    } catch (error) {
+      const section = createScopeSnapshotDetailSection(kind, [
+        `Detail action failed for ${scopeSnapshotViewState.selectedGraphId || "unknown selection"}.`,
+        `Error: ${error.message}`
+      ]);
+      section.dataset.loadError = "true";
+      panel.appendChild(section);
+      setScopeSnapshotDetailButtonState(kind, true);
+      restoreScopeSnapshotViewport(viewportBefore, `show ${kind} failed`);
+      console.error(`I.C.E. Scope Snapshot ${kind} detail failed`, error);
+    }
   }
 
   function createScopeSnapshotLegend(model = {}) {
@@ -13509,23 +13833,53 @@ createRevelationPartsSection(item.subEvents)
     const ticks = model.lanes.flatMap((lane, laneIndex) => lane.nodes.slice(0, 18).map((node) => {
       const style = scopeSnapshotLaneStyle(lane.id);
       const selected = node.id === scopeSnapshotViewState.selectedGraphId ? " selected" : "";
-      return `<span class="${selected.trim()}" data-snapshot-minimap-id="${escapeHtml(node.id)}" style="left:${Math.max(3, Math.min(97, Number(node.x || 8)))}%; top:${8 + laneIndex * 9}%; background:${style.color}"></span>`;
+      return `<span class="${selected.trim()}" data-snapshot-minimap-id="${escapeHtml(node.id)}" style="left:${Math.max(6, Math.min(94, Number(node.x || 8)))}%; top:${8 + laneIndex * 9}%; background:${style.color}"></span>`;
     })).join("");
     mini.innerHTML = ticks || "<em>No positioned nodes yet.</em>";
-    const handle = document.createElement("input");
-    handle.type = "range";
-    handle.min = "0";
-    handle.max = "100";
-    handle.value = String(Math.round(scopeSnapshotViewState.scopeBreadth));
-    handle.className = "scope-snapshot-scope-meter";
-    handle.setAttribute("aria-label", "Adjust Scope Snapshot visual breadth");
-    const labels = document.createElement("div");
-    labels.className = "scope-snapshot-meter-labels";
-    labels.innerHTML = "<span>Active Page</span><span>Selected Scope</span><span>Stored Session</span>";
+    const viewport = document.createElement("div");
+    viewport.className = "scope-snapshot-minimap-viewport";
+    viewport.setAttribute("aria-hidden", "true");
+    mini.appendChild(viewport);
+    const control = document.createElement("div");
+    control.className = "scope-breadth-control";
+    const segmented = document.createElement("div");
+    segmented.className = "scope-breadth-segmented-control";
+    segmented.setAttribute("role", "group");
+    segmented.setAttribute("aria-label", `Scope Snapshot visual breadth: ${scopeSnapshotCurrentModeLabel()}`);
+    scopeSnapshotBreadthOptions().forEach((option) => {
+      const label = document.createElement("button");
+      label.type = "button";
+      label.textContent = option.label;
+      label.dataset.snapshotBreadth = option.mode;
+      if (option.mode === scopeSnapshotViewState.snapshotVisualBreadth) {
+        label.className = "selected";
+        label.setAttribute("aria-current", "true");
+        label.setAttribute("aria-pressed", "true");
+      } else {
+        label.setAttribute("aria-pressed", "false");
+      }
+      segmented.appendChild(label);
+    });
+    control.appendChild(segmented);
     const note = document.createElement("p");
     note.textContent = `Visual breadth: ${scopeSnapshotCurrentModeLabel()}. Study Scope remains locked.`;
-    panel.append(heading, mini, handle, labels, note);
+    panel.append(heading, mini, control, note);
     return panel;
+  }
+
+  function createScopeSnapshotBoundaryCard(model = {}) {
+    const card = createCard(
+      "Linear Scope Snapshot",
+      [
+        `Graph mode: ${model.graphMode}`,
+        `Axis granularity: ${model.axisGranularity}`,
+        `Nodes: ${model.nodeCount}; positioned: ${model.positionedCount}; unpositioned: ${model.unpositionedCount}`,
+        "Boundary: presentation-only; zoom and graph controls do not mutate Study Scope or semantic records."
+      ].join("\n"),
+      "display-only scope graph"
+    );
+    card.classList.add("scope-snapshot-boundary-card");
+    return card;
   }
 
   function createScopeSnapshotCard(model = {}) {
@@ -13540,6 +13894,7 @@ createRevelationPartsSection(item.subEvents)
     range.className = "semantic-card-range";
     range.textContent = ["ICE_LINEAR_SCOPE_SNAPSHOT", model.activeScope, model.graphMode, model.axisGranularity].filter(Boolean).join(" | ");
     body.className = "semantic-card-body";
+    card.dataset.snapshotVisualBreadth = scopeSnapshotViewState.snapshotVisualBreadth;
     header.append(heading, range);
 
     const top = document.createElement("div");
@@ -13643,29 +13998,26 @@ createRevelationPartsSection(item.subEvents)
       appendEmpty(container, "No Linear Scope Snapshot records match current filter.");
       return;
     }
-    container.appendChild(createCard(
-      "Linear Scope Snapshot",
-      [
-        `Graph mode: ${model.graphMode}`,
-        `Axis granularity: ${model.axisGranularity}`,
-        `Nodes: ${model.nodeCount}; positioned: ${model.positionedCount}; unpositioned: ${model.unpositionedCount}`,
-        "Boundary: presentation-only; zoom and graph controls do not mutate Study Scope or semantic records."
-      ].join("\n"),
-      "display-only scope graph"
-    ));
+    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot");
     container.appendChild(createScopeSnapshotCard(model));
+    setupScopeSnapshotMiniMapSync();
+    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:mounted");
   }
 
   function linearScopeSnapshotInspectorLines() {
     const model = scopeSnapshotGraphModel();
     const selectionDiagnostics = scopeSnapshotSelectionDiagnostics();
     const latestSelectionTiming = asArray(selectionDiagnostics.timings)[0] || null;
+    const miniMapDiagnostics = scopeSnapshotViewState.miniMapDiagnostics || {};
+    const breadthDiagnostics = scopeSnapshotBreadthControlDiagnostics();
+    const latestLayoutDiagnostic = asArray(scopeSnapshotViewState.layoutDiagnostics)[0] || null;
+    const layoutState = scopeSnapshotLayoutState("inspector");
     return [
       `Graph mode: ${model.graphMode}`,
       `LOD state: ${model.lodLabel}`,
       `Scope hierarchy level: ${model.scopeHierarchyLevel}`,
-      `Scope mode: ${model.scopeMode}`,
-      `Scope breadth meter: ${Math.round(scopeSnapshotViewState.scopeBreadth)} (${scopeSnapshotCurrentModeLabel()})`,
+      `Visual breadth: ${scopeSnapshotViewState.snapshotVisualBreadth} (${scopeSnapshotCurrentModeLabel()}); numeric compatibility=${Math.round(scopeSnapshotViewState.scopeBreadth)}`,
+      `Study presentation mode: ${document.querySelector(".study-shell")?.dataset.studyPresentationMode || currentPresentationModeLabel()}`,
       `Axis granularity: ${model.axisGranularity}`,
       `Supported granularities: ${model.supportedGranularities.join(", ")}`,
       `Start reference: ${model.startReference}`,
@@ -13676,6 +14028,7 @@ createRevelationPartsSection(item.subEvents)
       `Individually rendered records: ${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}`,
       `Clustered records: ${model.clusteredRecordCount}`,
       `Cluster count: ${model.clusterCount}`,
+      `Semantic anchors: ${model.anchorCount}; largestCluster=${model.largestCluster}; averageRecordsPerCluster=${model.averageRecordsPerCluster}; expandedClusters=${model.expandedClusterCount}; collisionReduction=${model.collisionReduction}`,
       `Lane count: ${model.laneCount}`,
       `Positioned records: ${model.positionedCount}`,
       `Unpositioned records: ${model.unpositionedCount}`,
@@ -13689,7 +14042,13 @@ createRevelationPartsSection(item.subEvents)
       `Selection rerenders this session: ${selectionDiagnostics.rerenderCount}`,
       `Last selected graph id: ${selectionDiagnostics.lastSelectionId || "none"}`,
       `Latest selection timing: ${latestSelectionTiming ? `${latestSelectionTiming.total}ms total; lookup=${latestSelectionTiming.lookup}ms; detail=${latestSelectionTiming.detail}ms; graphUpdate=${latestSelectionTiming.graphUpdate}ms; cache=${latestSelectionTiming.cacheState}; rerenders=${latestSelectionTiming.rerenderCount}; DOM nodes=${latestSelectionTiming.domNodes}; renderedInspectors=${latestSelectionTiming.renderedInspectors}` : "none"}`,
+      `Latest selection viewport: ${latestViewportTiming ? `scrollX ${latestViewportTiming.scrollXBefore}->${latestViewportTiming.scrollXAfter}; scrollY ${latestViewportTiming.scrollYBefore}->${latestViewportTiming.scrollYAfter}; graphLeft ${latestViewportTiming.graphScrollLeftBefore}->${latestViewportTiming.graphScrollLeftAfter}; graphTop ${latestViewportTiming.graphScrollTopBefore}->${latestViewportTiming.graphScrollTopAfter}; focus ${latestViewportTiming.focusedElementBefore}->${latestViewportTiming.focusedElementAfter}; detailHeight ${latestViewportTiming.detailHeightBefore}->${latestViewportTiming.detailHeightAfter}; anchoringCorrection=${latestViewportTiming.scrollAnchoringCorrectionApplied}` : "none"}`,
       `Recent selection timings: ${asArray(selectionDiagnostics.timings).slice(0, 5).map((item, index) => `${index + 1}. ${item.graphId} ${item.total}ms detail=${item.detail}ms cache=${item.cacheState}`).join(" | ") || "none"}`,
+      `Mini-map geometry: graphScrollWidth=${miniMapDiagnostics.graphScrollWidth ?? "not measured"}; graphClientWidth=${miniMapDiagnostics.graphClientWidth ?? "not measured"}; graphScrollLeft=${miniMapDiagnostics.graphScrollLeft ?? "not measured"}; scrollRange=${miniMapDiagnostics.scrollRange ?? "not measured"}; scrollProgress=${miniMapDiagnostics.scrollProgress ?? "not measured"}; trackWidth=${miniMapDiagnostics.miniMapTrackWidth ?? "not measured"}; indicatorWidth=${miniMapDiagnostics.indicatorWidth ?? "not measured"}; indicatorTravel=${miniMapDiagnostics.indicatorTravel ?? "not measured"}; indicatorLeft=${miniMapDiagnostics.indicatorLeft ?? "not measured"}; noOverflow=${miniMapDiagnostics.noOverflow ?? "not measured"}; clamped=${miniMapDiagnostics.clamped ?? "not measured"}`,
+      `Scope breadth control geometry: cardClientWidth=${breadthDiagnostics.cardClientWidth}; controlWidth=${breadthDiagnostics.controlWidth}; segmentedWidth=${breadthDiagnostics.segmentedWidth}; optionWidths=${breadthDiagnostics.optionWidths}; selectedState=${breadthDiagnostics.selectedState}; overflowDetected=${breadthDiagnostics.overflowDetected}; rightEdgeAligned=${breadthDiagnostics.rightEdgeAligned}`,
+      `Snapshot layout invariant: active=${document.getElementById("scopeSnapshotSection")?.dataset.snapshotPresentation || "not mounted"}; parent=${layoutState.sectionParentId}; group=${layoutState.groupId}; groupOpen=${layoutState.groupOpen}; windowScrollX=${layoutState.windowScrollX}`,
+      `Snapshot width invariant: groupBodyWidth=${layoutState.groupBodyWidth}; snapshotRootWidth=${layoutState.snapshotRootWidth}; diagnosticsSiblingCount=${layoutState.diagnosticsSiblingCount}; activeGridColumnCount=${layoutState.activeGridColumnCount}; widthDifference=${layoutState.widthDifference}; siblings=${layoutState.diagnosticsSiblings}`,
+      `Latest layout action: ${latestLayoutDiagnostic ? `${latestLayoutDiagnostic.action}; parent ${latestLayoutDiagnostic.before?.sectionParentId || "unknown"} -> ${latestLayoutDiagnostic.after?.sectionParentId || "unknown"}; groupOpen ${latestLayoutDiagnostic.before?.groupOpen} -> ${latestLayoutDiagnostic.after?.groupOpen}; scrollX ${latestLayoutDiagnostic.before?.windowScrollX} -> ${latestLayoutDiagnostic.after?.windowScrollX}; notes=${asArray(latestLayoutDiagnostic.notes).join(", ") || "none"}` : "none"}`,
       `Unresolved lane nodes: ${model.allNodes.filter((node) => node.laneId === "unresolved").length}`,
       `Verification: ${model.verification}`,
       "Lane counts:",
@@ -27896,6 +28255,10 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function applyPresentationModuleVisibility() {
+    const shell = document.querySelector(".study-shell");
+    if (shell) {
+      shell.dataset.studyPresentationMode = currentPresentationModeLabel().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    }
     studySectionRenderers().forEach((entry) => {
       const section = document.getElementById(entry.sectionId);
       if (!section) return;
@@ -28225,6 +28588,40 @@ createRevelationPartsSection(item.subEvents)
   function rerenderScopeSnapshotOnly() {
     scopeSnapshotSelectionDiagnostics().rerenderCount += 1;
     safeRenderSection("Linear Scope Snapshot", renderScopeSnapshot, currentSearchTerm());
+    enforceScopeSnapshotPresentationInvariant("rerenderScopeSnapshotOnly");
+  }
+
+  function updateScopeSnapshotVisualBreadth(nextBreadth = "active_page") {
+    const before = scopeSnapshotLayoutState("breadth before");
+    const previousBreadth = scopeSnapshotViewState.snapshotVisualBreadth;
+    const previousSelection = scopeSnapshotViewState.selectedGraphId;
+    const requestedBreadth = scopeSnapshotSetBreadth(nextBreadth);
+    const container = document.getElementById("scopeSnapshotCards");
+    const count = document.getElementById("scopeSnapshotCount");
+    if (!container) {
+      rerenderScopeSnapshotOnly();
+      return;
+    }
+    const model = scopeSnapshotGraphModel();
+    if (previousSelection && !model.allNodes.some((node) => node.id === previousSelection)) {
+      scopeSnapshotViewState.selectedGraphId = "";
+    }
+    const snapshotCard = createScopeSnapshotCard(model);
+    const existingSnapshot = container.querySelector(".scope-snapshot-card");
+    container.querySelectorAll(".scope-snapshot-boundary-card").forEach((card) => card.remove());
+    if (existingSnapshot) existingSnapshot.replaceWith(snapshotCard);
+    else container.appendChild(snapshotCard);
+    if (count) count.textContent = `${model.nodeCount} node(s)`;
+    const section = document.getElementById("scopeSnapshotSection");
+    if (section) section.dataset.snapshotVisualBreadth = requestedBreadth;
+    container.dataset.snapshotVisualBreadth = requestedBreadth;
+    setupScopeSnapshotMiniMapSync();
+    enforceScopeSnapshotPresentationInvariant("snapshot visual breadth update");
+    recordScopeSnapshotLayoutDiagnostic("snapshot visual breadth update", before, scopeSnapshotLayoutState("breadth after"), [
+      `breadth ${previousBreadth} -> ${requestedBreadth}`,
+      `selection ${previousSelection || "none"} -> ${scopeSnapshotViewState.selectedGraphId || "none"}`,
+      "updated in existing Snapshot host"
+    ]);
   }
 
   function scopeSnapshotSelectionDiagnostics() {
@@ -28237,6 +28634,134 @@ createRevelationPartsSection(item.subEvents)
       };
     }
     return scopedComputationStats.scopeSnapshotSelection;
+  }
+
+  function scopeSnapshotLayoutState(action = "") {
+    const section = document.getElementById("scopeSnapshotSection");
+    const container = document.getElementById("scopeSnapshotCards");
+    const card = container?.querySelector(".scope-snapshot-card");
+    const group = section?.closest(".study-section-group");
+    const groupBody = section?.closest(".study-section-group-body");
+    const lower = section?.querySelector(".scope-snapshot-lower-grid");
+    const detail = section?.querySelector(".scope-snapshot-detail-panel");
+    const minimap = section?.querySelector(".scope-snapshot-minimap");
+    const containerStyle = container ? getComputedStyle(container) : null;
+    const lowerStyle = lower ? getComputedStyle(lower) : null;
+    const detailStyle = detail ? getComputedStyle(detail) : null;
+    const groupBodyRect = groupBody?.getBoundingClientRect?.();
+    const sectionRect = section?.getBoundingClientRect?.();
+    const containerRect = container?.getBoundingClientRect?.();
+    const cardRect = card?.getBoundingClientRect?.();
+    const diagnosticsSiblings = container ? Array.from(container.children).filter((child) => child !== card && !child.hidden) : [];
+    const gridColumns = normalizeText(containerStyle?.gridTemplateColumns || "");
+    const activeGridColumnCount = gridColumns && gridColumns !== "none" ? gridColumns.split(/\s+/).filter(Boolean).length : 1;
+    const groupBodyWidth = groupBodyRect ? Math.round(groupBodyRect.width) : "not measured";
+    const snapshotRootWidth = cardRect ? Math.round(cardRect.width) : "not measured";
+    const widthDifference = typeof groupBodyWidth === "number" && typeof snapshotRootWidth === "number"
+      ? Math.abs(groupBodyWidth - snapshotRootWidth)
+      : "not measured";
+    return {
+      action,
+      sectionParentId: section?.parentElement?.id || section?.parentElement?.className || "missing",
+      groupId: group?.id || "none",
+      groupOpen: group ? Boolean(group.open) : null,
+      groupBodyClass: groupBody?.className || "none",
+      sectionClass: section?.className || "missing",
+      containerClass: container?.className || "missing",
+      presentationState: section?.dataset.snapshotPresentation || "missing",
+      visualBreadth: section?.dataset.snapshotVisualBreadth || scopeSnapshotViewState.snapshotVisualBreadth || "missing",
+      studyPresentationMode: document.querySelector(".study-shell")?.dataset.studyPresentationMode || currentPresentationModeLabel(),
+      sectionHidden: section ? Boolean(section.hidden) : null,
+      groupBodyWidth,
+      snapshotRootWidth,
+      diagnosticsSiblingCount: diagnosticsSiblings.length,
+      diagnosticsSiblings: diagnosticsSiblings.map((child) => normalizeText(child.className || child.tagName)).join(" | ") || "none",
+      activeGridColumnCount,
+      widthDifference,
+      sectionWidth: sectionRect ? Math.round(sectionRect.width) : "not measured",
+      containerWidth: containerRect ? Math.round(containerRect.width) : "not measured",
+      containerScrollWidth: container ? Math.round(container.scrollWidth) : "not measured",
+      lowerGridColumns: lowerStyle?.gridTemplateColumns || "not measured",
+      detailGridColumns: detailStyle?.gridTemplateColumns || "not measured",
+      minimapWidth: minimap ? Math.round(minimap.getBoundingClientRect().width) : "not measured",
+      windowScrollX: Math.round(window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0)
+    };
+  }
+
+  function recordScopeSnapshotLayoutDiagnostic(action = "", before = null, after = null, notes = []) {
+    const entry = {
+      action,
+      before: before || null,
+      after: after || scopeSnapshotLayoutState(action),
+      notes: asArray(notes).map((note) => normalizeText(note)).filter(Boolean),
+      recordedAt: new Date().toISOString()
+    };
+    scopeSnapshotViewState.layoutDiagnostics.unshift(entry);
+    scopeSnapshotViewState.layoutDiagnostics = scopeSnapshotViewState.layoutDiagnostics.slice(0, 12);
+    return entry;
+  }
+
+  function saveScopeSnapshotPresentationState(action = "") {
+    const graph = document.querySelector("#scopeSnapshotSection .scope-snapshot-graph");
+    scopeSnapshotViewState.savedPresentationState = {
+      action,
+      graphMode: scopeSnapshotViewState.graphMode,
+      scopeMode: scopeSnapshotViewState.scopeMode,
+      snapshotVisualBreadth: scopeSnapshotViewState.snapshotVisualBreadth,
+      zoomMode: scopeSnapshotViewState.zoomMode,
+      detailLevel: scopeSnapshotViewState.detailLevel,
+      scopeBreadth: scopeSnapshotViewState.scopeBreadth,
+      selectedGraphId: scopeSnapshotViewState.selectedGraphId,
+      graphScrollLeft: graph ? Math.round(graph.scrollLeft) : 0,
+      snapshotScrollX: Math.round(window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0),
+      savedAt: new Date().toISOString()
+    };
+  }
+
+  function restoreScopeSnapshotHorizontalPosition(action = "") {
+    const horizontal = Math.round(window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+    if (horizontal <= 0) return false;
+    const top = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    window.scrollTo({ left: 0, top, behavior: "auto" });
+    recordScopeSnapshotLayoutDiagnostic(action, null, scopeSnapshotLayoutState(action), [`restored horizontal page drift from ${horizontal}px`]);
+    return true;
+  }
+
+  function enforceScopeSnapshotPresentationInvariant(action = "") {
+    const before = scopeSnapshotLayoutState(action);
+    const section = document.getElementById("scopeSnapshotSection");
+    const container = document.getElementById("scopeSnapshotCards");
+    const group = section?.closest(".study-section-group");
+    if (section) section.dataset.snapshotPresentation = "active";
+    if (container) container.dataset.snapshotPresentation = "active";
+    if (section) section.dataset.snapshotVisualBreadth = scopeSnapshotViewState.snapshotVisualBreadth;
+    if (container) container.dataset.snapshotVisualBreadth = scopeSnapshotViewState.snapshotVisualBreadth;
+    if (group) {
+      group.dataset.containsActiveSnapshot = "true";
+      if (!group.open) group.open = true;
+    }
+    restoreScopeSnapshotHorizontalPosition(action);
+    const after = scopeSnapshotLayoutState(action);
+    const notes = [];
+    if (before.groupOpen === false && after.groupOpen === true) notes.push("reopened Snapshot study group");
+    if (before.windowScrollX > 0 || after.windowScrollX > 0) notes.push(`horizontal scroll before=${before.windowScrollX}; after=${after.windowScrollX}`);
+    if (before.sectionParentId !== after.sectionParentId) notes.push(`parent changed ${before.sectionParentId} -> ${after.sectionParentId}`);
+    recordScopeSnapshotLayoutDiagnostic(action, before, after, notes);
+    return after;
+  }
+
+  function scopeSnapshotScrollIntoView(element, action = "", options = {}) {
+    if (!element?.scrollIntoView) return;
+    const before = scopeSnapshotLayoutState(action);
+    element.scrollIntoView({
+      behavior: options.behavior || "smooth",
+      block: options.block || "start",
+      inline: "nearest"
+    });
+    window.requestAnimationFrame(() => enforceScopeSnapshotPresentationInvariant(action));
+    recordScopeSnapshotLayoutDiagnostic(action, before, scopeSnapshotLayoutState(action), ["vertical-only scrollIntoView"]);
   }
 
   function updateScopeSnapshotSelectedDom(graphId = "") {
@@ -28262,12 +28787,81 @@ createRevelationPartsSection(item.subEvents)
     scopeSnapshotViewState.scrollTimer = window.setTimeout(() => {
       const panel = document.getElementById("scopeSnapshotSelectedPanel");
       if (!panel) return;
-      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      scopeSnapshotScrollIntoView(panel, "select graph item detail", { block: "start" });
       panel.focus({ preventScroll: true });
     }, 40);
   }
 
+  function scopeSnapshotViewportState() {
+    const graph = document.querySelector("#scopeSnapshotSection .scope-snapshot-graph");
+    const active = document.activeElement;
+    const graphRect = graph?.getBoundingClientRect?.();
+    return {
+      scrollX: Math.round(window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0),
+      scrollY: Math.round(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0),
+      graphScrollLeft: graph ? Math.round(graph.scrollLeft || 0) : 0,
+      graphScrollTop: graph ? Math.round(graph.scrollTop || 0) : 0,
+      focusedElement: active?.id || active?.dataset?.snapshotNodeId || active?.dataset?.snapshotClusterId || active?.tagName || "none",
+      graphTop: graphRect ? Math.round(graphRect.top) : "not measured",
+      graphLeft: graphRect ? Math.round(graphRect.left) : "not measured",
+      detailHeight: Math.round(document.getElementById("scopeSnapshotSelectedPanel")?.getBoundingClientRect?.().height || 0)
+    };
+  }
+
+  function restoreScopeSnapshotViewport(state = {}, action = "selection") {
+    const graph = document.querySelector("#scopeSnapshotSection .scope-snapshot-graph");
+    let corrected = false;
+    if (graph) {
+      if (Math.round(graph.scrollLeft || 0) !== Number(state.graphScrollLeft || 0)) {
+        graph.scrollLeft = Number(state.graphScrollLeft || 0);
+        corrected = true;
+      }
+      if (Math.round(graph.scrollTop || 0) !== Number(state.graphScrollTop || 0)) {
+        graph.scrollTop = Number(state.graphScrollTop || 0);
+        corrected = true;
+      }
+    }
+    const currentX = Math.round(window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0);
+    const currentY = Math.round(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0);
+    if (currentX !== Number(state.scrollX || 0) || currentY !== Number(state.scrollY || 0)) {
+      window.scrollTo({ left: Number(state.scrollX || 0), top: Number(state.scrollY || 0), behavior: "auto" });
+      corrected = true;
+    }
+    const after = scopeSnapshotViewportState();
+    const diagnostics = scopeSnapshotSelectionDiagnostics();
+    diagnostics.viewportTimings = asArray(diagnostics.viewportTimings);
+    diagnostics.viewportTimings.unshift({
+      action,
+      scrollXBefore: state.scrollX,
+      scrollXAfter: after.scrollX,
+      scrollYBefore: state.scrollY,
+      scrollYAfter: after.scrollY,
+      graphScrollLeftBefore: state.graphScrollLeft,
+      graphScrollLeftAfter: after.graphScrollLeft,
+      graphScrollTopBefore: state.graphScrollTop,
+      graphScrollTopAfter: after.graphScrollTop,
+      focusedElementBefore: state.focusedElement,
+      focusedElementAfter: after.focusedElement,
+      detailHeightBefore: state.detailHeight,
+      detailHeightAfter: after.detailHeight,
+      scrollAnchoringCorrectionApplied: corrected
+    });
+    diagnostics.viewportTimings = diagnostics.viewportTimings.slice(0, 12);
+    return after;
+  }
+
+  function readScopeSnapshotSelectedDetail() {
+    const panel = document.getElementById("scopeSnapshotSelectedPanel");
+    if (!panel) return;
+    scopeSnapshotScrollIntoView(panel, "read selected detail", { block: "start" });
+    const heading = panel.querySelector("h4") || panel;
+    heading.setAttribute("tabindex", "-1");
+    window.setTimeout(() => heading.focus({ preventScroll: true }), 80);
+  }
+
   function selectScopeSnapshotGraphItem(graphId = "", options = {}) {
+    const preserveViewport = options.preserveViewport !== false;
+    const viewportBefore = preserveViewport ? scopeSnapshotViewportState() : null;
     const diagnostics = scopeSnapshotSelectionDiagnostics();
     diagnostics.invocationCount += 1;
     const totalStarted = nowForDiagnostics();
@@ -28317,15 +28911,286 @@ createRevelationPartsSection(item.subEvents)
       rerenderCount: Math.max(0, diagnostics.rerenderCount - rerenderCountBefore)
     });
     diagnostics.timings = diagnostics.timings.slice(0, 12);
-    if (options.scroll !== false) scrollScopeSnapshotDetailIntoView();
+    if (preserveViewport) restoreScopeSnapshotViewport(viewportBefore, `select ${selection.type}`);
+    if (options.scroll === true) readScopeSnapshotSelectedDetail();
   }
 
   function scrollScopeSnapshotBackToGraph() {
+    const collapsedAnchorId = scopeSnapshotViewState.expandedAnchorId || "";
+    if (scopeSnapshotViewState.expandedAnchorId) {
+      scopeSnapshotViewState.expandedAnchorId = "";
+      updateScopeSnapshotVisualBreadth(scopeSnapshotViewState.snapshotVisualBreadth || "active_page");
+      if (collapsedAnchorId) {
+        scopeSnapshotViewState.selectedGraphId = collapsedAnchorId;
+        updateScopeSnapshotSelectedDom(collapsedAnchorId);
+      }
+    }
     const section = document.getElementById("scopeSnapshotSection");
     const graph = section?.querySelector(".scope-snapshot-graph");
     const selected = section?.querySelector(".scope-snapshot-node.selected, .scope-snapshot-cluster.selected");
-    (graph || section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scopeSnapshotScrollIntoView(graph || section, "back to selected graph item", { block: "start" });
     selected?.focus?.({ preventScroll: true });
+  }
+
+  function clampNumber(value, min, max) {
+    return Math.max(min, Math.min(max, Number(value) || 0));
+  }
+
+  function scopeSnapshotMiniMapGeometry(track = document.querySelector("#scopeSnapshotSection .scope-snapshot-minimap-track")) {
+    const graph = document.querySelector("#scopeSnapshotSection .scope-snapshot-graph");
+    const viewport = track?.querySelector(".scope-snapshot-minimap-viewport");
+    if (!graph || !track || !viewport) return null;
+    const rect = track.getBoundingClientRect();
+    const borderOffset = Math.max(0, (rect.width - track.clientWidth) / 2);
+    const trackWidth = Math.max(0, track.clientWidth || rect.width || 0);
+    const scrollWidth = Math.max(0, graph.scrollWidth || 0);
+    const clientWidth = Math.max(0, graph.clientWidth || 0);
+    const scrollRange = Math.max(0, scrollWidth - clientWidth);
+    const scrollLeft = clampNumber(graph.scrollLeft, 0, scrollRange);
+    const scrollProgress = scrollRange > 0 ? clampNumber(scrollLeft / scrollRange, 0, 1) : 0;
+    const visibleFraction = scrollWidth > 0 ? clampNumber(clientWidth / scrollWidth, 0, 1) : 1;
+    const minIndicatorWidth = Math.min(trackWidth, 28);
+    const indicatorWidth = scrollRange > 0
+      ? Math.max(minIndicatorWidth, Math.min(trackWidth, trackWidth * visibleFraction))
+      : trackWidth;
+    const indicatorTravel = Math.max(0, trackWidth - indicatorWidth);
+    const indicatorLeft = indicatorTravel > 0 ? clampNumber(scrollProgress * indicatorTravel, 0, indicatorTravel) : 0;
+    return {
+      graph,
+      track,
+      viewport,
+      rect,
+      borderOffset,
+      trackWidth,
+      scrollWidth,
+      clientWidth,
+      scrollRange,
+      scrollLeft,
+      scrollProgress,
+      visibleFraction,
+      indicatorWidth,
+      indicatorTravel,
+      indicatorLeft,
+      noOverflow: scrollRange <= 0
+    };
+  }
+
+  function syncScopeSnapshotMiniMapViewport() {
+    const geometry = scopeSnapshotMiniMapGeometry();
+    if (!geometry) return;
+    const { viewport, track, indicatorLeft, indicatorWidth, noOverflow } = geometry;
+    viewport.style.left = `${Math.round(indicatorLeft * 100) / 100}px`;
+    viewport.style.width = `${Math.round(indicatorWidth * 100) / 100}px`;
+    track.dataset.noOverflow = noOverflow ? "true" : "false";
+    scopeSnapshotViewState.miniMapDiagnostics = {
+      graphScrollWidth: Math.round(geometry.scrollWidth),
+      graphClientWidth: Math.round(geometry.clientWidth),
+      graphScrollLeft: Math.round(geometry.scrollLeft),
+      scrollRange: Math.round(geometry.scrollRange),
+      scrollProgress: Math.round(geometry.scrollProgress * 1000) / 1000,
+      miniMapTrackWidth: Math.round(geometry.trackWidth),
+      indicatorWidth: Math.round(geometry.indicatorWidth),
+      indicatorTravel: Math.round(geometry.indicatorTravel),
+      indicatorLeft: Math.round(geometry.indicatorLeft),
+      clamped: geometry.scrollLeft !== geometry.graph.scrollLeft || geometry.indicatorLeft <= 0 || geometry.indicatorLeft >= geometry.indicatorTravel,
+      noOverflow
+    };
+  }
+
+  function scheduleScopeSnapshotMiniMapSync() {
+    if (scopeSnapshotViewState.miniMapSyncFrame) return;
+    scopeSnapshotViewState.miniMapSyncFrame = window.requestAnimationFrame(() => {
+      scopeSnapshotViewState.miniMapSyncFrame = 0;
+      syncScopeSnapshotMiniMapViewport();
+    });
+  }
+
+  function setupScopeSnapshotMiniMapSync() {
+    const section = document.getElementById("scopeSnapshotSection");
+    const graph = section?.querySelector(".scope-snapshot-graph");
+    const track = section?.querySelector(".scope-snapshot-minimap-track");
+    if (!graph || !track) return;
+    graph.removeEventListener("scroll", scheduleScopeSnapshotMiniMapSync);
+    graph.addEventListener("scroll", scheduleScopeSnapshotMiniMapSync, { passive: true });
+    if (scopeSnapshotViewState.miniMapResizeObserver) scopeSnapshotViewState.miniMapResizeObserver.disconnect();
+    if (typeof ResizeObserver !== "undefined") {
+      scopeSnapshotViewState.miniMapResizeObserver = new ResizeObserver(scheduleScopeSnapshotMiniMapSync);
+      scopeSnapshotViewState.miniMapResizeObserver.observe(graph);
+      scopeSnapshotViewState.miniMapResizeObserver.observe(track);
+      const card = section.querySelector(".scope-snapshot-card");
+      if (card) scopeSnapshotViewState.miniMapResizeObserver.observe(card);
+    }
+    scheduleScopeSnapshotMiniMapSync();
+  }
+
+  function scopeSnapshotSetGraphScrollFromIndicatorLeft(indicatorLeft = 0, track = null) {
+    const geometry = scopeSnapshotMiniMapGeometry(track);
+    if (!geometry || geometry.noOverflow) {
+      syncScopeSnapshotMiniMapViewport();
+      return;
+    }
+    const clampedLeft = clampNumber(indicatorLeft, 0, geometry.indicatorTravel);
+    const normalized = geometry.indicatorTravel > 0 ? clampedLeft / geometry.indicatorTravel : 0;
+    geometry.graph.scrollLeft = Math.round(normalized * geometry.scrollRange);
+    syncScopeSnapshotMiniMapViewport();
+  }
+
+  function scopeSnapshotIndicatorLeftFromPointer(event, geometry = null, centerOnPointer = true) {
+    const current = geometry || scopeSnapshotMiniMapGeometry(event.target?.closest?.(".scope-snapshot-minimap-track"));
+    if (!current) return null;
+    const relativeX = event.clientX - current.rect.left - current.borderOffset;
+    const rawLeft = centerOnPointer
+      ? relativeX - current.indicatorWidth / 2
+      : relativeX - Number(scopeSnapshotViewState.miniMapDragOffset || 0);
+    return clampNumber(rawLeft, 0, current.indicatorTravel);
+  }
+
+  function handleScopeSnapshotMiniMapPointer(event, options = {}) {
+    const track = event.target?.closest?.(".scope-snapshot-minimap-track");
+    const geometry = scopeSnapshotMiniMapGeometry(track);
+    if (!geometry) return false;
+    event.preventDefault();
+    event.stopPropagation?.();
+    if (geometry.noOverflow) {
+      syncScopeSnapshotMiniMapViewport();
+      enforceScopeSnapshotPresentationInvariant("mini-map no-overflow click");
+      return true;
+    }
+    const indicatorLeft = scopeSnapshotIndicatorLeftFromPointer(event, geometry, options.centerOnPointer !== false);
+    if (indicatorLeft == null) return false;
+    scopeSnapshotSetGraphScrollFromIndicatorLeft(indicatorLeft, track);
+    enforceScopeSnapshotPresentationInvariant("mini-map pan");
+    return true;
+  }
+
+  function viewportAwareOverlayPosition(anchorRect = {}, overlaySize = {}, preferredPlacement = "right") {
+    const margin = 12;
+    const viewportWidth = Math.max(0, window.innerWidth || document.documentElement.clientWidth || 0);
+    const viewportHeight = Math.max(0, window.innerHeight || document.documentElement.clientHeight || 0);
+    const width = Math.min(Number(overlaySize.width || 320), Math.max(180, viewportWidth - margin * 2));
+    const height = Math.min(Number(overlaySize.height || 220), Math.max(120, viewportHeight - margin * 2));
+    const placements = [preferredPlacement, "right", "left", "below", "above"].filter((item, index, array) => item && array.indexOf(item) === index);
+    const candidates = placements.map((placement) => {
+      if (placement === "left") return { placement, left: Number(anchorRect.left || 0) - width - margin, top: Number(anchorRect.top || 0) };
+      if (placement === "below") return { placement, left: Number(anchorRect.left || 0), top: Number(anchorRect.bottom || 0) + margin };
+      if (placement === "above") return { placement, left: Number(anchorRect.left || 0), top: Number(anchorRect.top || 0) - height - margin };
+      return { placement: "right", left: Number(anchorRect.right || 0) + margin, top: Number(anchorRect.top || 0) };
+    });
+    const fitting = candidates.find((candidate) => candidate.left >= margin && candidate.top >= margin && candidate.left + width <= viewportWidth - margin && candidate.top + height <= viewportHeight - margin) || candidates[0];
+    return {
+      placement: fitting.placement,
+      left: Math.max(margin, Math.min(fitting.left, viewportWidth - width - margin)),
+      top: Math.max(margin, Math.min(fitting.top, viewportHeight - height - margin)),
+      maxWidth: width,
+      maxHeight: height
+    };
+  }
+
+  function scopeSnapshotBreadthControlDiagnostics() {
+    const card = document.querySelector("#scopeSnapshotSection .scope-snapshot-minimap");
+    const control = document.querySelector("#scopeSnapshotSection .scope-breadth-control");
+    const segmented = document.querySelector("#scopeSnapshotSection .scope-breadth-segmented-control");
+    const buttons = Array.from(document.querySelectorAll("#scopeSnapshotSection .scope-breadth-segmented-control button"));
+    const cardRect = card?.getBoundingClientRect?.();
+    const controlRect = control?.getBoundingClientRect?.();
+    const segmentedRect = segmented?.getBoundingClientRect?.();
+    const rightEdgeAligned = cardRect && segmentedRect ? segmentedRect.right <= cardRect.right + 0.5 : null;
+    return {
+      cardClientWidth: card ? Math.round(card.clientWidth) : "not measured",
+      controlWidth: controlRect ? Math.round(controlRect.width) : "not measured",
+      segmentedWidth: segmentedRect ? Math.round(segmentedRect.width) : "not measured",
+      optionWidths: buttons.length ? buttons.map((button) => Math.round(button.getBoundingClientRect().width)).join("/") : "not measured",
+      selectedState: scopeSnapshotCurrentModeLabel(),
+      overflowDetected: card ? card.scrollWidth > card.clientWidth : "not measured",
+      rightEdgeAligned: rightEdgeAligned == null ? "not measured" : rightEdgeAligned
+    };
+  }
+
+  function scopeSnapshotInspectorTitleForRecord(selection = {}) {
+    const item = selection.item || {};
+    const recordType = normalizeText(item.recordType || item.lane?.id || "").toLowerCase();
+    const laneId = normalizeText(item.laneId || item.lane?.id || "").toLowerCase();
+    if (selection.type === "cluster") return "Linear Scope Snapshot Inspector";
+    if (/timeline/.test(recordType)) return "Timeline Promotion Inspector";
+    if (/orderedevent|event|happening/.test(recordType)) return "Timeline Promotion Inspector";
+    if (/relationship/.test(recordType)) return "Relationship Promotion Inspector";
+    if (/dialogue/.test(recordType)) return "Dialogue Relationship Inspector";
+    if (/theme/.test(recordType)) return "Theme Promotion Inspector";
+    if (/principle/.test(recordType)) return "Principle Extraction Inspector";
+    if (/journey/.test(recordType)) return "Journey Inspector";
+    if (/actor|character/.test(recordType) || /characters/.test(laneId)) return "Entity Classification Inspector - Actors";
+    if (/unresolved|ambiguous/.test(recordType) || /unresolved/.test(laneId)) return "Metric Integrity Inspector";
+    return "Linear Scope Snapshot Inspector";
+  }
+
+  function findInspectorSectionByTitle(title = "") {
+    const wanted = normalizeText(title).toLowerCase();
+    if (!wanted) return null;
+    const lazy = Array.from(document.querySelectorAll("#editorArchitectSection details[data-lazy-inspector]"))
+      .find((details) => normalizeText(details.dataset.lazyInspector).toLowerCase() === wanted);
+    if (lazy) return lazy;
+    return Array.from(document.querySelectorAll("#editorArchitectSection .semantic-section"))
+      .find((section) => {
+        const heading = section.querySelector(".semantic-section-title, summary");
+        return normalizeText(heading?.textContent).toLowerCase() === wanted;
+      }) || null;
+  }
+
+  function ensureScopeSnapshotBackRoute(inspectorElement) {
+    if (!inspectorElement || inspectorElement.querySelector(".scope-snapshot-back-route")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "scope-snapshot-back-route";
+    button.textContent = "Back to Snapshot";
+    button.addEventListener("click", scrollScopeSnapshotBackToGraph);
+    const target = inspectorElement.matches("details") ? inspectorElement : inspectorElement.querySelector(".semantic-section-title, summary")?.parentElement || inspectorElement;
+    target.appendChild(button);
+  }
+
+  async function openScopeSnapshotInspectorForSelection(button = null) {
+    const model = scopeSnapshotGraphModel();
+    const selection = selectedScopeSnapshotGraphRecord(model);
+    const selectedLabel = selection.item?.label || "scope snapshot selection";
+    const inspectorTitle = scopeSnapshotInspectorTitleForRecord(selection);
+    saveScopeSnapshotPresentationState("open inspector");
+    enforceScopeSnapshotPresentationInvariant("before open inspector");
+    if (button) {
+      button.textContent = "Opening Inspector...";
+      button.disabled = true;
+    }
+    try {
+      await loadDeferredSection("Editor / Architect Evaluation");
+      const inspector = findInspectorSectionByTitle(inspectorTitle);
+      if (!inspector) {
+        showDiagnosticMessage(`No dedicated inspector available for this record type: ${selection.item?.recordType || selection.type || "unknown"}.`);
+        if (button) button.textContent = "No dedicated inspector";
+        return;
+      }
+      inspector.classList.add("scope-snapshot-inspector-target");
+      window.setTimeout(() => inspector.classList.remove("scope-snapshot-inspector-target"), 2200);
+      if (inspector.matches("details")) inspector.open = true;
+      ensureScopeSnapshotBackRoute(inspector);
+      inspector.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      const focusTarget = inspector.querySelector("summary, .semantic-section-title") || inspector;
+      focusTarget.setAttribute("tabindex", "-1");
+      focusTarget.focus({ preventScroll: true });
+      if (button) {
+        button.textContent = "Inspector Opened";
+        window.setTimeout(() => {
+          button.disabled = false;
+          button.textContent = "Open Inspector";
+        }, 1200);
+      }
+      showDiagnosticMessage(`Opened ${inspectorTitle} for ${selectedLabel}. Use Back to Snapshot to return to the selected graph item.`);
+      window.requestAnimationFrame(() => enforceScopeSnapshotPresentationInvariant("after open inspector"));
+    } catch (error) {
+      showDiagnosticMessage(`Open Inspector failed for ${selectedLabel}: ${error.message}`);
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Open Inspector";
+      }
+      console.error("I.C.E. Scope Snapshot inspector open failed", error);
+    }
   }
 
   function exportScopeSnapshotSvg() {
@@ -28348,20 +29213,58 @@ createRevelationPartsSection(item.subEvents)
 
   function handleScopeSnapshotAction(event) {
     const node = event.target?.closest?.("[data-snapshot-node-id]");
-    if (node) {
+    if (node && node.closest?.(".scope-snapshot-svg")) {
       event.preventDefault();
-      selectScopeSnapshotGraphItem(node.dataset.snapshotNodeId || "", { scroll: true });
+      event.stopPropagation?.();
+      selectScopeSnapshotGraphItem(node.dataset.snapshotNodeId || "", { preserveViewport: true });
+      enforceScopeSnapshotPresentationInvariant("click graph node");
       return;
     }
     const cluster = event.target?.closest?.("[data-snapshot-cluster-id]");
-    if (cluster) {
+    if (cluster && cluster.closest?.(".scope-snapshot-svg")) {
       event.preventDefault();
-      selectScopeSnapshotGraphItem(cluster.dataset.snapshotClusterId || "", { scroll: true });
+      event.stopPropagation?.();
+      const clusterId = cluster.dataset.snapshotClusterId || "";
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.expandedAnchorId = scopeSnapshotViewState.expandedAnchorId === clusterId ? "" : clusterId;
+      updateScopeSnapshotVisualBreadth(scopeSnapshotViewState.snapshotVisualBreadth || "active_page");
+      restoreScopeSnapshotViewport(viewportBefore, "toggle graph cluster");
+      selectScopeSnapshotGraphItem(clusterId, { preserveViewport: true });
+      enforceScopeSnapshotPresentationInvariant("click graph cluster");
+      return;
+    }
+    if (event.target?.closest?.(".scope-snapshot-minimap-track")) {
+      if (scopeSnapshotViewState.miniMapSuppressClick) {
+        scopeSnapshotViewState.miniMapSuppressClick = false;
+        event.preventDefault();
+        event.stopPropagation?.();
+        enforceScopeSnapshotPresentationInvariant("mini-map suppressed click");
+        return;
+      }
+      handleScopeSnapshotMiniMapPointer(event);
+      return;
+    }
+    const breadthButton = event.target?.closest?.("[data-snapshot-breadth]");
+    if (breadthButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      updateScopeSnapshotVisualBreadth(breadthButton.dataset.snapshotBreadth || "active_page");
+      enforceScopeSnapshotPresentationInvariant("scope breadth button");
       return;
     }
     const button = event.target?.closest?.("button[data-scope-snapshot-action]");
-    if (!button) return;
+    if (!button) {
+      const relatedItem = event.target?.closest?.("[data-snapshot-related-id]");
+      if (relatedItem) {
+        event.preventDefault();
+        event.stopPropagation?.();
+        selectScopeSnapshotGraphItem(relatedItem.dataset.snapshotRelatedId || "", { preserveViewport: true });
+        enforceScopeSnapshotPresentationInvariant("cluster child selection");
+      }
+      return;
+    }
     event.preventDefault();
+    event.stopPropagation?.();
     const action = button.dataset.scopeSnapshotAction || "";
     if (["linear", "cards", "outline"].includes(action)) {
       scopeSnapshotViewState.graphMode = action;
@@ -28382,31 +29285,31 @@ createRevelationPartsSection(item.subEvents)
     }
     if (action === "back_to_graph") {
       scrollScopeSnapshotBackToGraph();
+      enforceScopeSnapshotPresentationInvariant("back to graph action");
+      return;
+    }
+    if (action === "read_detail") {
+      readScopeSnapshotSelectedDetail();
+      enforceScopeSnapshotPresentationInvariant("read selected detail action");
       return;
     }
     if (action === "show_evidence" || action === "show_provenance") {
-      appendScopeSnapshotLazyDetail(action === "show_provenance" ? "provenance" : "evidence");
+      toggleScopeSnapshotLazyDetail(action === "show_provenance" ? "provenance" : "evidence");
+      enforceScopeSnapshotPresentationInvariant(action);
       return;
     }
     if (action === "open_inspector") {
-      const model = scopeSnapshotGraphModel();
-      const selection = selectedScopeSnapshotGraphRecord(model);
-      const record = selection.item || {};
-      navigateSemanticFocus({
-        targetSection: record.targetSection || record.lane?.targetSection || "studyReferenceIndexSection",
-        searchTerm: record.label || record.lane?.label || "",
-        focusLabel: record.label || "scope snapshot selection"
-      });
+      openScopeSnapshotInspectorForSelection(button);
       return;
     }
     if (action === "reset") {
       scopeSnapshotViewState.graphMode = "linear";
-      scopeSnapshotViewState.scopeMode = "active_page";
+      scopeSnapshotSetBreadth("active_page");
       scopeSnapshotViewState.zoomMode = "auto";
       scopeSnapshotViewState.detailLevel = "auto";
-      scopeSnapshotViewState.scopeBreadth = 34;
       scopeSnapshotViewState.selectedGraphId = "";
       rerenderScopeSnapshotOnly();
+      enforceScopeSnapshotPresentationInvariant("reset snapshot");
       return;
     }
     if (action === "zoom_in") {
@@ -28424,26 +29327,52 @@ createRevelationPartsSection(item.subEvents)
       if (action === "auto" || action === "fit") scopeSnapshotViewState.detailLevel = "auto";
     }
     rerenderScopeSnapshotOnly();
+    enforceScopeSnapshotPresentationInvariant(`snapshot action ${action}`);
   }
 
-  function handleScopeSnapshotInput(event) {
-    const meter = event.target?.closest?.(".scope-snapshot-scope-meter");
-    if (!meter) return;
-    scopeSnapshotSetBreadth(meter.value);
-    rerenderScopeSnapshotOnly();
+  function handleScopeSnapshotPointerDown(event) {
+    const track = event.target?.closest?.(".scope-snapshot-minimap-track");
+    if (!track) return;
+    const geometry = scopeSnapshotMiniMapGeometry(track);
+    if (!geometry) return;
+    const clickedViewport = event.target?.closest?.(".scope-snapshot-minimap-viewport");
+    const relativeX = event.clientX - geometry.rect.left - geometry.borderOffset;
+    scopeSnapshotViewState.miniMapDragOffset = clickedViewport
+      ? clampNumber(relativeX - geometry.indicatorLeft, 0, geometry.indicatorWidth)
+      : geometry.indicatorWidth / 2;
+    if (handleScopeSnapshotMiniMapPointer(event, { centerOnPointer: !clickedViewport })) {
+      scopeSnapshotViewState.miniMapDragging = !geometry.noOverflow;
+      event.target.setPointerCapture?.(event.pointerId);
+      enforceScopeSnapshotPresentationInvariant("mini-map pointerdown");
+    }
+  }
+
+  function handleScopeSnapshotPointerMove(event) {
+    if (!scopeSnapshotViewState.miniMapDragging) return;
+    scopeSnapshotViewState.miniMapSuppressClick = true;
+    handleScopeSnapshotMiniMapPointer(event, { centerOnPointer: false });
+    enforceScopeSnapshotPresentationInvariant("mini-map drag");
+  }
+
+  function handleScopeSnapshotPointerUp() {
+    scopeSnapshotViewState.miniMapDragging = false;
+    scopeSnapshotViewState.miniMapDragOffset = null;
   }
 
   function handleScopeSnapshotKeydown(event) {
     if (event.key !== "Enter" && event.key !== " ") return;
     const graphItem = event.target?.closest?.("[data-snapshot-node-id], [data-snapshot-cluster-id]");
-    if (!graphItem) return;
+    if (!graphItem || !graphItem.closest?.(".scope-snapshot-svg")) return;
     event.preventDefault();
-    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || "", { scroll: true });
+    event.stopPropagation?.();
+    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || "", { preserveViewport: true });
+    enforceScopeSnapshotPresentationInvariant("keyboard graph selection");
   }
 
   function openScopeSnapshotPanel() {
     const section = document.getElementById("scopeSnapshotSection");
     if (!section) return;
+    enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:start");
     if (!selectedPresentationModules.has("snapshot")) {
       selectedPresentationModules.add("snapshot");
       selectedPresentationModules.add("overview");
@@ -28452,12 +29381,16 @@ createRevelationPartsSection(item.subEvents)
     }
     if (!fullStudyDataLoaded) {
       loadDeferredSection("Linear Scope Snapshot")
-        .then(() => scrollToStudySection("scopeSnapshotSection"))
+        .then(() => {
+          enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:deferred-loaded");
+          scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel:deferred", { block: "start" });
+        })
         .catch((error) => showDiagnosticMessage(`Scope Snapshot load failed: ${error.message}`));
       return;
     }
     safeRenderSection("Linear Scope Snapshot", renderScopeSnapshot, currentSearchTerm());
-    scrollToStudySection("scopeSnapshotSection");
+    scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel", { block: "start" });
+    enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:end");
   }
 
   function scheduleRenderStudy(delay = 140) {
@@ -28549,8 +29482,12 @@ createRevelationPartsSection(item.subEvents)
   });  document.getElementById("clearSemanticFocus")?.addEventListener("click", clearSemanticFocus);
   document.getElementById("volumeContextSection")?.addEventListener("click", handleVolumeContextAction);
   document.getElementById("scopeSnapshotSection")?.addEventListener("click", handleScopeSnapshotAction);
-  document.getElementById("scopeSnapshotSection")?.addEventListener("input", handleScopeSnapshotInput);
   document.getElementById("scopeSnapshotSection")?.addEventListener("keydown", handleScopeSnapshotKeydown);
+  document.getElementById("scopeSnapshotSection")?.addEventListener("pointerdown", handleScopeSnapshotPointerDown);
+  document.getElementById("scopeSnapshotSection")?.addEventListener("pointermove", handleScopeSnapshotPointerMove);
+  document.getElementById("scopeSnapshotSection")?.addEventListener("pointerup", handleScopeSnapshotPointerUp);
+  document.getElementById("scopeSnapshotSection")?.addEventListener("pointercancel", handleScopeSnapshotPointerUp);
+  window.addEventListener("resize", scheduleScopeSnapshotMiniMapSync, { passive: true });
   document.getElementById("openScopeSnapshot")?.addEventListener("click", openScopeSnapshotPanel);
   document.getElementById("refreshStudyData")?.addEventListener("click", refreshStudyData);
   document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
