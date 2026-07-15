@@ -183,7 +183,7 @@ body {
   display: grid;
   gap: 20px;
   padding: 24px;
-  max-width: 1120px;
+  max-width: 1480px;
   margin: 0 auto;
 }
 
@@ -411,6 +411,536 @@ body {
 
 .library-awareness-card .semantic-card-range {
   color: #5f6b7a;
+}
+
+.scope-snapshot-grid {
+  grid-template-columns: 1fr;
+}
+
+.scope-snapshot-card {
+  border-color: #bfd0df;
+}
+
+.scope-snapshot-topbar {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 1fr) minmax(560px, 1.6fr);
+  margin-bottom: 10px;
+}
+
+.scope-snapshot-title-block h4 {
+  color: #071632;
+  font-size: 1.25rem;
+  margin: 0 0 8px;
+}
+
+.scope-snapshot-title-block p {
+  color: #17202a;
+  font-size: .95rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.scope-snapshot-source-line {
+  color: #25364d;
+  font-size: .86rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.scope-snapshot-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.scope-snapshot-controls button {
+  background: #ffffff;
+  border: 1px solid #9db5d1;
+  border-radius: 6px;
+  color: #1f334d;
+  cursor: pointer;
+  font: inherit;
+  font-size: .82rem;
+  padding: 7px 9px;
+}
+
+.scope-snapshot-controls button[aria-pressed="true"],
+.scope-snapshot-controls button:hover,
+.scope-snapshot-controls button:focus-visible {
+  background: #eef4fb;
+  border-color: #5b83aa;
+  outline: none;
+}
+
+.scope-snapshot-metric-strip {
+  align-items: center;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.scope-snapshot-metric {
+  align-items: center;
+  border-right: 1px solid #e4e9f0;
+  display: grid;
+  gap: 4px 8px;
+  grid-template-columns: auto 1fr;
+  min-height: 52px;
+  padding: 8px 10px;
+}
+
+.scope-snapshot-metric-symbol {
+  align-items: center;
+  background: color-mix(in srgb, var(--snapshot-metric-color) 12%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--snapshot-metric-color) 45%, #ffffff);
+  border-radius: 999px;
+  color: var(--snapshot-metric-color);
+  display: inline-flex;
+  font-size: .78rem;
+  font-weight: 900;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.scope-snapshot-metric span:not(.scope-snapshot-metric-symbol) {
+  color: #25364d;
+  font-size: .8rem;
+}
+
+.scope-snapshot-metric strong {
+  color: var(--snapshot-metric-color);
+  font-size: 1rem;
+  grid-column: 2;
+}
+
+.scope-snapshot-axis-summary {
+  color: #25364d;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.scope-snapshot-graph {
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  overflow-x: auto;
+  padding: 0;
+}
+
+.scope-snapshot-svg {
+  display: block;
+  min-width: 100%;
+  width: 100%;
+}
+
+.scope-snapshot-title,
+.scope-snapshot-book-label,
+.scope-snapshot-tick text,
+.scope-snapshot-lane-label,
+.scope-snapshot-lane-count,
+.scope-snapshot-lane-symbol,
+.scope-snapshot-omission,
+.scope-snapshot-node text {
+  fill: #25364d;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.scope-snapshot-title {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.scope-snapshot-book-label {
+  font-size: 12px;
+}
+
+.scope-snapshot-chapter-divider {
+  stroke: #8fb4dc;
+  stroke-dasharray: 4 4;
+}
+
+.scope-snapshot-tick line {
+  stroke: #d8dde6;
+}
+
+.scope-snapshot-tick text {
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.scope-snapshot-lane line {
+  stroke: #c7d0dc;
+}
+
+.scope-snapshot-lane-band {
+  fill: #ffffff;
+  stroke: #e6ebf1;
+}
+
+.scope-snapshot-lane-header {
+  fill: #fbfcfe;
+  stroke: #e6ebf1;
+}
+
+.scope-snapshot-lane-label {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scope-snapshot-lane-count {
+  fill: #5f6b7a;
+  font-size: 12px;
+}
+
+.scope-snapshot-lane-symbol {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.scope-snapshot-node {
+  cursor: pointer;
+}
+
+.scope-snapshot-svg:has(.scope-snapshot-node:hover) .scope-snapshot-node:not(:hover),
+.scope-snapshot-svg:has(.scope-snapshot-cluster:hover) .scope-snapshot-node,
+.scope-snapshot-svg:has(.scope-snapshot-node:hover) .scope-snapshot-cluster,
+.scope-snapshot-svg:has(.scope-snapshot-cluster:hover) .scope-snapshot-cluster:not(:hover) {
+  opacity: .38;
+}
+
+.scope-snapshot-svg:has(.scope-snapshot-node:hover) .scope-snapshot-node:hover,
+.scope-snapshot-svg:has(.scope-snapshot-cluster:hover) .scope-snapshot-cluster:hover {
+  opacity: 1;
+}
+
+.scope-snapshot-node .scope-snapshot-symbol-fill {
+  fill: var(--snapshot-node-color, #1f4f7a);
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.scope-snapshot-node .scope-snapshot-symbol-open {
+  fill: #ffffff;
+  stroke: var(--snapshot-node-color, #1f4f7a);
+  stroke-width: 2;
+}
+
+.scope-snapshot-node .scope-snapshot-symbol-stroke {
+  stroke: var(--snapshot-node-color, #1f4f7a);
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.scope-snapshot-node .scope-snapshot-symbol-text {
+  fill: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  stroke: none;
+}
+
+.scope-snapshot-node text {
+  font-size: 10px;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: #ffffff;
+  stroke-width: 4px;
+}
+
+.scope-snapshot-node-label {
+  fill: #17202a;
+  font-weight: 700;
+}
+
+.scope-snapshot-node .scope-snapshot-symbol-text {
+  fill: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  stroke: none;
+}
+
+.scope-snapshot-node:focus-visible .scope-snapshot-symbol-fill,
+.scope-snapshot-node:hover .scope-snapshot-symbol-fill,
+.scope-snapshot-node:focus-visible .scope-snapshot-symbol-open,
+.scope-snapshot-node:hover .scope-snapshot-symbol-open {
+  filter: brightness(.82);
+  outline: none;
+}
+
+.scope-snapshot-node.selected .scope-snapshot-symbol-fill,
+.scope-snapshot-node.selected .scope-snapshot-symbol-open {
+  stroke: #071632;
+  stroke-width: 3;
+}
+
+.scope-snapshot-cluster.selected rect {
+  stroke: #071632;
+  stroke-width: 3;
+}
+
+.scope-snapshot-node.unresolved circle {
+  fill: #8a5c16;
+}
+
+.scope-snapshot-cluster {
+  cursor: pointer;
+}
+
+.scope-snapshot-cluster rect {
+  fill: color-mix(in srgb, var(--snapshot-node-color) 16%, #ffffff);
+  stroke: var(--snapshot-node-color, #25364d);
+  stroke-width: 1.5;
+}
+
+.scope-snapshot-cluster.warning rect {
+  fill: #fff1ec;
+  stroke: #ef3b38;
+}
+
+.scope-snapshot-cluster-count {
+  fill: #17202a;
+  font-size: 9px;
+  font-weight: 900;
+  pointer-events: none;
+  stroke: none;
+}
+
+.scope-snapshot-omission {
+  font-size: 11px;
+}
+
+.scope-snapshot-lower-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(320px, 2fr) minmax(250px, 1fr) minmax(260px, 1fr);
+  margin-top: 12px;
+}
+
+.scope-snapshot-detail-panel,
+.scope-snapshot-legend,
+.scope-snapshot-minimap {
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.scope-snapshot-detail-panel {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(220px, 1.2fr) minmax(180px, .9fr) minmax(200px, 1fr);
+  scroll-margin-top: 86px;
+}
+
+.scope-snapshot-detail-badge {
+  align-items: center;
+  background: color-mix(in srgb, var(--snapshot-metric-color) 18%, #ffffff);
+  border-radius: 8px;
+  color: var(--snapshot-metric-color);
+  display: flex;
+  font-size: 1.4rem;
+  font-weight: 900;
+  height: 52px;
+  justify-content: center;
+  width: 52px;
+}
+
+.scope-snapshot-detail-panel h4,
+.scope-snapshot-legend h4,
+.scope-snapshot-minimap h4 {
+  color: #17202a;
+  font-size: .96rem;
+  margin: 0 0 8px;
+}
+
+.scope-snapshot-detail-panel p {
+  color: #25364d;
+  font-size: .86rem;
+  line-height: 1.4;
+  margin: 0 0 6px;
+}
+
+.scope-snapshot-detail-panel dl {
+  display: grid;
+  gap: 6px 12px;
+  grid-template-columns: minmax(85px, auto) 1fr;
+  margin: 0;
+}
+
+.scope-snapshot-detail-panel dt {
+  color: #17202a;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.scope-snapshot-detail-panel dd {
+  color: #445064;
+  font-size: .8rem;
+  margin: 0;
+}
+
+.scope-snapshot-detail-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.scope-snapshot-detail-actions button {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #17202a;
+  cursor: pointer;
+  font-size: .76rem;
+  font-weight: 700;
+  padding: 5px 8px;
+}
+
+.scope-snapshot-detail-actions button:hover,
+.scope-snapshot-detail-actions button:focus-visible {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.scope-snapshot-related-list h5,
+.scope-snapshot-lazy-detail h5 {
+  color: #17202a;
+  font-size: .8rem;
+  margin: 0 0 6px;
+}
+
+.scope-snapshot-related-list ol,
+.scope-snapshot-lazy-detail ul {
+  color: #445064;
+  font-size: .78rem;
+  line-height: 1.4;
+  margin: 0;
+  max-height: 118px;
+  overflow: auto;
+  padding-left: 18px;
+}
+
+.scope-snapshot-related-list li.selected {
+  color: #17202a;
+  font-weight: 800;
+}
+
+.scope-snapshot-lazy-detail {
+  border-top: 1px solid #e5e7eb;
+  grid-column: 2 / -1;
+  padding-top: 8px;
+}
+
+.scope-snapshot-legend-grid {
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.scope-snapshot-legend-grid span {
+  align-items: center;
+  color: #25364d;
+  display: inline-flex;
+  font-size: .82rem;
+  gap: 8px;
+}
+
+.scope-snapshot-legend-symbol {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--snapshot-metric-color) 42%, #ffffff);
+  border-radius: 999px;
+  color: var(--snapshot-metric-color);
+  display: inline-flex;
+  font-size: .82rem;
+  font-weight: 900;
+  height: 20px;
+  justify-content: center;
+  line-height: 1;
+  width: 20px;
+}
+
+.scope-snapshot-minimap-track {
+  background: linear-gradient(90deg, #eef4fb 0, #ffffff 100%);
+  border: 1px solid #d8dde6;
+  border-radius: 6px;
+  height: 74px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.scope-snapshot-minimap-track span {
+  border-radius: 999px;
+  height: 4px;
+  position: absolute;
+  width: 18px;
+}
+
+.scope-snapshot-minimap-track span.selected {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #2563eb;
+  height: 5px;
+  opacity: 1;
+}
+
+.scope-snapshot-minimap-track em {
+  color: #5f6b7a;
+  display: block;
+  font-size: .8rem;
+  padding: 24px 10px;
+}
+
+.scope-snapshot-scope-meter {
+  width: 100%;
+}
+
+.scope-snapshot-meter-labels {
+  color: #5f6b7a;
+  display: flex;
+  font-size: .75rem;
+  justify-content: space-between;
+}
+
+.scope-snapshot-minimap p,
+.scope-snapshot-footer {
+  color: #445064;
+  font-size: .78rem;
+  line-height: 1.35;
+  margin: 8px 0 0;
+}
+
+.scope-snapshot-footer {
+  margin-top: 12px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .scope-snapshot-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .scope-snapshot-metric-strip {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .scope-snapshot-lower-grid,
+  .scope-snapshot-detail-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .scope-snapshot-lazy-detail {
+    grid-column: 1;
+  }
 }
 .semantic-focus-status {
   align-items: center;
