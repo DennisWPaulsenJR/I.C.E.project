@@ -491,6 +491,161 @@ body {
   outline: none;
 }
 
+.scope-snapshot-layer-panel,
+.scope-snapshot-copy-render {
+  background: #fbfcfe;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 10px;
+}
+
+.scope-snapshot-layer-presets,
+.scope-snapshot-layer-groups,
+.scope-snapshot-copy-actions,
+.scope-snapshot-copy-options {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.scope-snapshot-layer-presets {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.scope-snapshot-layer-group {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.scope-snapshot-layer-group > span {
+  color: #25364d;
+  font-size: .76rem;
+  font-weight: 900;
+  min-width: 120px;
+  text-transform: uppercase;
+}
+
+.scope-snapshot-layer-panel button,
+.scope-snapshot-copy-render button {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #17202a;
+  cursor: pointer;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 800;
+  padding: 6px 9px;
+}
+
+.scope-snapshot-layer-panel button[aria-pressed="true"],
+.scope-snapshot-layer-panel button.selected,
+.scope-snapshot-copy-render button[aria-pressed="true"],
+.scope-snapshot-layer-panel button:hover,
+.scope-snapshot-copy-render button:hover,
+.scope-snapshot-layer-panel button:focus-visible,
+.scope-snapshot-copy-render button:focus-visible {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.scope-snapshot-layer-panel button.recommended {
+  box-shadow: inset 0 -2px 0 #f59e0b;
+}
+
+.scope-snapshot-layer-panel button.contains-unresolved {
+  border-color: #ef3b38;
+}
+
+.scope-snapshot-layer-panel button:disabled,
+.scope-snapshot-layer-panel button.dependency-unavailable {
+  color: #8a94a3;
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.scope-snapshot-layer-panel p,
+.scope-snapshot-copy-render p {
+  color: #445064;
+  font-size: .78rem;
+  line-height: 1.35;
+  margin: 8px 0 0;
+}
+
+.scope-snapshot-copy-render {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 2fr);
+}
+
+.scope-snapshot-copy-render h4 {
+  color: #17202a;
+  font-size: .94rem;
+  margin: 0 0 4px;
+}
+
+.scope-snapshot-copy-actions,
+.scope-snapshot-copy-options,
+.scope-snapshot-copy-list,
+.scope-snapshot-copy-empty,
+.scope-snapshot-copy-message {
+  grid-column: 1 / -1;
+}
+
+.scope-snapshot-copy-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.scope-snapshot-copy-list li {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.scope-snapshot-copy-list li.selected {
+  border-color: #2563eb;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.scope-snapshot-copy-list blockquote,
+.scope-snapshot-source-text {
+  background: #f8fafc;
+  border-left: 3px solid #9db5d1;
+  color: #25364d;
+  font-size: .82rem;
+  line-height: 1.45;
+  margin: 6px 0;
+  padding: 7px 9px;
+}
+
+.scope-snapshot-evaluation-text {
+  font-weight: 700;
+}
+
+.scope-snapshot-hidden-selection {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 7px;
+  color: #7c2d12;
+  padding: 7px;
+}
+
+.scope-snapshot-hidden-selection button {
+  margin-left: 8px;
+}
+
 .scope-snapshot-metric-strip {
   align-items: center;
   border: 1px solid #d8dde6;
@@ -673,6 +828,12 @@ body {
 
 .scope-snapshot-node-label {
   fill: #17202a;
+  font-weight: 700;
+}
+
+.scope-snapshot-node-sublabel {
+  fill: #445064;
+  font-size: 8px;
   font-weight: 700;
 }
 

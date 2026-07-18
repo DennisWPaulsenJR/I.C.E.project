@@ -355,6 +355,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     { id: "journeys", label: "Journeys / Progressions", defaultVisible: false, targetSection: "guidedStudyJourneysSection" },
     { id: "unresolved", label: "Unresolved / Ambiguous", defaultVisible: false, targetSection: "semanticAmbiguitiesSection" }
   ];
+  const SCOPE_SNAPSHOT_LAYER_DEFINITIONS = [
+    { id: "characters", group: "Core", label: "Characters", laneIds: ["characters"], keywords: ["actor", "character", "participant"] },
+    { id: "events", group: "Core", label: "Events", laneIds: ["happenings", "majorEvents"], keywords: ["event", "timeline"] },
+    { id: "happenings", group: "Core", label: "Happenings", laneIds: ["happenings"], keywords: ["ordered event", "happening"] },
+    { id: "majorEvents", group: "Core", label: "Major Events", laneIds: ["majorEvents"], keywords: ["timeline", "major event"] },
+    { id: "relationships", group: "Core", label: "Relationships", laneIds: ["relationships"], keywords: ["relationship"] },
+    { id: "themes", group: "Core", label: "Themes", laneIds: ["themes"], keywords: ["theme", "meaning"] },
+    { id: "unresolved", group: "Core", label: "Unresolved", laneIds: ["unresolved"], keywords: ["unresolved", "ambiguous"] },
+    { id: "prophecy", group: "Scripture structure", label: "Prophecy", laneIds: ["relationships", "themes", "principles", "unresolved"], keywords: ["prophecy", "prophet", "spoken by"] },
+    { id: "fulfillment", group: "Scripture structure", label: "Fulfillment", laneIds: ["relationships", "majorEvents", "themes"], keywords: ["fulfill", "fulfilled", "fulfillment"] },
+    { id: "quotations", group: "Scripture structure", label: "Quotations", laneIds: ["happenings", "relationships", "unresolved"], keywords: ["quote", "quotation", "said", "spake", "answered"] },
+    { id: "teachings", group: "Scripture structure", label: "Teachings", laneIds: ["happenings", "majorEvents", "principles", "themes"], keywords: ["teach", "teaching", "discourse", "doctrine"] },
+    { id: "principles", group: "Scripture structure", label: "Principles", laneIds: ["principles"], keywords: ["principle", "command", "promise", "warning"] },
+    { id: "commands", group: "Scripture structure", label: "Commands", laneIds: ["principles", "relationships"], keywords: ["command", "commandment", "imperative"] },
+    { id: "promises", group: "Scripture structure", label: "Promises", laneIds: ["principles", "themes"], keywords: ["promise", "blessed", "shall"] },
+    { id: "dialogue", group: "Narrative", label: "Dialogue", laneIds: ["relationships"], keywords: ["dialogue", "speaker", "audience", "said", "answered"] },
+    { id: "speakerAudience", group: "Narrative", label: "Speaker / Audience", laneIds: ["relationships", "unresolved"], keywords: ["speaker", "audience", "hearers", "recipient"] },
+    { id: "locations", group: "Narrative", label: "Locations", laneIds: ["characters", "happenings", "majorEvents"], keywords: ["location", "place", "city", "region", "mountain", "sea", "wilderness"] },
+    { id: "journeys", group: "Narrative", label: "Journeys", laneIds: ["journeys"], keywords: ["journey", "movement", "travel", "came", "went", "departed"] },
+    { id: "miracles", group: "Narrative", label: "Miracles", laneIds: ["happenings", "majorEvents", "themes"], keywords: ["miracle", "healing", "healed", "cleanse", "cast out"] },
+    { id: "causeConsequence", group: "Narrative", label: "Cause / Consequence", laneIds: ["relationships", "happenings", "journeys"], keywords: ["cause", "consequence", "because", "therefore", "wherefore", "response"] },
+    { id: "meaning", group: "Analysis", label: "Meaning", laneIds: ["themes", "principles"], keywords: ["meaning", "theme", "principle"] },
+    { id: "literaryStructure", group: "Analysis", label: "Literary Structure", laneIds: ["happenings", "themes", "principles"], keywords: ["literary", "parable", "sermon", "formula", "beatitude", "woe"] },
+    { id: "verification", group: "Analysis", label: "Verification", laneIds: ["unresolved", "relationships", "themes"], keywords: ["verified", "verification", "grounded", "confidence"] },
+    { id: "ambiguity", group: "Analysis", label: "Ambiguity", laneIds: ["unresolved"], keywords: ["ambiguous", "unresolved", "possible"] },
+    { id: "gospelParallels", group: "Analysis", label: "Gospel Parallels", laneIds: ["relationships", "majorEvents", "happenings"], keywords: ["gospel", "synoptic", "parallel", "witness account", "shared event"] },
+    { id: "copyRender", group: "Selection", label: "Copy Render", laneIds: ["happenings"], keywords: ["copy render", "selection"] }
+  ];
+  const SCOPE_SNAPSHOT_LAYER_PRESETS = {
+    recommended: { label: "Recommended", layerIds: [] },
+    narrative: { label: "Narrative", layerIds: ["characters", "events", "dialogue", "speakerAudience", "locations", "journeys", "causeConsequence", "unresolved"] },
+    prophecyFulfillment: { label: "Prophecy & Fulfillment", layerIds: ["prophecy", "fulfillment", "quotations", "relationships", "events", "unresolved"] },
+    peopleRelationships: { label: "People & Relationships", layerIds: ["characters", "relationships", "dialogue", "speakerAudience", "locations", "unresolved"] },
+    teachingsPrinciples: { label: "Teachings & Principles", layerIds: ["teachings", "principles", "commands", "promises", "themes", "meaning", "unresolved"] },
+    placesJourneys: { label: "Places & Journeys", layerIds: ["locations", "journeys", "events", "causeConsequence", "characters", "unresolved"] },
+    gospelParallels: { label: "Gospel Parallels", layerIds: ["gospelParallels", "events", "relationships", "dialogue", "quotations", "unresolved"] },
+    everything: { label: "Everything", layerIds: SCOPE_SNAPSHOT_LAYER_DEFINITIONS.map((layer) => layer.id) },
+    custom: { label: "Custom", layerIds: [] }
+  };
   const SCOPE_SNAPSHOT_GRANULARITIES = ["token_segment", "clause", "verse", "sparse_verse", "chapter", "sparse_chapter", "book", "volume"];
   const SCOPE_SNAPSHOT_LOD_STATES = [
     { level: 0, id: "volume_overview", label: "LOD 0 - Volume Overview", minBudget: 3, maxBudget: 8, labelBudget: 1 },
@@ -380,7 +419,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     miniMapResizeObserver: null,
     miniMapDiagnostics: null,
     layoutDiagnostics: [],
-    savedPresentationState: null
+    savedPresentationState: null,
+    layerPreset: "recommended",
+    selectedLayerIds: new Set(),
+    layerUserOverride: false,
+    copyRenderSelections: [],
+    activeCopyRenderSelectionId: "",
+    copyRenderContextMode: "exact_selection",
+    copyRenderEvaluationMode: "independent",
+    copyRenderAxisMode: "capture_order",
+    lastCopyRenderMessage: ""
   };
   const scopeSnapshotGraphCache = new Map();
   let scopeSnapshotLastCacheState = "not requested";
@@ -13030,6 +13078,418 @@ createRevelationPartsSection(item.subEvents)
     return null;
   }
 
+  function scopeSnapshotReferenceLabelsFromRecord(record = {}) {
+    const values = [
+      record.sourceReference,
+      record.primaryReference,
+      record.supportingReference,
+      record.supportingReferences,
+      record.sourceReferences,
+      record.references,
+      record.verseRange,
+      record.verseRef,
+      record.sourceScope,
+      record.scopePath
+    ].flat(Infinity);
+    return [...new Set(values.map((value) => {
+      const parsed = sourceVersePartsFromText(value, {
+        book: record.book || record.sourceContext?.book,
+        chapter: record.chapter || record.sourceContext?.chapter
+      });
+      return parsed?.chapter ? sourceVerseLabel(parsed) : normalizeText(value);
+    }).filter(Boolean))];
+  }
+
+  function scopeSnapshotSourceTextForRecord(record = {}, reference = null) {
+    const direct = scopeSnapshotRawField(record, [
+      "exactText",
+      "sourceText",
+      "sourceExcerpt",
+      "sourcePhrase",
+      "textQuoteExact",
+      "quote",
+      "quotation",
+      "supportingQuotation"
+    ]);
+    if (direct) return trimText(direct, 420);
+    const resolved = resolveSourceVerseReference(record);
+    if (resolved?.verseText) return trimText(resolved.verseText, 420);
+    if (reference?.label) {
+      const verse = resolveSourceVerseReference({ sourceReference: reference.label });
+      if (verse?.verseText) return trimText(verse.verseText, 420);
+    }
+    return "Source text unavailable from the current evaluation source";
+  }
+
+  function scopeSnapshotSemanticCategory(laneId = "", recordType = "") {
+    const value = normalizeText(recordType || laneId);
+    if (/actor|character/i.test(value)) return "Character / Actor";
+    if (/dialogue/i.test(value)) return "Dialogue Relationship";
+    if (/relationship/i.test(value)) return "Relationship";
+    if (/timeline|event|ordered/i.test(value)) return "Event";
+    if (/theme/i.test(value)) return "Theme";
+    if (/principle/i.test(value)) return "Principle / Teaching";
+    if (/journey/i.test(value)) return "Journey";
+    if (/copyrender|selection/i.test(value)) return "Copy Render Selection";
+    if (/unresolved|ambiguous/i.test(value)) return "Unresolved / Ambiguous";
+    return SCOPE_SNAPSHOT_LANES.find((lane) => lane.id === laneId)?.label || "Scoped Record";
+  }
+
+  function scopeSnapshotSubevaluationLabel(record = {}, fallback = "") {
+    return trimText(
+      record.relationshipType ||
+      record.dialogueType ||
+      record.eventType ||
+      record.timelineLabel ||
+      record.sceneType ||
+      record.themeName ||
+      record.principleName ||
+      record.principle ||
+      record.journeyType ||
+      record.guidanceCategory ||
+      record.structureType ||
+      record.userLabel ||
+      fallback,
+      72
+    );
+  }
+
+  function scopeSnapshotEvaluationText(record = {}, fallback = "") {
+    return trimText(
+      record.evaluation ||
+      record.reason ||
+      record.summary ||
+      record.description ||
+      record.evidence ||
+      record.sourceGrounding ||
+      fallback ||
+      "Existing scoped record available for inspection.",
+      260
+    );
+  }
+
+  function scopeSnapshotLayerIdsForNode(node = {}) {
+    const recordText = scopeSnapshotRecordText(node.record || {});
+    const haystack = normalizeText([
+      node.laneId,
+      node.recordType,
+      node.label,
+      node.subevaluationLabel,
+      node.semanticCategory,
+      node.status,
+      node.confidence,
+      recordText
+    ].join(" ")).toLowerCase();
+    const layerIds = new Set();
+    SCOPE_SNAPSHOT_LAYER_DEFINITIONS.forEach((layer) => {
+      const laneMatch = asArray(layer.laneIds).includes(node.laneId);
+      const keywordMatch = asArray(layer.keywords).some((keyword) => haystack.includes(keyword.toLowerCase()));
+      if (laneMatch || keywordMatch) layerIds.add(layer.id);
+    });
+    if (/unresolved|ambiguous/i.test(`${node.status} ${node.label} ${recordText}`)) {
+      layerIds.add("unresolved");
+      layerIds.add("ambiguity");
+    }
+    if (/fulfilled?|fulfillment/i.test(haystack)) layerIds.add("fulfillment");
+    if (/prophe|spoken by the prophet|as it is written/i.test(haystack)) layerIds.add("prophecy");
+    if (/quote|quotation|said|spake|answered/i.test(haystack)) layerIds.add("quotations");
+    if (/speaker|audience|recipient|hearers/i.test(haystack)) layerIds.add("speakerAudience");
+    if (/dialogue|said|answered|asked/i.test(haystack)) layerIds.add("dialogue");
+    if (/location|place|city|region|mountain|sea|wilderness|galilee|jerusalem|capernaum|egypt|nazareth/i.test(haystack)) layerIds.add("locations");
+    if (/miracle|heal|cleanse|cast out/i.test(haystack)) layerIds.add("miracles");
+    if (/cause|consequence|because|therefore|wherefore|response/i.test(haystack)) layerIds.add("causeConsequence");
+    if (/literary|parable|sermon|formula|beatitude|woe/i.test(haystack)) layerIds.add("literaryStructure");
+    if (/copy render|selection/i.test(haystack)) layerIds.add("copyRender");
+    return Array.from(layerIds);
+  }
+
+  function scopeSnapshotLayerAvailability(allNodes = []) {
+    const layerCounts = new Map(SCOPE_SNAPSHOT_LAYER_DEFINITIONS.map((layer) => [layer.id, 0]));
+    const referenceSets = new Map(SCOPE_SNAPSHOT_LAYER_DEFINITIONS.map((layer) => [layer.id, new Set()]));
+    const unresolvedCounts = new Map(SCOPE_SNAPSHOT_LAYER_DEFINITIONS.map((layer) => [layer.id, 0]));
+    allNodes.forEach((node) => {
+      asArray(node.layerIds).forEach((layerId) => {
+        layerCounts.set(layerId, (layerCounts.get(layerId) || 0) + 1);
+        if (node.reference?.label) referenceSets.get(layerId)?.add(node.reference.label);
+        if (/unresolved|ambiguous/i.test(`${node.status} ${node.label}`)) unresolvedCounts.set(layerId, (unresolvedCounts.get(layerId) || 0) + 1);
+      });
+    });
+    return SCOPE_SNAPSHOT_LAYER_DEFINITIONS.map((layer) => {
+      const count = layerCounts.get(layer.id) || 0;
+      const distinctReferenceCount = referenceSets.get(layer.id)?.size || 0;
+      const unresolvedCount = unresolvedCounts.get(layer.id) || 0;
+      const verifiedCount = allNodes.filter((node) => asArray(node.layerIds).includes(layer.id) && !/unresolved|ambiguous/i.test(`${node.status} ${node.confidence}`)).length;
+      const score = count * 4 + distinctReferenceCount * 3 + verifiedCount * 2 + (unresolvedCount ? 4 : 0) - Math.max(0, count - 18);
+      return {
+        ...layer,
+        available: count > 0,
+        dependencyUnavailable: count === 0 && ["prophecy", "fulfillment", "speakerAudience", "causeConsequence", "literaryStructure"].includes(layer.id),
+        count,
+        unresolvedCount,
+        distinctReferenceCount,
+        verifiedCount,
+        score,
+        recommendationReason: count
+          ? `${count} record(s), ${distinctReferenceCount} distinct reference(s), ${verifiedCount} grounded/verified signal(s)`
+          : "No scoped records or candidates available"
+      };
+    });
+  }
+
+  function scopeSnapshotRecommendedLayerIds(layerAvailability = []) {
+    const available = layerAvailability.filter((layer) => layer.available);
+    const ids = new Set();
+    ["characters", "events"].forEach((id) => {
+      if (available.some((layer) => layer.id === id)) ids.add(id);
+    });
+    const ranked = available
+      .filter((layer) => !ids.has(layer.id) && layer.id !== "copyRender")
+      .slice()
+      .sort((left, right) => right.score - left.score || right.distinctReferenceCount - left.distinctReferenceCount || left.label.localeCompare(right.label));
+    ranked.forEach((layer) => {
+      if (ids.size < 6) ids.add(layer.id);
+    });
+    if (available.some((layer) => layer.id === "unresolved" && layer.count > 0)) ids.add("unresolved");
+    if (available.some((layer) => layer.id === "copyRender" && layer.count > 0) && ids.size < 7) ids.add("copyRender");
+    if (ids.size < 4) {
+      ranked.forEach((layer) => {
+        if (ids.size < 4) ids.add(layer.id);
+      });
+    }
+    return Array.from(ids).slice(0, 7);
+  }
+
+  function scopeSnapshotActiveLayerIds(layerAvailability = []) {
+    const availableIds = new Set(layerAvailability.filter((layer) => layer.available).map((layer) => layer.id));
+    if (scopeSnapshotViewState.layerPreset === "recommended" && !scopeSnapshotViewState.layerUserOverride) {
+      return scopeSnapshotRecommendedLayerIds(layerAvailability);
+    }
+    if (scopeSnapshotViewState.layerPreset !== "custom" && SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]) {
+      return SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset].layerIds.filter((id) => availableIds.has(id));
+    }
+    const selected = Array.from(scopeSnapshotViewState.selectedLayerIds || []).filter((id) => availableIds.has(id));
+    return selected.length ? selected : scopeSnapshotRecommendedLayerIds(layerAvailability);
+  }
+
+  function scopeSnapshotLayerModel(allNodes = []) {
+    const availability = scopeSnapshotLayerAvailability(allNodes);
+    const recommendedLayerIds = scopeSnapshotRecommendedLayerIds(availability);
+    const activeLayerIds = scopeSnapshotActiveLayerIds(availability);
+    const activeSet = new Set(activeLayerIds);
+    const selectedRecord = allNodes.find((node) => node.id === scopeSnapshotViewState.selectedGraphId);
+    const selectedHiddenByFilter = Boolean(selectedRecord && !asArray(selectedRecord.layerIds).some((layerId) => activeSet.has(layerId)));
+    return {
+      availability,
+      recommendedLayerIds,
+      activeLayerIds,
+      selectedHiddenByFilter,
+      selectedHiddenLayerIds: selectedHiddenByFilter ? asArray(selectedRecord.layerIds) : [],
+      preset: scopeSnapshotViewState.layerPreset,
+      customMode: scopeSnapshotViewState.layerPreset === "custom" || scopeSnapshotViewState.layerUserOverride,
+      hiddenNodeCount: allNodes.filter((node) => !asArray(node.layerIds).some((layerId) => activeSet.has(layerId))).length
+    };
+  }
+
+  function scopeSnapshotNodeVisibleByLayer(node = {}, layerModel = {}) {
+    const active = new Set(asArray(layerModel.activeLayerIds));
+    return asArray(node.layerIds).some((layerId) => active.has(layerId));
+  }
+
+  function scopeSnapshotElementDescriptor(node = null) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return node?.nodeName || "text";
+    const element = node;
+    const parts = [element.tagName?.toLowerCase?.() || "element"];
+    if (element.id) parts.push(`#${element.id}`);
+    const className = normalizeText(String(element.className || "").replace(/\s+/g, "."));
+    if (className) parts.push(`.${className.slice(0, 80)}`);
+    const text = trimText(element.textContent || "", 80);
+    if (text) parts.push(`"${text}"`);
+    return parts.join("");
+  }
+
+  function scopeSnapshotSelectionReference(text = "") {
+    const active = activeSourcePageRecord() || {};
+    const parsed = sourceVersePartsFromText(text, {
+      book: active.book || active.sourceCaptureBook,
+      chapter: active.chapter || active.sourceCaptureChapter
+    });
+    if (parsed?.chapter) {
+      return { status: "canonical_reference", label: sourceVerseLabel(parsed), reference: parsed };
+    }
+    const activeLabel = volumePageLabel(active);
+    return activeLabel
+      ? { status: "page_supplied_reference", label: activeLabel, reference: null }
+      : { status: "unavailable", label: "", reference: null };
+  }
+
+  function scopeSnapshotBuildSelectionPackage(selection, action = "add") {
+    const exactText = selection?.toString?.() || "";
+    const normalizedText = normalizeText(exactText);
+    if (!normalizedText) return null;
+    const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+    const containerText = normalizeText(range?.commonAncestorContainer?.textContent || exactText);
+    const selectionIndex = containerText.indexOf(normalizedText);
+    const prefixText = selectionIndex > 0 ? trimText(containerText.slice(Math.max(0, selectionIndex - 120), selectionIndex), 120) : "";
+    const suffixText = selectionIndex >= 0 ? trimText(containerText.slice(selectionIndex + normalizedText.length, selectionIndex + normalizedText.length + 120), 120) : "";
+    const ref = scopeSnapshotSelectionReference(`${prefixText} ${exactText} ${suffixText}`);
+    const active = activeSourcePageRecord() || {};
+    const sourceUrl = normalizeText(active.sourceUrl || active.activeUrl || active.url || window.location?.href || "");
+    const sourceTitle = normalizeText(active.sourceTitle || active.title || active.pageTitle || document.title || "Study Panel selection");
+    const duplicate = scopeSnapshotViewState.copyRenderSelections.some((item) => item.normalizedText === normalizedText && item.sourceUrl === sourceUrl);
+    const capturedAt = new Date().toISOString();
+    return {
+      selectionId: `copy-render-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      exactText,
+      normalizedText,
+      prefixText,
+      suffixText,
+      sourceType: ref.status === "canonical_reference" || ref.status === "page_supplied_reference" ? "scripture_or_adapter_selection" : "webpage_selection",
+      sourceTitle,
+      sourceUrl,
+      sourceAdapter: normalizeText(active.sourceAdapter || active.adapter || studyData.activeAdapter?.adapterId || studyData.activeAdapter?.adapterName || "current Study Panel source"),
+      canonicalReference: ref.status === "canonical_reference" ? ref.label : "",
+      primaryReference: ref.label,
+      supportingReference: "",
+      startReference: ref.label,
+      endReference: ref.label,
+      pageTitle: normalizeText(document.title || sourceTitle),
+      captureTimestamp: capturedAt,
+      documentLanguage: document.documentElement?.lang || "unknown",
+      selectionDirection: "not measured",
+      startContainerDescriptor: scopeSnapshotElementDescriptor(range?.startContainer?.parentElement || range?.startContainer),
+      endContainerDescriptor: scopeSnapshotElementDescriptor(range?.endContainer?.parentElement || range?.endContainer),
+      startOffset: range?.startOffset ?? 0,
+      endOffset: range?.endOffset ?? 0,
+      textPositionStart: selectionIndex >= 0 ? selectionIndex : null,
+      textPositionEnd: selectionIndex >= 0 ? selectionIndex + normalizedText.length : null,
+      textQuoteExact: exactText,
+      textQuotePrefix: prefixText,
+      textQuoteSuffix: suffixText,
+      captureMethod: "Study Panel explicit text selection",
+      userLabel: trimText(normalizedText, 44),
+      evaluationMode: scopeSnapshotViewState.copyRenderEvaluationMode || "independent",
+      contextMode: scopeSnapshotViewState.copyRenderContextMode || "exact_selection",
+      verificationStatus: ref.status,
+      status: duplicate ? "duplicate_candidate" : action === "evaluate" ? "ready_for_independent_evaluation" : action === "timeline" ? "ready_for_temporary_timeline" : action === "compare" ? "ready_for_current_scope_comparison" : "ready_for_copy_render",
+      selectionCoverage: ref.status === "canonical_reference" ? "partial_or_exact_selection_preserved" : "source_boundary_unavailable"
+    };
+  }
+
+  function scopeSnapshotCaptureSelection(action = "add") {
+    const viewportBefore = scopeSnapshotViewportState();
+    const selection = window.getSelection?.();
+    const pkg = scopeSnapshotBuildSelectionPackage(selection, action);
+    if (!pkg) {
+      scopeSnapshotViewState.lastCopyRenderMessage = "No selected text was available for Copy Render.";
+      showDiagnosticMessage(scopeSnapshotViewState.lastCopyRenderMessage);
+      return false;
+    }
+    if (action === "replace" || action === "evaluate") {
+      scopeSnapshotViewState.copyRenderSelections = [pkg];
+    } else {
+      scopeSnapshotViewState.copyRenderSelections = [...scopeSnapshotViewState.copyRenderSelections, pkg];
+    }
+    scopeSnapshotViewState.activeCopyRenderSelectionId = pkg.selectionId;
+    scopeSnapshotViewState.layerPreset = "custom";
+    scopeSnapshotViewState.layerUserOverride = true;
+    const selected = new Set(scopeSnapshotViewState.selectedLayerIds || []);
+    selected.add("copyRender");
+    selected.add("events");
+    scopeSnapshotViewState.selectedLayerIds = selected;
+    scopeSnapshotViewState.lastCopyRenderMessage = `${action === "replace" ? "Replaced" : action === "evaluate" ? "Evaluated" : "Added"} Copy Render selection: ${trimText(pkg.normalizedText, 70)}`;
+    scopeSnapshotGraphCache.clear();
+    rerenderScopeSnapshotOnly();
+    restoreScopeSnapshotViewport(viewportBefore, `copy render ${action}`);
+    showDiagnosticMessage(scopeSnapshotViewState.lastCopyRenderMessage);
+    return true;
+  }
+
+  function scopeSnapshotMoveCopyRenderSelection(selectionId = "", direction = 0) {
+    const selections = asArray(scopeSnapshotViewState.copyRenderSelections);
+    const index = selections.findIndex((item) => item.selectionId === selectionId);
+    const target = index + Number(direction || 0);
+    if (index < 0 || target < 0 || target >= selections.length) return false;
+    const next = selections.slice();
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
+    scopeSnapshotViewState.copyRenderSelections = next;
+    scopeSnapshotViewState.activeCopyRenderSelectionId = selectionId;
+    scopeSnapshotViewState.copyRenderAxisMode = "user_defined_order";
+    scopeSnapshotViewState.lastCopyRenderMessage = "Copy Render order updated. Axis: User-Defined Order.";
+    scopeSnapshotGraphCache.clear();
+    return true;
+  }
+
+  function scopeSnapshotRemoveCopyRenderSelection(selectionId = "") {
+    const before = asArray(scopeSnapshotViewState.copyRenderSelections).length;
+    scopeSnapshotViewState.copyRenderSelections = asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => item.selectionId !== selectionId);
+    if (scopeSnapshotViewState.activeCopyRenderSelectionId === selectionId) {
+      scopeSnapshotViewState.activeCopyRenderSelectionId = asArray(scopeSnapshotViewState.copyRenderSelections)[0]?.selectionId || "";
+      scopeSnapshotViewState.selectedGraphId = scopeSnapshotViewState.activeCopyRenderSelectionId ? `snapshot-copy-render-${scopeSnapshotViewState.activeCopyRenderSelectionId}` : "";
+    }
+    scopeSnapshotViewState.lastCopyRenderMessage = before === asArray(scopeSnapshotViewState.copyRenderSelections).length
+      ? "Copy Render selection was not found."
+      : "Copy Render selection removed. Other selections and provenance remain unchanged.";
+    scopeSnapshotGraphCache.clear();
+    return before !== asArray(scopeSnapshotViewState.copyRenderSelections).length;
+  }
+
+  function scopeSnapshotSetCopyRenderMode(mode = "independent") {
+    scopeSnapshotViewState.copyRenderEvaluationMode = mode;
+    scopeSnapshotViewState.lastCopyRenderMessage = mode === "additive"
+      ? "Copy Render mode: additive sequence. Each selection keeps independent provenance."
+      : "Copy Render mode: independent evaluation. No unrelated Study Scope records are inherited.";
+  }
+
+  function scopeSnapshotCopyRenderNodes() {
+    return asArray(scopeSnapshotViewState.copyRenderSelections).map((selection, index) => {
+      const reference = selection.canonicalReference ? scopeSnapshotRecordReference({ sourceReference: selection.canonicalReference }) : null;
+      const label = selection.primaryReference || `Selection ${index + 1}`;
+      const record = {
+        ...selection,
+        label,
+        sourceReference: selection.primaryReference,
+        exactText: selection.exactText,
+        confidence: "preview",
+        provenance: "session-local Copy Render selection package"
+      };
+      const node = {
+        id: `snapshot-copy-render-${selection.selectionId}`,
+        laneId: "happenings",
+        label,
+        reference,
+        record,
+        recordType: "copyRenderSelection",
+        targetSection: "scopeSnapshotSection",
+        confidence: "Preview",
+        status: selection.status || "ready_for_copy_render",
+        provenance: "session-local Copy Render selection package; no storage authority",
+        evidence: selection.exactText,
+        primaryReference: selection.primaryReference || "External selected text",
+        supportingReferences: [],
+        semanticCategory: "Copy Render Selection",
+        subevaluationLabel: selection.evaluationMode === "independent" ? "Independent Text Evaluation" : "Additive Copy Render Sequence",
+        sourceText: selection.exactText,
+        evaluationText: `${selection.contextMode || "exact_selection"}; ${selection.verificationStatus || "reference unavailable"}; ${scopeSnapshotCopyRenderAxisLabel()} ${index + 1}`,
+        graphPrimaryLabel: selection.primaryReference || `Selection ${index + 1}`,
+        graphSecondaryLabel: "Copy Render Selection"
+      };
+      node.layerIds = ["copyRender", "events", "happenings"];
+      return node;
+    });
+  }
+
+  function scopeSnapshotCopyRenderAxisLabel() {
+    const labels = {
+      capture_order: "Capture Order",
+      scripture_reference_order: "Scripture Reference Order",
+      source_order: "Source Order",
+      user_defined_order: "User-Defined Order",
+      chronology_candidate_order: "Chronology Candidate Order"
+    };
+    return labels[scopeSnapshotViewState.copyRenderAxisMode] || "Capture Order";
+  }
+
   function scopeSnapshotAxisBounds(nodes = []) {
     const scopePages = scopeSnapshotScopePages();
     const pageChapters = scopePages.map((page) => Number(page.chapter || page.sourceCaptureChapter)).filter(Boolean);
@@ -13096,19 +13556,34 @@ createRevelationPartsSection(item.subEvents)
     const label = scopeSnapshotNodeLabel(record, fallback);
     if (!label) return;
     const reference = scopeSnapshotRecordReference(record);
-    nodes.push({
+    const recordType = options.recordType || laneId;
+    const semanticCategory = scopeSnapshotSemanticCategory(laneId, recordType);
+    const subevaluationLabel = scopeSnapshotSubevaluationLabel(record, label || fallback);
+    const sourceText = scopeSnapshotSourceTextForRecord(record, reference);
+    const supportingReferences = scopeSnapshotReferenceLabelsFromRecord(record).filter((item) => item !== reference?.label);
+    const node = {
       id: `snapshot-${laneId}-${nodes.length}`,
       laneId,
       label,
       reference,
       record,
-      recordType: options.recordType || laneId,
+      recordType,
       targetSection: options.targetSection || SCOPE_SNAPSHOT_LANES.find((lane) => lane.id === laneId)?.targetSection || "studyReferenceIndexSection",
       confidence: displayConfidence(record.confidence || record.evidenceWeight || options.confidence || "grounded"),
       status: normalizeText(record.status || record.promotionStatus || record.resolutionStatus || options.status || "resolved"),
       provenance: normalizeText(record.provenance || record.semanticSourceLayer || record.sourceCollection || options.provenance || "existing scoped runtime record"),
-      evidence: normalizeText(record.evidence || record.sourceGrounding || record.sourcePhrase || record.reason || options.evidence || "")
-    });
+      evidence: normalizeText(record.evidence || record.sourceGrounding || record.sourcePhrase || record.reason || options.evidence || ""),
+      primaryReference: reference?.label || normalizeText(record.primaryReference || record.sourceReference || record.sourceScope || ""),
+      supportingReferences,
+      semanticCategory,
+      subevaluationLabel,
+      sourceText,
+      evaluationText: scopeSnapshotEvaluationText(record, subevaluationLabel || label),
+      graphPrimaryLabel: reference?.label || trimText(label, 42),
+      graphSecondaryLabel: [semanticCategory, subevaluationLabel].filter(Boolean).join(" - ")
+    };
+    node.layerIds = scopeSnapshotLayerIdsForNode(node);
+    nodes.push(node);
   }
 
   function scopeSnapshotSourceNodes() {
@@ -13128,6 +13603,7 @@ createRevelationPartsSection(item.subEvents)
       ...asArray(speakerDetectionPreviewRecords()).filter((record) => /unresolved|ambiguous/i.test(record.status || "")),
       ...asArray(studyData.semanticAmbiguities)
     ].slice(0, 26).forEach((record) => scopeSnapshotAddNode(nodes, "unresolved", record, "Unresolved record", { recordType: "unresolved" }));
+    scopeSnapshotCopyRenderNodes().forEach((node) => nodes.push(node));
     return nodes;
   }
 
@@ -13147,11 +13623,16 @@ createRevelationPartsSection(item.subEvents)
       }));
   }
 
-  function scopeSnapshotVisibleLanes() {
+  function scopeSnapshotVisibleLanes(layerModel = null, nodes = []) {
     const defaultLaneIds = new Set(SCOPE_SNAPSHOT_LANES.filter((lane) => lane.defaultVisible).map((lane) => lane.id));
-    if (scopeSnapshotViewState.detailLevel === "more") return SCOPE_SNAPSHOT_LANES;
-    if (scopeSnapshotViewState.detailLevel === "less") return SCOPE_SNAPSHOT_LANES.filter((lane) => defaultLaneIds.has(lane.id) && lane.id !== "principles");
-    return SCOPE_SNAPSHOT_LANES.filter((lane) => defaultLaneIds.has(lane.id));
+    let lanes = SCOPE_SNAPSHOT_LANES;
+    if (scopeSnapshotViewState.detailLevel === "less") lanes = lanes.filter((lane) => defaultLaneIds.has(lane.id) && lane.id !== "principles");
+    if (scopeSnapshotViewState.detailLevel === "auto") lanes = lanes.filter((lane) => defaultLaneIds.has(lane.id) || nodes.some((node) => node.laneId === lane.id));
+    if (layerModel) {
+      const laneIdsWithNodes = new Set(nodes.filter((node) => scopeSnapshotNodeVisibleByLayer(node, layerModel)).map((node) => node.laneId));
+      lanes = lanes.filter((lane) => laneIdsWithNodes.has(lane.id));
+    }
+    return lanes;
   }
 
   function scopeSnapshotBuildGraphModel() {
@@ -13161,11 +13642,14 @@ createRevelationPartsSection(item.subEvents)
     const bounds = scopeSnapshotAxisBounds(allNodes);
     const axisGranularity = scopeSnapshotAxisGranularity(bounds, allNodes);
     const lod = scopeSnapshotLodForBounds(bounds, allNodes);
-    const visibleLanes = scopeSnapshotVisibleLanes();
+    const layerModel = scopeSnapshotLayerModel(allNodes);
+    const activeLayerNodeIds = new Set(allNodes.filter((node) => scopeSnapshotNodeVisibleByLayer(node, layerModel)).map((node) => node.id));
+    const visibleLanes = scopeSnapshotVisibleLanes(layerModel, allNodes);
     const visibleLaneIds = new Set(visibleLanes.map((lane) => lane.id));
     const positioned = [];
     const unpositioned = [];
     allNodes.forEach((node) => {
+      if (!activeLayerNodeIds.has(node.id)) return;
       const x = scopeSnapshotPositionForReference(node.reference, bounds);
       const nextNode = { ...node, x };
       if (x == null) unpositioned.push(nextNode);
@@ -13194,7 +13678,7 @@ createRevelationPartsSection(item.subEvents)
         unpositionedCount: unpositioned.filter((node) => node.laneId === lane.id).length
       };
     });
-    const hiddenLaneNodes = allNodes.filter((node) => !visibleLaneIds.has(node.laneId)).length;
+    const hiddenLaneNodes = allNodes.filter((node) => !visibleLaneIds.has(node.laneId) || !activeLayerNodeIds.has(node.id)).length;
     const clusterCount = laneNodes.reduce((sum, lane) => sum + asArray(lane.clusters).length, 0);
     const clusteredRecordCount = laneNodes.reduce((sum, lane) => sum + Number(lane.clusteredCount || 0), 0);
     const visibleLabelCount = laneNodes.reduce((sum, lane) => sum + Number(lane.labelPlan?.visibleLabelCount || 0), 0);
@@ -13225,11 +13709,14 @@ createRevelationPartsSection(item.subEvents)
       endReference: bounds.endLabel,
       bounds,
       lanes: laneNodes,
+      layerModel,
       allNodes,
       sharedEvents,
       positioned,
       unpositioned,
       hiddenLaneNodes,
+      hiddenLayerNodes: layerModel.hiddenNodeCount,
+      selectedHiddenByLayer: layerModel.selectedHiddenByFilter,
       clusterCount,
       anchorCount,
       clusteredRecordCount,
@@ -13267,6 +13754,14 @@ createRevelationPartsSection(item.subEvents)
       scopeSnapshotViewState.zoomMode,
       scopeSnapshotViewState.detailLevel,
       scopeSnapshotViewState.expandedAnchorId,
+      scopeSnapshotViewState.layerPreset,
+      scopeSnapshotViewState.layerUserOverride ? "custom" : "auto",
+      Array.from(scopeSnapshotViewState.selectedLayerIds || []).sort().join(","),
+      asArray(scopeSnapshotViewState.copyRenderSelections).map((item) => item.selectionId + ":" + item.status).join(","),
+      scopeSnapshotViewState.activeCopyRenderSelectionId,
+      scopeSnapshotViewState.copyRenderContextMode,
+      scopeSnapshotViewState.copyRenderEvaluationMode,
+      scopeSnapshotViewState.copyRenderAxisMode,
       scopeSnapshotViewportBucket()
     ].join("::");
     if (scopeSnapshotGraphCache.has(cacheKey)) {
@@ -13344,7 +13839,8 @@ createRevelationPartsSection(item.subEvents)
       const nodes = sortedNodes.map((node, nodeIndex) => {
         const x = xFor(node.x);
         const radial = scopeSnapshotRadialOffset(Number(node.anchorChildIndex || 0), Number(node.anchorRecordCount || 1), Boolean(node.anchorExpanded || Number(node.anchorRecordCount || 1) > 1));
-        const label = escapeHtml(trimText(node.label, 32));
+        const label = escapeHtml(trimText(node.graphPrimaryLabel || node.reference?.label || node.label, 32));
+        const subLabel = escapeHtml(trimText(node.subevaluationLabel || node.semanticCategory || "", 36));
         const search = escapeHtml(node.label);
         const nodeClass = [
           "scope-snapshot-node",
@@ -13355,9 +13851,17 @@ createRevelationPartsSection(item.subEvents)
         const offsetY = radial.y || 0;
         const offsetX = radial.x || 0;
         const labelText = lane.labelPlan?.visibleLabelIds?.has(node.id)
-          ? `<text class="scope-snapshot-node-label" x="0" y="-10" text-anchor="middle">${label}</text>`
+          ? `<text class="scope-snapshot-node-label" x="0" y="-16" text-anchor="middle">${label}</text>${subLabel ? `<text class="scope-snapshot-node-sublabel" x="0" y="-5" text-anchor="middle">${subLabel}</text>` : ""}`
           : "";
-        return `<g class="${nodeClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-node-id="${escapeHtml(node.id)}" data-snapshot-anchor-id="${escapeHtml(node.anchorId || "")}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x + offsetX} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(node.label)} | ${escapeHtml(node.reference?.label || "unpositioned")} | ${escapeHtml(node.provenance)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
+        const hoverTitle = [
+          node.primaryReference || node.reference?.label || "Unpositioned scoped record",
+          [node.semanticCategory, node.subevaluationLabel].filter(Boolean).join(" - "),
+          node.supportingReferences?.length ? `Supporting: ${node.supportingReferences.join(", ")}` : "",
+          node.sourceText && !/^Source text unavailable/i.test(node.sourceText) ? `"${trimText(node.sourceText, 160)}"` : node.sourceText,
+          node.evaluationText,
+          `${node.confidence} - ${/unresolved|ambiguous/i.test(node.status) ? "Review" : "Verified"}`
+        ].filter(Boolean).join("\n");
+        return `<g class="${nodeClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-node-id="${escapeHtml(node.id)}" data-snapshot-anchor-id="${escapeHtml(node.anchorId || "")}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x + offsetX} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(hoverTitle)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
       }).join("");
       const clusters = asArray(lane.clusters).map((cluster, clusterIndex) => {
         const x = xFor(cluster.x);
@@ -13403,6 +13907,8 @@ createRevelationPartsSection(item.subEvents)
       `Active scope: ${model.activeScope}`,
       `Axis: ${model.axisGranularity}; ${model.startReference} to ${model.endReference}`,
       `Nodes: eligible=${model.nodeCount}; anchors=${model.anchorCount}; individually rendered=${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}; clustered=${model.clusteredRecordCount}; unpositioned=${model.unpositionedCount}; visible objects=${model.visibleNodeCount}; clusters=${model.clusterCount}`,
+      `Dynamic layers: preset=${model.layerModel?.preset}; active=${asArray(model.layerModel?.activeLayerIds).join(", ") || "none"}; recommended=${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}; hiddenByLayer=${model.hiddenLayerNodes || 0}; selectedHidden=${model.selectedHiddenByLayer ? "true" : "false"}`,
+      `Copy Render: selections=${asArray(scopeSnapshotViewState.copyRenderSelections).length}; context=${scopeSnapshotViewState.copyRenderContextMode}; mode=${scopeSnapshotViewState.copyRenderEvaluationMode}; active=${scopeSnapshotViewState.activeCopyRenderSelectionId || "none"}; last=${scopeSnapshotViewState.lastCopyRenderMessage || "none"}`,
       `LOD clustering: largestCluster=${model.largestCluster}; averageRecordsPerCluster=${model.averageRecordsPerCluster}; expandedClusters=${model.expandedClusterCount}; collisionReduction=${model.collisionReduction}`,
       `Labels: visible=${model.visibleLabelCount}; suppressed=${model.suppressedLabelCount}; collisions before resolution=${model.collisionCountBeforeResolution}; unresolved collisions=${model.unresolvedCollisionCount}`,
       ...model.lanes.map((lane) => `${lane.label}: total=${lane.totalNodes}; anchors=${asArray(lane.anchors).length}; individual=${lane.nodes.length}; clusters=${asArray(lane.clusters).length}; clusteredRecords=${lane.clusteredCount}; positioned=${lane.positionedCount}; unpositioned=${lane.unpositionedCount}; largestCluster=${lane.largestClusterSize}; avgRecordsPerAnchor=${lane.averageRecordsPerAnchor}; thresholds individual<=${lane.clusterThresholds?.individualMax}, cluster>=${lane.clusterThresholds?.clusterMin}, type>=${lane.clusterThresholds?.typeClusterMin}, scene>=${lane.clusterThresholds?.sceneClusterMin}`),
@@ -13512,16 +14018,33 @@ createRevelationPartsSection(item.subEvents)
     const title = document.createElement("h4");
     const meta = document.createElement("p");
     const summary = document.createElement("p");
-    title.textContent = selected.label;
-    meta.textContent = `${selected.reference?.label || model.activeScope} | ${selected.recordType} | ${selected.confidence}`;
-    summary.textContent = trimText(selected.evidence || selected.provenance || "Evidence remains available in the native inspector.", 180);
+    title.textContent = selected.primaryReference || selected.reference?.label || selected.label;
+    meta.textContent = [selected.semanticCategory, selected.subevaluationLabel].filter(Boolean).join(" | ") || `${selected.recordType} | ${selected.confidence}`;
+    summary.className = "scope-snapshot-evaluation-text";
+    summary.textContent = selected.evaluationText || trimText(selected.evidence || selected.provenance || "Evidence remains available in the native inspector.", 180);
+    const sourceBlock = document.createElement("blockquote");
+    sourceBlock.className = "scope-snapshot-source-text";
+    sourceBlock.textContent = selected.sourceText || "Source text unavailable from the current evaluation source";
     content.append(title, meta, summary);
+    content.appendChild(sourceBlock);
+    if (model.selectedHiddenByLayer && scopeSnapshotViewState.selectedGraphId === selected.id) {
+      const hidden = document.createElement("p");
+      hidden.className = "scope-snapshot-hidden-selection";
+      hidden.textContent = "This selected record is hidden by the current layer filter.";
+      const reveal = document.createElement("button");
+      reveal.type = "button";
+      reveal.dataset.scopeSnapshotAction = "show_selected_layer";
+      reveal.textContent = "Show Selected Layer";
+      hidden.appendChild(reveal);
+      content.appendChild(hidden);
+    }
     const actions = document.createElement("div");
     actions.className = "scope-snapshot-detail-actions";
     [
       ["read_detail", "Read Selected Detail"],
       ["back_to_graph", "Back to selected graph item"],
       ["open_inspector", "Open Inspector"],
+      ["copy_render_add", "Add Selection to Copy Render"],
       ["show_evidence", "Show Source Evidence"],
       ["show_provenance", "Show Provenance"]
     ].forEach(([action, label]) => {
@@ -13535,7 +14058,9 @@ createRevelationPartsSection(item.subEvents)
     content.appendChild(actions);
     const facts = document.createElement("dl");
     [
-      ["Type", selected.recordType],
+      ["Primary Reference", selected.primaryReference || selected.reference?.label || model.activeScope],
+      ["Supporting References", asArray(selected.supportingReferences).join(", ") || "none recorded"],
+      ["Record Type", selected.recordType],
       ["Confidence", selected.confidence],
       ["Evidence", selected.evidence ? "available on demand" : "native inspector"],
       ["Provenance", selected.provenance ? "available on demand" : "native inspector"],
@@ -13556,7 +14081,7 @@ createRevelationPartsSection(item.subEvents)
       const li = document.createElement("li");
       li.dataset.snapshotRelatedId = node.id;
       if (index === 0) li.className = "selected";
-      li.textContent = `${node.label} - ${node.reference?.label || model.activeScope}`;
+      li.textContent = `${node.primaryReference || node.reference?.label || model.activeScope} - ${node.subevaluationLabel || node.semanticCategory || node.label}`;
       list.appendChild(li);
     });
     related.append(relatedHeading, list);
@@ -13615,7 +14140,7 @@ createRevelationPartsSection(item.subEvents)
     asArray(cluster.representativeRecords).forEach((node) => {
       const li = document.createElement("li");
       li.dataset.snapshotRelatedId = node.id;
-      li.textContent = `${node.label} - ${node.reference?.label || model.activeScope}`;
+      li.textContent = `${node.primaryReference || node.reference?.label || model.activeScope} - ${node.subevaluationLabel || node.semanticCategory || node.label}`;
       list.appendChild(li);
     });
     related.append(relatedHeading, list);
@@ -13882,6 +14407,188 @@ createRevelationPartsSection(item.subEvents)
     return card;
   }
 
+  function createScopeSnapshotLayerControls(model = {}) {
+    const panel = document.createElement("section");
+    panel.className = "scope-snapshot-layer-panel";
+    panel.setAttribute("aria-label", "Scope Snapshot information layers");
+    const presetRow = document.createElement("div");
+    presetRow.className = "scope-snapshot-layer-presets";
+    Object.entries(SCOPE_SNAPSHOT_LAYER_PRESETS).forEach(([presetId, preset]) => {
+      if (presetId === "custom" && scopeSnapshotViewState.layerPreset !== "custom") return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.scopeSnapshotLayerPreset = presetId;
+      button.textContent = preset.label;
+      button.setAttribute("aria-pressed", scopeSnapshotViewState.layerPreset === presetId ? "true" : "false");
+      presetRow.appendChild(button);
+    });
+    const restore = document.createElement("button");
+    restore.type = "button";
+    restore.dataset.scopeSnapshotAction = "restore_recommended_layers";
+    restore.textContent = "Restore Recommended";
+    presetRow.appendChild(restore);
+
+    const layerGroups = document.createElement("div");
+    layerGroups.className = "scope-snapshot-layer-groups";
+    const active = new Set(asArray(model.layerModel?.activeLayerIds));
+    const recommended = new Set(asArray(model.layerModel?.recommendedLayerIds));
+    const grouped = new Map();
+    asArray(model.layerModel?.availability).forEach((layer) => {
+      if (!grouped.has(layer.group)) grouped.set(layer.group, []);
+      grouped.get(layer.group).push(layer);
+    });
+    grouped.forEach((layers, groupName) => {
+      const group = document.createElement("div");
+      group.className = "scope-snapshot-layer-group";
+      const label = document.createElement("span");
+      label.textContent = groupName;
+      group.appendChild(label);
+      layers.forEach((layer) => {
+        if (!layer.available && !layer.dependencyUnavailable) return;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.scopeSnapshotLayerId = layer.id;
+        button.textContent = `${active.has(layer.id) ? "✓ " : ""}${layer.label}`;
+        button.disabled = !layer.available;
+        button.className = [
+          active.has(layer.id) ? "selected" : "unselected",
+          recommended.has(layer.id) ? "recommended" : "",
+          layer.unresolvedCount ? "contains-unresolved" : "",
+          layer.dependencyUnavailable && !layer.available ? "dependency-unavailable" : ""
+        ].filter(Boolean).join(" ");
+        button.setAttribute("aria-pressed", active.has(layer.id) ? "true" : "false");
+        button.title = `${layer.recommendationReason}${recommended.has(layer.id) ? "; recommended for range relevance" : ""}`;
+        group.appendChild(button);
+      });
+      layerGroups.appendChild(group);
+    });
+    const note = document.createElement("p");
+    note.textContent = `Range relevance: ${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}. Preset: ${SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]?.label || "Custom"}. Hidden by layers: ${model.hiddenLayerNodes || 0}.`;
+    panel.append(presetRow, layerGroups, note);
+    return panel;
+  }
+
+  function createCopyRenderPanel(model = {}) {
+    const panel = document.createElement("section");
+    panel.className = "scope-snapshot-copy-render";
+    panel.setAttribute("aria-label", "Copy Render selection controls");
+    const header = document.createElement("div");
+    const heading = document.createElement("h4");
+    const status = document.createElement("p");
+    heading.textContent = "Copy Render";
+    status.textContent = `${asArray(scopeSnapshotViewState.copyRenderSelections).length} session-local selection(s). Context: ${scopeSnapshotViewState.copyRenderContextMode}. Mode: ${scopeSnapshotViewState.copyRenderEvaluationMode}. Axis: ${scopeSnapshotCopyRenderAxisLabel()}.`;
+    header.append(heading, status);
+    const actions = document.createElement("div");
+    actions.className = "scope-snapshot-copy-actions";
+    [
+      ["copy_render_evaluate", "Evaluate Selection"],
+      ["copy_render_add", "Add to Copy Render"],
+      ["copy_render_replace", "Replace Copy Render"],
+      ["copy_render_render", "Render Selection"],
+      ["copy_render_compare", "Compare with Current Scope"],
+      ["copy_render_timeline", "Add to Timeline"],
+      ["copy_render_clear", "Clear Copy Render"]
+    ].forEach(([action, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.scopeSnapshotAction = action;
+      button.textContent = label;
+      actions.appendChild(button);
+    });
+    const context = document.createElement("div");
+    context.className = "scope-snapshot-copy-options";
+    [
+      ["exact_selection", "Exact Selection Only"],
+      ["full_verse", "Include Full Verse"],
+      ["prev_next", "Prev/Next"],
+      ["paragraph", "Paragraph"],
+      ["chapter", "Chapter"]
+    ].forEach(([mode, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.copyRenderContextMode = mode;
+      button.textContent = label;
+      button.setAttribute("aria-pressed", scopeSnapshotViewState.copyRenderContextMode === mode ? "true" : "false");
+      context.appendChild(button);
+    });
+    const modeRow = document.createElement("div");
+    modeRow.className = "scope-snapshot-copy-options";
+    [
+      ["independent", "Independent"],
+      ["additive", "Additive Series"]
+    ].forEach(([mode, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.copyRenderEvaluationMode = mode;
+      button.textContent = label;
+      button.setAttribute("aria-pressed", scopeSnapshotViewState.copyRenderEvaluationMode === mode ? "true" : "false");
+      modeRow.appendChild(button);
+    });
+    const axisRow = document.createElement("div");
+    axisRow.className = "scope-snapshot-copy-options";
+    [
+      ["capture_order", "Capture Order"],
+      ["scripture_reference_order", "Scripture Reference Order"],
+      ["source_order", "Source Order"],
+      ["user_defined_order", "User Order"],
+      ["chronology_candidate_order", "Chronology Candidate"]
+    ].forEach(([mode, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.copyRenderAxisMode = mode;
+      button.textContent = label;
+      button.setAttribute("aria-pressed", scopeSnapshotViewState.copyRenderAxisMode === mode ? "true" : "false");
+      axisRow.appendChild(button);
+    });
+    const list = document.createElement("ol");
+    list.className = "scope-snapshot-copy-list";
+    asArray(scopeSnapshotViewState.copyRenderSelections).forEach((item, index) => {
+      const li = document.createElement("li");
+      li.dataset.copyRenderSelectionId = item.selectionId;
+      if (item.selectionId === scopeSnapshotViewState.activeCopyRenderSelectionId) li.className = "selected";
+      const title = document.createElement("button");
+      title.type = "button";
+      title.dataset.scopeSnapshotAction = "copy_render_select";
+      title.dataset.copyRenderSelectionId = item.selectionId;
+      title.textContent = `Selection ${index + 1}: ${item.primaryReference || "External selected text"}`;
+      const quote = document.createElement("blockquote");
+      quote.textContent = trimText(item.exactText, 180);
+      const meta = document.createElement("p");
+      meta.textContent = `${item.verificationStatus}; ${item.selectionCoverage}; ${item.status}; source=${item.sourceTitle || "not recorded"}`;
+      const itemActions = document.createElement("div");
+      itemActions.className = "scope-snapshot-copy-item-actions";
+      [
+        ["copy_render_move_up", "Move Up"],
+        ["copy_render_move_down", "Move Down"],
+        ["copy_render_remove", "Remove"]
+      ].forEach(([action, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.scopeSnapshotAction = action;
+        button.dataset.copyRenderSelectionId = item.selectionId;
+        button.textContent = label;
+        itemActions.appendChild(button);
+      });
+      li.append(title, quote, meta, itemActions);
+      list.appendChild(li);
+    });
+    if (!list.childNodes.length) {
+      const empty = document.createElement("p");
+      empty.className = "scope-snapshot-copy-empty";
+      empty.textContent = "Highlight Study Panel text, then choose Evaluate Selection or Add to Copy Render. No source text is captured until you press one of these buttons.";
+      panel.append(header, actions, context, modeRow, axisRow, empty);
+    } else {
+      panel.append(header, actions, context, modeRow, axisRow, list);
+    }
+    if (scopeSnapshotViewState.lastCopyRenderMessage) {
+      const message = document.createElement("p");
+      message.className = "scope-snapshot-copy-message";
+      message.textContent = scopeSnapshotViewState.lastCopyRenderMessage;
+      panel.appendChild(message);
+    }
+    return panel;
+  }
+
   function createScopeSnapshotCard(model = {}) {
     const card = document.createElement("article");
     card.className = "study-card semantic-card scope-snapshot-card";
@@ -13943,7 +14650,7 @@ createRevelationPartsSection(item.subEvents)
       }));
     } else if (model.graphMode === "outline") {
       graph.appendChild(createPassageFunctionSection("Narrative Outline", "", {
-        list: model.positioned.slice(0, 28).sort((left, right) => left.x - right.x).map((node) => `${node.reference?.label || model.activeScope}: ${SCOPE_SNAPSHOT_LANES.find((lane) => lane.id === node.laneId)?.label || node.laneId} - ${node.label}`),
+        list: model.positioned.slice(0, 28).sort((left, right) => left.x - right.x).map((node) => `${node.primaryReference || node.reference?.label || model.activeScope}: ${node.semanticCategory} - ${node.subevaluationLabel || node.label}`),
         plainList: true,
         preserveExact: true
       }));
@@ -13981,7 +14688,7 @@ createRevelationPartsSection(item.subEvents)
       `Cache: ${scopeSnapshotLastCacheState}`,
       "Scope locked: yes"
     ].join(" | ");
-    body.append(top, scopeLine, controls, graph, lower, summary, footer);
+    body.append(top, scopeLine, controls, createScopeSnapshotLayerControls(model), createCopyRenderPanel(model), graph, lower, summary, footer);
     card.append(header, body);
     return card;
   }
@@ -14036,6 +14743,11 @@ createRevelationPartsSection(item.subEvents)
       `Clutter metrics: visibleLabels=${model.visibleLabelCount}; suppressedLabels=${model.suppressedLabelCount}; maxLaneDensity=${model.maximumLaneDensity}; collisionBefore=${model.collisionCountBeforeResolution}; unresolvedCollisionAfter=${model.unresolvedCollisionCount}`,
       `Fit Scope integrity: overflow=${model.fitScopeOverflow ? "true" : "false"}; aggregation=${model.aggregationApplied ? "applied" : "not needed"}; viewport=${model.viewportBucket}`,
       `Shared / parallel event support: ${asArray(model.sharedEvents).length} scoped candidate(s). Record shape: sharedEventId; conceptualEventLabel; sourceOccurrences; sourceReferences; confidence; relationshipType; provenance; status. No event equivalence is declared without grounded alignment.`,
+      `Dynamic layer model: preset=${model.layerModel?.preset}; custom=${model.layerModel?.customMode ? "true" : "false"}; active=${asArray(model.layerModel?.activeLayerIds).join(", ") || "none"}; recommended=${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}; hiddenByLayer=${model.hiddenLayerNodes || 0}; selectedHidden=${model.selectedHiddenByLayer ? "true" : "false"}`,
+      "Layer relevance scores:",
+      ...asArray(model.layerModel?.availability).filter((layer) => layer.available || layer.dependencyUnavailable).map((layer) => `${layer.label}: available=${layer.available}; selected=${asArray(model.layerModel?.activeLayerIds).includes(layer.id)}; recommended=${asArray(model.layerModel?.recommendedLayerIds).includes(layer.id)}; count=${layer.count}; distinctRefs=${layer.distinctReferenceCount}; verified=${layer.verifiedCount}; unresolved=${layer.unresolvedCount}; score=${layer.score}; reason=${layer.recommendationReason}`),
+      `Copy Render diagnostics: selections=${asArray(scopeSnapshotViewState.copyRenderSelections).length}; exactChars=${asArray(scopeSnapshotViewState.copyRenderSelections).reduce((sum, item) => sum + normalizeText(item.exactText).length, 0)}; context=${scopeSnapshotViewState.copyRenderContextMode}; mode=${scopeSnapshotViewState.copyRenderEvaluationMode}; active=${scopeSnapshotViewState.activeCopyRenderSelectionId || "none"}; duplicateCandidates=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => /duplicate/i.test(item.status)).length}; canonicalReferences=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => item.canonicalReference).length}; unresolvedSelections=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => item.verificationStatus === "unavailable").length}`,
+      ...asArray(scopeSnapshotViewState.copyRenderSelections).slice(0, 5).map((item, index) => `Copy Render ${index + 1}: ${item.primaryReference || "External selected text"}; status=${item.status}; coverage=${item.selectionCoverage}; source=${item.sourceTitle}; chars=${normalizeText(item.exactText).length}`),
       `Graph cache state: ${scopeSnapshotLastCacheState}; cached variants=${scopeSnapshotGraphCache.size}`,
       `Render/build time: ${model.renderTime}ms`,
       `Selection invocations this session: ${selectionDiagnostics.invocationCount}`,
@@ -29252,6 +29964,78 @@ createRevelationPartsSection(item.subEvents)
       enforceScopeSnapshotPresentationInvariant("scope breadth button");
       return;
     }
+    const presetButton = event.target?.closest?.("[data-scope-snapshot-layer-preset]");
+    if (presetButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      const viewportBefore = scopeSnapshotViewportState();
+      const preset = presetButton.dataset.scopeSnapshotLayerPreset || "recommended";
+      scopeSnapshotViewState.layerPreset = preset;
+      scopeSnapshotViewState.layerUserOverride = preset === "custom";
+      scopeSnapshotViewState.selectedLayerIds = new Set(asArray(SCOPE_SNAPSHOT_LAYER_PRESETS[preset]?.layerIds));
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, `layer preset ${preset}`);
+      enforceScopeSnapshotPresentationInvariant(`layer preset ${preset}`);
+      return;
+    }
+    const layerButton = event.target?.closest?.("[data-scope-snapshot-layer-id]");
+    if (layerButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      const viewportBefore = scopeSnapshotViewportState();
+      const layerId = layerButton.dataset.scopeSnapshotLayerId || "";
+      const selected = new Set(scopeSnapshotViewState.selectedLayerIds || scopeSnapshotGraphModel().layerModel?.activeLayerIds || []);
+      if (selected.has(layerId)) selected.delete(layerId);
+      else selected.add(layerId);
+      scopeSnapshotViewState.selectedLayerIds = selected;
+      scopeSnapshotViewState.layerPreset = "custom";
+      scopeSnapshotViewState.layerUserOverride = true;
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, `toggle layer ${layerId}`);
+      enforceScopeSnapshotPresentationInvariant(`toggle layer ${layerId}`);
+      showDiagnosticMessage(`${layerButton.textContent.replace(/^✓\s*/, "")} layer ${selected.has(layerId) ? "shown" : "hidden"}.`);
+      return;
+    }
+    const contextButton = event.target?.closest?.("[data-copy-render-context-mode]");
+    if (contextButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.copyRenderContextMode = contextButton.dataset.copyRenderContextMode || "exact_selection";
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "copy render context");
+      return;
+    }
+    const evaluationModeButton = event.target?.closest?.("[data-copy-render-evaluation-mode]");
+    if (evaluationModeButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotSetCopyRenderMode(evaluationModeButton.dataset.copyRenderEvaluationMode || "independent");
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "copy render evaluation mode");
+      return;
+    }
+    const axisModeButton = event.target?.closest?.("[data-copy-render-axis-mode]");
+    if (axisModeButton) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      const viewportBefore = scopeSnapshotViewportState();
+      const mode = axisModeButton.dataset.copyRenderAxisMode || "capture_order";
+      const allHaveReferences = asArray(scopeSnapshotViewState.copyRenderSelections).every((item) => item.canonicalReference || item.primaryReference);
+      if (mode === "scripture_reference_order" && !allHaveReferences) {
+        scopeSnapshotViewState.lastCopyRenderMessage = "Scripture Reference Order is available only when all selections have grounded references.";
+      } else {
+        scopeSnapshotViewState.copyRenderAxisMode = mode;
+        scopeSnapshotViewState.lastCopyRenderMessage = `Copy Render axis: ${scopeSnapshotCopyRenderAxisLabel()}.`;
+      }
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "copy render axis mode");
+      return;
+    }
     const button = event.target?.closest?.("button[data-scope-snapshot-action]");
     if (!button) {
       const relatedItem = event.target?.closest?.("[data-snapshot-related-id]");
@@ -29273,6 +30057,70 @@ createRevelationPartsSection(item.subEvents)
     }
     if (action === "copy") {
       copyPlainTextReport("Linear Scope Snapshot", scopeSnapshotSummaryLines(scopeSnapshotGraphModel()).join("\n")).catch((error) => showDiagnosticMessage(`Scope Snapshot copy failed: ${error.message}`));
+      return;
+    }
+    if (action === "restore_recommended_layers") {
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.layerPreset = "recommended";
+      scopeSnapshotViewState.layerUserOverride = false;
+      scopeSnapshotViewState.selectedLayerIds = new Set();
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "restore recommended layers");
+      showDiagnosticMessage("Recommended Snapshot layers restored.");
+      return;
+    }
+    if (action === "show_selected_layer") {
+      const viewportBefore = scopeSnapshotViewportState();
+      const model = scopeSnapshotGraphModel();
+      const selected = model.allNodes.find((node) => node.id === scopeSnapshotViewState.selectedGraphId);
+      const layers = new Set(scopeSnapshotViewState.selectedLayerIds || model.layerModel?.activeLayerIds || []);
+      asArray(selected?.layerIds).forEach((layerId) => layers.add(layerId));
+      scopeSnapshotViewState.selectedLayerIds = layers;
+      scopeSnapshotViewState.layerPreset = "custom";
+      scopeSnapshotViewState.layerUserOverride = true;
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "show selected layer");
+      return;
+    }
+    if (action === "copy_render_add" || action === "copy_render_replace" || action === "copy_render_evaluate" || action === "copy_render_timeline" || action === "copy_render_render" || action === "copy_render_compare") {
+      const mode = action === "copy_render_replace" ? "replace" :
+        action === "copy_render_evaluate" || action === "copy_render_render" ? "evaluate" :
+        action === "copy_render_timeline" ? "timeline" :
+        action === "copy_render_compare" ? "compare" :
+        "add";
+      if (action === "copy_render_compare") scopeSnapshotSetCopyRenderMode("additive");
+      scopeSnapshotCaptureSelection(mode);
+      return;
+    }
+    if (action === "copy_render_clear") {
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.copyRenderSelections = [];
+      scopeSnapshotViewState.activeCopyRenderSelectionId = "";
+      scopeSnapshotViewState.lastCopyRenderMessage = "Copy Render selections cleared for this session.";
+      scopeSnapshotGraphCache.clear();
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, "clear copy render");
+      return;
+    }
+    if (action === "copy_render_select") {
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.activeCopyRenderSelectionId = button.dataset.copyRenderSelectionId || "";
+      const graphId = scopeSnapshotViewState.activeCopyRenderSelectionId ? `snapshot-copy-render-${scopeSnapshotViewState.activeCopyRenderSelectionId}` : "";
+      if (graphId) scopeSnapshotViewState.selectedGraphId = graphId;
+      rerenderScopeSnapshotOnly();
+      if (graphId) updateScopeSnapshotSelectedDom(graphId);
+      restoreScopeSnapshotViewport(viewportBefore, "select copy render");
+      return;
+    }
+    if (action === "copy_render_move_up" || action === "copy_render_move_down" || action === "copy_render_remove") {
+      const viewportBefore = scopeSnapshotViewportState();
+      const selectionId = button.dataset.copyRenderSelectionId || "";
+      if (action === "copy_render_remove") scopeSnapshotRemoveCopyRenderSelection(selectionId);
+      else scopeSnapshotMoveCopyRenderSelection(selectionId, action === "copy_render_move_up" ? -1 : 1);
+      rerenderScopeSnapshotOnly();
+      restoreScopeSnapshotViewport(viewportBefore, action);
       return;
     }
     if (action === "svg") {
@@ -29308,6 +30156,9 @@ createRevelationPartsSection(item.subEvents)
       scopeSnapshotViewState.zoomMode = "auto";
       scopeSnapshotViewState.detailLevel = "auto";
       scopeSnapshotViewState.selectedGraphId = "";
+      scopeSnapshotViewState.layerPreset = "recommended";
+      scopeSnapshotViewState.layerUserOverride = false;
+      scopeSnapshotViewState.selectedLayerIds = new Set();
       rerenderScopeSnapshotOnly();
       enforceScopeSnapshotPresentationInvariant("reset snapshot");
       return;
