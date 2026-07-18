@@ -129,6 +129,7 @@ Discovery architecture defines how I.C.E. eventually finds patterns beyond expli
 Primary documents:
 
 - `THREAD_ARCHIVE/AUTOMATIC_DISCOVERY_EXPANSION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/EVIDENCE_ENGINE_GUIDED_DISCOVERY_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
@@ -140,6 +141,10 @@ Included systems:
 - Literary Structure Detection
 - Theme Discovery
 - Discovery Measurement
+- Evidence Engine / Guided Discovery
+- Comparative evidence collections
+- Evidence convergence metrics
+- Possible similitude discovery
 - Prior / Current / Future relationships
 - Common Ground / Difference future lenses
 - Revelation and Development modeling
@@ -151,6 +156,9 @@ Discovery architecture owns:
 - Drillable support expectations
 - Fulfillment category boundaries
 - Literary structure evidence rules
+- Evidence collection boundaries
+- Corpus connector expectations
+- Convergence metrics as evidence organization rather than truth scoring
 
 Discovery architecture does not own:
 
@@ -158,6 +166,7 @@ Discovery architecture does not own:
 - Treating possible patterns as facts
 - Replacing source text with perspective or translation records
 - Running automatic capture or crawling
+- Creating corpus ingestion, crawling, or external-source authority without a separate approved implementation task
 
 ## 5. Language Architecture
 
