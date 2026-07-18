@@ -138,35 +138,85 @@
       color: var(--red);
     }
 
-    .manual-panel {
-      margin: 0 0 14px;
-      padding: 12px;
-      border: 1px dashed #9db3d5;
+    .source-nav {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .source-nav button {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: .82rem;
+    }
+
+    .source-nav-current {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border: 1px solid var(--line);
       border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 800;
+      text-align: center;
+    }
+
+    details.control-disclosure {
+      margin: 0 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    details.control-disclosure summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 800;
+    }
+
+    .control-body {
+      display: grid;
+      gap: 10px;
+      padding: 0 12px 12px;
+      border-top: 1px solid var(--line);
       background: #fbfdff;
     }
 
-    .manual-panel h2 {
-      margin-bottom: 6px;
-    }
-
-    .manual-panel blockquote {
-      max-height: 96px;
-      margin: 10px 0;
-      padding: 8px 10px;
-      overflow: auto;
-      border-left: 4px solid var(--blue);
+    .control-body button,
+    .control-body select,
+    .control-body input {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
       background: #fff;
-      color: #24304a;
-      font-size: .88rem;
+      color: var(--ink);
+      font: inherit;
     }
 
-    .manual-actions {
+    .control-body label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+    }
+
+    .control-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
+    .control-note {
+      color: var(--muted);
+      font-size: .78rem;
+    }
     .study-list {
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -305,6 +355,11 @@
       <strong id="pageIdentity">Checking active page...</strong>
       <span id="pageAnalysisState">Open a supported scripture page to begin.</span>
     </div>
+    <nav class="source-nav" aria-label="Source navigation">
+      <button id="previousSource" type="button">Previous</button>
+      <span id="sourceNavLabel" class="source-nav-current">Current source</span>
+      <button id="nextSource" type="button">Next</button>
+    </nav>
   </header>
 
   <section class="primary-actions" aria-label="Primary study collection actions">
@@ -315,16 +370,37 @@
     <button id="openStudyPanel" class="primary wide" type="button">Open Study Panel</button>
   </section>
 
-  <section id="manualSelectionPanel" class="manual-panel" hidden aria-live="polite">
-    <h2>Manual Selection</h2>
-    <p id="manualSelectionStatus">Select visible text on the page, then choose Manual Select again.</p>
-    <blockquote id="manualSelectionPreview" hidden></blockquote>
-    <div class="manual-actions">
-      <button id="confirmManualSelection" type="button" disabled>Add Selection</button>
-      <button id="cancelManualSelection" type="button">Cancel</button>
+  <details class="control-disclosure" id="sourceScopeControls">
+    <summary>Source Scope</summary>
+    <div class="control-body">
+      <button id="selectUrl" type="button">Select URL</button>
+      <button id="selectSourceUnit" type="button">Select Current Source Unit</button>
+      <div class="control-row">
+        <label>Start
+          <input id="sourceRangeStart" type="number" min="1" inputmode="numeric" aria-label="Range start chapter">
+        </label>
+        <label>End
+          <input id="sourceRangeEnd" type="number" min="1" inputmode="numeric" aria-label="Range end chapter">
+        </label>
+      </div>
+      <button id="selectRange" type="button">Select Range</button>
+      <button id="selectVolume" type="button" disabled>Select Volume Preview</button>
+      <p class="control-note">Scope records define requested study boundaries only. They do not crawl, ingest, or analyze contained sources.</p>
     </div>
-  </section>
+  </details>
 
+  <details class="control-disclosure" id="studyOptionsControls">
+    <summary>Lenses and Adapters</summary>
+    <div class="control-body">
+      <label>Adapter for new analysis
+        <select id="adapterSelect" aria-label="Adapter for new analysis"></select>
+      </label>
+      <label>Presentation lens
+        <select id="lensSelect" aria-label="Presentation lens"></select>
+      </label>
+      <p id="studyOptionsStatus" class="control-note">Selections affect new requests and presentation intent only.</p>
+    </div>
+  </details>
   <section class="study-list" aria-labelledby="currentStudyHeading">
     <div class="study-heading">
       <h2 id="currentStudyHeading">Current Study</h2>

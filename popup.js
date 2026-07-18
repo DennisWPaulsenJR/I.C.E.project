@@ -19,6 +19,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   const SELECTED_RANGE_KEY = "ICE_SELECTED_RANGE";
   const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
   const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
+  const POPUP_ADAPTER_OPTIONS = [
+    { id: "lds_scripture_adapter", label: "Scripture Adapter", role: "Scripture source structure and references" },
+    { id: "generic_html_adapter", label: "Generic Web Adapter", role: "Visible web page evidence" },
+    { id: "plain_text_adapter", label: "Plain Text Adapter", role: "Text-only source evidence" }
+  ];
+  const POPUP_LENS_OPTIONS = [
+    { id: "recommended", label: "Recommended" },
+    { id: "narrative", label: "Narrative" },
+    { id: "people_relationships", label: "People and Relationships" },
+    { id: "prophecy_fulfillment", label: "Prophecy and Fulfillment" },
+    { id: "teachings_principles", label: "Teachings and Principles" },
+    { id: "places_journeys", label: "Places and Journeys" },
+    { id: "language", label: "Language" },
+    { id: "timeline", label: "Timeline" },
+    { id: "gospel_parallels", label: "Gospel Parallels readiness" },
+    { id: "everything", label: "Everything" },
+    { id: "custom", label: "Custom" }
+  ];
   const ACTION_INDICATORS = [
     "born",
     "died",
@@ -292,15 +310,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("|");
   }
 
+  function sourceBookFromSlug(slug = "") {
+    const normalized = normalizeWhitespace(slug).toLowerCase();
+    const books = {
+      matt: "Matthew", mark: "Mark", luke: "Luke", john: "John", acts: "Acts", rom: "Romans",
+      "1-cor": "1 Corinthians", "2-cor": "2 Corinthians", gal: "Galatians", eph: "Ephesians",
+      phil: "Philippians", col: "Colossians", "1-thes": "1 Thessalonians", "2-thes": "2 Thessalonians",
+      "1-tim": "1 Timothy", "2-tim": "2 Timothy", titus: "Titus", philem: "Philemon",
+      heb: "Hebrews", james: "James", "1-pet": "1 Peter", "2-pet": "2 Peter", "1-jn": "1 John",
+      "2-jn": "2 John", "3-jn": "3 John", jude: "Jude", rev: "Revelation"
+    };
+    return books[normalized] || normalized.split("-").filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ");
+  }
+
   function sourceMatchFromUrl(url = "") {
-    const match = normalizeWhitespace(url).match(/\/scriptures\/(?:[^/]+\/)?(?:nt\/)?(matt|mark|luke|john)\/(\d+)\b/i);
-    const books = { matt: "Matthew", mark: "Mark", luke: "Luke", john: "John" };
-    return match ? { book: books[match[1].toLowerCase()], chapter: match[2] } : null;
+    const match = normalizeWhitespace(url).match(/\/scriptures\/(?:[^/]+\/)*([^/?#]+)\/(\d+)\b/i);
+    return match ? { book: sourceBookFromSlug(match[1]), chapter: match[2], bookSlug: match[1] } : null;
   }
 
   function sourceMatchFromTitle(title = "") {
-    const match = normalizeWhitespace(title).match(/\b(Matthew|Mark|Luke|John)\s+(\d+)\b/i);
-    return match ? { book: match[1], chapter: match[2] } : null;
+    const match = normalizeWhitespace(title).match(/\b([1-3]?\s*[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)\s+(\d+)\b/);
+    return match ? { book: normalizeWhitespace(match[1]), chapter: match[2] } : null;
   }
 
   function pageRecordFromTab(tab = {}) {
@@ -444,8 +474,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return record.itemType === "manual_selection" || record.type === "manual_selection" || record.origin === "manual_selection";
   }
 
+  function isSourceScopeRecord(record = {}) {
+    return ["url_source", "source_unit", "range_request", "volume_scope_request"].includes(record.itemType || record.type || "");
+  }
+
   function currentStudyRecordKey(record = {}) {
-    if (isManualSelectionRecord(record)) return record.id || record.selectionId || "";
+    if (isManualSelectionRecord(record) || isSourceScopeRecord(record)) return record.id || record.selectionId || "";
     return record.canonicalKey || record.id || "";
   }
 
@@ -515,6 +549,36 @@ document.addEventListener("DOMContentLoaded", async () => {
         sourceUrl,
         capturedBy: "popup_manual_select"
       }
+    };
+  }
+
+  function normalizeSourceScopeRecord(record = {}) {
+    const itemType = record.itemType || record.type || "";
+    if (!isSourceScopeRecord({ itemType })) return null;
+    const sourceUrl = normalizeWhitespace(record.sourceUrl || record.url || "");
+    const label = normalizeWhitespace(record.label || record.sourceScope || record.sourceTitle || sourceUrl || "Selected source scope");
+    if (!label && !sourceUrl) return null;
+    return {
+      id: record.id || itemType + "|" + textHash([sourceUrl, label, record.rangeStart || "", record.rangeEnd || ""].join("|")),
+      itemType,
+      label,
+      sourceTitle: normalizeWhitespace(record.sourceTitle || label),
+      sourceUrl,
+      url: sourceUrl,
+      book: normalizeWhitespace(record.book || ""),
+      chapter: normalizeWhitespace(record.chapter || ""),
+      rangeStart: normalizeWhitespace(record.rangeStart || ""),
+      rangeEnd: normalizeWhitespace(record.rangeEnd || ""),
+      sourceScope: normalizeWhitespace(record.sourceScope || label),
+      scopeType: normalizeWhitespace(record.scopeType || itemType),
+      state: normalizeWhitespace(record.state || (itemType === "url_source" ? "EXTERNAL SOURCE" : "SCOPE REQUEST")),
+      analyzed: false,
+      unresolved: Boolean(record.unresolved || itemType === "range_request" || itemType === "volume_scope_request"),
+      analysisState: normalizeWhitespace(record.analysisState || "NOT ANALYZED"),
+      addedAt: record.addedAt || new Date().toISOString(),
+      activeAdapter: normalizeWhitespace(record.activeAdapter || ""),
+      activeLenses: Array.isArray(record.activeLenses) ? record.activeLenses : [],
+      provenance: record.provenance || { source: "popup source scope control", sourceUrl }
     };
   }
 
@@ -1010,6 +1074,145 @@ document.addEventListener("DOMContentLoaded", async () => {
       : "Available for analysis or temporary collection.";
   }
 
+  function renderSourceNavigation(state = {}) {
+    const label = document.getElementById("sourceNavLabel");
+    const previous = document.getElementById("previousSource");
+    const next = document.getElementById("nextSource");
+    if (!label || !previous || !next) return;
+    const page = state.tabPage || state.activePage || state.statusPage || {};
+    label.textContent = page?.sourceTitle || volumePageLabel(page) || "Unsupported source";
+    previous.disabled = !firstNavigationTarget(-1, state.tabPage, state.activePage, state.statusPage);
+    next.disabled = !firstNavigationTarget(1, state.tabPage, state.activePage, state.statusPage);
+  }
+
+  function renderStudyOptions(uiState = {}, activeAdapter = null) {
+    const adapterSelect = document.getElementById("adapterSelect");
+    const lensSelect = document.getElementById("lensSelect");
+    const status = document.getElementById("studyOptionsStatus");
+    if (adapterSelect && !adapterSelect.children.length) {
+      POPUP_ADAPTER_OPTIONS.forEach((option) => {
+        const item = document.createElement("option");
+        item.value = option.id;
+        item.textContent = option.label;
+        item.title = option.role;
+        adapterSelect.appendChild(item);
+      });
+    }
+    if (lensSelect && !lensSelect.children.length) {
+      POPUP_LENS_OPTIONS.forEach((option) => {
+        const item = document.createElement("option");
+        item.value = option.id;
+        item.textContent = option.label;
+        lensSelect.appendChild(item);
+      });
+    }
+    if (adapterSelect) adapterSelect.value = uiState.selectedAdapterForNewAnalysis || activeAdapter?.adapterName || activeAdapter?.adapterId || "lds_scripture_adapter";
+    if (lensSelect) lensSelect.value = uiState.selectedLensForNewAnalysis || "recommended";
+    if (status) status.textContent = "Adapter and lens selections affect new requests/presentation intent only; existing records are not rewritten.";
+  }
+
+  async function addSourceScopeRecord(kind = "url_source") {
+    const state = await storedPageWorkflowState();
+    const page = state.tabPage || state.activePage || state.statusPage || {};
+    const url = normalizeWhitespace(page.activeUrl || page.url || state.tab?.url || "");
+    const title = normalizeWhitespace(page.sourceTitle || page.title || state.tab?.title || url || "Selected source");
+    const match = sourceMatchFromUrl(url) || sourceMatchFromTitle(title);
+    const now = new Date().toISOString();
+    const record = normalizeSourceScopeRecord({
+      id: kind + "|" + textHash([url, title, match?.book || "", match?.chapter || ""].join("|")),
+      itemType: kind,
+      label: kind === "source_unit" && match?.book && match?.chapter ? `${match.book} ${match.chapter}` : title,
+      sourceTitle: title,
+      sourceUrl: url,
+      book: match?.book || "",
+      chapter: match?.chapter || "",
+      sourceScope: kind === "source_unit" && match?.book && match?.chapter ? `${match.book} ${match.chapter}` : url,
+      scopeType: kind === "source_unit" ? "current_source_unit" : "url",
+      state: kind === "source_unit" ? "SOURCE UNIT REQUEST" : "EXTERNAL SOURCE",
+      analysisState: "NOT ANALYZED",
+      activeAdapter: state.activeAdapter?.adapterName || state.activeAdapter?.adapterId || "current source adapter",
+      addedAt: now,
+      unresolved: !match,
+      provenance: { source: "popup source scope control", sourceUrl: url, capturedBy: kind }
+    });
+    if (!record) {
+      setCaptureStatus("Source scope could not be selected on this page.");
+      return;
+    }
+    const nextSet = [record, ...state.crossReferenceSet].filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index).slice(0, 64);
+    await chrome.storage.local.set({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [PANEL_UI_STATE_KEY]: { lastAction: `popup_select_${kind}`, updatedAt: now }
+    });
+    await loadAllSummaries();
+    setCaptureStatus(kind === "source_unit" ? "Current source unit added as a scope request; no analysis was run." : "URL source reference added; no page harvesting was run.");
+  }
+
+  async function addRangeScopeRecord() {
+    const start = Number(document.getElementById("sourceRangeStart")?.value || 0);
+    const end = Number(document.getElementById("sourceRangeEnd")?.value || 0);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 1 || end < start) {
+      setCaptureStatus("Enter a valid ordered source range.");
+      return;
+    }
+    const state = await storedPageWorkflowState();
+    const page = state.tabPage || state.activePage || state.statusPage || {};
+    const url = normalizeWhitespace(page.activeUrl || page.url || state.tab?.url || "");
+    const match = sourceMatchFromUrl(url) || sourceMatchFromTitle(page.sourceTitle || state.tab?.title || "");
+    const book = match?.book || pageBookName(page) || "Current source";
+    const now = new Date().toISOString();
+    const record = normalizeSourceScopeRecord({
+      id: "range_request|" + textHash([url, book, start, end].join("|")),
+      itemType: "range_request",
+      label: `${book} ${start} -> ${book} ${end}`,
+      sourceTitle: page.sourceTitle || state.tab?.title || book,
+      sourceUrl: url,
+      book,
+      rangeStart: String(start),
+      rangeEnd: String(end),
+      sourceScope: `${book} ${start} -> ${book} ${end}`,
+      scopeType: "range_request",
+      state: "RANGE SCOPE REQUEST",
+      unresolved: true,
+      activeAdapter: state.activeAdapter?.adapterName || state.activeAdapter?.adapterId || "current source adapter",
+      addedAt: now,
+      provenance: { source: "popup source range control", sourceUrl: url, boundary: "range request only; no crawling or analysis" }
+    });
+    const nextSet = [record, ...state.crossReferenceSet].filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index).slice(0, 64);
+    await chrome.storage.local.set({ [CROSS_REFERENCE_SET_KEY]: nextSet, [PANEL_UI_STATE_KEY]: { lastAction: "popup_select_range", updatedAt: now } });
+    await loadAllSummaries();
+    setCaptureStatus("Range scope request added. It does not collect or analyze the range.");
+  }
+
+  async function saveStudyOptionState() {
+    const data = await chrome.storage.local.get(PANEL_UI_STATE_KEY);
+    const ui = data[PANEL_UI_STATE_KEY] || {};
+    const adapter = document.getElementById("adapterSelect")?.value || "";
+    const lens = document.getElementById("lensSelect")?.value || "recommended";
+    await chrome.storage.local.set({
+      [PANEL_UI_STATE_KEY]: {
+        ...ui,
+        selectedAdapterForNewAnalysis: adapter,
+        selectedLensForNewAnalysis: lens,
+        selectedLensesForNewAnalysis: lens === "custom" ? ["custom"] : [lens],
+        lastAction: "popup_select_study_options",
+        updatedAt: new Date().toISOString()
+      }
+    });
+    renderStudyOptions({ ...ui, selectedAdapterForNewAnalysis: adapter, selectedLensForNewAnalysis: lens }, null);
+    setCaptureStatus("Adapter/lens intent saved for new requests only; existing records were not rewritten.");
+  }
+
+  async function startPageManualSelectionOverlay() {
+    try {
+      const response = await sendMessageToActiveTab({ type: "ICE_START_MANUAL_SELECTION_MODE" });
+      if (!response?.ok) throw new Error(response?.error || "Manual selection overlay unavailable.");
+      setCaptureStatus(response.selectionMode?.hasSelection ? "Manual Select is active on the page with a visible selection detected." : "Manual Select is active on the page. Select visible text, then use the page overlay to Add.");
+    } catch (error) {
+      setCaptureStatus(error.message || "Manual Select could not start on this page.");
+    }
+  }
+
   function renderCurrentStudy(records = []) {
     const list = document.getElementById("currentStudyList");
     const count = document.getElementById("currentStudyCount");
@@ -1345,6 +1548,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!document.getElementById("analysisStatus")) {
       const state = await storedPageWorkflowState();
       renderPageIdentity(state);
+      renderSourceNavigation(state);
+      const uiData = await chrome.storage.local.get(PANEL_UI_STATE_KEY);
+      renderStudyOptions(uiData[PANEL_UI_STATE_KEY] || {}, state.activeAdapter);
       return;
     }
 
@@ -1353,6 +1559,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       : "Not run";
     document.getElementById("lastAnalysisAt").textContent =
       status?.analyzedAt || "Never";
+    const state = await storedPageWorkflowState();
+    renderPageIdentity(state);
+    renderSourceNavigation(state);
+    renderStudyOptions(data[PANEL_UI_STATE_KEY] || {}, state.activeAdapter);
   }
 
   async function getTimelineItems() {
@@ -2602,12 +2812,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   bindClick("analyzePage", analyzePageForCurrentStudy);
   bindClick("addPage", addPageToCrossReferenceSetFromPopup);
-  bindClick("manualSelect", startOrRefreshManualSelection);
-  bindClick("confirmManualSelection", confirmManualSelection);
-  bindClick("cancelManualSelection", () => {
-    clearManualSelection();
-    setCaptureStatus("Manual selection canceled.");
-  });
+  bindClick("manualSelect", startPageManualSelectionOverlay);
+  bindClick("previousSource", () => navigatePopupPage(-1, "popup_previous_source"));
+  bindClick("nextSource", () => navigatePopupPage(1, "popup_next_source"));
+  bindClick("selectUrl", () => addSourceScopeRecord("url_source"));
+  bindClick("selectSourceUnit", () => addSourceScopeRecord("source_unit"));
+  bindClick("selectRange", addRangeScopeRecord);
+  bindClick("selectVolume", () => setCaptureStatus("Volume selection is preview-only until an approved volume-scope contract exists."));
   bindClick("clearCurrentStudy", async () => {
     const state = await storedPageWorkflowState();
     if (!state.crossReferenceSet.length) {
@@ -2637,12 +2848,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      clearManualSelection();
-      setCaptureStatus("Manual selection canceled.");
-    }
-  });
+  document.getElementById("adapterSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Adapter selection failed.")));
+  document.getElementById("lensSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Lens selection failed.")));
 
   async function loadAllSummaries() {
     await loadCaptureHistory();

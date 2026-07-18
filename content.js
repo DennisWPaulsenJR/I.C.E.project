@@ -80,6 +80,11 @@
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
+  const CROSS_REFERENCE_SET_KEY = "ICE_CROSS_REFERENCE_SET";
+  const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
+  const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
+  const MANUAL_SELECTION_OVERLAY_ID = "ice-manual-selection-overlay";
+  const MANUAL_SELECTION_STYLE_ID = "ice-manual-selection-overlay-style";
   const DOM_HINT_LIMIT = 250;
 
   let engine;
@@ -1107,21 +1112,19 @@
 
     if (message?.type === "ICE_GET_VISIBLE_SELECTION") {
       try {
-        const selection = window.getSelection();
-        const text = normalizeWhitespace(selection?.toString?.() || "");
-        const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
-        const inDocument = range ? document.body?.contains(range.commonAncestorContainer) : false;
+        const snapshot = manualSelectionSnapshot();
         sendResponse({
           ok: true,
-          selection: text && inDocument ? {
-            text,
-            title: document.title || "",
-            url: location.href,
-            selectionType: text.split(/\s+/).filter(Boolean).length <= 1
-              ? "word"
-              : (text.split(/\s+/).filter(Boolean).length <= 12 ? "phrase" : "visible selection"),
-            capturedAt: new Date().toISOString(),
-            provenance: "visible user selection"
+          selection: snapshot ? {
+            text: snapshot.text,
+            title: snapshot.title,
+            url: snapshot.url,
+            selectionType: snapshot.selectionType,
+            canonicalReference: snapshot.canonicalReference,
+            sourceScope: snapshot.sourceScope,
+            scopePath: snapshot.scopePath,
+            capturedAt: snapshot.capturedAt,
+            provenance: snapshot.provenance
           } : null
         });
       } catch (error) {
@@ -1131,8 +1134,326 @@
       return false;
     }
 
+    if (message?.type === "ICE_START_MANUAL_SELECTION_MODE") {
+      try {
+        sendResponse({ ok: true, selectionMode: startManualSelectionMode() });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message });
+      }
+      return false;
+    }
+
+    if (message?.type === "ICE_CANCEL_MANUAL_SELECTION_MODE") {
+      stopManualSelectionMode("Manual selection canceled.");
+      sendResponse({ ok: true });
+      return false;
+    }
+
     return false;
   });
+
+  const manualSelectionState = {
+    active: false,
+    updateTimer: 0,
+    lastSnapshot: null,
+    handlersBound: false
+  };
+
+  function trimDisplayText(text = "", maxLength = 180) {
+    const value = normalizeWhitespace(text);
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, maxLength - 1).trim()}...`;
+  }
+
+  function visibleSelectionRange() {
+    const selection = window.getSelection?.();
+    if (!selection || !selection.rangeCount) return null;
+    const range = selection.getRangeAt(0);
+    const root = document.body;
+    if (!root?.contains(range.commonAncestorContainer)) return null;
+    const element = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    if (!element || element.closest?.("script, style, input, textarea, select, option, noscript, [aria-hidden='true']")) return null;
+    return range;
+  }
+
+  function selectionTypeForText(text = "") {
+    const normalized = normalizeWhitespace(text);
+    if (!normalized) return "unresolved";
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length <= 1) return "word";
+    if (words.length <= 12) return "phrase";
+    if (words.length <= 28) return "line or short passage";
+    if (/\b\d+[:.]\d+\b/.test(normalized) || words.length > 40) return "passage";
+    return "visible selection";
+  }
+
+  function sourceMatchFromLocation(url = location.href) {
+    const match = String(url || "").match(/\/scriptures\/(?:[^/]+\/)*([^/?#]+)\/(\d+)\b/i);
+    if (!match) return null;
+    const books = {
+      matt: "Matthew", mark: "Mark", luke: "Luke", john: "John", acts: "Acts", rom: "Romans",
+      "1-cor": "1 Corinthians", "2-cor": "2 Corinthians", gal: "Galatians", eph: "Ephesians",
+      phil: "Philippians", col: "Colossians", heb: "Hebrews", rev: "Revelation"
+    };
+    const slug = match[1].toLowerCase();
+    const book = books[slug] || slug.split("-").map((part) => part ? part[0].toUpperCase() + part.slice(1) : part).join(" ");
+    return { book, chapter: match[2] };
+  }
+
+  function manualSelectionSnapshot() {
+    const selection = window.getSelection?.();
+    const text = normalizeWhitespace(selection?.toString?.() || "");
+    const range = text ? visibleSelectionRange() : null;
+    if (!text || !range) return null;
+    const element = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const verseScope = nearestVerseScope(element);
+    const verseRef = verseRefFromScope(verseScope);
+    const verseNumber = verseNumberFromScope(verseScope);
+    const source = sourceMatchFromLocation();
+    const canonicalReference = verseRef || (source?.book && source?.chapter && verseNumber ? `${source.book} ${source.chapter}:${verseNumber}` : "");
+    return {
+      text,
+      preview: trimDisplayText(text, 260),
+      title: document.title || "",
+      url: location.href,
+      selectionType: selectionTypeForText(text),
+      canonicalReference,
+      verseRef,
+      verseNumber,
+      sourceScope: canonicalReference || (source?.book && source?.chapter ? `${source.book} ${source.chapter}` : ""),
+      scopePath: sourceDomPathForScope(verseScope),
+      capturedAt: new Date().toISOString(),
+      provenance: "visible user selection"
+    };
+  }
+
+  function ensureManualSelectionStyle() {
+    if (document.getElementById(MANUAL_SELECTION_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = MANUAL_SELECTION_STYLE_ID;
+    style.textContent = `
+      #${MANUAL_SELECTION_OVERLAY_ID} {
+        position: fixed;
+        z-index: 2147483647;
+        right: 16px;
+        bottom: 16px;
+        width: min(340px, calc(100vw - 32px));
+        padding: 14px;
+        border: 1px solid #b7c6dc;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #101a33;
+        box-shadow: 0 18px 50px rgba(20, 32, 55, .24);
+        font: 14px/1.4 Arial, sans-serif;
+      }
+      #${MANUAL_SELECTION_OVERLAY_ID} * { box-sizing: border-box; }
+      #${MANUAL_SELECTION_OVERLAY_ID} h2 { margin: 0 0 6px; font-size: 16px; }
+      #${MANUAL_SELECTION_OVERLAY_ID} p { margin: 0 0 8px; }
+      #${MANUAL_SELECTION_OVERLAY_ID} .ice-selection-preview {
+        max-height: 96px;
+        overflow: auto;
+        padding: 8px;
+        border: 1px solid #dce3ef;
+        border-radius: 8px;
+        background: #f6f8fc;
+        white-space: pre-wrap;
+      }
+      #${MANUAL_SELECTION_OVERLAY_ID} .ice-selection-meta { color: #59657a; font-size: 12px; }
+      #${MANUAL_SELECTION_OVERLAY_ID} .ice-selection-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      #${MANUAL_SELECTION_OVERLAY_ID} button {
+        min-height: 36px;
+        border: 1px solid #dce3ef;
+        border-radius: 8px;
+        background: #fff;
+        color: #101a33;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #${MANUAL_SELECTION_OVERLAY_ID} button.primary { border-color: #0f62fe; background: #0f62fe; color: #fff; }
+      #${MANUAL_SELECTION_OVERLAY_ID} button:focus-visible { outline: 3px solid #8ab4ff; outline-offset: 2px; }
+      #${MANUAL_SELECTION_OVERLAY_ID} button:disabled { opacity: .55; cursor: not-allowed; }
+      @media (prefers-reduced-motion: reduce) { #${MANUAL_SELECTION_OVERLAY_ID} { scroll-behavior: auto; } }
+    `;
+    document.documentElement.appendChild(style);
+  }
+
+  function manualSelectionOverlay() {
+    ensureManualSelectionStyle();
+    let panel = document.getElementById(MANUAL_SELECTION_OVERLAY_ID);
+    if (!panel) {
+      panel = document.createElement("aside");
+      panel.id = MANUAL_SELECTION_OVERLAY_ID;
+      panel.setAttribute("role", "region");
+      panel.setAttribute("aria-label", "I.C.E. manual selection");
+      panel.setAttribute("aria-live", "polite");
+      document.documentElement.appendChild(panel);
+    }
+    return panel;
+  }
+
+  function renderManualSelectionOverlay(message = "") {
+    if (!manualSelectionState.active) return;
+    const snapshot = manualSelectionState.lastSnapshot;
+    const panel = manualSelectionOverlay();
+    panel.textContent = "";
+    const heading = document.createElement("h2");
+    heading.textContent = "Manual Select";
+    const status = document.createElement("p");
+    status.textContent = message || (snapshot ? "Selection detected. Add it to Current Study when ready." : "Waiting for visible selection.");
+    panel.append(heading, status);
+    if (snapshot) {
+      const preview = document.createElement("p");
+      preview.className = "ice-selection-preview";
+      preview.textContent = snapshot.preview;
+      const meta = document.createElement("p");
+      meta.className = "ice-selection-meta";
+      meta.textContent = [
+        `Type: ${snapshot.selectionType}`,
+        snapshot.canonicalReference ? `Reference: ${snapshot.canonicalReference}` : "Reference: unresolved",
+        "Context: selection evidence / limited context"
+      ].join(" | ");
+      panel.append(preview, meta);
+    }
+    const actions = document.createElement("div");
+    actions.className = "ice-selection-actions";
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "primary";
+    add.textContent = "Add";
+    add.disabled = !snapshot;
+    add.addEventListener("click", () => addManualSelectionSnapshot().catch((error) => renderManualSelectionOverlay(error.message || "Selection add failed.")));
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => stopManualSelectionMode("Manual selection canceled."));
+    actions.append(add, cancel);
+    panel.appendChild(actions);
+  }
+
+  function scheduleManualSelectionUpdate() {
+    if (!manualSelectionState.active) return;
+    window.clearTimeout(manualSelectionState.updateTimer);
+    manualSelectionState.updateTimer = window.setTimeout(() => {
+      const next = manualSelectionSnapshot();
+      const previousKey = manualSelectionState.lastSnapshot ? `${manualSelectionState.lastSnapshot.text}|${manualSelectionState.lastSnapshot.canonicalReference}` : "";
+      const nextKey = next ? `${next.text}|${next.canonicalReference}` : "";
+      manualSelectionState.lastSnapshot = next;
+      if (previousKey !== nextKey) renderManualSelectionOverlay();
+    }, 120);
+  }
+
+  function manualSelectionKey(record = {}) {
+    return record.id || record.selectionId || [record.sourceUrl || record.url, record.exactText || record.selectedText].join("|");
+  }
+
+  async function addManualSelectionSnapshot() {
+    const snapshot = manualSelectionState.lastSnapshot || manualSelectionSnapshot();
+    if (!snapshot?.text) {
+      renderManualSelectionOverlay("No visible selection is ready to add.");
+      return;
+    }
+    const data = await safeStorageLocalGet([CROSS_REFERENCE_SET_KEY, PANEL_UI_STATE_KEY, ACTIVE_ADAPTER_KEY]);
+    const ui = data[PANEL_UI_STATE_KEY] || {};
+    const adapter = data[ACTIVE_ADAPTER_KEY] || {};
+    const record = {
+      id: `manual-selection|${textHash(`${snapshot.url}|${snapshot.canonicalReference}|${snapshot.text}`)}`,
+      itemType: "manual_selection",
+      label: snapshot.canonicalReference || snapshot.sourceScope || snapshot.title || "Manual selection",
+      sourceTitle: snapshot.title || "Manual selection",
+      sourceUrl: snapshot.url,
+      exactText: snapshot.text,
+      selectedText: snapshot.text,
+      preview: snapshot.preview,
+      selectionType: snapshot.selectionType,
+      canonicalReference: snapshot.canonicalReference,
+      sourceReference: snapshot.canonicalReference,
+      sourceScope: snapshot.sourceScope,
+      scopePath: snapshot.scopePath,
+      activeAdapter: adapter.adapterName || adapter.adapterId || ui.selectedAdapterForNewAnalysis || "current source adapter",
+      activeLenses: Array.isArray(ui.selectedLensesForNewAnalysis) ? ui.selectedLensesForNewAnalysis : (ui.selectedLensForNewAnalysis ? [ui.selectedLensForNewAnalysis] : []),
+      contextDistance: "limited_context_selection",
+      origin: "manual_selection_overlay",
+      state: snapshot.canonicalReference ? "SELECTION EVIDENCE" : "UNRESOLVED REFERENCE",
+      analysisState: "PENDING ANALYSIS",
+      unresolved: !snapshot.canonicalReference,
+      analyzed: false,
+      addedAt: new Date().toISOString(),
+      provenance: {
+        source: "visible user selection",
+        sourceUrl: snapshot.url,
+        capturedBy: "content_manual_selection_overlay",
+        canonicalReference: snapshot.canonicalReference || "unresolved"
+      }
+    };
+    const existing = Array.isArray(data[CROSS_REFERENCE_SET_KEY]) ? data[CROSS_REFERENCE_SET_KEY] : [];
+    const nextSet = [record, ...existing]
+      .filter((item, index, items) => items.findIndex((candidate) => manualSelectionKey(candidate) === manualSelectionKey(item)) === index)
+      .slice(0, 64);
+    await safeStorageLocalSet({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [PANEL_UI_STATE_KEY]: {
+        ...ui,
+        lastAction: "manual_selection_overlay_add",
+        updatedAt: new Date().toISOString()
+      }
+    });
+    renderManualSelectionOverlay("Selection added to Current Study. Popup reopening is not required.");
+    window.setTimeout(() => stopManualSelectionMode(""), 900);
+  }
+
+  function handleManualSelectionKeydown(event) {
+    if (event.key === "Escape" && manualSelectionState.active) {
+      event.preventDefault();
+      stopManualSelectionMode("Manual selection canceled.");
+    }
+  }
+
+  function handleManualSelectionPageHide() {
+    stopManualSelectionMode("");
+  }
+
+  function bindManualSelectionListeners() {
+    if (manualSelectionState.handlersBound) return;
+    manualSelectionState.handlersBound = true;
+    document.addEventListener("selectionchange", scheduleManualSelectionUpdate, { passive: true });
+    document.addEventListener("mouseup", scheduleManualSelectionUpdate, { passive: true });
+    document.addEventListener("keyup", scheduleManualSelectionUpdate, { passive: true });
+    document.addEventListener("keydown", handleManualSelectionKeydown, true);
+    window.addEventListener("pagehide", handleManualSelectionPageHide, { once: true });
+  }
+
+  function unbindManualSelectionListeners() {
+    if (!manualSelectionState.handlersBound) return;
+    manualSelectionState.handlersBound = false;
+    document.removeEventListener("selectionchange", scheduleManualSelectionUpdate);
+    document.removeEventListener("mouseup", scheduleManualSelectionUpdate);
+    document.removeEventListener("keyup", scheduleManualSelectionUpdate);
+    document.removeEventListener("keydown", handleManualSelectionKeydown, true);
+    window.removeEventListener("pagehide", handleManualSelectionPageHide);
+  }
+
+  function startManualSelectionMode() {
+    manualSelectionState.active = true;
+    manualSelectionState.lastSnapshot = manualSelectionSnapshot();
+    bindManualSelectionListeners();
+    renderManualSelectionOverlay();
+    scheduleManualSelectionUpdate();
+    return { active: true, hasSelection: Boolean(manualSelectionState.lastSnapshot) };
+  }
+
+  function stopManualSelectionMode(message = "") {
+    manualSelectionState.active = false;
+    manualSelectionState.lastSnapshot = null;
+    window.clearTimeout(manualSelectionState.updateTimer);
+    unbindManualSelectionListeners();
+    document.getElementById(MANUAL_SELECTION_OVERLAY_ID)?.remove();
+    if (message) console.debug(`I.C.E. ${message}`);
+  }
 
   async function init() {
     if (!document.body) return;

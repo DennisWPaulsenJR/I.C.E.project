@@ -2523,6 +2523,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!records.length) return "No selected pages.";
     return records.map((record) => {
       if (isManualCurrentStudyRecord(record)) return `${record.label}: Manual selection`;
+      if (isSourceScopeCurrentStudyRecord(record)) return `${record.label}: ${record.state || "Scope request"}`;
       return `${record.label}: ${record.analyzed ? "Analyzed" : "Not analyzed yet"}`;
     }).join("\n");
   }
@@ -13579,17 +13580,36 @@ createRevelationPartsSection(item.subEvents)
     return "chapter";
   }
 
-  function scopeSnapshotPositionForReference(reference = {}, bounds = {}) {
-    if (!reference?.chapter) return null;
+  function scopeSnapshotReferencePositionDetails(reference = {}, bounds = {}) {
+    if (!reference?.chapter) return { x: null, fallbackReason: "missing chapter/reference", clamped: false, parsedChapter: null, parsedVerse: null };
     const chapter = Number(reference.chapter);
+    const verses = asArray(reference.verses).map(Number).filter(Boolean);
+    const parsedVerse = verses.length ? Math.min(...verses) : null;
+    let raw;
+    let fallbackReason = "exact chapter/verse anchor";
     if (bounds.minChapter === bounds.maxChapter) {
-      const verses = asArray(reference.verses).map(Number).filter(Boolean);
-      const verse = verses.length ? Math.min(...verses) : bounds.minVerse;
-      const x = 8 + ((verse - bounds.unitStart) / Math.max(1, bounds.span)) * 84;
-      return Math.max(6, Math.min(94, x));
+      const verse = parsedVerse || bounds.minVerse;
+      fallbackReason = parsedVerse ? "verse anchor within active chapter" : "chapter-only record anchored to active chapter start";
+      raw = 8 + ((verse - bounds.unitStart) / Math.max(1, bounds.span)) * 84;
+    } else {
+      const chapterCount = Math.max(1, Number(bounds.maxChapter || chapter) - Number(bounds.minChapter || chapter) + 1);
+      const chapterOffset = chapter - Number(bounds.minChapter || chapter);
+      const withinChapter = parsedVerse ? Math.max(0.02, Math.min(0.96, parsedVerse / 60)) : 0.5;
+      fallbackReason = parsedVerse ? "verse anchor distributed within chapter region" : "chapter-only record anchored at chapter center";
+      raw = 8 + ((chapterOffset + withinChapter) / chapterCount) * 84;
     }
-    const x = 8 + ((chapter - bounds.unitStart) / Math.max(1, bounds.span)) * 84;
-    return Math.max(6, Math.min(94, x));
+    const x = Math.max(6, Math.min(94, raw));
+    return {
+      x,
+      fallbackReason,
+      clamped: Math.abs(x - raw) > 0.001,
+      parsedChapter: chapter,
+      parsedVerse
+    };
+  }
+
+  function scopeSnapshotPositionForReference(reference = {}, bounds = {}) {
+    return scopeSnapshotReferencePositionDetails(reference, bounds).x;
   }
 
   function scopeSnapshotAddNode(nodes, laneId, record = {}, fallback = "Scoped record", options = {}) {
@@ -13643,6 +13663,32 @@ createRevelationPartsSection(item.subEvents)
       ...asArray(speakerDetectionPreviewRecords()).filter((record) => /unresolved|ambiguous/i.test(record.status || "")),
       ...asArray(studyData.semanticAmbiguities)
     ].slice(0, 26).forEach((record) => scopeSnapshotAddNode(nodes, "unresolved", record, "Unresolved record", { recordType: "unresolved" }));
+    crossReferenceSetRecords()
+      .filter((record) => isManualCurrentStudyRecord(record) || isSourceScopeCurrentStudyRecord(record))
+      .forEach((record) => {
+        if (isManualCurrentStudyRecord(record)) {
+          scopeSnapshotAddNode(nodes, "happenings", {
+            ...record,
+            label: record.canonicalReference || record.sourceReference || record.label || "Manual selection",
+            sourceReference: record.canonicalReference || record.sourceReference || record.sourceScope || "",
+            sourceScope: record.sourceScope || record.canonicalReference || record.sourceReference || "",
+            evidence: record.exactText,
+            confidence: record.unresolved ? "limited / unresolved reference" : "selection evidence",
+            status: record.unresolved ? "unresolved_reference" : "limited_context_selection",
+            provenance: "visible user selection retained from Current Study"
+          }, "Manual selection", { recordType: "manual_selection", targetSection: "scopeSnapshotSection" });
+          return;
+        }
+        scopeSnapshotAddNode(nodes, "unresolved", {
+          ...record,
+          label: record.label || record.sourceScope || "Source scope request",
+          sourceReference: record.sourceScope || "",
+          evidence: record.sourceUrl || record.sourceScope || record.label,
+          confidence: "scope request / not analyzed",
+          status: record.state || "scope_request",
+          provenance: "Current Study source-scope request"
+        }, "Source scope request", { recordType: record.itemType || "source_scope", targetSection: "scopeSnapshotSection" });
+      });
     scopeSnapshotCopyRenderNodes().forEach((node) => nodes.push(node));
     return nodes;
   }
@@ -13948,6 +13994,7 @@ createRevelationPartsSection(item.subEvents)
       `Axis: ${model.axisGranularity}; ${model.startReference} to ${model.endReference}`,
       `Nodes: eligible=${model.nodeCount}; anchors=${model.anchorCount}; individually rendered=${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}; clustered=${model.clusteredRecordCount}; unpositioned=${model.unpositionedCount}; visible objects=${model.visibleNodeCount}; clusters=${model.clusterCount}`,
       `Dynamic layers: preset=${model.layerModel?.preset}; active=${asArray(model.layerModel?.activeLayerIds).join(", ") || "none"}; recommended=${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}; hiddenByLayer=${model.hiddenLayerNodes || 0}; selectedHidden=${model.selectedHiddenByLayer ? "true" : "false"}`,
+      `Graph domain: ${JSON.stringify(model.bounds)}; unresolved records do not default to 100%.`,
       `Copy Render: selections=${asArray(scopeSnapshotViewState.copyRenderSelections).length}; context=${scopeSnapshotViewState.copyRenderContextMode}; mode=${scopeSnapshotViewState.copyRenderEvaluationMode}; active=${scopeSnapshotViewState.activeCopyRenderSelectionId || "none"}; last=${scopeSnapshotViewState.lastCopyRenderMessage || "none"}`,
       `LOD clustering: largestCluster=${model.largestCluster}; averageRecordsPerCluster=${model.averageRecordsPerCluster}; expandedClusters=${model.expandedClusterCount}; collisionReduction=${model.collisionReduction}`,
       `Labels: visible=${model.visibleLabelCount}; suppressed=${model.suppressedLabelCount}; collisions before resolution=${model.collisionCountBeforeResolution}; unresolved collisions=${model.unresolvedCollisionCount}`,
@@ -14504,7 +14551,7 @@ createRevelationPartsSection(item.subEvents)
     });
     const note = document.createElement("p");
     note.textContent = `Range relevance: ${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}. Preset: ${SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]?.label || "Custom"}. Hidden by layers: ${model.hiddenLayerNodes || 0}.`;
-    panel.append(presetRow, layerGroups, note);
+    panel.append(summary, presetRow, layerGroups, note);
     return panel;
   }
 
@@ -14659,16 +14706,7 @@ createRevelationPartsSection(item.subEvents)
     controls.className = "scope-snapshot-controls";
     [
       ["linear", "Linear Graph"],
-      ["cards", "Summary Cards"],
-      ["outline", "Narrative Outline"],
       ["fit", "Fit Scope"],
-      ["auto", "Auto"],
-      ["active_chapter", "Active Chapter"],
-      ["selected_verse_range", "Selected Verse Range"],
-      ["more_detail", "More Detail"],
-      ["less_detail", "Less Detail"],
-      ["svg", "Export Graph as SVG"],
-      ["print", "Print"],
       ["copy", "Copy Summary"],
       ["reset", "Reset"]
     ].forEach(([action, label]) => {
@@ -14679,6 +14717,31 @@ createRevelationPartsSection(item.subEvents)
       if ((action === model.graphMode) || (action === scopeSnapshotViewState.zoomMode)) button.setAttribute("aria-pressed", "true");
       controls.appendChild(button);
     });
+    const advancedControls = document.createElement("details");
+    advancedControls.className = "scope-snapshot-advanced-controls";
+    const advancedSummary = document.createElement("summary");
+    advancedSummary.textContent = `More Snapshot Controls - preset ${SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]?.label || "Custom"}`;
+    const advancedRow = document.createElement("div");
+    advancedRow.className = "scope-snapshot-controls";
+    [
+      ["cards", "Summary Cards"],
+      ["outline", "Narrative Outline"],
+      ["auto", "Auto"],
+      ["active_chapter", "Active Chapter"],
+      ["selected_verse_range", "Selected Verse Range"],
+      ["more_detail", "More Detail"],
+      ["less_detail", "Less Detail"],
+      ["svg", "Export Graph as SVG"],
+      ["print", "Print"]
+    ].forEach(([action, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.scopeSnapshotAction = action;
+      button.textContent = label;
+      if ((action === model.graphMode) || (action === scopeSnapshotViewState.zoomMode)) button.setAttribute("aria-pressed", "true");
+      advancedRow.appendChild(button);
+    });
+    advancedControls.append(advancedSummary, advancedRow);
 
     const graph = document.createElement("div");
     graph.className = "scope-snapshot-graph";
@@ -14728,7 +14791,7 @@ createRevelationPartsSection(item.subEvents)
       `Cache: ${scopeSnapshotLastCacheState}`,
       "Scope locked: yes"
     ].join(" | ");
-    body.append(top, scopeLine, controls, createScopeSnapshotLayerControls(model), createCopyRenderPanel(model), graph, lower, summary, footer);
+    body.append(top, scopeLine, controls, advancedControls, createScopeSnapshotLayerControls(model), createCopyRenderPanel(model), graph, lower, summary, footer);
     card.append(header, body);
     return card;
   }
@@ -14770,6 +14833,7 @@ createRevelationPartsSection(item.subEvents)
       `Start reference: ${model.startReference}`,
       `End reference: ${model.endReference}`,
       `Boundaries: ${JSON.stringify(model.bounds)}`,
+      `Position diagnostics: unresolved=${model.unpositionedCount}; clamped=${model.positioned.filter((node) => node.positionDiagnostics?.clamped).length}; sample=${model.positioned.slice(0, 8).map((node) => `${node.primaryReference || node.reference?.label || node.label}=>${Math.round(Number(node.x || 0) * 10) / 10} (${node.positionDiagnostics?.fallbackReason || "positioned"})`).join(" | ") || "none"}`,
       `Node count: ${model.nodeCount}`,
       `Visible node count: ${model.visibleNodeCount}`,
       `Individually rendered records: ${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}`,
