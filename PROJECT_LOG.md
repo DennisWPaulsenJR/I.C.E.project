@@ -1,3 +1,19 @@
+## 2026-07-18 - Browser Extension Study Collection Interface
+
+Simplified the Manifest V3 popup into a lightweight I.C.E. Study Collection Tool.
+
+The popup now exposes only the approved primary workflow controls: Analyze Page, Add Page, Manual Select, Clear All, and Open Study Panel. Advanced timeline, event, principle, graph, ontology, queue, and diagnostic controls are no longer part of the normal popup surface.
+
+Current Study display now uses the existing temporary `ICE_CROSS_REFERENCE_SET` contract, with page/manual-selection records rendered as removable collection items. Analyze Page invokes the existing analysis pipeline with canonical-scope preservation for popup collection, then marks the temporary Current Study page item as analyzed. Add Page collects the active supported page without implying analysis. Manual Select captures only explicit visible user-selected text through the active content script and requires confirmation before adding it.
+
+Clear All clears only the temporary Current Study collection and explicitly preserves stored analysis, semantic records, preferences, saved studies, and canonical Study Scope. Open Study Panel continues to open the existing Study Panel without graph construction, crawling, automatic progression, or semantic mutation.
+
+Authority boundaries retained:
+- Source text and provenance remain preserved.
+- Popup presentation does not create semantic authority.
+- Popup analysis no longer rewrites canonical analyzed scope when invoked from the collection workflow.
+- No host permissions, external ingestion, crawling, queue processing, framework dependency, or durable storage authority were added.
+
 ## 2026-06-21 - Full Context Evaluation Architecture
 
 Documented the long-term Full Context Evaluation architecture in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.

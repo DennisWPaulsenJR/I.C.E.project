@@ -3,32 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biblical Highlighter</title>
+  <title>I.C.E. Study Collection</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    body {
-      width: 460px;
-      max-height: 680px;
+    :root {
+      color-scheme: light;
+      --ink: #101a33;
+      --muted: #59657a;
+      --line: #dce3ef;
+      --soft: #f6f8fc;
+      --blue: #0f62fe;
+      --blue-soft: #eaf1ff;
+      --green: #146c43;
+      --amber: #8a5a00;
+      --red: #9f1239;
+    }
+
+    * {
       box-sizing: border-box;
-      padding: 12px;
-      font-family: sans-serif;
+    }
+
+    body {
+      width: 390px;
+      max-height: 620px;
+      margin: 0;
+      padding: 16px;
       overflow-y: auto;
+      background: #fff;
+      color: var(--ink);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
     }
 
-    h3 {
-      margin-top: 0;
+    header {
+      margin-bottom: 14px;
     }
 
-    label {
-      display: block;
-      margin: 8px 0;
+    h1,
+    h2 {
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1rem;
+    }
+
+    p {
+      margin: 0;
     }
 
     button {
-      margin-top: 10px;
-      width: 100%;
-      padding: 8px;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
       cursor: pointer;
+    }
+
+    button:hover {
+      border-color: #a9b8d1;
+      background: #f8fbff;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #8ab4ff;
+      outline-offset: 2px;
     }
 
     button:disabled {
@@ -36,163 +85,258 @@
       opacity: .55;
     }
 
-    .page-workflow {
-      margin-top: 12px;
-      padding: 10px;
-      border: 1px solid #d8dde6;
+    .eyebrow {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .page-status {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: #f8fafc;
+      background: var(--soft);
     }
 
-    .page-workflow h4 {
-      margin: 0 0 6px;
+    .page-status strong {
+      display: block;
+      margin-bottom: 2px;
     }
 
-    .page-workflow p {
-      margin: 0 0 6px;
-      color: #5f6b7a;
-      font-size: .84rem;
-      line-height: 1.35;
+    .page-status span {
+      color: var(--muted);
+      font-size: .86rem;
     }
 
-    .page-workflow .workflow-actions {
+    .primary-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .primary-actions .wide {
+      grid-column: 1 / -1;
+    }
+
+    .primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .primary:hover {
+      background: #0353d7;
+    }
+
+    .danger {
+      border-color: #f3b9c6;
+      color: var(--red);
+    }
+
+    .manual-panel {
+      margin: 0 0 14px;
+      padding: 12px;
+      border: 1px dashed #9db3d5;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .manual-panel h2 {
+      margin-bottom: 6px;
+    }
+
+    .manual-panel blockquote {
+      max-height: 96px;
+      margin: 10px 0;
+      padding: 8px 10px;
+      overflow: auto;
+      border-left: 4px solid var(--blue);
+      background: #fff;
+      color: #24304a;
+      font-size: .88rem;
+    }
+
+    .manual-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
-    .page-workflow button {
-      margin-top: 0;
-      min-height: 36px;
+    .study-list {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
     }
 
-    .summary-detail {
-      margin-top: -6px;
-      color: #5f6b7a;
+    .study-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .count-pill {
+      min-width: 64px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .empty-state {
+      padding: 18px 12px;
+      color: var(--muted);
+    }
+
+    .current-study-items {
+      display: grid;
+      gap: 0;
+    }
+
+    .study-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .study-item:first-child {
+      border-top: 0;
+    }
+
+    .study-item-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .study-item-meta,
+    .study-item-preview {
+      color: var(--muted);
       font-size: .82rem;
-      line-height: 1.35;
+    }
+
+    .study-item-preview {
+      margin-top: 6px;
+    }
+
+    .state-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .state-analyzed {
+      border-color: #bde7ca;
+      background: #ecfdf3;
+      color: var(--green);
+    }
+
+    .state-pending {
+      border-color: #f5db95;
+      background: #fff8e1;
+      color: var(--amber);
+    }
+
+    .state-unresolved {
+      border-color: #f3b9c6;
+      background: #fff1f4;
+      color: var(--red);
+    }
+
+    .remove-item {
+      min-width: 74px;
+      min-height: 34px;
+      align-self: start;
+      color: var(--red);
+      font-size: .82rem;
+    }
+
+    .status-line {
+      min-height: 24px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .handoff-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
 <body>
-  <h3>Biblical Highlighter</h3>
+  <header>
+    <p class="eyebrow">I.C.E. Scripture Engine</p>
+    <h1>Study Collection</h1>
+    <div class="page-status" aria-live="polite">
+      <strong id="pageIdentity">Checking active page...</strong>
+      <span id="pageAnalysisState">Open a supported scripture page to begin.</span>
+    </div>
+  </header>
 
-  <label>
-    <input type="checkbox" id="enabled">
-    Enable Highlighting
-  </label>
+  <section class="primary-actions" aria-label="Primary study collection actions">
+    <button id="analyzePage" class="primary" type="button">Analyze Page</button>
+    <button id="addPage" type="button">Add Page</button>
+    <button id="manualSelect" type="button">Manual Select</button>
+    <button id="clearCurrentStudy" class="danger" type="button">Clear All</button>
+    <button id="openStudyPanel" class="primary wide" type="button">Open Study Panel</button>
+  </section>
 
-  <label>
-    <input type="checkbox" id="strictMode">
-    Strict Context Mode
-  </label>
-
-  <label>
-    <input type="checkbox" id="highlightPronouns">
-    Highlight Pronouns
-  </label>
-
-  <label>
-    <input type="checkbox" id="autoCaptureOnPageLoad">
-    Auto capture on page load
-  </label>
-
-  <label>
-    <input type="checkbox" id="showPageOverlay">
-    Show page overlay
-  </label>
-
-  <button id="runFullAnalysis">Run Full Analysis</button>
-  <button id="openStudyPanel">Open Study Panel</button>
-  <button id="clearPageData">Clear Page Data</button>
-  <button id="clearAllIceData">Clear All I.C.E. Data</button>
-
-  <section class="page-workflow" aria-label="Page Workflow">
-    <h4>Page Workflow</h4>
-    <p>Manual navigation and selected-page cross-reference controls. Navigation does not analyze pages.</p>
-    <div class="workflow-actions">
-      <button id="previousPage">Previous page</button>
-      <button id="nextPage">Next page</button>
-      <button id="openSuggestedNext">Open suggested next</button>
-      <button id="analyzeThisPage">Analyze this page</button>
-      <button id="analyzeAndAddPage">Analyze and add this page to stored session</button>
-      <button id="addPageToCrossReference">Add this page to cross-reference set</button>
-      <button id="showCrossReferenceSet">Show cross-reference set</button>
-      <button id="clearCrossReferenceSet">Clear cross-reference set</button>
+  <section id="manualSelectionPanel" class="manual-panel" hidden aria-live="polite">
+    <h2>Manual Selection</h2>
+    <p id="manualSelectionStatus">Select visible text on the page, then choose Manual Select again.</p>
+    <blockquote id="manualSelectionPreview" hidden></blockquote>
+    <div class="manual-actions">
+      <button id="confirmManualSelection" type="button" disabled>Add Selection</button>
+      <button id="cancelManualSelection" type="button">Cancel</button>
     </div>
   </section>
 
-  <hr>
-
-  <section class="analysis-summary">
-    <p>Capture status: <span id="analysisStatus">Not run</span></p>
-    <p>Captured Pages: <span id="historyCount">0</span></p>
-    <p id="capturedPagesLine" class="summary-detail">Raw capture snapshots saved for review.</p>
-    <p>Stored Session Pages: <span id="storedSessionPageCount">0</span></p>
-    <p id="storedSessionPagesLine" class="summary-detail">Analyzed pages stored for the current session.</p>
-    <p>Active Study Scope: <span id="activeStudyScopeLine">No active scope</span></p>
-    <p>Cross-reference Pages: <span id="crossReferencePageCount">0</span></p>
-    <p id="crossReferencePagesLine" class="summary-detail">Selected comparison pages are tracked separately.</p>
-    <p>Timeline items: <span id="timelineCount">0</span></p>
-    <p>Event candidates: <span id="eventCount">0</span></p>
-    <p>Ordered events: <span id="orderedEventCount">0</span></p>
-    <p>Actor timelines: <span id="actorTimelineCount">0</span></p>
-    <p>Interactions: <span id="interactionCount">0</span></p>
-    <p>Scenes: <span id="sceneCount">0</span></p>
-    <p>Principles: <span id="principleCount">0</span></p>
-    <p>Last analysis: <span id="lastAnalysisAt">Never</span></p>
+  <section class="study-list" aria-labelledby="currentStudyHeading">
+    <div class="study-heading">
+      <h2 id="currentStudyHeading">Current Study</h2>
+      <span id="currentStudyCount" class="count-pill">0 items</span>
+    </div>
+    <div id="currentStudyList" class="current-study-items" aria-live="polite">
+      <p class="empty-state">Analyze a page, add the page, or confirm a manual selection to build a temporary Current Study.</p>
+    </div>
   </section>
 
-  <section id="captureSummary" class="capture-summary" hidden>
-    <h4>Latest Capture</h4>
-    <p id="captureTitle"></p>
-    <dl>
-      <div>
-        <dt>Words</dt>
-        <dd id="captureWords">0</dd>
-      </div>
-      <div>
-        <dt>Characters</dt>
-        <dd id="captureCharacters">0</dd>
-      </div>
-      <div>
-        <dt>Divine refs</dt>
-        <dd id="captureDivineRefs">0</dd>
-      </div>
-    </dl>
-  </section>
-
-  <p class="formatter-status">Last format matches: <span id="formatterMatchCount">0</span></p>
-
-  <hr>
-
-  <details class="advanced-qa">
-    <summary>Advanced / QA</summary>
-    <button id="capture">Capture Page Text</button>
-    <button id="copyCapture" disabled>Copy Captured Text</button>
-    <button id="clearHistory" disabled>Clear History</button>
-    <button id="extractTimeline" disabled>Extract Timeline</button>
-    <ul id="timelineSnippets" class="timeline-snippets"></ul>
-    <button id="copyTimelineItems" disabled>Copy Timeline Items</button>
-    <button id="clearTimeline" disabled>Clear Timeline</button>
-    <button id="extractEvents" disabled>Extract Events</button>
-    <ul id="eventSnippets" class="event-snippets"></ul>
-    <button id="copyEventItems" disabled>Copy Event Items</button>
-    <button id="clearEvents" disabled>Clear Events</button>
-    <button id="extractPrinciples" disabled>Extract Principles</button>
-    <button id="copyPrinciples" disabled>Copy Principles</button>
-    <button id="clearPrinciples" disabled>Clear Principles</button>
-    <button id="orderEvents" disabled>Order Events</button>
-    <ul id="orderedEventSnippets" class="ordered-event-snippets"></ul>
-    <button id="copyOrderedEvents" disabled>Copy Ordered Events</button>
-    <button id="clearOrderedEvents" disabled>Clear Ordered Events</button>
-    <button id="buildActorTimelines" disabled>Build Actor Timelines</button>
-    <ul id="actorTimelineSnippets" class="actor-timeline-snippets"></ul>
-    <button id="copyActorTimelines" disabled>Copy Actor Timelines</button>
-    <button id="clearActorTimelines" disabled>Clear Actor Timelines</button>
-    <button id="clearCapture" disabled>Clear Capture</button>
-  </details>
-  <p id="captureStatus" class="capture-status" role="status"></p>
+  <p id="collectionStatus" class="status-line" role="status"></p>
+  <p class="handoff-note">The popup collects. The Study Panel organizes the Current Study and keeps semantic records authoritative.</p>
 
   <script src="popup.js"></script>
 </body>

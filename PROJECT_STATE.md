@@ -31,6 +31,10 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Browser extension interface direction: the popup is now a lightweight Study Collection Tool, not a miniature Study Panel. Its normal surface is limited to Analyze Page, Add Page, Manual Select, Clear All, Open Study Panel, and the visible temporary Current Study list.
+- Temporary Current Study collection uses the existing `ICE_CROSS_REFERENCE_SET` contract for page and manual-selection items. Individual removal and Clear All affect only this temporary collection; they do not delete stored analysis, semantic records, saved studies, preferences, or canonical Study Scope.
+- Popup-triggered Analyze Page uses the existing analysis pipeline with canonical-scope preservation for the collection workflow. Analysis status can mark the temporary Current Study page item as analyzed, but Analyzed remains distinct from Added.
+- Manual Select captures only explicit visible user-selected text through the active content script and requires user confirmation before it is added. It does not collect hidden text, linked pages, or inferred surrounding context.
 - I.C.E. Constitution v1.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
 - The Constitution is the explicit non-negotiable rule contract for trust, evidence, authority, ontology, provenance, explainability, verification, scope, lenses, corpora, adapters, perspectives, experts, and operational boundaries.
 - `MASTER_DESIGN.md` has been reconstructed from durable architecture and coordination documents after history investigation found no tracked historical copy; it is the first-read mission and architecture overview, while the Constitution records the implementation-governing rules every future semantic system must obey.

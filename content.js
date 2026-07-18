@@ -199,6 +199,10 @@
     }
   }
 
+  function normalizeWhitespace(text) {
+    return String(text ?? "").replace(/\s+/g, " ").trim();
+  }
+
   function shouldSkipNode(node) {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
     if (SKIP_TAGS.has(node.tagName)) return true;
@@ -1099,6 +1103,32 @@
         .catch((error) => sendResponse({ ok: false, error: error.message }));
 
       return true;
+    }
+
+    if (message?.type === "ICE_GET_VISIBLE_SELECTION") {
+      try {
+        const selection = window.getSelection();
+        const text = normalizeWhitespace(selection?.toString?.() || "");
+        const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        const inDocument = range ? document.body?.contains(range.commonAncestorContainer) : false;
+        sendResponse({
+          ok: true,
+          selection: text && inDocument ? {
+            text,
+            title: document.title || "",
+            url: location.href,
+            selectionType: text.split(/\s+/).filter(Boolean).length <= 1
+              ? "word"
+              : (text.split(/\s+/).filter(Boolean).length <= 12 ? "phrase" : "visible selection"),
+            capturedAt: new Date().toISOString(),
+            provenance: "visible user selection"
+          } : null
+        });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message });
+      }
+
+      return false;
     }
 
     return false;

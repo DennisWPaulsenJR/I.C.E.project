@@ -2446,6 +2446,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     return validSourcePageRecord(page) ? page : null;
   }
 
+  function isManualCurrentStudyRecord(record = {}) {
+    return record.itemType === "manual_selection" || record.type === "manual_selection" || record.origin === "manual_selection";
+  }
+
+  function manualCurrentStudyRecord(record = {}) {
+    const exactText = normalizeText(record.exactText || record.selectedText || "");
+    const sourceUrl = normalizeText(record.sourceUrl || record.url || "");
+    if (!exactText || !sourceUrl) return null;
+    return {
+      id: normalizeText(record.id || record.selectionId || sourceUrl + "|" + exactText.slice(0, 80)),
+      itemType: "manual_selection",
+      label: normalizeText(record.label || record.sourceTitle || "Manual selection"),
+      sourceTitle: normalizeText(record.sourceTitle || record.label || "Manual selection"),
+      sourceUrl,
+      exactText,
+      selectedText: exactText,
+      selectionType: normalizeText(record.selectionType || "visible selection"),
+      origin: "manual_selection",
+      analyzed: Boolean(record.analyzed),
+      analyzedAt: normalizeText(record.analyzedAt || ""),
+      addedAt: normalizeText(record.addedAt || ""),
+      state: "MANUAL SELECTION"
+    };
+  }
+
+  function currentStudyRecordKey(record = {}) {
+    if (isManualCurrentStudyRecord(record)) return record.id || record.selectionId || "";
+    return record.canonicalKey || record.id || "";
+  }
+
   function crossReferenceRecordFromPage(page = {}, analyzedPages = analyzedPageHistory(), existing = {}) {
     const book = pageBookName(page);
     const chapter = normalizeText(page.sourceCaptureChapter || page.chapter || "");
@@ -2473,12 +2503,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   function crossReferenceSetRecords(records = studyData.crossReferenceSet, analyzedPages = analyzedPageHistory()) {
     return asArray(records)
       .map((record) => {
+        if (isManualCurrentStudyRecord(record)) return manualCurrentStudyRecord(record);
         const page = pageRecordFromCrossReferenceRecord(record);
         return page ? crossReferenceRecordFromPage(page, analyzedPages, record) : null;
       })
       .filter(Boolean)
-      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
-      .sort((left, right) => pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0));
+      .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
+      .sort((left, right) => {
+        if (isManualCurrentStudyRecord(left) !== isManualCurrentStudyRecord(right)) return isManualCurrentStudyRecord(left) ? 1 : -1;
+        return pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0);
+      });
   }
 
   function crossReferenceSetPages(records = studyData.crossReferenceSet) {
@@ -2487,16 +2521,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function crossReferenceStatusLine(records = crossReferenceSetRecords()) {
     if (!records.length) return "No selected pages.";
-    return records.map((record) => `${record.label}: ${record.analyzed ? "Analyzed" : "Not analyzed yet"}`).join("\n");
+    return records.map((record) => {
+      if (isManualCurrentStudyRecord(record)) return `${record.label}: Manual selection`;
+      return `${record.label}: ${record.analyzed ? "Analyzed" : "Not analyzed yet"}`;
+    }).join("\n");
   }
 
   function crossReferenceSetLine(records = studyData.crossReferenceSet) {
     const selected = crossReferenceSetRecords(records);
     const pages = selected.map(pageRecordFromCrossReferenceRecord).filter(Boolean);
-    if (!pages.length) return "No cross-reference pages selected yet.";
+    if (!pages.length) {
+      const manualCount = selected.filter(isManualCurrentStudyRecord).length;
+      return manualCount ? `${manualCount} manual Current Study selection(s) retained.` : "No cross-reference pages selected yet.";
+    }
     const scope = selectedSessionScopeFromPages(pages);
     if (!scope) return "No cross-reference pages selected yet.";
-    const missingAnalysis = selected.filter((record) => !record.analyzed).map((record) => record.label);
+    const missingAnalysis = selected.filter((record) => !isManualCurrentStudyRecord(record) && !record.analyzed).map((record) => record.label);
     const status = crossReferenceStatusLine(selected).replace(/\n/g, "; ");
     const missingAnalysisLine = missingAnalysis.length ? ` Missing from analysis: ${missingAnalysis.join(", ")}.` : "";
     return scope.isContiguous

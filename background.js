@@ -8596,7 +8596,7 @@ function createMentionIndex(captures, eventItems, entityRoleItems, entityRegistr
     a.normalizedText.localeCompare(b.normalizedText)
   );
 }
-async function runFullAnalysisPipeline(reason = "manual") {
+async function runFullAnalysisPipeline(reason = "manual", options = {}) {
   const now = Date.now();
   if (pipelinePromise) return pipelinePromise;
   if (now - lastPipelineStartedAt < PIPELINE_THROTTLE_MS) {
@@ -9145,7 +9145,7 @@ async function runFullAnalysisPipeline(reason = "manual") {
       pageKey: item.pageKey,
       buildMarker: item.buildMarker || ""
     }));
-    await chrome.storage.local.set({
+    const storageUpdate = {
       [TIMELINE_STORAGE_KEY]: timelineItems,
       [EVENT_STORAGE_KEY]: eventItems,
       [ORDERED_EVENTS_KEY]: orderedEvents,
@@ -9190,12 +9190,17 @@ async function runFullAnalysisPipeline(reason = "manual") {
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status,
-      [ANALYSIS_HISTORY_KEY]: analysisHistory,
-      [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
-      [CANONICAL_ANALYSIS_TARGET_KEY]: currentCanonicalMarker,
       [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null,
-      [JOURNEY_PAGE_SNAPSHOTS_KEY]: journeyPageSnapshots
-    });
+    };
+    if (!options.preserveCanonicalScope) {
+      Object.assign(storageUpdate, {
+        [ANALYSIS_HISTORY_KEY]: analysisHistory,
+        [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
+        [CANONICAL_ANALYSIS_TARGET_KEY]: currentCanonicalMarker,
+        [JOURNEY_PAGE_SNAPSHOTS_KEY]: journeyPageSnapshots
+      });
+    }
+    await chrome.storage.local.set(storageUpdate);
 
     return status;
   })();
@@ -9210,7 +9215,9 @@ async function runFullAnalysisPipeline(reason = "manual") {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "ICE_RUN_FULL_ANALYSIS_PIPELINE") return false;
 
-  runFullAnalysisPipeline(message.reason || "message")
+  runFullAnalysisPipeline(message.reason || "message", {
+    preserveCanonicalScope: Boolean(message.preserveCanonicalScope)
+  })
     .then((status) => sendResponse({ ok: true, status }))
     .catch((error) => sendResponse({ ok: false, error: error.message }));
 

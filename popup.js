@@ -440,7 +440,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new Set((Array.isArray(pages) ? pages : []).map((page) => page.pageKey || pageRecordKey(page)).filter(Boolean));
   }
 
-  function crossReferenceRecordFromPage(page = {}, canonicalPages = []) {
+  function isManualSelectionRecord(record = {}) {
+    return record.itemType === "manual_selection" || record.type === "manual_selection" || record.origin === "manual_selection";
+  }
+
+  function currentStudyRecordKey(record = {}) {
+    if (isManualSelectionRecord(record)) return record.id || record.selectionId || "";
+    return record.canonicalKey || record.id || "";
+  }
+
+  function crossReferenceRecordFromPage(page = {}, canonicalPages = [], statusPage = null) {
     const book = pageBookName(page);
     const chapter = normalizeWhitespace(page.sourceCaptureChapter || page.chapter || "");
     const url = normalizeWhitespace(page.activeUrl || page.url || "");
@@ -449,7 +458,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const canonicalKey = page.pageKey || pageRecordKey(page);
     const analyzedKeys = analyzedPageKeys(canonicalPages);
     const analyzedPage = (Array.isArray(canonicalPages) ? canonicalPages : []).find((candidate) => (candidate.pageKey || pageRecordKey(candidate)) === canonicalKey) || null;
-    const analyzed = analyzedKeys.has(canonicalKey);
+    const statusKey = statusPage ? statusPage.pageKey || pageRecordKey(statusPage) : "";
+    const statusAnalyzed = Boolean(statusPage?.analyzedAt && statusKey === canonicalKey);
+    const analyzed = analyzedKeys.has(canonicalKey) || statusAnalyzed;
     return {
       id: canonicalKey,
       label,
@@ -458,9 +469,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       chapter: String(chapter),
       canonicalKey,
       addedAt: page.addedAt || new Date().toISOString(),
-      source: "manual",
+      source: page.source || "popup_current_study",
       analyzed,
-      analyzedAt: analyzedPage?.analyzedAt || page.analyzedAt || "",
+      analyzedAt: analyzedPage?.analyzedAt || (statusAnalyzed ? statusPage.analyzedAt : "") || page.analyzedAt || "",
       analysisPageKey: analyzed ? canonicalKey : ""
     };
   }
@@ -479,13 +490,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
-  function normalizedCrossReferenceSet(records = [], canonicalPages = []) {
+  function normalizeManualSelectionRecord(record = {}) {
+    const text = normalizeWhitespace(record.exactText || record.selectedText || record.preview || "");
+    const sourceTitle = normalizeWhitespace(record.sourceTitle || record.label || "Manual selection");
+    const sourceUrl = normalizeWhitespace(record.sourceUrl || record.url || "");
+    if (!text || !sourceUrl) return null;
+    const id = record.id || record.selectionId || `manual-selection|${textHash(`${sourceUrl}|${sourceTitle}|${text}`)}`;
+    return {
+      id,
+      itemType: "manual_selection",
+      label: record.reference || sourceTitle,
+      sourceTitle,
+      sourceUrl,
+      exactText: text,
+      selectedText: text,
+      selectionType: record.selectionType || selectionTypeForText(text),
+      origin: "manual_selection",
+      state: "MANUAL SELECTION",
+      analyzed: Boolean(record.analyzed),
+      analyzedAt: record.analyzedAt || "",
+      addedAt: record.addedAt || new Date().toISOString(),
+      provenance: {
+        source: "visible user selection",
+        sourceUrl,
+        capturedBy: "popup_manual_select"
+      }
+    };
+  }
+
+  function normalizedCrossReferenceSet(records = [], canonicalPages = [], statusPage = null) {
     return (Array.isArray(records) ? records : [])
-      .map(pageRecordFromCrossReferenceRecord)
-      .map((page) => page ? crossReferenceRecordFromPage(page, canonicalPages) : null)
+      .map((record) => {
+        if (isManualSelectionRecord(record)) return normalizeManualSelectionRecord(record);
+        const page = pageRecordFromCrossReferenceRecord(record);
+        return page ? crossReferenceRecordFromPage(page, canonicalPages, statusPage) : null;
+      })
       .filter(Boolean)
-      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
-      .sort((left, right) => pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0));
+      .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
+      .sort((left, right) => {
+        if (isManualSelectionRecord(left) !== isManualSelectionRecord(right)) return isManualSelectionRecord(left) ? 1 : -1;
+        return pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0);
+      });
   }
 
   function crossReferenceSetLine(records = []) {
@@ -580,10 +625,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function runPipeline(reason) {
+  async function runPipeline(reason, options = {}) {
     const response = await chrome.runtime.sendMessage({
       type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
-      reason
+      reason,
+      preserveCanonicalScope: Boolean(options.preserveCanonicalScope)
     });
 
     if (!response?.ok) {
@@ -613,7 +659,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const canonicalPages = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY])
       ? data[CANONICAL_ANALYZED_PAGES_KEY].map(pageRecordFromCanonicalMarker).filter(Boolean)
       : [];
-    const crossReferenceSet = normalizedCrossReferenceSet(data[CROSS_REFERENCE_SET_KEY], canonicalPages);
+    const crossReferenceSet = normalizedCrossReferenceSet(data[CROSS_REFERENCE_SET_KEY], canonicalPages, statusPage);
     return { tab, tabPage, activePage, statusPage, canonicalPages, crossReferenceSet, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null };
   }
 
@@ -698,21 +744,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function addPageToCrossReferenceSetFromPopup() {
     const state = await storedPageWorkflowState();
     const page = state.tabPage || state.activePage || state.statusPage;
-    const record = crossReferenceRecordFromPage(page || {}, state.canonicalPages);
+    const record = crossReferenceRecordFromPage(page || {}, state.canonicalPages, state.statusPage);
     if (!record) {
-      setCaptureStatus("Open or select a supported scripture/source page before adding it to the cross-reference set.");
+      setCaptureStatus("Open a supported scripture/source page before adding it to the Current Study.");
       return;
     }
     const nextSet = [record, ...state.crossReferenceSet]
-      .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
+      .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
       .slice(0, 48);
     await chrome.storage.local.set({
       [CROSS_REFERENCE_SET_KEY]: nextSet,
       [ACTIVE_SOURCE_PAGE_KEY]: page,
       [PANEL_UI_STATE_KEY]: { lastAction: "popup_add_page_to_cross_reference_set", updatedAt: new Date().toISOString() }
     });
-    setCaptureStatus(`${record.label} selected for cross-reference. ${record.analyzed ? "Analyzed" : "Not analyzed yet"}.`);
+    setCaptureStatus(`${record.label} added to Current Study. ${record.analyzed ? "Analyzed" : "Pending analysis"}.`);
     await loadAllSummaries();
+  }
+
+  async function analyzePageForCurrentStudy() {
+    await runFullAnalysisFromPopup({ preserveCanonicalScope: true });
+    const state = await storedPageWorkflowState();
+    const page = state.statusPage || state.tabPage || state.activePage;
+    const record = crossReferenceRecordFromPage(page || {}, state.canonicalPages, state.statusPage);
+    if (!record) {
+      setCaptureStatus("Analysis completed, but this page was not recognized as a supported temporary Study item.");
+      return;
+    }
+    const nextSet = [record, ...state.crossReferenceSet]
+      .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
+      .slice(0, 48);
+    await chrome.storage.local.set({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [ACTIVE_SOURCE_PAGE_KEY]: page,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_analyze_page_current_study", updatedAt: new Date().toISOString() }
+    });
+    await loadAllSummaries();
+    setCaptureStatus(`${record.label} analyzed. It remains temporary until opened in the Study Panel.`);
   }
 
   async function analyzeThisPageFromPopup() {
@@ -734,10 +801,110 @@ document.addEventListener("DOMContentLoaded", async () => {
       [CROSS_REFERENCE_SET_KEY]: [],
       [PANEL_UI_STATE_KEY]: { lastAction: "popup_clear_cross_reference_set", updatedAt: new Date().toISOString() }
     });
-    setCaptureStatus("Cross-reference set cleared. Stored analyzed session data was not changed.");
+    setCaptureStatus("Current Study cleared. Stored analysis and canonical Study Scope were not changed.");
     await loadAllSummaries();
   }
-  async function runFullAnalysisFromPopup() {
+
+  async function removeCurrentStudyItem(id) {
+    const state = await storedPageWorkflowState();
+    const nextSet = state.crossReferenceSet.filter((record) => currentStudyRecordKey(record) !== id);
+    await chrome.storage.local.set({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_remove_current_study_item", updatedAt: new Date().toISOString() }
+    });
+    await loadAllSummaries();
+    setCaptureStatus("Item removed from Current Study. Stored analysis was not changed.");
+  }
+
+  async function requestVisibleSelection() {
+    const response = await sendMessageToActiveTab({
+      type: "ICE_GET_VISIBLE_SELECTION"
+    });
+    if (!response?.ok) {
+      throw new Error(response?.error || "Selection unavailable.");
+    }
+    return response.selection || null;
+  }
+
+  function renderManualSelection(selection = null, message = "") {
+    const panel = document.getElementById("manualSelectionPanel");
+    const status = document.getElementById("manualSelectionStatus");
+    const preview = document.getElementById("manualSelectionPreview");
+    const confirm = document.getElementById("confirmManualSelection");
+    if (!panel || !status || !preview || !confirm) return;
+    panel.hidden = false;
+    status.textContent = message || "Selection mode active. Select visible text on the page, then choose Manual Select again.";
+    preview.hidden = !selection?.text;
+    preview.textContent = selection?.text ? trimText(selection.text, 600) : "";
+    confirm.disabled = !selection?.text;
+    confirm.dataset.pendingSelection = selection?.text ? JSON.stringify(selection) : "";
+  }
+
+  function clearManualSelection() {
+    const panel = document.getElementById("manualSelectionPanel");
+    const preview = document.getElementById("manualSelectionPreview");
+    const confirm = document.getElementById("confirmManualSelection");
+    if (panel) panel.hidden = true;
+    if (preview) {
+      preview.hidden = true;
+      preview.textContent = "";
+    }
+    if (confirm) {
+      confirm.disabled = true;
+      confirm.dataset.pendingSelection = "";
+    }
+  }
+
+  async function startOrRefreshManualSelection() {
+    try {
+      const selection = await requestVisibleSelection();
+      if (!selection?.text) {
+        renderManualSelection(null, "Manual selection mode active. Select visible text on the page, then choose Manual Select again.");
+        setCaptureStatus("Waiting for a visible user selection.");
+        return;
+      }
+      renderManualSelection(selection, "Selection detected. Confirm to add it to the temporary Current Study.");
+      setCaptureStatus("Selection detected and awaiting confirmation.");
+    } catch (error) {
+      renderManualSelection(null, "Selection is unavailable on this page.");
+      setCaptureStatus(error.message);
+    }
+  }
+
+  async function confirmManualSelection() {
+    const confirm = document.getElementById("confirmManualSelection");
+    const raw = confirm?.dataset.pendingSelection || "";
+    if (!raw) {
+      setCaptureStatus("No manual selection is ready to add.");
+      return;
+    }
+    const selection = JSON.parse(raw);
+    const state = await storedPageWorkflowState();
+    const record = normalizeManualSelectionRecord({
+      id: `manual-selection|${textHash(`${selection.url || ""}|${selection.title || ""}|${selection.text || ""}`)}`,
+      label: state.statusPage ? volumePageLabel(state.statusPage) : selection.title,
+      sourceTitle: selection.title,
+      sourceUrl: selection.url,
+      exactText: selection.text,
+      selectionType: selection.selectionType,
+      addedAt: new Date().toISOString()
+    });
+    if (!record) {
+      setCaptureStatus("Manual selection could not be added because source text or source URL was unavailable.");
+      return;
+    }
+    const nextSet = [record, ...state.crossReferenceSet]
+      .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
+      .slice(0, 48);
+    await chrome.storage.local.set({
+      [CROSS_REFERENCE_SET_KEY]: nextSet,
+      [PANEL_UI_STATE_KEY]: { lastAction: "popup_add_manual_selection", updatedAt: new Date().toISOString() }
+    });
+    clearManualSelection();
+    await loadAllSummaries();
+    setCaptureStatus("Manual selection added to Current Study.");
+  }
+  async function runFullAnalysisFromPopup(options = {}) {
     setCaptureStatus("Running full analysis...");
 
     const [tab] = await chrome.tabs.query({
@@ -747,9 +914,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (tab?.id) {
       const pageUpdated = await rerunOnActiveTab(tab.id);
-      await runPipeline(pageUpdated ? "popup-full-analysis" : "popup-full-analysis-restricted-page");
+      await runPipeline(pageUpdated ? "popup-full-analysis" : "popup-full-analysis-restricted-page", options);
     } else {
-      await runPipeline("popup-full-analysis");
+      await runPipeline("popup-full-analysis", options);
     }
 
     await loadAllSummaries();
@@ -779,13 +946,129 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function setCaptureStatus(message) {
-    document.getElementById("captureStatus").textContent = message;
+    const status = document.getElementById("collectionStatus") || document.getElementById("captureStatus");
+    if (status) status.textContent = message || "";
   }
 
   function trimText(text, maxLength = 120) {
     const normalized = normalizeWhitespace(text);
     if (normalized.length <= maxLength) return normalized;
     return `${normalized.slice(0, maxLength - 3).trim()}...`;
+  }
+
+  function selectionTypeForText(text = "") {
+    const normalized = normalizeWhitespace(text);
+    if (!normalized) return "unresolved";
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length <= 1) return "word";
+    if (words.length <= 12) return "phrase";
+    if (/\b\d+[:.]\d+\b/.test(normalized) || words.length > 40) return "passage";
+    return "visible selection";
+  }
+
+  function statusClassForRecord(record = {}) {
+    if (isManualSelectionRecord(record)) return "state-label";
+    if (record.analyzed) return "state-label state-analyzed";
+    if (record.unresolved) return "state-label state-unresolved";
+    return "state-label state-pending";
+  }
+
+  function statusLabelForRecord(record = {}) {
+    if (isManualSelectionRecord(record)) return "MANUAL SELECTION";
+    if (record.unresolved) return "UNRESOLVED";
+    return record.analyzed ? "ANALYZED" : "PENDING ANALYSIS";
+  }
+
+  function itemTypeLabelForRecord(record = {}) {
+    if (isManualSelectionRecord(record)) return "Manual selection";
+    return "Page";
+  }
+
+  function sourceLabelForRecord(record = {}) {
+    if (isManualSelectionRecord(record)) return record.sourceTitle || record.label || "Visible selection";
+    return [record.book, record.chapter].filter(Boolean).join(" ") || record.label || "Selected page";
+  }
+
+  function renderPageIdentity(state = {}) {
+    const identity = document.getElementById("pageIdentity");
+    const analysis = document.getElementById("pageAnalysisState");
+    if (!identity || !analysis) return;
+
+    const page = state.tabPage || state.statusPage || state.activePage;
+    if (!page) {
+      identity.textContent = "No supported page recognized";
+      analysis.textContent = "Use Manual Select for visible text, or open a supported scripture page.";
+      return;
+    }
+
+    identity.textContent = volumePageLabel(page);
+    const pageKey = page.pageKey || pageRecordKey(page);
+    const statusKey = state.statusPage ? state.statusPage.pageKey || pageRecordKey(state.statusPage) : "";
+    const analyzed = Boolean(state.statusPage?.analyzedAt && statusKey === pageKey);
+    analysis.textContent = analyzed
+      ? `Analyzed ${state.statusPage.analyzedAt}`
+      : "Available for analysis or temporary collection.";
+  }
+
+  function renderCurrentStudy(records = []) {
+    const list = document.getElementById("currentStudyList");
+    const count = document.getElementById("currentStudyCount");
+    if (!list || !count) return;
+
+    const normalized = Array.isArray(records) ? records : [];
+    count.textContent = `${normalized.length} ${normalized.length === 1 ? "item" : "items"}`;
+    list.textContent = "";
+
+    if (!normalized.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "Analyze a page, add the page, or confirm a manual selection to build a temporary Current Study.";
+      list.appendChild(empty);
+      return;
+    }
+
+    for (const record of normalized) {
+      const item = document.createElement("article");
+      item.className = "study-item";
+
+      const body = document.createElement("div");
+      const title = document.createElement("div");
+      title.className = "study-item-title";
+
+      const label = document.createElement("span");
+      label.textContent = sourceLabelForRecord(record);
+      const state = document.createElement("span");
+      state.className = statusClassForRecord(record);
+      state.textContent = statusLabelForRecord(record);
+      title.append(label, state);
+
+      const meta = document.createElement("p");
+      meta.className = "study-item-meta";
+      meta.textContent = [
+        itemTypeLabelForRecord(record),
+        record.analyzedAt ? `Analyzed ${record.analyzedAt}` : "",
+        record.url || record.sourceUrl ? "Source URL retained" : "Source URL unavailable"
+      ].filter(Boolean).join(" | ");
+
+      body.append(title, meta);
+
+      if (isManualSelectionRecord(record) && record.exactText) {
+        const preview = document.createElement("p");
+        preview.className = "study-item-preview";
+        preview.textContent = trimText(record.exactText, 150);
+        body.appendChild(preview);
+      }
+
+      const remove = document.createElement("button");
+      remove.className = "remove-item";
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${sourceLabelForRecord(record)} from Current Study`);
+      remove.dataset.currentStudyRemove = currentStudyRecordKey(record);
+
+      item.append(body, remove);
+      list.appendChild(item);
+    }
   }
 
   function shortTitle(title) {
@@ -838,6 +1121,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sessionScope = selectedSessionScopeFromPages(canonicalPages);
     const crossReferenceSet = normalizedCrossReferenceSet(crossReferenceRecords, canonicalPages);
     const crossReferencePages = crossReferenceSet.map(pageRecordFromCrossReferenceRecord).filter(Boolean);
+
+    if (!document.getElementById("capturedPagesLine")) return;
+    renderCurrentStudy(crossReferenceSet);
 
     document.getElementById("capturedPagesLine").textContent = capturedLabels.length
       ? `Raw captured page snapshots: ${compactLabelList(capturedLabels)}. Captures can be retained even when they are not part of the stored session.`
@@ -1028,12 +1314,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await chrome.storage.local.get([
       CAPTURE_HISTORY_KEY,
       CANONICAL_ANALYZED_PAGES_KEY,
-      CROSS_REFERENCE_SET_KEY
+      CROSS_REFERENCE_SET_KEY,
+      ANALYSIS_STATUS_KEY
     ]);
     const history = Array.isArray(data[CAPTURE_HISTORY_KEY])
       ? data[CAPTURE_HISTORY_KEY]
       : [];
-    renderHistoryCount(history);
+    if (document.getElementById("historyCount")) renderHistoryCount(history);
+    const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
+    const canonicalPages = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY])
+      ? data[CANONICAL_ANALYZED_PAGES_KEY].map(pageRecordFromCanonicalMarker).filter(Boolean)
+      : [];
+    renderCurrentStudy(normalizedCrossReferenceSet(data[CROSS_REFERENCE_SET_KEY], canonicalPages, statusPage));
     renderStudyStateSummary(
       history,
       data[CANONICAL_ANALYZED_PAGES_KEY],
@@ -1049,6 +1341,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadAnalysisStatus() {
     const data = await chrome.storage.local.get(ANALYSIS_STATUS_KEY);
     const status = data[ANALYSIS_STATUS_KEY];
+
+    if (!document.getElementById("analysisStatus")) {
+      const state = await storedPageWorkflowState();
+      renderPageIdentity(state);
+      return;
+    }
 
     document.getElementById("analysisStatus").textContent = status
       ? "Ready"
@@ -2292,253 +2590,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Actor timelines copied.");
   }
 
-  document.getElementById("enabled")
-    .addEventListener("change", () => saveSetting("enabled"));
-
-  document.getElementById("strictMode")
-    .addEventListener("change", () => saveSetting("strictMode"));
-
-  document.getElementById("highlightPronouns")
-    .addEventListener("change", () => saveSetting("highlightPronouns"));
-
-  document.getElementById("autoCaptureOnPageLoad")
-    .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
-
-  document.getElementById("showPageOverlay")
-    .addEventListener("change", () => {
-      saveSetting("showPageOverlay").catch((error) => setCaptureStatus(error.message));
-    });
-
-  document.getElementById("previousPage")
-    .addEventListener("click", () => {
-      navigatePopupPage(-1, "popup_previous_page_navigation").catch((error) => {
-        setCaptureStatus(error.message);
+  function bindClick(id, handler) {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.addEventListener("click", () => {
+      Promise.resolve(handler()).catch((error) => {
+        setCaptureStatus(error.message || "Action failed.");
       });
     });
+  }
 
-  document.getElementById("nextPage")
-    .addEventListener("click", () => {
-      navigatePopupPage(1, "popup_next_page_navigation").catch((error) => {
-        setCaptureStatus(error.message);
-      });
+  bindClick("analyzePage", analyzePageForCurrentStudy);
+  bindClick("addPage", addPageToCrossReferenceSetFromPopup);
+  bindClick("manualSelect", startOrRefreshManualSelection);
+  bindClick("confirmManualSelection", confirmManualSelection);
+  bindClick("cancelManualSelection", () => {
+    clearManualSelection();
+    setCaptureStatus("Manual selection canceled.");
+  });
+  bindClick("clearCurrentStudy", async () => {
+    const state = await storedPageWorkflowState();
+    if (!state.crossReferenceSet.length) {
+      setCaptureStatus("Current Study is already empty.");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Clear the temporary Current Study?\n\nThis removes only collected Current Study items. It will not delete stored analysis, semantic records, saved studies, preferences, or canonical Study Scope."
+    );
+    if (!confirmed) {
+      setCaptureStatus("Clear All canceled.");
+      return;
+    }
+    await clearCrossReferenceSetFromPopup();
+  });
+  bindClick("openStudyPanel", () => {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("study.html")
     });
+  });
 
-  document.getElementById("openSuggestedNext")
-    .addEventListener("click", () => {
-      openSuggestedNextFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
+  document.getElementById("currentStudyList")?.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-current-study-remove]");
+    if (!button) return;
+    removeCurrentStudyItem(button.dataset.currentStudyRemove || "").catch((error) => {
+      setCaptureStatus(error.message || "Remove failed.");
     });
+  });
 
-  document.getElementById("analyzeThisPage")
-    .addEventListener("click", () => {
-      analyzeThisPageFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("analyzeAndAddPage")
-    .addEventListener("click", () => {
-      analyzeAndAddPageFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("addPageToCrossReference")
-    .addEventListener("click", () => {
-      addPageToCrossReferenceSetFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("showCrossReferenceSet")
-    .addEventListener("click", () => {
-      showCrossReferenceSetFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearCrossReferenceSet")
-    .addEventListener("click", () => {
-      clearCrossReferenceSetFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-  document.getElementById("runFullAnalysis")
-    .addEventListener("click", () => {
-      runFullAnalysisFromPopup().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("openStudyPanel")
-    .addEventListener("click", () => {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL("study.html")
-      });
-    });
-
-  document.getElementById("clearPageData")
-    .addEventListener("click", () => {
-      clearPageData().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearAllIceData")
-    .addEventListener("click", () => {
-      clearAllIceData().catch((error) => {
-        setCaptureStatus(error.message || "Failed to clear all I.C.E. data.");
-      });
-    });
-  document.getElementById("capture")
-    .addEventListener("click", () => {
-      captureActivePage().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyCapture")
-    .addEventListener("click", () => {
-      copyLatestCapture().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearHistory")
-    .addEventListener("click", () => {
-      clearCaptureHistory().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("extractTimeline")
-    .addEventListener("click", () => {
-      extractTimeline().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearTimeline")
-    .addEventListener("click", () => {
-      clearTimeline().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyTimelineItems")
-    .addEventListener("click", () => {
-      copyTimelineItems().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("extractEvents")
-    .addEventListener("click", () => {
-      extractEvents().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearEvents")
-    .addEventListener("click", () => {
-      clearEvents().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyEventItems")
-    .addEventListener("click", () => {
-      copyEventItems().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("extractPrinciples")
-    .addEventListener("click", () => {
-      extractPrinciples().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyPrinciples")
-    .addEventListener("click", () => {
-      copyPrinciples().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearPrinciples")
-    .addEventListener("click", () => {
-      clearPrinciples().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("orderEvents")
-    .addEventListener("click", () => {
-      orderEvents().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearOrderedEvents")
-    .addEventListener("click", () => {
-      clearOrderedEvents().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyOrderedEvents")
-    .addEventListener("click", () => {
-      copyOrderedEvents().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("buildActorTimelines")
-    .addEventListener("click", () => {
-      buildActorTimelines().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("copyActorTimelines")
-    .addEventListener("click", () => {
-      copyActorTimelines().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearActorTimelines")
-    .addEventListener("click", () => {
-      clearActorTimelines().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
-
-  document.getElementById("clearCapture")
-    .addEventListener("click", () => {
-      clearLatestCapture().catch((error) => {
-        setCaptureStatus(error.message);
-      });
-    });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      clearManualSelection();
+      setCaptureStatus("Manual selection canceled.");
+    }
+  });
 
   async function loadAllSummaries() {
-    await loadLatestCapture();
     await loadCaptureHistory();
-    await loadTimelineItems();
-    await loadEventItems();
-    await loadPrincipleItems();
-    await loadOrderedEvents();
-    await loadActorTimelines();
-    await loadInteractionCount();
-    await loadSceneCount();
-    await loadFormatterStatus();
     await loadAnalysisStatus();
   }
 
-  // Phase 5.2 summary surface: the popup stays focused on primary controls
-  // while the automatic local pipeline feeds the Study Panel.
+  // The popup is a collection surface only; semantic organization remains in
+  // the Study Panel and existing pipeline records.
   await loadAllSummaries();
 });
