@@ -4856,6 +4856,31 @@ Preserved:
 - queue/crawling behavior
 - Inspector navigation as the only broad semantic navigation path
 
+## 2026-07-18 - Repair Graph Button No-Response Regression
+
+Repaired the Study Panel Graph activation path after manual testing reported that clicking Graph after page analysis produced no visible result.
+
+Root cause:
+- The Graph opener could route through the deferred section wrapper when full study data was not yet loaded.
+- That path did not guarantee a visible graph surface, explicit empty state, or graph-specific error boundary for activation failures.
+- The button also depended on a direct element listener rather than a stable delegated Graph activation hook.
+
+Repair:
+- Changed the header action to a clear `Graph` button with a stable `data-open-scope-snapshot` hook.
+- Made Graph activation load full study data, directly render `Linear Scope Snapshot`, and preserve the Study Panel shell.
+- Added a narrow presentation-layer empty state: `No graphable records are available for the current study.`
+- Added a narrow presentation-layer failure state: `Graph could not be displayed.`
+- Added delegated mouse activation and explicit Enter/Space keyboard activation.
+- Added `qa:graph-activation` regression coverage for handler registration, mouse/keyboard activation hooks, direct render path, empty state, error boundary, repeated activation listener safety, and semantic boundary preservation.
+
+Preserved:
+- semantic records
+- Context Lock
+- canonical Study Scope
+- storage authority
+- queue/crawling behavior
+- graph rendering from existing graphable records only
+
 ## 2026-06-19 - Fix Bottom Study Panel Scope Leakage
 
 Audited bottom Study Panel sections after retained Matthew 1, Matthew 2, and Matthew 3 records appeared unexpectedly.

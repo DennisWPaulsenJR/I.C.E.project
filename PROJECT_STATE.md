@@ -1290,3 +1290,8 @@ Latest pcdx update:
 Latest graph experience update:
 - Linear Scope Snapshot now uses stable presentation keys, explicit focus/center/clear controls, roving graph keyboard navigation, focused-item Copy Render fallback, and focus diagnostics.
 - This is presentation-only infrastructure. It does not mutate canonical Study Scope, Context Lock, semantic records, storage, queues, corpus boundaries, or source evidence.
+
+Latest graph activation repair:
+- Graph button activation now uses a delegated `data-open-scope-snapshot` hook plus explicit Enter/Space keyboard handling.
+- Opening Graph now loads full study data, renders Linear Scope Snapshot directly, and displays either existing graphable records, `No graphable records are available for the current study.`, or `Graph could not be displayed.`
+- Repair is presentation-only and adds no semantic mutation, storage authority, queue processing, crawling, or source-scope changes.

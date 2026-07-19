@@ -14972,18 +14972,65 @@ createRevelationPartsSection(item.subEvents)
     const container = document.getElementById("scopeSnapshotCards");
     const count = document.getElementById("scopeSnapshotCount");
     if (!container || !count) return;
-    const model = scopeSnapshotGraphModel();
-    const searchable = scopeSnapshotSummaryLines(model).join(" ");
-    clearElement(container);
-    count.textContent = `${model.nodeCount} node(s)`;
-    if (term && !matchesSearchQuery(searchable, term)) {
-      appendEmpty(container, "No Linear Scope Snapshot records match current filter.");
-      return;
+    try {
+      const model = scopeSnapshotGraphModel();
+      const searchable = scopeSnapshotSummaryLines(model).join(" ");
+      clearElement(container);
+      count.textContent = `${model.nodeCount} node(s)`;
+      if (term && !matchesSearchQuery(searchable, term)) {
+        renderScopeSnapshotEmptyState(container, "No Linear Scope Snapshot records match current filter.");
+        return;
+      }
+      if (!model.nodeCount) {
+        renderScopeSnapshotEmptyState(container, "No graphable records are available for the current study.");
+        return;
+      }
+      enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot");
+      container.appendChild(createScopeSnapshotCard(model));
+      setupScopeSnapshotMiniMapSync();
+      enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:mounted");
+    } catch (error) {
+      renderScopeSnapshotFailure(error, "renderScopeSnapshot");
     }
-    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot");
-    container.appendChild(createScopeSnapshotCard(model));
-    setupScopeSnapshotMiniMapSync();
-    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:mounted");
+  }
+
+  function renderScopeSnapshotEmptyState(container = document.getElementById("scopeSnapshotCards"), message = "No graphable records are available for the current study.") {
+    if (!container) return;
+    clearElement(container);
+    const card = document.createElement("article");
+    card.className = "study-card semantic-card scope-snapshot-card scope-snapshot-empty-card";
+    const heading = document.createElement("h3");
+    const text = document.createElement("p");
+    heading.textContent = "Linear Scope Snapshot";
+    text.textContent = message;
+    card.append(heading, text);
+    container.appendChild(card);
+    const count = document.getElementById("scopeSnapshotCount");
+    if (count) count.textContent = "0 node(s)";
+    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:empty");
+  }
+
+  function renderScopeSnapshotFailure(error, context = "scope snapshot") {
+    const container = document.getElementById("scopeSnapshotCards");
+    const count = document.getElementById("scopeSnapshotCount");
+    if (count) count.textContent = "Error";
+    if (container) {
+      clearElement(container);
+      const card = document.createElement("article");
+      card.className = "study-card semantic-card scope-snapshot-card scope-snapshot-error-card";
+      const heading = document.createElement("h3");
+      const text = document.createElement("p");
+      heading.textContent = "Graph could not be displayed.";
+      text.textContent = "The Study Panel stayed open and existing study records were not changed. Use Refresh Study Data or try Graph again.";
+      card.append(heading, text);
+      container.appendChild(card);
+    }
+    showDiagnosticMessage("Graph could not be displayed.");
+    console.error("I.C.E. Scope Snapshot presentation failure", {
+      context,
+      error: error?.message || String(error || "unknown error")
+    });
+    enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:failure");
   }
 
   function linearScopeSnapshotInspectorLines() {
@@ -30640,28 +30687,33 @@ createRevelationPartsSection(item.subEvents)
     enforceScopeSnapshotPresentationInvariant("keyboard graph selection");
   }
 
-  function openScopeSnapshotPanel() {
+  async function openScopeSnapshotPanel(event = null) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
     const section = document.getElementById("scopeSnapshotSection");
     if (!section) return;
-    enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:start");
-    if (!selectedPresentationModules.has("snapshot")) {
-      selectedPresentationModules.add("snapshot");
-      selectedPresentationModules.add("overview");
-      updatePresentationModuleCheckboxes();
-      applyPresentationModuleVisibility();
+    try {
+      showDiagnosticMessage("Opening Graph...");
+      enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:start");
+      if (!selectedPresentationModules.has("snapshot")) {
+        selectedPresentationModules.add("snapshot");
+        selectedPresentationModules.add("overview");
+        updatePresentationModuleCheckboxes();
+        applyPresentationModuleVisibility();
+      }
+      await ensureFullStudyDataLoaded();
+      safeRenderSection("Linear Scope Snapshot", renderScopeSnapshot, currentSearchTerm());
+      scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel", { block: "start" });
+      enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:end");
+      showDiagnosticMessage("");
+    } catch (error) {
+      renderScopeSnapshotFailure(error, "openScopeSnapshotPanel");
     }
-    if (!fullStudyDataLoaded) {
-      loadDeferredSection("Linear Scope Snapshot")
-        .then(() => {
-          enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:deferred-loaded");
-          scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel:deferred", { block: "start" });
-        })
-        .catch((error) => showDiagnosticMessage(`Scope Snapshot load failed: ${error.message}`));
-      return;
-    }
-    safeRenderSection("Linear Scope Snapshot", renderScopeSnapshot, currentSearchTerm());
-    scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel", { block: "start" });
-    enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:end");
+  }
+
+  function handleOpenScopeSnapshotKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    openScopeSnapshotPanel(event);
   }
 
   function scheduleRenderStudy(delay = 140) {
@@ -30728,6 +30780,11 @@ createRevelationPartsSection(item.subEvents)
     }
     scheduleRenderStudy();
   });  document.addEventListener("click", (event) => {
+    const graphButton = event.target.closest("button[data-open-scope-snapshot], #openScopeSnapshot");
+    if (graphButton) {
+      openScopeSnapshotPanel(event);
+      return;
+    }
     const loadButton = event.target.closest("button[data-load-study-section]");
     if (loadButton) {
       event.preventDefault();
@@ -30759,7 +30816,7 @@ createRevelationPartsSection(item.subEvents)
   document.getElementById("scopeSnapshotSection")?.addEventListener("pointerup", handleScopeSnapshotPointerUp);
   document.getElementById("scopeSnapshotSection")?.addEventListener("pointercancel", handleScopeSnapshotPointerUp);
   window.addEventListener("resize", scheduleScopeSnapshotMiniMapSync, { passive: true });
-  document.getElementById("openScopeSnapshot")?.addEventListener("click", openScopeSnapshotPanel);
+  document.getElementById("openScopeSnapshot")?.addEventListener("keydown", handleOpenScopeSnapshotKeydown);
   document.getElementById("refreshStudyData")?.addEventListener("click", refreshStudyData);
   document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
   document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
