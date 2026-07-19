@@ -779,6 +779,7 @@ body {
 
 .scope-snapshot-node {
   cursor: pointer;
+  transition: opacity .12s ease, filter .12s ease;
 }
 
 .scope-snapshot-svg:has(.scope-snapshot-node:hover) .scope-snapshot-node:not(:hover),
@@ -790,6 +791,16 @@ body {
 
 .scope-snapshot-svg:has(.scope-snapshot-node:hover) .scope-snapshot-node:hover,
 .scope-snapshot-svg:has(.scope-snapshot-cluster:hover) .scope-snapshot-cluster:hover {
+  opacity: 1;
+}
+
+.scope-snapshot-svg.has-focused-node .scope-snapshot-node:not(.selected),
+.scope-snapshot-svg.has-focused-node .scope-snapshot-cluster:not(.selected) {
+  opacity: .72;
+}
+
+.scope-snapshot-svg.has-focused-node .scope-snapshot-node.selected,
+.scope-snapshot-svg.has-focused-node .scope-snapshot-cluster.selected {
   opacity: 1;
 }
 
@@ -856,6 +867,24 @@ body {
 .scope-snapshot-node.selected .scope-snapshot-symbol-open {
   stroke: #071632;
   stroke-width: 3;
+}
+
+.scope-snapshot-node.node-type-manual_selection .scope-snapshot-symbol-open,
+.scope-snapshot-node.node-type-manual_selection .scope-snapshot-symbol-fill {
+  stroke-dasharray: 4 2;
+}
+
+.scope-snapshot-node.node-type-source_scope_request .scope-snapshot-symbol-open,
+.scope-snapshot-node.node-type-source_scope_request .scope-snapshot-symbol-fill,
+.scope-snapshot-node.limited-context .scope-snapshot-symbol-open,
+.scope-snapshot-node.limited-context .scope-snapshot-symbol-fill {
+  filter: saturate(.75);
+  stroke-dasharray: 2 3;
+}
+
+.scope-snapshot-node.node-type-canonical_source .scope-snapshot-symbol-open,
+.scope-snapshot-node.node-type-canonical_source .scope-snapshot-symbol-fill {
+  stroke-width: 2.8;
 }
 
 .scope-snapshot-cluster.selected rect,
@@ -964,6 +993,11 @@ body {
   font-size: .86rem;
   line-height: 1.4;
   margin: 0 0 6px;
+}
+
+.scope-snapshot-focus-status {
+  color: #5f6b7a !important;
+  font-size: .76rem !important;
 }
 
 .scope-snapshot-detail-panel dl {

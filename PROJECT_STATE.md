@@ -1286,3 +1286,7 @@ Latest pcdx update:
 - LDS-only focused popup smoke confirmed Matthew 1 -> Next page opens Matthew 2, keeps Matthew 1 as the analyzed page, keeps analyzed page count unchanged, and reports Matthew 1 + Matthew 5 as non-contiguous with Matthew 2, Matthew 3, and Matthew 4 missing/not analyzed.
 - Validation passed: `node --check popup.js`, `node --check background.js`, `node --check study.js`, `git diff --check`, `npm.cmd run qa:matthew1`, and `npm.cmd run qa:matthew-pages`.
 - GPT buttons remain absent, Study Panel fast startup/collapsible summaries remain active, and no crawling or automatic missing-page analysis was added.
+
+Latest graph experience update:
+- Linear Scope Snapshot now uses stable presentation keys, explicit focus/center/clear controls, roving graph keyboard navigation, focused-item Copy Render fallback, and focus diagnostics.
+- This is presentation-only infrastructure. It does not mutate canonical Study Scope, Context Lock, semantic records, storage, queues, corpus boundaries, or source evidence.

@@ -410,6 +410,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     detailLevel: "auto",
     scopeBreadth: 0,
     selectedGraphId: "",
+    focusedPresentationKey: "",
+    focusSource: "",
+    lastFocusReason: "",
+    lastCenteringAction: "",
+    lastCenteringSuppressionReason: "",
+    focusDiagnostics: [],
     detailCache: new Map(),
     expandedAnchorId: "",
     miniMapDragging: false,
@@ -13419,9 +13425,9 @@ createRevelationPartsSection(item.subEvents)
   function scopeSnapshotCaptureSelection(action = "add") {
     const viewportBefore = scopeSnapshotViewportState();
     const selection = window.getSelection?.();
-    const pkg = scopeSnapshotBuildSelectionPackage(selection, action);
+    const pkg = scopeSnapshotBuildSelectionPackage(selection, action) || scopeSnapshotBuildFocusedItemPackage(action);
     if (!pkg) {
-      scopeSnapshotViewState.lastCopyRenderMessage = "No selected text was available for Copy Render.";
+      scopeSnapshotViewState.lastCopyRenderMessage = "No selected text or focused graph item was available for Copy Render.";
       showDiagnosticMessage(scopeSnapshotViewState.lastCopyRenderMessage);
       return false;
     }
@@ -13443,6 +13449,45 @@ createRevelationPartsSection(item.subEvents)
     restoreScopeSnapshotViewport(viewportBefore, `copy render ${action}`);
     showDiagnosticMessage(scopeSnapshotViewState.lastCopyRenderMessage);
     return true;
+  }
+
+  function scopeSnapshotBuildFocusedItemPackage(action = "add") {
+    if (!scopeSnapshotViewState.selectedGraphId) return null;
+    const model = scopeSnapshotGraphModel();
+    const selection = selectedScopeSnapshotGraphRecord(model);
+    const item = selection.item || {};
+    if (!item?.id || selection.type === "none") return null;
+    const text = normalizeText(item.sourceText && !/^Source text unavailable/i.test(item.sourceText) ? item.sourceText : item.evidence || item.evaluationText || item.label);
+    if (!text) return null;
+    const primaryReference = item.primaryReference || item.reference?.label || model.activeScope || "Focused graph item";
+    const selectionId = `focused-${scopeSnapshotHash([item.id, primaryReference, text].join("|"))}`;
+    const duplicate = asArray(scopeSnapshotViewState.copyRenderSelections).some((existing) => existing.selectionId === selectionId || normalizeText(existing.exactText) === text);
+    return {
+      selectionId,
+      sourceTitle: `Linear Scope Snapshot focused ${selection.type}`,
+      sourceUrl: "",
+      sourceScope: model.activeScope || currentStudyScopeLabel(),
+      canonicalReference: item.reference?.label || "",
+      primaryReference,
+      exactText: text,
+      normalizedText: text,
+      prefixText: "",
+      suffixText: "",
+      textQuoteExact: text,
+      textQuotePrefix: "",
+      textQuoteSuffix: "",
+      captureMethod: "Linear Scope Snapshot focused graph item",
+      userLabel: trimText(item.label || primaryReference, 44),
+      evaluationMode: scopeSnapshotViewState.copyRenderEvaluationMode || "independent",
+      contextMode: "focused_graph_item",
+      verificationStatus: item.reference?.label ? "canonical_reference" : "snapshot_reference",
+      status: duplicate ? "duplicate_candidate" : action === "evaluate" ? "ready_for_independent_evaluation" : action === "timeline" ? "ready_for_temporary_timeline" : action === "compare" ? "ready_for_current_scope_comparison" : "ready_for_copy_render",
+      selectionCoverage: "focused_snapshot_item_preserved",
+      focusedGraphId: item.id,
+      presentationKey: item.presentationKey || item.id,
+      presentationType: item.presentationType || "evaluated_semantic",
+      provenance: "session-local Copy Render package from focused Snapshot item; no storage authority"
+    };
   }
 
   function scopeSnapshotMoveCopyRenderSelection(selectionId = "", direction = 0) {
@@ -13612,17 +13657,105 @@ createRevelationPartsSection(item.subEvents)
     return scopeSnapshotReferencePositionDetails(reference, bounds).x;
   }
 
+  function scopeSnapshotHash(value = "") {
+    const text = normalizeText(value);
+    let hash = 0;
+    for (let index = 0; index < text.length; index += 1) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(index);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  function scopeSnapshotStableRecordSeed(record = {}, fields = []) {
+    return fields.map((field) => normalizeText(record?.[field])).filter(Boolean).join("|");
+  }
+
+  function scopeSnapshotPresentationType(record = {}, recordType = "") {
+    const type = normalizeText(recordType).toLowerCase();
+    const status = normalizeText(record.status || record.state || record.promotionStatus || record.resolutionStatus).toLowerCase();
+    if (/manual_selection|copyrender/.test(type)) return "manual_selection";
+    if (/source_scope|scope_request/.test(type) || /scope_request|not_analyzed/.test(status)) return "source_scope_request";
+    if (/unresolved|ambiguous/.test(type) || /unresolved|ambiguous/.test(status)) return "unresolved";
+    if (/source|page|primary/.test(type) && !/relationship|timeline|theme|principle|journey/.test(type)) return "canonical_source";
+    return "evaluated_semantic";
+  }
+
+  function scopeSnapshotPresentationKey(laneId = "", record = {}, recordType = "", label = "", reference = {}, fallback = "") {
+    const explicit = scopeSnapshotStableRecordSeed(record, [
+      "presentationKey",
+      "graphPresentationKey",
+      "timelineId",
+      "eventId",
+      "semanticEventId",
+      "relationshipId",
+      "dialogueRecordId",
+      "themeId",
+      "principleId",
+      "journeyId",
+      "sceneId",
+      "guidanceId",
+      "roleId",
+      "selectionId",
+      "sourceCaptureId",
+      "canonicalKey",
+      "entityId",
+      "recordId",
+      "id"
+    ]);
+    const referenceSeed = [
+      reference?.label,
+      record.sourceReference,
+      record.sourceScope,
+      record.primaryReference,
+      record.scopePath,
+      record.canonicalReference,
+      record.verseRange
+    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean).join("|");
+    const textSeed = [
+      laneId,
+      recordType,
+      explicit,
+      referenceSeed,
+      label,
+      fallback,
+      record.eventType,
+      record.relationshipType,
+      record.themeName,
+      record.principleName,
+      record.journeyType,
+      record.status,
+      record.provenance
+    ].flat(Infinity).map((value) => normalizeText(value)).filter(Boolean).join("|");
+    return `snapshot-${normalizeText(recordType || laneId).replace(/[^a-z0-9_-]+/gi, "-")}-${scopeSnapshotHash(textSeed || `${laneId}|${fallback}`)}`;
+  }
+
+  function scopeSnapshotUniqueNodeId(nodes = [], baseId = "") {
+    const existing = new Set(nodes.map((node) => node.id));
+    if (!existing.has(baseId)) return { id: baseId, collision: false };
+    let suffix = 2;
+    while (existing.has(`${baseId}-${suffix}`)) suffix += 1;
+    return { id: `${baseId}-${suffix}`, collision: true };
+  }
+
   function scopeSnapshotAddNode(nodes, laneId, record = {}, fallback = "Scoped record", options = {}) {
     const label = scopeSnapshotNodeLabel(record, fallback);
     if (!label) return;
     const reference = scopeSnapshotRecordReference(record);
     const recordType = options.recordType || laneId;
+    const presentationKeyBase = scopeSnapshotPresentationKey(laneId, record, recordType, label, reference, fallback);
+    const unique = scopeSnapshotUniqueNodeId(nodes, presentationKeyBase);
+    const presentationType = scopeSnapshotPresentationType(record, recordType);
     const semanticCategory = scopeSnapshotSemanticCategory(laneId, recordType);
     const subevaluationLabel = scopeSnapshotSubevaluationLabel(record, label || fallback);
     const sourceText = scopeSnapshotSourceTextForRecord(record, reference);
     const supportingReferences = scopeSnapshotReferenceLabelsFromRecord(record).filter((item) => item !== reference?.label);
     const node = {
-      id: `snapshot-${laneId}-${nodes.length}`,
+      id: unique.id,
+      presentationKey: unique.id,
+      presentationKeyBase,
+      presentationKeyCollision: unique.collision,
+      presentationType,
       laneId,
       label,
       reference,
@@ -13778,6 +13911,20 @@ createRevelationPartsSection(item.subEvents)
     const collisionReduction = Math.max(0, positioned.length - laneNodes.reduce((sum, lane) => sum + lane.nodes.length + lane.clusters.length, 0));
     const evidenceComplete = allNodes.filter((node) => node.evidence || node.provenance).length;
     const coverage = metricPercent(positioned.length, allNodes.length);
+    const presentationKeyBaseCounts = allNodes.reduce((counts, node) => {
+      const key = node.presentationKeyBase || node.presentationKey || node.id;
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const duplicatePresentationKeyCount = Object.values(presentationKeyBaseCounts).filter((count) => count > 1).length;
+    const presentationTypeCounts = allNodes.reduce((counts, node) => {
+      const key = node.presentationType || "evaluated_semantic";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const selectedExists = scopeSnapshotViewState.selectedGraphId
+      ? allNodes.some((node) => node.id === scopeSnapshotViewState.selectedGraphId) || laneNodes.some((lane) => asArray(lane.clusters).some((cluster) => cluster.clusterId === scopeSnapshotViewState.selectedGraphId || cluster.anchorId === scopeSnapshotViewState.selectedGraphId))
+      : true;
     const fitScopeOverflow = scopeSnapshotViewState.zoomMode !== "auto" && scopeSnapshotViewState.zoomMode !== "fit" && scopeSnapshotViewState.detailLevel === "more";
     const renderTime = Math.round((nowForDiagnostics() - started) * 10) / 10;
     return {
@@ -13803,6 +13950,10 @@ createRevelationPartsSection(item.subEvents)
       hiddenLaneNodes,
       hiddenLayerNodes: layerModel.hiddenNodeCount,
       selectedHiddenByLayer: layerModel.selectedHiddenByFilter,
+      selectedGraphExists: selectedExists,
+      duplicatePresentationKeyCount,
+      presentationKeyCollisionCount: allNodes.filter((node) => node.presentationKeyCollision).length,
+      presentationTypeCounts,
       clusterCount,
       anchorCount,
       clusteredRecordCount,
@@ -13915,6 +14066,8 @@ createRevelationPartsSection(item.subEvents)
     const chapterDivider = model.bounds?.minChapter !== model.bounds?.maxChapter
       ? `<line class="scope-snapshot-chapter-divider" x1="${Math.round(width / 2)}" y1="34" x2="${Math.round(width / 2)}" y2="${height - 20}"></line>`
       : "";
+    const firstGraphItem = model.lanes.flatMap((lane) => [...asArray(lane.nodes), ...asArray(lane.clusters)]).find(Boolean);
+    const rovingFocusId = scopeSnapshotViewState.selectedGraphId || firstGraphItem?.id || firstGraphItem?.clusterId || "";
     const laneRows = model.lanes.map((lane, laneIndex) => {
       const y = yFor(laneIndex);
       const style = scopeSnapshotLaneStyle(lane.id);
@@ -13930,10 +14083,13 @@ createRevelationPartsSection(item.subEvents)
         const search = escapeHtml(node.label);
         const nodeClass = [
           "scope-snapshot-node",
+          `node-type-${node.presentationType || "evaluated_semantic"}`,
           /unresolved|ambiguous/i.test(node.status) ? "unresolved" : "",
+          /limited|scope_request|not_analyzed/i.test(node.status) ? "limited-context" : "",
           scopeSnapshotViewState.selectedGraphId === node.id ? "selected" : ""
         ].filter(Boolean).join(" ");
         const ariaPressed = scopeSnapshotViewState.selectedGraphId === node.id ? " aria-pressed=\"true\"" : "";
+        const tabIndex = rovingFocusId === node.id ? "0" : "-1";
         const offsetY = radial.y || 0;
         const offsetX = radial.x || 0;
         const labelText = lane.labelPlan?.visibleLabelIds?.has(node.id)
@@ -13945,9 +14101,11 @@ createRevelationPartsSection(item.subEvents)
           node.supportingReferences?.length ? `Supporting: ${node.supportingReferences.join(", ")}` : "",
           node.sourceText && !/^Source text unavailable/i.test(node.sourceText) ? `"${trimText(node.sourceText, 160)}"` : node.sourceText,
           node.evaluationText,
+          `Presentation: ${node.presentationType || "evaluated_semantic"}`,
           `${node.confidence} - ${/unresolved|ambiguous/i.test(node.status) ? "Review" : "Verified"}`
         ].filter(Boolean).join("\n");
-        return `<g class="${nodeClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-node-id="${escapeHtml(node.id)}" data-snapshot-anchor-id="${escapeHtml(node.anchorId || "")}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x + offsetX} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(hoverTitle)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
+        const ariaLabel = `${node.primaryReference || node.reference?.label || node.label}; ${node.semanticCategory || node.recordType}; ${node.presentationType || "evaluated semantic"}; ${node.confidence}`;
+        return `<g class="${nodeClass}" tabindex="${tabIndex}" role="button"${ariaPressed} aria-label="${escapeHtml(ariaLabel)}" data-snapshot-node-id="${escapeHtml(node.id)}" data-snapshot-anchor-id="${escapeHtml(node.anchorId || "")}" data-target-section="${escapeHtml(node.targetSection)}" data-search-term="${search}" transform="translate(${x + offsetX} ${y + offsetY})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(hoverTitle)}</title>${labelText}${scopeSnapshotSvgNodeShape(lane.id)}</g>`;
       }).join("");
       const clusters = asArray(lane.clusters).map((cluster, clusterIndex) => {
         const x = xFor(cluster.x);
@@ -13961,6 +14119,7 @@ createRevelationPartsSection(item.subEvents)
           scopeSnapshotViewState.selectedGraphId === cluster.clusterId ? "selected" : ""
         ].filter(Boolean).join(" ");
         const ariaPressed = scopeSnapshotViewState.selectedGraphId === cluster.clusterId ? " aria-pressed=\"true\"" : "";
+        const tabIndex = rovingFocusId === cluster.clusterId ? "0" : "-1";
         const clusterTitle = [
           `${lane.label} anchor`,
           cluster.referenceLabel || cluster.sourceRange,
@@ -13968,7 +14127,7 @@ createRevelationPartsSection(item.subEvents)
           cluster.summary || "",
           `warnings ${cluster.warningCount}`
         ].filter(Boolean).join(" | ");
-        return `<g class="${clusterClass}" tabindex="0" role="button"${ariaPressed} data-snapshot-cluster-id="${escapeHtml(cluster.clusterId)}" data-snapshot-anchor-id="${escapeHtml(cluster.anchorId || cluster.clusterId)}" data-target-section="${escapeHtml(lane.targetSection)}" data-search-term="${escapeHtml(lane.label)}" transform="translate(${x} ${y + 12})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(clusterTitle)}</title>${labelText}<circle class="scope-snapshot-anchor-ring" r="${cluster.clusterMode === "scene_cluster" ? 15 : cluster.clusterMode === "type_cluster" ? 13 : 11}"></circle><text class="scope-snapshot-cluster-count" x="0" y="4" text-anchor="middle">${cluster.recordCount}</text></g>`;
+        return `<g class="${clusterClass}" tabindex="${tabIndex}" role="button"${ariaPressed} aria-label="${escapeHtml(clusterTitle)}" data-snapshot-cluster-id="${escapeHtml(cluster.clusterId)}" data-snapshot-anchor-id="${escapeHtml(cluster.anchorId || cluster.clusterId)}" data-target-section="${escapeHtml(lane.targetSection)}" data-search-term="${escapeHtml(lane.label)}" transform="translate(${x} ${y + 12})" style="--snapshot-node-color:${style.color}"><title>${escapeHtml(clusterTitle)}</title>${labelText}<circle class="scope-snapshot-anchor-ring" r="${cluster.clusterMode === "scene_cluster" ? 15 : cluster.clusterMode === "type_cluster" ? 13 : 11}"></circle><text class="scope-snapshot-cluster-count" x="0" y="4" text-anchor="middle">${cluster.recordCount}</text></g>`;
       }).join("");
       return `<g class="scope-snapshot-lane"><rect class="scope-snapshot-lane-band" x="0" y="${y - 28}" width="${width}" height="${laneHeight}" rx="0"></rect><rect class="scope-snapshot-lane-header" x="0" y="${y - 28}" width="${laneLabelWidth - 6}" height="${laneHeight}"></rect><text class="scope-snapshot-lane-symbol" x="24" y="${y + 5}" fill="${style.color}">${escapeHtml(style.symbol)}</text><text class="scope-snapshot-lane-label" x="54" y="${y - 1}">${escapeHtml(lane.label)}</text><text class="scope-snapshot-lane-count" x="${laneLabelWidth - 24}" y="${y + 5}">${lane.totalNodes}</text><line x1="${laneLabelWidth}" y1="${y}" x2="${width - 28}" y2="${y}"></line>${connector}${nodes}${clusters}</g>`;
     }).join("");
@@ -13976,7 +14135,8 @@ createRevelationPartsSection(item.subEvents)
       const x = xFor(tick.x);
       return `<g class="scope-snapshot-tick"><line x1="${x}" y1="24" x2="${x}" y2="${height - 28}"></line><text x="${x}" y="18">${escapeHtml(tick.label)}</text></g>`;
     }).join("");
-    return `<svg class="scope-snapshot-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(model.startReference)} to ${escapeHtml(model.endReference)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
+    const focusClass = scopeSnapshotViewState.selectedGraphId ? " has-focused-node" : "";
+    return `<svg class="scope-snapshot-svg${focusClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(model.startReference)} to ${escapeHtml(model.endReference)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
   }
 
   function scopeSnapshotSummaryLines(model = scopeSnapshotGraphModel()) {
@@ -14004,6 +14164,8 @@ createRevelationPartsSection(item.subEvents)
       `Evidence completeness: ${formatMetricPercent(metricPercent(model.evidenceComplete, model.nodeCount))}`,
       `Fit Scope: overflow=${model.fitScopeOverflow ? "true" : "false"}; aggregation=${model.aggregationApplied ? "applied" : "not needed"}; label budget=${model.visibleLabelCount}/${model.visibleLabelCount + model.suppressedLabelCount}`,
       `Shared / parallel event candidates: ${asArray(model.sharedEvents).length}`,
+      `Presentation keys: stable=${model.nodeCount}; duplicateBaseKeys=${model.duplicatePresentationKeyCount || 0}; collisionSuffixes=${model.presentationKeyCollisionCount || 0}`,
+      `Focus: selected=${scopeSnapshotViewState.selectedGraphId || "none"}; source=${scopeSnapshotViewState.focusSource || "none"}; explicitCenter=${scopeSnapshotViewState.lastCenteringAction || "not requested"}`,
       `Cache state: ${scopeSnapshotLastCacheState}; render/build time=${model.renderTime}ms`,
       `Selection diagnostics: selections=${selectionDiagnostics.invocationCount || 0}; last=${selectionDiagnostics.lastSelectionId || "none"}; latestTiming=${latestSelectionTiming ? `${latestSelectionTiming.total}ms total, ${latestSelectionTiming.detail}ms detail, cache=${latestSelectionTiming.cacheState}` : "none"}`,
       `Verification: ${model.verification}`,
@@ -14109,10 +14271,14 @@ createRevelationPartsSection(item.subEvents)
     meta.textContent = [selected.semanticCategory, selected.subevaluationLabel].filter(Boolean).join(" | ") || `${selected.recordType} | ${selected.confidence}`;
     summary.className = "scope-snapshot-evaluation-text";
     summary.textContent = selected.evaluationText || trimText(selected.evidence || selected.provenance || "Evidence remains available in the native inspector.", 180);
+    const focusStatus = document.createElement("p");
+    focusStatus.className = "scope-snapshot-focus-status";
+    focusStatus.textContent = `Focused item: ${selected.presentationType || "evaluated_semantic"}; source=${scopeSnapshotViewState.focusSource || "default"}; key=${selected.presentationKey || selected.id}.`;
     const sourceBlock = document.createElement("blockquote");
     sourceBlock.className = "scope-snapshot-source-text";
     sourceBlock.textContent = selected.sourceText || "Source text unavailable from the current evaluation source";
     content.append(title, meta, summary);
+    content.appendChild(focusStatus);
     content.appendChild(sourceBlock);
     if (model.selectedHiddenByLayer && scopeSnapshotViewState.selectedGraphId === selected.id) {
       const hidden = document.createElement("p");
@@ -14130,8 +14296,12 @@ createRevelationPartsSection(item.subEvents)
     [
       ["read_detail", "Read Selected Detail"],
       ["back_to_graph", "Back to selected graph item"],
+      ["center_selected", "Center Selected"],
+      ["clear_focus", "Clear Focus"],
       ["open_inspector", "Open Inspector"],
-      ["copy_render_add", "Add Selection to Copy Render"],
+      ["copy_render_add", "Add Focused Item to Copy Render"],
+      ["copy_render_replace", "Replace Copy Render with Focused Item"],
+      ["show_in_timeline", "Show in Timeline"],
       ["show_evidence", "Show Source Evidence"],
       ["show_provenance", "Show Provenance"]
     ].forEach(([action, label]) => {
@@ -14148,6 +14318,8 @@ createRevelationPartsSection(item.subEvents)
       ["Primary Reference", selected.primaryReference || selected.reference?.label || model.activeScope],
       ["Supporting References", asArray(selected.supportingReferences).join(", ") || "none recorded"],
       ["Record Type", selected.recordType],
+      ["Presentation Type", selected.presentationType || "evaluated_semantic"],
+      ["Stable Key", selected.presentationKey || selected.id],
       ["Confidence", selected.confidence],
       ["Evidence", selected.evidence ? "available on demand" : "native inspector"],
       ["Provenance", selected.provenance ? "available on demand" : "native inspector"],
@@ -14196,7 +14368,7 @@ createRevelationPartsSection(item.subEvents)
     content.append(title, meta, summary);
     const actions = document.createElement("div");
     actions.className = "scope-snapshot-detail-actions";
-    [["read_detail", "Read Selected Detail"], ["zoom_in", "Zoom In"], ["open_inspector", "Open Inspector"], ["show_evidence", "Show Source Evidence"], ["show_provenance", "Show Provenance"], ["back_to_graph", "Back to selected graph item"]].forEach(([action, label]) => {
+    [["read_detail", "Read Selected Detail"], ["zoom_in", "Zoom In"], ["center_selected", "Center Group"], ["close_group", "Close Group"], ["clear_focus", "Clear Focus"], ["open_inspector", "Open Inspector"], ["show_evidence", "Show Source Evidence"], ["show_provenance", "Show Provenance"], ["back_to_graph", "Back to selected graph item"]].forEach(([action, label]) => {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.scopeSnapshotAction = action;
@@ -14852,6 +15024,9 @@ createRevelationPartsSection(item.subEvents)
       ...asArray(model.layerModel?.availability).filter((layer) => layer.available || layer.dependencyUnavailable).map((layer) => `${layer.label}: available=${layer.available}; selected=${asArray(model.layerModel?.activeLayerIds).includes(layer.id)}; recommended=${asArray(model.layerModel?.recommendedLayerIds).includes(layer.id)}; count=${layer.count}; distinctRefs=${layer.distinctReferenceCount}; verified=${layer.verifiedCount}; unresolved=${layer.unresolvedCount}; score=${layer.score}; reason=${layer.recommendationReason}`),
       `Copy Render diagnostics: selections=${asArray(scopeSnapshotViewState.copyRenderSelections).length}; exactChars=${asArray(scopeSnapshotViewState.copyRenderSelections).reduce((sum, item) => sum + normalizeText(item.exactText).length, 0)}; context=${scopeSnapshotViewState.copyRenderContextMode}; mode=${scopeSnapshotViewState.copyRenderEvaluationMode}; active=${scopeSnapshotViewState.activeCopyRenderSelectionId || "none"}; duplicateCandidates=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => /duplicate/i.test(item.status)).length}; canonicalReferences=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => item.canonicalReference).length}; unresolvedSelections=${asArray(scopeSnapshotViewState.copyRenderSelections).filter((item) => item.verificationStatus === "unavailable").length}`,
       ...asArray(scopeSnapshotViewState.copyRenderSelections).slice(0, 5).map((item, index) => `Copy Render ${index + 1}: ${item.primaryReference || "External selected text"}; status=${item.status}; coverage=${item.selectionCoverage}; source=${item.sourceTitle}; chars=${normalizeText(item.exactText).length}`),
+      `Presentation identity: stableKeys=${model.nodeCount}; duplicateBaseKeys=${model.duplicatePresentationKeyCount || 0}; collisionSuffixes=${model.presentationKeyCollisionCount || 0}; presentationTypes=${Object.entries(model.presentationTypeCounts || {}).map(([type, count]) => `${type}:${count}`).join(", ") || "none"}`,
+      `Focus state: selected=${scopeSnapshotViewState.selectedGraphId || "none"}; focusedPresentationKey=${scopeSnapshotViewState.focusedPresentationKey || "none"}; source=${scopeSnapshotViewState.focusSource || "none"}; selectedExists=${model.selectedGraphExists ? "true" : "false"}; selectedHiddenByLayer=${model.selectedHiddenByLayer ? "true" : "false"}; center=${scopeSnapshotViewState.lastCenteringAction || "not requested"}; centerSuppressed=${scopeSnapshotViewState.lastCenteringSuppressionReason || "none"}`,
+      `Recent focus diagnostics: ${asArray(scopeSnapshotViewState.focusDiagnostics).slice(0, 5).map((item, index) => `${index + 1}. ${item.action} ${item.graphId || "none"} ${asArray(item.notes).join("/") || ""}`).join(" | ") || "none"}`,
       `Graph cache state: ${scopeSnapshotLastCacheState}; cached variants=${scopeSnapshotGraphCache.size}`,
       `Render/build time: ${model.renderTime}ms`,
       `Selection invocations this session: ${selectionDiagnostics.invocationCount}`,
@@ -29584,11 +29759,17 @@ createRevelationPartsSection(item.subEvents)
     const section = document.getElementById("scopeSnapshotSection");
     if (!section) return;
     section.dataset.selectedGraphId = graphId;
+    section.classList.toggle("has-snapshot-focus", Boolean(graphId));
     section.querySelectorAll(".scope-snapshot-node.selected, .scope-snapshot-cluster.selected").forEach((element) => element.classList.remove("selected"));
+    section.querySelectorAll(".scope-snapshot-node, .scope-snapshot-cluster").forEach((element) => {
+      element.setAttribute("tabindex", "-1");
+    });
     const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
     const selected = section.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"]`);
     selected?.classList.add("selected");
     selected?.setAttribute("aria-pressed", "true");
+    selected?.setAttribute("tabindex", "0");
+    if (!selected) section.querySelector(".scope-snapshot-node, .scope-snapshot-cluster")?.setAttribute("tabindex", "0");
     section.querySelectorAll(`.scope-snapshot-node[aria-pressed="true"], .scope-snapshot-cluster[aria-pressed="true"]`).forEach((element) => {
       if (element !== selected) element.removeAttribute("aria-pressed");
     });
@@ -29596,6 +29777,81 @@ createRevelationPartsSection(item.subEvents)
     minimap?.setAttribute("data-selected-graph-id", graphId);
     minimap?.querySelectorAll(".scope-snapshot-minimap-track span.selected").forEach((element) => element.classList.remove("selected"));
     minimap?.querySelector(`[data-snapshot-minimap-id="${escaped}"]`)?.classList.add("selected");
+  }
+
+  function recordScopeSnapshotFocusDiagnostic(action = "", graphId = "", notes = []) {
+    const entry = {
+      action,
+      graphId,
+      focusSource: scopeSnapshotViewState.focusSource || "unknown",
+      selectedGraphId: scopeSnapshotViewState.selectedGraphId || "none",
+      notes: asArray(notes).map((note) => normalizeText(note)).filter(Boolean),
+      recordedAt: new Date().toISOString()
+    };
+    scopeSnapshotViewState.focusDiagnostics.unshift(entry);
+    scopeSnapshotViewState.focusDiagnostics = scopeSnapshotViewState.focusDiagnostics.slice(0, 12);
+    return entry;
+  }
+
+  function clearScopeSnapshotFocus(reason = "clear focus") {
+    const viewportBefore = scopeSnapshotViewportState();
+    scopeSnapshotViewState.selectedGraphId = "";
+    scopeSnapshotViewState.focusedPresentationKey = "";
+    scopeSnapshotViewState.focusSource = "";
+    scopeSnapshotViewState.lastFocusReason = reason;
+    updateScopeSnapshotSelectedDom("");
+    const panel = document.getElementById("scopeSnapshotSelectedPanel");
+    if (panel) renderScopeSnapshotDetailPanel(panel, scopeSnapshotGraphModel(), scopeSnapshotSelectedNode(scopeSnapshotGraphModel()));
+    restoreScopeSnapshotViewport(viewportBefore, reason);
+    recordScopeSnapshotFocusDiagnostic(reason, "", ["focus cleared; scope and semantic records unchanged"]);
+  }
+
+  function centerScopeSnapshotOnGraphItem(graphId = scopeSnapshotViewState.selectedGraphId, reason = "center selected") {
+    const section = document.getElementById("scopeSnapshotSection");
+    const graph = section?.querySelector(".scope-snapshot-graph");
+    if (!graph || !graphId) {
+      scopeSnapshotViewState.lastCenteringSuppressionReason = "No selected graph item is available to center.";
+      return false;
+    }
+    const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
+    const selected = graph.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"]`);
+    if (!selected) {
+      scopeSnapshotViewState.lastCenteringSuppressionReason = "Selected graph item is hidden by filters or clustering.";
+      recordScopeSnapshotFocusDiagnostic(reason, graphId, [scopeSnapshotViewState.lastCenteringSuppressionReason]);
+      return false;
+    }
+    const viewportBefore = scopeSnapshotViewportState();
+    const graphRect = graph.getBoundingClientRect();
+    const selectedRect = selected.getBoundingClientRect();
+    const delta = (selectedRect.left + selectedRect.width / 2) - (graphRect.left + graph.clientWidth / 2);
+    const maxLeft = Math.max(0, graph.scrollWidth - graph.clientWidth);
+    const nextLeft = clampNumber(graph.scrollLeft + delta, 0, maxLeft);
+    graph.scrollTo({ left: nextLeft, top: graph.scrollTop, behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth" });
+    selected.focus?.({ preventScroll: true });
+    scopeSnapshotViewState.lastCenteringAction = `${reason}: ${Math.round(viewportBefore.graphScrollLeft)} -> ${Math.round(nextLeft)}`;
+    scopeSnapshotViewState.lastCenteringSuppressionReason = "";
+    scheduleScopeSnapshotMiniMapSync();
+    recordScopeSnapshotFocusDiagnostic(reason, graphId, [`centered graph scroll ${Math.round(viewportBefore.graphScrollLeft)} -> ${Math.round(nextLeft)}`]);
+    restoreScopeSnapshotViewport({ ...viewportBefore, graphScrollLeft: nextLeft }, reason);
+    return true;
+  }
+
+  function scopeSnapshotFocusableGraphItems() {
+    return Array.from(document.querySelectorAll("#scopeSnapshotSection .scope-snapshot-svg [data-snapshot-node-id], #scopeSnapshotSection .scope-snapshot-svg [data-snapshot-cluster-id]"));
+  }
+
+  function moveScopeSnapshotKeyboardFocus(direction = 1) {
+    const items = scopeSnapshotFocusableGraphItems();
+    if (!items.length) return false;
+    const currentId = scopeSnapshotViewState.selectedGraphId;
+    const currentIndex = Math.max(0, items.findIndex((item) => (item.dataset.snapshotNodeId || item.dataset.snapshotClusterId) === currentId));
+    const nextIndex = direction === Infinity ? items.length - 1 : direction === -Infinity ? 0 : clampNumber(currentIndex + direction, 0, items.length - 1);
+    const next = items[nextIndex];
+    const nextId = next.dataset.snapshotNodeId || next.dataset.snapshotClusterId || "";
+    if (!nextId) return false;
+    selectScopeSnapshotGraphItem(nextId, { preserveViewport: true, source: "keyboard", focusElement: true });
+    next.focus?.({ preventScroll: true });
+    return true;
   }
 
   function scrollScopeSnapshotDetailIntoView() {
@@ -29695,6 +29951,9 @@ createRevelationPartsSection(item.subEvents)
       return;
     }
     scopeSnapshotViewState.selectedGraphId = graphId;
+    scopeSnapshotViewState.focusedPresentationKey = selection.item.presentationKey || selection.item.clusterId || graphId;
+    scopeSnapshotViewState.focusSource = options.source || "graph";
+    scopeSnapshotViewState.lastFocusReason = `select ${selection.type}`;
     const graphStarted = nowForDiagnostics();
     updateScopeSnapshotSelectedDom(graphId);
     const graphUpdateTime = nowForDiagnostics() - graphStarted;
@@ -29711,6 +29970,7 @@ createRevelationPartsSection(item.subEvents)
     }
     const detailTime = nowForDiagnostics() - detailStarted;
     diagnostics.lastSelectionId = graphId;
+    recordScopeSnapshotFocusDiagnostic(`select ${selection.type}`, graphId, [`source=${scopeSnapshotViewState.focusSource}`, `presentationKey=${scopeSnapshotViewState.focusedPresentationKey}`]);
     diagnostics.timings.unshift({
       graphId,
       type: selection.type,
@@ -29728,6 +29988,10 @@ createRevelationPartsSection(item.subEvents)
     });
     diagnostics.timings = diagnostics.timings.slice(0, 12);
     if (preserveViewport) restoreScopeSnapshotViewport(viewportBefore, `select ${selection.type}`);
+    if (options.focusElement === true) {
+      const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
+      document.querySelector(`#scopeSnapshotSection [data-snapshot-node-id="${escaped}"], #scopeSnapshotSection [data-snapshot-cluster-id="${escaped}"]`)?.focus?.({ preventScroll: true });
+    }
     if (options.scroll === true) readScopeSnapshotSelectedDetail();
   }
 
@@ -30032,7 +30296,7 @@ createRevelationPartsSection(item.subEvents)
     if (node && node.closest?.(".scope-snapshot-svg")) {
       event.preventDefault();
       event.stopPropagation?.();
-      selectScopeSnapshotGraphItem(node.dataset.snapshotNodeId || "", { preserveViewport: true });
+      selectScopeSnapshotGraphItem(node.dataset.snapshotNodeId || "", { preserveViewport: true, source: "pointer" });
       enforceScopeSnapshotPresentationInvariant("click graph node");
       return;
     }
@@ -30045,7 +30309,7 @@ createRevelationPartsSection(item.subEvents)
       scopeSnapshotViewState.expandedAnchorId = scopeSnapshotViewState.expandedAnchorId === clusterId ? "" : clusterId;
       updateScopeSnapshotVisualBreadth(scopeSnapshotViewState.snapshotVisualBreadth || "active_page");
       restoreScopeSnapshotViewport(viewportBefore, "toggle graph cluster");
-      selectScopeSnapshotGraphItem(clusterId, { preserveViewport: true });
+      selectScopeSnapshotGraphItem(clusterId, { preserveViewport: true, source: "cluster" });
       enforceScopeSnapshotPresentationInvariant("click graph cluster");
       return;
     }
@@ -30146,7 +30410,7 @@ createRevelationPartsSection(item.subEvents)
       if (relatedItem) {
         event.preventDefault();
         event.stopPropagation?.();
-        selectScopeSnapshotGraphItem(relatedItem.dataset.snapshotRelatedId || "", { preserveViewport: true });
+        selectScopeSnapshotGraphItem(relatedItem.dataset.snapshotRelatedId || "", { preserveViewport: true, source: "related-list" });
         enforceScopeSnapshotPresentationInvariant("cluster child selection");
       }
       return;
@@ -30240,6 +30504,37 @@ createRevelationPartsSection(item.subEvents)
       enforceScopeSnapshotPresentationInvariant("back to graph action");
       return;
     }
+    if (action === "center_selected") {
+      centerScopeSnapshotOnGraphItem(scopeSnapshotViewState.selectedGraphId, "center selected action");
+      enforceScopeSnapshotPresentationInvariant("center selected action");
+      return;
+    }
+    if (action === "clear_focus") {
+      clearScopeSnapshotFocus("clear focus action");
+      enforceScopeSnapshotPresentationInvariant("clear focus action");
+      return;
+    }
+    if (action === "close_group") {
+      const viewportBefore = scopeSnapshotViewportState();
+      scopeSnapshotViewState.expandedAnchorId = "";
+      updateScopeSnapshotVisualBreadth(scopeSnapshotViewState.snapshotVisualBreadth || "active_page");
+      restoreScopeSnapshotViewport(viewportBefore, "close group");
+      recordScopeSnapshotFocusDiagnostic("close group", scopeSnapshotViewState.selectedGraphId, ["cluster closed; child records unchanged"]);
+      enforceScopeSnapshotPresentationInvariant("close group action");
+      return;
+    }
+    if (action === "show_in_timeline") {
+      const model = scopeSnapshotGraphModel();
+      const selection = selectedScopeSnapshotGraphRecord(model);
+      const target = /timeline|orderedEvent|event/i.test(selection.item?.recordType || "") ? document.getElementById("timelineSequenceSection") || document.getElementById("timelineSection") || document.getElementById(selection.item?.targetSection || "") : null;
+      if (target) {
+        scopeSnapshotScrollIntoView(target, "show selected in timeline", { block: "start" });
+        showDiagnosticMessage("Opened the grounded timeline area for the selected Snapshot item.");
+      } else {
+        showDiagnosticMessage("No grounded timeline target is available for this focused Snapshot item.");
+      }
+      return;
+    }
     if (action === "read_detail") {
       readScopeSnapshotSelectedDetail();
       enforceScopeSnapshotPresentationInvariant("read selected detail action");
@@ -30315,12 +30610,33 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function handleScopeSnapshotKeydown(event) {
-    if (event.key !== "Enter" && event.key !== " ") return;
     const graphItem = event.target?.closest?.("[data-snapshot-node-id], [data-snapshot-cluster-id]");
     if (!graphItem || !graphItem.closest?.(".scope-snapshot-svg")) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      event.stopPropagation?.();
+      moveScopeSnapshotKeyboardFocus(1);
+      enforceScopeSnapshotPresentationInvariant("keyboard graph next");
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      event.stopPropagation?.();
+      moveScopeSnapshotKeyboardFocus(-1);
+      enforceScopeSnapshotPresentationInvariant("keyboard graph previous");
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      event.stopPropagation?.();
+      moveScopeSnapshotKeyboardFocus(event.key === "Home" ? -Infinity : Infinity);
+      enforceScopeSnapshotPresentationInvariant(`keyboard graph ${event.key.toLowerCase()}`);
+      return;
+    }
+    if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     event.stopPropagation?.();
-    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || "", { preserveViewport: true });
+    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || "", { preserveViewport: true, source: "keyboard", focusElement: true });
     enforceScopeSnapshotPresentationInvariant("keyboard graph selection");
   }
 

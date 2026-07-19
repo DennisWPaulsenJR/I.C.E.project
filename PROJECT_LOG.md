@@ -4836,6 +4836,26 @@ Validation passed:
 - `npm.cmd run qa:matthew-pages`
 - `npm.cmd run review:matthew-session`
 
+## 2026-07-18 - Linear Scope Snapshot Graph Experience Phase 1
+
+Implemented presentation-only graph focus, expansion, viewport, and selection synchronization for the Linear Scope Snapshot.
+
+Added:
+- stable presentation keys for Snapshot graph nodes
+- presentation type labels for canonical source, evaluated semantic, manual selection, source-scope request, and unresolved graph items
+- explicit Focus / Center Selected / Clear Focus actions
+- roving keyboard navigation for graph items
+- focused-item Copy Render fallback when no browser text selection exists
+- focus, centering, presentation-key, and layer-hidden diagnostics in the Snapshot inspector
+
+Preserved:
+- canonical Study Scope
+- Context Lock
+- semantic records
+- storage authority
+- queue/crawling behavior
+- Inspector navigation as the only broad semantic navigation path
+
 ## 2026-06-19 - Fix Bottom Study Panel Scope Leakage
 
 Audited bottom Study Panel sections after retained Matthew 1, Matthew 2, and Matthew 3 records appeared unexpectedly.
