@@ -1,3 +1,7 @@
+function isSourceScopeCurrentStudyRecord(record = {}) {
+  return ["url_source", "source_unit", "range_request", "volume_scope_request"].includes(record.itemType || record.type || "");
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const STORAGE_KEYS = {
     latestCapture: "ICE_LATEST_CAPTURE",
@@ -434,7 +438,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     copyRenderContextMode: "exact_selection",
     copyRenderEvaluationMode: "independent",
     copyRenderAxisMode: "capture_order",
-    lastCopyRenderMessage: ""
+    lastCopyRenderMessage: "",
+    activePresentationRoute: "",
+    routeDiagnostics: [],
+    rendererInvocationCount: 0,
+    rendererStage: "",
+    lastRendererError: null,
+    projectionDiagnostics: []
   };
   const scopeSnapshotGraphCache = new Map();
   let scopeSnapshotLastCacheState = "not requested";
@@ -2477,8 +2487,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  function sourceScopeCurrentStudyRecord(record = {}) {
+    const itemType = normalizeText(record.itemType || record.type || "");
+    if (!isSourceScopeCurrentStudyRecord({ itemType })) return null;
+    const sourceUrl = normalizeText(record.sourceUrl || record.url || "");
+    const label = normalizeText(record.label || record.sourceScope || record.sourceTitle || sourceUrl || "Selected source scope");
+    if (!label && !sourceUrl) return null;
+    return {
+      id: normalizeText(record.id || [itemType, sourceUrl, label, record.rangeStart || "", record.rangeEnd || ""].filter(Boolean).join("|")),
+      itemType,
+      label,
+      sourceTitle: normalizeText(record.sourceTitle || label),
+      sourceUrl,
+      url: sourceUrl,
+      book: normalizeText(record.book || ""),
+      chapter: normalizeText(record.chapter || ""),
+      rangeStart: normalizeText(record.rangeStart || ""),
+      rangeEnd: normalizeText(record.rangeEnd || ""),
+      sourceScope: normalizeText(record.sourceScope || label),
+      scopeType: normalizeText(record.scopeType || itemType),
+      state: normalizeText(record.state || (itemType === "url_source" ? "EXTERNAL SOURCE" : "SCOPE REQUEST")),
+      analyzed: false,
+      unresolved: Boolean(record.unresolved || itemType === "range_request" || itemType === "volume_scope_request"),
+      analysisState: normalizeText(record.analysisState || "NOT ANALYZED"),
+      addedAt: normalizeText(record.addedAt || ""),
+      activeAdapter: normalizeText(record.activeAdapter || ""),
+      activeLenses: Array.isArray(record.activeLenses) ? record.activeLenses : [],
+      provenance: record.provenance || { source: "popup source scope control", sourceUrl }
+    };
+  }
+
   function currentStudyRecordKey(record = {}) {
     if (isManualCurrentStudyRecord(record)) return record.id || record.selectionId || "";
+    if (isSourceScopeCurrentStudyRecord(record)) return record.id || [record.itemType || record.type || "", record.sourceUrl || record.url || "", record.sourceScope || record.label || ""].filter(Boolean).join("|");
     return record.canonicalKey || record.id || "";
   }
 
@@ -2510,6 +2551,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return asArray(records)
       .map((record) => {
         if (isManualCurrentStudyRecord(record)) return manualCurrentStudyRecord(record);
+        if (isSourceScopeCurrentStudyRecord(record)) return sourceScopeCurrentStudyRecord(record);
         const page = pageRecordFromCrossReferenceRecord(record);
         return page ? crossReferenceRecordFromPage(page, analyzedPages, record) : null;
       })
@@ -2517,6 +2559,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       .filter((item, index, items) => items.findIndex((candidate) => currentStudyRecordKey(candidate) === currentStudyRecordKey(item)) === index)
       .sort((left, right) => {
         if (isManualCurrentStudyRecord(left) !== isManualCurrentStudyRecord(right)) return isManualCurrentStudyRecord(left) ? 1 : -1;
+        if (isSourceScopeCurrentStudyRecord(left) !== isSourceScopeCurrentStudyRecord(right)) return isSourceScopeCurrentStudyRecord(left) ? 1 : -1;
+        if (isSourceScopeCurrentStudyRecord(left) && isSourceScopeCurrentStudyRecord(right)) return normalizeText(left.label).localeCompare(normalizeText(right.label));
         return pageBookName(pageRecordFromCrossReferenceRecord(left)).localeCompare(pageBookName(pageRecordFromCrossReferenceRecord(right))) || Number(left.chapter || 0) - Number(right.chapter || 0);
       });
   }
@@ -13087,7 +13131,35 @@ createRevelationPartsSection(item.subEvents)
     );
   }
 
+  function scopeSnapshotSafeRecord(record, fallback = "Scoped record", sourceCollection = "unknown") {
+    if (record && typeof record === "object" && !Array.isArray(record)) return record;
+    const label = normalizeText(record || fallback);
+    return {
+      label: label || fallback,
+      sourceReference: currentStudyScopeLabel(),
+      sourceScope: currentStudyScopeLabel(),
+      evidence: label || fallback,
+      confidence: "presentation fallback",
+      status: "display_normalized",
+      provenance: `Scope Snapshot presentation-only normalization from ${sourceCollection}`
+    };
+  }
+
+  function scopeSnapshotRecordProjectionDiagnostic(entry = {}) {
+    scopeSnapshotViewState.projectionDiagnostics.unshift({
+      stage: entry.stage || "projection",
+      sourceCollection: entry.sourceCollection || "unknown",
+      status: entry.status || "informational",
+      message: normalizeText(entry.message || ""),
+      recordType: normalizeText(entry.recordType || ""),
+      label: trimText(entry.label || "", 80),
+      recordedAt: new Date().toISOString()
+    });
+    scopeSnapshotViewState.projectionDiagnostics = scopeSnapshotViewState.projectionDiagnostics.slice(0, 16);
+  }
+
   function scopeSnapshotRecordReference(record = {}) {
+    record = scopeSnapshotSafeRecord(record, "Scoped record", "reference resolution");
     const candidates = [
       record.sourceReference,
       record.sourceScope,
@@ -13126,6 +13198,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotReferenceLabelsFromRecord(record = {}) {
+    record = scopeSnapshotSafeRecord(record, "Scoped record", "reference labels");
     const values = [
       record.sourceReference,
       record.primaryReference,
@@ -13672,6 +13745,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotPresentationType(record = {}, recordType = "") {
+    record = scopeSnapshotSafeRecord(record, "Scoped record", "presentation type");
     const type = normalizeText(recordType).toLowerCase();
     const status = normalizeText(record.status || record.state || record.promotionStatus || record.resolutionStatus).toLowerCase();
     if (/manual_selection|copyrender/.test(type)) return "manual_selection";
@@ -13682,6 +13756,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotPresentationKey(laneId = "", record = {}, recordType = "", label = "", reference = {}, fallback = "") {
+    record = scopeSnapshotSafeRecord(record, fallback, "presentation key");
     const explicit = scopeSnapshotStableRecordSeed(record, [
       "presentationKey",
       "graphPresentationKey",
@@ -13731,6 +13806,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotUniqueNodeId(nodes = [], baseId = "") {
+    baseId = normalizeText(baseId) || `snapshot-node-${nodes.length + 1}`;
     const existing = new Set(nodes.map((node) => node.id));
     if (!existing.has(baseId)) return { id: baseId, collision: false };
     let suffix = 2;
@@ -13739,44 +13815,61 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotAddNode(nodes, laneId, record = {}, fallback = "Scoped record", options = {}) {
-    const label = scopeSnapshotNodeLabel(record, fallback);
-    if (!label) return;
-    const reference = scopeSnapshotRecordReference(record);
-    const recordType = options.recordType || laneId;
-    const presentationKeyBase = scopeSnapshotPresentationKey(laneId, record, recordType, label, reference, fallback);
-    const unique = scopeSnapshotUniqueNodeId(nodes, presentationKeyBase);
-    const presentationType = scopeSnapshotPresentationType(record, recordType);
-    const semanticCategory = scopeSnapshotSemanticCategory(laneId, recordType);
-    const subevaluationLabel = scopeSnapshotSubevaluationLabel(record, label || fallback);
-    const sourceText = scopeSnapshotSourceTextForRecord(record, reference);
-    const supportingReferences = scopeSnapshotReferenceLabelsFromRecord(record).filter((item) => item !== reference?.label);
-    const node = {
-      id: unique.id,
-      presentationKey: unique.id,
-      presentationKeyBase,
-      presentationKeyCollision: unique.collision,
-      presentationType,
-      laneId,
-      label,
-      reference,
-      record,
-      recordType,
-      targetSection: options.targetSection || SCOPE_SNAPSHOT_LANES.find((lane) => lane.id === laneId)?.targetSection || "studyReferenceIndexSection",
-      confidence: displayConfidence(record.confidence || record.evidenceWeight || options.confidence || "grounded"),
-      status: normalizeText(record.status || record.promotionStatus || record.resolutionStatus || options.status || "resolved"),
-      provenance: normalizeText(record.provenance || record.semanticSourceLayer || record.sourceCollection || options.provenance || "existing scoped runtime record"),
-      evidence: normalizeText(record.evidence || record.sourceGrounding || record.sourcePhrase || record.reason || options.evidence || ""),
-      primaryReference: reference?.label || normalizeText(record.primaryReference || record.sourceReference || record.sourceScope || ""),
-      supportingReferences,
-      semanticCategory,
-      subevaluationLabel,
-      sourceText,
-      evaluationText: scopeSnapshotEvaluationText(record, subevaluationLabel || label),
-      graphPrimaryLabel: reference?.label || trimText(label, 42),
-      graphSecondaryLabel: [semanticCategory, subevaluationLabel].filter(Boolean).join(" - ")
-    };
-    node.layerIds = scopeSnapshotLayerIdsForNode(node);
-    nodes.push(node);
+    const sourceCollection = options.sourceCollection || options.recordType || laneId || "scopeSnapshotSourceNodes";
+    recordScopeSnapshotRendererStage("normalization", { status: "started", inputNodeCount: nodes.length, sourceCollections: { [sourceCollection]: 1 } });
+    const safeRecord = scopeSnapshotSafeRecord(record, fallback, sourceCollection);
+    try {
+      const label = scopeSnapshotNodeLabel(safeRecord, fallback);
+      if (!label) {
+        scopeSnapshotRecordProjectionDiagnostic({ stage: "node normalization", sourceCollection, status: "skipped", message: "Missing label after normalization.", recordType: options.recordType || laneId });
+        return;
+      }
+      const reference = scopeSnapshotRecordReference(safeRecord);
+      const recordType = options.recordType || laneId;
+      const presentationKeyBase = scopeSnapshotPresentationKey(laneId, safeRecord, recordType, label, reference, fallback);
+      const unique = scopeSnapshotUniqueNodeId(nodes, presentationKeyBase);
+      const presentationType = scopeSnapshotPresentationType(safeRecord, recordType);
+      const semanticCategory = scopeSnapshotSemanticCategory(laneId, recordType);
+      const subevaluationLabel = scopeSnapshotSubevaluationLabel(safeRecord, label || fallback);
+      const sourceText = scopeSnapshotSourceTextForRecord(safeRecord, reference);
+      const supportingReferences = scopeSnapshotReferenceLabelsFromRecord(safeRecord).filter((item) => item !== reference?.label);
+      const node = {
+        id: unique.id,
+        presentationKey: unique.id,
+        presentationKeyBase,
+        presentationKeyCollision: unique.collision,
+        presentationType,
+        laneId,
+        label,
+        reference,
+        record: safeRecord,
+        recordType,
+        targetSection: options.targetSection || SCOPE_SNAPSHOT_LANES.find((lane) => lane.id === laneId)?.targetSection || "studyReferenceIndexSection",
+        confidence: displayConfidence(safeRecord.confidence || safeRecord.evidenceWeight || options.confidence || "grounded"),
+        status: normalizeText(safeRecord.status || safeRecord.promotionStatus || safeRecord.resolutionStatus || options.status || "resolved"),
+        provenance: normalizeText(safeRecord.provenance || safeRecord.semanticSourceLayer || safeRecord.sourceCollection || options.provenance || "existing scoped runtime record"),
+        evidence: normalizeText(safeRecord.evidence || safeRecord.sourceGrounding || safeRecord.sourcePhrase || safeRecord.reason || options.evidence || ""),
+        primaryReference: reference?.label || normalizeText(safeRecord.primaryReference || safeRecord.sourceReference || safeRecord.sourceScope || ""),
+        supportingReferences,
+        semanticCategory,
+        subevaluationLabel,
+        sourceText,
+        evaluationText: scopeSnapshotEvaluationText(safeRecord, subevaluationLabel || label),
+        graphPrimaryLabel: reference?.label || trimText(label, 42),
+        graphSecondaryLabel: [semanticCategory, subevaluationLabel].filter(Boolean).join(" - ")
+      };
+      node.layerIds = scopeSnapshotLayerIdsForNode(node);
+      nodes.push(node);
+    } catch (error) {
+      scopeSnapshotRecordProjectionDiagnostic({
+        stage: "node normalization",
+        sourceCollection,
+        status: "skipped",
+        message: `${error?.name || "Error"}: ${error?.message || String(error || "unknown error")}`,
+        recordType: options.recordType || laneId,
+        label: fallback
+      });
+    }
   }
 
   function scopeSnapshotSourceNodes() {
@@ -13826,6 +13919,37 @@ createRevelationPartsSection(item.subEvents)
     return nodes;
   }
 
+  function scopeSnapshotSourceCollectionCounts() {
+    const safeCount = (producer) => {
+      try {
+        return Number(producer() || 0);
+      } catch (error) {
+        return `error:${error?.name || "Error"}`;
+      }
+    };
+    return {
+      studyReferenceActors: safeCount(() => asArray(studyReferenceIndexRecords()[0]?.actors).length),
+      orderedEvents: safeCount(() => scopedSemanticRecords(studyData.orderedEvents).length),
+      timelineRecords: safeCount(() => promotedTimelineRecords().length),
+      relationshipRecords: safeCount(() => promotedRelationshipRecords().length),
+      dialoguePreview: safeCount(() => dialogueRelationshipPreviewRecords().length),
+      themeRecords: safeCount(() => promotedThemeRecords().length),
+      principleRecords: safeCount(() => principleExtractionRecords().length),
+      journeyRecords: safeCount(() => journeyNarrativeArcRecords().length),
+      pronounUnresolved: safeCount(() => pronounResolutionPreviewRecords().filter((record) => /unresolved|ambiguous/i.test(record.status || "")).length),
+      audienceUnresolved: safeCount(() => audienceDetectionPreviewRecords().filter((record) => /unresolved|ambiguous/i.test(record.status || "")).length),
+      speakerUnresolved: safeCount(() => speakerDetectionPreviewRecords().filter((record) => /unresolved|ambiguous/i.test(record.status || "")).length),
+      semanticAmbiguities: safeCount(() => asArray(studyData.semanticAmbiguities).length),
+      currentStudyItems: safeCount(() => crossReferenceSetRecords().filter((record) => isManualCurrentStudyRecord(record) || isSourceScopeCurrentStudyRecord(record)).length),
+      copyRenderSelections: safeCount(() => asArray(scopeSnapshotViewState.copyRenderSelections).length),
+      knowledgeGraph: safeCount(() => scopedSemanticRecords(studyData.knowledgeGraph).length),
+      principleNetworks: safeCount(() => scopedSemanticRecords(studyData.principleNetworks).length),
+      principleRelationships: safeCount(() => scopedSemanticRecords(studyData.principleRelationships).length),
+      sceneLens: safeCount(() => scopedSemanticRecords(studyData.sceneModels).length),
+      semanticQuestions: safeCount(() => scopedSemanticRecords(studyData.semanticQuestions).length)
+    };
+  }
+
   function scopeSnapshotSharedEventRecords() {
     return scopedSemanticRecords(studyData.referenceGraph)
       .filter((record) => /parallel|synoptic|shared event|same event/i.test(scopeSnapshotRecordText(record)))
@@ -13856,7 +13980,10 @@ createRevelationPartsSection(item.subEvents)
 
   function scopeSnapshotBuildGraphModel() {
     const started = nowForDiagnostics();
+    recordScopeSnapshotRendererStage("source-resolution", { status: "started" });
     const allNodes = scopeSnapshotSourceNodes();
+    recordScopeSnapshotRendererStage("source-resolution", { status: "complete", inputNodeCount: allNodes.length, projectedNodeCount: allNodes.length });
+    recordScopeSnapshotRendererStage("projection", { status: "started", inputNodeCount: allNodes.length });
     const sharedEvents = scopeSnapshotSharedEventRecords();
     const bounds = scopeSnapshotAxisBounds(allNodes);
     const axisGranularity = scopeSnapshotAxisGranularity(bounds, allNodes);
@@ -13874,6 +14001,7 @@ createRevelationPartsSection(item.subEvents)
       if (x == null) unpositioned.push(nextNode);
       else positioned.push(nextNode);
     });
+    recordScopeSnapshotRendererStage("layout", { status: "positioned", inputNodeCount: allNodes.length, projectedNodeCount: positioned.length, message: `${unpositioned.length} unpositioned` });
     const laneNodes = visibleLanes.map((lane) => {
       const lanePositioned = positioned.filter((node) => node.laneId === lane.id);
       const budget = Math.min(SCOPE_SNAPSHOT_PREVIEW_LIMIT, scopeSnapshotLaneBudget(lod, lane));
@@ -13927,6 +14055,7 @@ createRevelationPartsSection(item.subEvents)
       : true;
     const fitScopeOverflow = scopeSnapshotViewState.zoomMode !== "auto" && scopeSnapshotViewState.zoomMode !== "fit" && scopeSnapshotViewState.detailLevel === "more";
     const renderTime = Math.round((nowForDiagnostics() - started) * 10) / 10;
+    recordScopeSnapshotRendererStage("projection", { status: "complete", inputNodeCount: allNodes.length, projectedNodeCount: positioned.length, renderedObjectCount: laneNodes.reduce((sum, lane) => sum + lane.nodes.length + lane.clusters.length, 0) });
     return {
       schemaVersion: 1,
       graphMode: scopeSnapshotViewState.graphMode,
@@ -14055,12 +14184,17 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotSvg(model = {}) {
+    recordScopeSnapshotRendererStage("svg-create", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
     const laneHeight = 58;
     const top = 58;
     const width = Math.max(1320, 1020 + model.positionedCount * 6);
     const height = top + Math.max(1, model.lanes.length) * laneHeight + 36;
     const laneLabelWidth = 184;
-    const xFor = (percent) => Math.round((Number(percent || 8) / 100) * (width - laneLabelWidth - 36) + laneLabelWidth);
+    const xFor = (percent) => {
+      const value = Number(percent);
+      const safePercent = Number.isFinite(value) ? clampNumber(value, 6, 94) : 8;
+      return Math.round((safePercent / 100) * (width - laneLabelWidth - 36) + laneLabelWidth);
+    };
     const yFor = (index) => top + index * laneHeight + 24;
     const ticks = scopeSnapshotTickLabels(model);
     const chapterDivider = model.bounds?.minChapter !== model.bounds?.maxChapter
@@ -14072,9 +14206,11 @@ createRevelationPartsSection(item.subEvents)
       const y = yFor(laneIndex);
       const style = scopeSnapshotLaneStyle(lane.id);
       const sortedNodes = lane.nodes.slice().sort((left, right) => Number(left.x || 0) - Number(right.x || 0));
+      recordScopeSnapshotRendererStage("edge-render", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
       const connector = sortedNodes.length > 1
         ? `<polyline points="${sortedNodes.map((node, nodeIndex) => `${xFor(node.x)},${y + ((nodeIndex % 3) - 1) * 8}`).join(" ")}" fill="none" stroke="${style.color}" stroke-width="2" stroke-opacity=".85"></polyline>`
         : "";
+      recordScopeSnapshotRendererStage("node-render", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
       const nodes = sortedNodes.map((node, nodeIndex) => {
         const x = xFor(node.x);
         const radial = scopeSnapshotRadialOffset(Number(node.anchorChildIndex || 0), Number(node.anchorRecordCount || 1), Boolean(node.anchorExpanded || Number(node.anchorRecordCount || 1) > 1));
@@ -14131,12 +14267,15 @@ createRevelationPartsSection(item.subEvents)
       }).join("");
       return `<g class="scope-snapshot-lane"><rect class="scope-snapshot-lane-band" x="0" y="${y - 28}" width="${width}" height="${laneHeight}" rx="0"></rect><rect class="scope-snapshot-lane-header" x="0" y="${y - 28}" width="${laneLabelWidth - 6}" height="${laneHeight}"></rect><text class="scope-snapshot-lane-symbol" x="24" y="${y + 5}" fill="${style.color}">${escapeHtml(style.symbol)}</text><text class="scope-snapshot-lane-label" x="54" y="${y - 1}">${escapeHtml(lane.label)}</text><text class="scope-snapshot-lane-count" x="${laneLabelWidth - 24}" y="${y + 5}">${lane.totalNodes}</text><line x1="${laneLabelWidth}" y1="${y}" x2="${width - 28}" y2="${y}"></line>${connector}${nodes}${clusters}</g>`;
     }).join("");
+    recordScopeSnapshotRendererStage("edge-render", { status: "complete", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount, inputEdgeCount: model.lanes.reduce((sum, lane) => sum + Math.max(0, asArray(lane.nodes).length - 1), 0) });
     const tickRows = ticks.map((tick) => {
       const x = xFor(tick.x);
       return `<g class="scope-snapshot-tick"><line x1="${x}" y1="24" x2="${x}" y2="${height - 28}"></line><text x="${x}" y="18">${escapeHtml(tick.label)}</text></g>`;
     }).join("");
     const focusClass = scopeSnapshotViewState.selectedGraphId ? " has-focused-node" : "";
-    return `<svg class="scope-snapshot-svg${focusClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(model.startReference)} to ${escapeHtml(model.endReference)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
+    const svg = `<svg class="scope-snapshot-svg${focusClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(model.startReference)} to ${escapeHtml(model.endReference)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
+    recordScopeSnapshotRendererStage("svg-create", { status: "complete", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount, svgCreated: true });
+    return svg;
   }
 
   function scopeSnapshotSummaryLines(model = scopeSnapshotGraphModel()) {
@@ -14670,6 +14809,13 @@ createRevelationPartsSection(item.subEvents)
     const panel = document.createElement("section");
     panel.className = "scope-snapshot-layer-panel";
     panel.setAttribute("aria-label", "Scope Snapshot information layers");
+    const layerStatus = document.createElement("p");
+    layerStatus.className = "scope-snapshot-layer-summary";
+    layerStatus.textContent = [
+      `Layers: ${asArray(model.layerModel?.activeLayerIds).length} active`,
+      `recommended ${asArray(model.layerModel?.recommendedLayerIds).length}`,
+      `available ${asArray(model.layerModel?.availability).filter((layer) => layer.available).length}`
+    ].join(" | ");
     const presetRow = document.createElement("div");
     presetRow.className = "scope-snapshot-layer-presets";
     Object.entries(SCOPE_SNAPSHOT_LAYER_PRESETS).forEach(([presetId, preset]) => {
@@ -14723,7 +14869,7 @@ createRevelationPartsSection(item.subEvents)
     });
     const note = document.createElement("p");
     note.textContent = `Range relevance: ${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}. Preset: ${SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]?.label || "Custom"}. Hidden by layers: ${model.hiddenLayerNodes || 0}.`;
-    panel.append(summary, presetRow, layerGroups, note);
+    panel.append(layerStatus, presetRow, layerGroups, note);
     return panel;
   }
 
@@ -14952,6 +15098,7 @@ createRevelationPartsSection(item.subEvents)
     ].join(" | ");
     const lower = document.createElement("div");
     lower.className = "scope-snapshot-lower-grid";
+    recordScopeSnapshotRendererStage("focus-init", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
     lower.append(createScopeSnapshotDetailPanel(model), createScopeSnapshotLegend(model), createScopeSnapshotMiniMap(model));
     const footer = document.createElement("div");
     footer.className = "scope-snapshot-footer";
@@ -14973,6 +15120,10 @@ createRevelationPartsSection(item.subEvents)
     const count = document.getElementById("scopeSnapshotCount");
     if (!container || !count) return;
     try {
+      scopeSnapshotViewState.rendererInvocationCount += 1;
+      scopeSnapshotViewState.lastRendererError = null;
+      recordScopeSnapshotRouteDiagnostic("renderScopeSnapshot:start");
+      recordScopeSnapshotRendererStage("full-study-load", { status: fullStudyDataLoaded ? "complete" : "startup data", message: fullStudyDataLoaded ? "Full study payload loaded." : "Rendering with currently available study payload." });
       const model = scopeSnapshotGraphModel();
       const searchable = scopeSnapshotSummaryLines(model).join(" ");
       clearElement(container);
@@ -14986,11 +15137,14 @@ createRevelationPartsSection(item.subEvents)
         return;
       }
       enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot");
+      recordScopeSnapshotRendererStage("host-resolution", { status: "complete", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
       container.appendChild(createScopeSnapshotCard(model));
       setupScopeSnapshotMiniMapSync();
       enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:mounted");
+      recordScopeSnapshotRendererStage("post-render", { status: "complete", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount, svgCreated: Boolean(container.querySelector("svg.scope-snapshot-svg")) });
+      recordScopeSnapshotRouteDiagnostic("renderScopeSnapshot:mounted", [`nodeCount=${model.nodeCount}`, `positioned=${model.positionedCount}`]);
     } catch (error) {
-      renderScopeSnapshotFailure(error, "renderScopeSnapshot");
+      renderScopeSnapshotFailure(error, `renderScopeSnapshot:${scopeSnapshotViewState.rendererStage || "unknown"}`);
     }
   }
 
@@ -15008,9 +15162,11 @@ createRevelationPartsSection(item.subEvents)
     const count = document.getElementById("scopeSnapshotCount");
     if (count) count.textContent = "0 node(s)";
     enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:empty");
+    recordScopeSnapshotRouteDiagnostic("renderScopeSnapshot:empty", [message]);
   }
 
   function renderScopeSnapshotFailure(error, context = "scope snapshot") {
+    const errorSummary = recordScopeSnapshotRendererError(error, context);
     const container = document.getElementById("scopeSnapshotCards");
     const count = document.getElementById("scopeSnapshotCount");
     if (count) count.textContent = "Error";
@@ -15026,11 +15182,9 @@ createRevelationPartsSection(item.subEvents)
       container.appendChild(card);
     }
     showDiagnosticMessage("Graph could not be displayed.");
-    console.error("I.C.E. Scope Snapshot presentation failure", {
-      context,
-      error: error?.message || String(error || "unknown error")
-    });
+    logScopeSnapshotRendererFailure(error, errorSummary);
     enforceScopeSnapshotPresentationInvariant("renderScopeSnapshot:failure");
+    recordScopeSnapshotRouteDiagnostic("renderScopeSnapshot:failure", [context, error?.message || String(error || "unknown error")]);
   }
 
   function linearScopeSnapshotInspectorLines() {
@@ -15040,9 +15194,16 @@ createRevelationPartsSection(item.subEvents)
     const miniMapDiagnostics = scopeSnapshotViewState.miniMapDiagnostics || {};
     const breadthDiagnostics = scopeSnapshotBreadthControlDiagnostics();
     const latestLayoutDiagnostic = asArray(scopeSnapshotViewState.layoutDiagnostics)[0] || null;
+    const latestRouteDiagnostic = asArray(scopeSnapshotViewState.routeDiagnostics)[0] || null;
+    const rendererError = scopeSnapshotViewState.lastRendererError || null;
     const layoutState = scopeSnapshotLayoutState("inspector");
     return [
       `Graph mode: ${model.graphMode}`,
+      `Graph route: active=${scopeSnapshotViewState.activePresentationRoute || "none"}; rendererInvocations=${scopeSnapshotViewState.rendererInvocationCount}; latest=${latestRouteDiagnostic ? `${latestRouteDiagnostic.action}; resolved=${latestRouteDiagnostic.resolvedView}; diagnosticsHidden=${latestRouteDiagnostic.diagnosticsHidden}; graphConnected=${latestRouteDiagnostic.graphHostConnected}; graphSize=${latestRouteDiagnostic.graphHostWidth}x${latestRouteDiagnostic.graphHostHeight}; svg=${latestRouteDiagnostic.svgCount}; nodeElements=${latestRouteDiagnostic.nodeElementCount}; notes=${asArray(latestRouteDiagnostic.notes).join(", ") || "none"}` : "none"}`,
+      `Renderer stage: ${scopeSnapshotViewState.rendererStage || "none"}; lastError=${rendererError ? `${rendererError.stage}; ${rendererError.name}: ${rendererError.message}; stack=${rendererError.stackLocation || "not captured"}` : "none"}`,
+      `Source collection counts: ${Object.entries(scopeSnapshotSourceCollectionCounts()).map(([key, value]) => `${key}=${value}`).join(", ")}`,
+      `Projection diagnostics: ${asArray(scopeSnapshotViewState.projectionDiagnostics).slice(0, 6).map((item, index) => `${index + 1}. ${item.stage}/${item.sourceCollection}/${item.status}: ${item.message}`).join(" | ") || "none"}`,
+      `Recent graph route diagnostics: ${asArray(scopeSnapshotViewState.routeDiagnostics).slice(0, 5).map((item, index) => `${index + 1}. ${item.action} resolved=${item.resolvedView} modules=${asArray(item.activeModules).join(",") || "none"} graph=${item.graphHostConnected ? "mounted" : "not-mounted"} ${item.graphHostWidth}x${item.graphHostHeight}`).join(" | ") || "none"}`,
       `LOD state: ${model.lodLabel}`,
       `Scope hierarchy level: ${model.scopeHierarchyLevel}`,
       `Visual breadth: ${scopeSnapshotViewState.snapshotVisualBreadth} (${scopeSnapshotCurrentModeLabel()}); numeric compatibility=${Math.round(scopeSnapshotViewState.scopeBreadth)}`,
@@ -29790,6 +29951,161 @@ createRevelationPartsSection(item.subEvents)
     return after;
   }
 
+  function scopeSnapshotRouteState(action = "") {
+    const section = document.getElementById("scopeSnapshotSection");
+    const container = document.getElementById("scopeSnapshotCards");
+    const graph = container?.querySelector(".scope-snapshot-graph");
+    const card = container?.querySelector(".scope-snapshot-card");
+    const diagnostics = document.getElementById("diagnosticPanel");
+    const group = section?.closest(".study-section-group");
+    const graphRect = graph?.getBoundingClientRect?.();
+    const cardRect = card?.getBoundingClientRect?.();
+    return {
+      action,
+      requestedView: "graph",
+      resolvedView: section && !section.hidden && diagnostics?.hidden !== false ? "graph" : "mixed",
+      activeRoute: scopeSnapshotViewState.activePresentationRoute || "none",
+      activeModules: Array.from(selectedPresentationModules).sort(),
+      sectionHidden: section ? Boolean(section.hidden) : null,
+      diagnosticsHidden: diagnostics ? Boolean(diagnostics.hidden) : null,
+      groupOpen: group ? Boolean(group.open) : null,
+      graphMode: scopeSnapshotViewState.graphMode,
+      graphHostConnected: Boolean(graph?.isConnected),
+      graphHostWidth: graphRect ? Math.round(graphRect.width) : 0,
+      graphHostHeight: graphRect ? Math.round(graphRect.height) : 0,
+      cardWidth: cardRect ? Math.round(cardRect.width) : 0,
+      graphChildCount: graph ? graph.childElementCount : 0,
+      svgCount: graph ? graph.querySelectorAll("svg").length : 0,
+      nodeElementCount: graph ? graph.querySelectorAll("[data-snapshot-node-id], [data-snapshot-cluster-id]").length : 0,
+      edgeElementCount: graph ? graph.querySelectorAll("polyline, line.scope-snapshot-edge, path.scope-snapshot-edge").length : 0,
+      renderedCards: container ? container.querySelectorAll(".scope-snapshot-card").length : 0,
+      countLabel: document.getElementById("scopeSnapshotCount")?.textContent || "",
+      recordedAt: new Date().toISOString()
+    };
+  }
+
+  function recordScopeSnapshotRouteDiagnostic(action = "", notes = []) {
+    const entry = {
+      ...scopeSnapshotRouteState(action),
+      notes: asArray(notes).map((note) => normalizeText(note)).filter(Boolean)
+    };
+    scopeSnapshotViewState.routeDiagnostics.unshift(entry);
+    scopeSnapshotViewState.routeDiagnostics = scopeSnapshotViewState.routeDiagnostics.slice(0, 12);
+    return entry;
+  }
+
+  function recordScopeSnapshotRendererStage(stage = "", details = {}) {
+    scopeSnapshotViewState.rendererStage = normalizeText(stage || "unknown");
+    const entry = {
+      stage: scopeSnapshotViewState.rendererStage,
+      sourceCollections: details.sourceCollections || scopeSnapshotSourceCollectionCounts(),
+      inputNodeCount: Number(details.inputNodeCount || 0),
+      inputEdgeCount: Number(details.inputEdgeCount || 0),
+      projectedNodeCount: Number(details.projectedNodeCount || 0),
+      renderedObjectCount: Number(details.renderedObjectCount || 0),
+      svgCreated: Boolean(details.svgCreated),
+      hostConnected: scopeSnapshotRouteState(stage).graphHostConnected,
+      hostWidth: scopeSnapshotRouteState(stage).graphHostWidth,
+      hostHeight: scopeSnapshotRouteState(stage).graphHostHeight,
+      status: details.status || "started",
+      message: normalizeText(details.message || ""),
+      recordedAt: new Date().toISOString()
+    };
+    scopeSnapshotViewState.routeDiagnostics.unshift({
+      ...scopeSnapshotRouteState(`renderer:${stage}`),
+      rendererStage: entry.stage,
+      sourceCollections: entry.sourceCollections,
+      inputNodeCount: entry.inputNodeCount,
+      projectedNodeCount: entry.projectedNodeCount,
+      renderedObjectCount: entry.renderedObjectCount,
+      svgCreated: entry.svgCreated,
+      notes: [entry.status, entry.message].filter(Boolean)
+    });
+    scopeSnapshotViewState.routeDiagnostics = scopeSnapshotViewState.routeDiagnostics.slice(0, 12);
+    return entry;
+  }
+
+  function recordScopeSnapshotRendererError(error, context = "scope snapshot") {
+    const rendererErrorSummary = {
+      context,
+      stage: scopeSnapshotViewState.rendererStage || "unknown",
+      name: error?.name || "Error",
+      message: error?.message || String(error || "unknown error"),
+      stack: String(error?.stack || ""),
+      stackLocation: normalizeText(String(error?.stack || "").split("\n")[1] || ""),
+      sourceCollections: scopeSnapshotSourceCollectionCounts(),
+      routeState: scopeSnapshotRouteState(`error:${context}`),
+      projectionDiagnostics: asArray(scopeSnapshotViewState.projectionDiagnostics).slice(0, 8),
+      recordedAt: new Date().toISOString()
+    };
+    scopeSnapshotViewState.lastRendererError = rendererErrorSummary;
+    return rendererErrorSummary;
+  }
+
+  function logScopeSnapshotRendererFailure(error, details = {}) {
+    try {
+      const rendererErrorSummary = details?.rendererErrorSummary ?? details?.errorSummary ?? details ?? {};
+      const routeState = rendererErrorSummary?.routeState ?? scopeSnapshotRouteState("graph-render-failure");
+      const sourceCollections = rendererErrorSummary?.sourceCollections ?? scopeSnapshotSourceCollectionCounts();
+      const sourceEntries = Object.entries(sourceCollections && typeof sourceCollections === "object" ? sourceCollections : {});
+      const primarySource = sourceEntries.find(([, value]) => typeof value === "number" && value > 0) || sourceEntries[0] || ["unknown", 0];
+      console.error("[I.C.E. Graph Render Failure]", {
+        stage: rendererErrorSummary?.stage ?? scopeSnapshotViewState.rendererStage ?? "unknown",
+        errorName: rendererErrorSummary?.name ?? error?.name ?? "Error",
+        errorMessage: rendererErrorSummary?.message ?? error?.message ?? String(error ?? "unknown error"),
+        stack: rendererErrorSummary?.stack ?? String(error?.stack ?? ""),
+        hostConnected: Boolean(routeState?.graphHostConnected),
+        hostWidth: Number(routeState?.graphHostWidth || 0),
+        hostHeight: Number(routeState?.graphHostHeight || 0),
+        sourceCollection: primarySource[0],
+        sourceCount: primarySource[1],
+        projectedNodeCount: Number(routeState?.nodeElementCount || 0),
+        projectedEdgeCount: Number(routeState?.edgeElementCount || 0),
+        rendererInvocationCount: Number(scopeSnapshotViewState.rendererInvocationCount || 0)
+      }, error);
+    } catch (loggingError) {
+      try {
+        console.error("[I.C.E. Graph Render Failure] diagnostic logging failed", loggingError, error);
+      } catch (_ignored) {
+        // Logging must never replace the original graph failure.
+      }
+    }
+  }
+
+  function activateScopeSnapshotPresentationRoute(action = "Graph activation") {
+    const before = scopeSnapshotRouteState(`${action}:before`);
+    scopeSnapshotViewState.activePresentationRoute = "graph";
+    scopeSnapshotViewState.graphMode = "linear";
+    selectedPresentationModules = new Set(["overview", "snapshot"]);
+    updatePresentationModuleControls();
+    applyPresentationModuleVisibility();
+    const shell = document.querySelector(".study-shell");
+    if (shell) {
+      shell.dataset.activeStudyView = "graph";
+      shell.dataset.studyPresentationMode = "graph";
+    }
+    const section = document.getElementById("scopeSnapshotSection");
+    const diagnostics = document.getElementById("diagnosticPanel");
+    if (section) {
+      section.hidden = false;
+      section.removeAttribute("hidden");
+      section.dataset.activeStudyView = "graph";
+      section.dataset.graphRouteState = "active";
+    }
+    if (diagnostics) {
+      diagnostics.hidden = true;
+      diagnostics.dataset.graphRouteState = "inactive";
+    }
+    const after = enforceScopeSnapshotPresentationInvariant(`${action}:route`);
+    recordScopeSnapshotRouteDiagnostic(action, [
+      `modules ${before.activeModules.join(",") || "none"} -> ${Array.from(selectedPresentationModules).sort().join(",")}`,
+      `diagnostics hidden=${document.getElementById("diagnosticPanel")?.hidden === true}`,
+      `section hidden=${document.getElementById("scopeSnapshotSection")?.hidden === true}`,
+      `layout sectionHidden=${after.sectionHidden}`
+    ]);
+    return scopeSnapshotRouteState(`${action}:after`);
+  }
+
   function scopeSnapshotScrollIntoView(element, action = "", options = {}) {
     if (!element?.scrollIntoView) return;
     const before = scopeSnapshotLayoutState(action);
@@ -30694,17 +31010,14 @@ createRevelationPartsSection(item.subEvents)
     if (!section) return;
     try {
       showDiagnosticMessage("Opening Graph...");
-      enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:start");
-      if (!selectedPresentationModules.has("snapshot")) {
-        selectedPresentationModules.add("snapshot");
-        selectedPresentationModules.add("overview");
-        updatePresentationModuleCheckboxes();
-        applyPresentationModuleVisibility();
-      }
+      activateScopeSnapshotPresentationRoute("openScopeSnapshotPanel:start");
       await ensureFullStudyDataLoaded();
+      activateScopeSnapshotPresentationRoute("openScopeSnapshotPanel:afterDataLoad");
       safeRenderSection("Linear Scope Snapshot", renderScopeSnapshot, currentSearchTerm());
+      recordScopeSnapshotRouteDiagnostic("openScopeSnapshotPanel:afterRender");
       scopeSnapshotScrollIntoView(section, "openScopeSnapshotPanel", { block: "start" });
       enforceScopeSnapshotPresentationInvariant("openScopeSnapshotPanel:end");
+      recordScopeSnapshotRouteDiagnostic("openScopeSnapshotPanel:end");
       showDiagnosticMessage("");
     } catch (error) {
       renderScopeSnapshotFailure(error, "openScopeSnapshotPanel");

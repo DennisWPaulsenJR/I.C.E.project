@@ -31,6 +31,10 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Graph Presentation Rendering repair is implemented locally but remains at the GPT/live-browser review gate until the graph is visibly observed in Chrome.
+- Boundary 1: `8977c47` fixed the initial Graph button activation regression. Boundary 2: current route WIP canonicalizes Graph to `overview` + `snapshot`, hides diagnostics, marks the Snapshot section active, forces linear graph mode, reapplies after full study data load, and records live graph host diagnostics.
+- Boundary 3: current renderer WIP adds stage diagnostics and presentation-only normalization so malformed/non-object graph candidates are neutralized or skipped with diagnostics instead of crashing the base graph. It also adds fallback presentation keys and clamps invalid SVG coordinates.
+- Automated validation has passed, including `qa:graph-activation`; direct browser-control navigation to the extension Study Panel URL was blocked by Chrome URL policy and no open Study Panel tab is currently claimable, so manual Graph visibility verification must still be performed from an already-open Study Panel tab before commit.
 - Browser extension interface direction: the popup is now a lightweight Study Collection Tool, not a miniature Study Panel. Its normal surface is limited to Analyze Page, Add Page, Manual Select, Clear All, Open Study Panel, and the visible temporary Current Study list.
 - Temporary Current Study collection uses the existing `ICE_CROSS_REFERENCE_SET` contract for page and manual-selection items. Individual removal and Clear All affect only this temporary collection; they do not delete stored analysis, semantic records, saved studies, preferences, or canonical Study Scope.
 - Popup-triggered Analyze Page uses the existing analysis pipeline with canonical-scope preservation for the collection workflow. Analysis status can mark the temporary Current Study page item as analyzed, but Analyzed remains distinct from Added.

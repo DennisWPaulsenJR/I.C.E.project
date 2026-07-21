@@ -4881,6 +4881,49 @@ Preserved:
 - queue/crawling behavior
 - graph rendering from existing graphable records only
 
+## 2026-07-19 - Graph Presentation Rendering Repair WIP
+
+Continued the focused Graph repair after live manual testing showed the route now activates but the controlled graph error state appears: `Graph could not be displayed.`
+
+Boundaries separated:
+- `8977c47` fixed the initial Graph button activation regression.
+- Current route WIP fixes presentation state: Graph now canonicalizes to `overview` + `snapshot`, hides diagnostics, marks the Snapshot section active, forces linear graph mode, and reapplies after full study data loads.
+- Current renderer WIP hardens graph preparation and SVG rendering so malformed optional display candidates cannot crash the base graph.
+
+Renderer/projection repair:
+- Added renderer stages for full study load, presentation-route activation, graph source resolution, graph projection, layout, DOM/SVG creation, renderer invocation, focus initialization, and post-render diagnostics.
+- Added captured renderer error metadata: stage, exception name, concise message, stack location, source collection counts, route state, graph host dimensions, projection diagnostics, SVG state, and renderer invocation count.
+- Added presentation-only record normalization for non-object or malformed graph candidates. Malformed display records are wrapped in neutral presentation fallbacks or skipped with diagnostics; source records are not mutated.
+- Added fallback presentation keys for malformed candidates.
+- Clamped invalid/non-finite SVG x-coordinates before rendering.
+- Kept empty and controlled failure states available for true unexpected failures.
+
+Validation passed:
+- `git diff --check`
+- `node --check background.js`
+- `node --check study.js`
+- `node --check popup.js`
+- `node --check qa/entity-classification-qa.js`
+- `node --check qa/graph-activation-qa.js`
+- `npm.cmd run qa:entity-classification`
+- `npm.cmd run qa:matthew1`
+- `npm.cmd run qa:matthew-pages`
+- `npm.cmd run review:matthew-session`
+- `npm.cmd run qa:graph-activation`
+
+Live browser gate:
+- Chrome currently exposes Matthew and ChatGPT tabs, but no open Study Panel tab is available to claim.
+- Direct browser-control navigation to the extension Study Panel URL remains blocked by browser URL policy.
+- Required visible Graph verification is still pending; do not commit until the graph is observed in Chrome without the controlled error state.
+
+Preserved:
+- semantic records
+- Context Lock
+- canonical Study Scope
+- storage authority
+- queue/crawling behavior
+- graph rendering from existing graphable records only
+
 ## 2026-06-19 - Fix Bottom Study Panel Scope Leakage
 
 Audited bottom Study Panel sections after retained Matthew 1, Matthew 2, and Matthew 3 records appeared unexpectedly.
