@@ -4986,3 +4986,27 @@ Validation passed:
 - `git diff --check`
 - `npm.cmd run qa:matthew-pages`
 - `npm.cmd run review:matthew-session`
+
+## 2026-07-21 - Complete Clear All Persistence Removal
+
+Audited the popup Clear All path after live evidence showed a fresh Study Panel still reconstructing a Matthew 1 -> Matthew 10 graph with visible Matthew 1, 3, 5, 7, and 9 markers.
+
+Root cause:
+- The earlier Clear All repair removed local `ICE_` keys from the popup, but did not establish a background/runtime cache invalidation contract.
+- A background analysis pipeline could hold derived records in memory and write `storageUpdate` after the popup deletion completed.
+- An already-open Study Panel could also retain full-study graph/model caches until a fresh load or cache invalidation occurred.
+
+Fix:
+- Added explicit `ICE_CLEAR_ALL_STUDY_DATA` background message handling.
+- Added an explicit clear-all study-data key list instead of relying on a wildcard storage sweep.
+- Added background `clearAllStudyDataGeneration` and a pipeline stale-write guard so pre-clear pipeline output cannot repopulate storage.
+- Added session-storage key removal for known study keys when `chrome.storage.session` is available.
+- Added Study Panel reset on `ICE_PANEL_UI_STATE.lastAction === "popup_clear_all_ice_data"` so open panels clear `studyData`, deferred sections, Snapshot caches, Copy Render selections, and focused graph state.
+- Preserved only documented preference fields in `ICE_PANEL_UI_STATE`: selected adapter/lens choices plus clear metadata.
+
+Automated QA:
+- Extended `qa:clear-all-storage` to simulate Matthew 1, 3, 5, 7, and 9 stored records with a Matthew 1 -> Matthew 10 selected range.
+- QA verifies reconstructed Study Panel markers disappear, Current Study and Stored Session are empty, session storage is cleared, stale pipeline guards exist, fallback clearing remains idempotent, cancellation preserves records, and failures do not report success.
+
+Live browser gate:
+- Pending user/live verification in the unpacked extension: analyze/store Matthew 1, 3, 5, 7, and 9; Clear All; close all Study Panel tabs; reopen twice; confirm no Matthew markers, empty Stored Session and Current Study, intentional empty graph, preserved preferences, and clean console.

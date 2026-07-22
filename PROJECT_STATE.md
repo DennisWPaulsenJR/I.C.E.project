@@ -1299,3 +1299,12 @@ Latest graph activation repair:
 - Graph button activation now uses a delegated `data-open-scope-snapshot` hook plus explicit Enter/Space keyboard handling.
 - Opening Graph now loads full study data, renders Linear Scope Snapshot directly, and displays either existing graphable records, `No graphable records are available for the current study.`, or `Graph could not be displayed.`
 - Repair is presentation-only and adds no semantic mutation, storage authority, queue processing, crawling, or source-scope changes.
+
+Latest Clear All persistence repair:
+- Popup Clear All now uses an explicit `ICE_CLEAR_ALL_STUDY_DATA` background reset contract plus an explicit known-study-key deletion list.
+- Background analysis uses a clear-generation guard to prevent stale in-flight pipeline results from rewriting deleted study data after Clear All.
+- Study Panel observes the clear marker in `ICE_PANEL_UI_STATE` and resets in-memory `studyData`, deferred sections, Snapshot caches, Copy Render selections, and selected graph state.
+- Session-storage study keys are cleared when `chrome.storage.session` is available.
+- Preserved keys are intentionally narrow: `ICE_PANEL_UI_STATE` keeps selected adapter/lens preferences and clear metadata. Stored Session, Current Study, selected ranges, active source, analyzed pages, queues, captures, semantic records, graph records, and snapshots are removed.
+- Automated `qa:clear-all-storage` covers Matthew 1, 3, 5, 7, and 9 reconstruction into a Matthew 1 -> Matthew 10 scope and confirms fresh reopen reconstruction is empty.
+- Live fresh-reopen verification is still required before committing this Clear All milestone.

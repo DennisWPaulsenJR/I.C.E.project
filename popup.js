@@ -19,6 +19,70 @@ document.addEventListener("DOMContentLoaded", async () => {
   const SELECTED_RANGE_KEY = "ICE_SELECTED_RANGE";
   const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
   const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
+  const CLEAR_ALL_STUDY_DATA_KEYS = [
+    CAPTURE_STORAGE_KEY,
+    CAPTURE_HISTORY_KEY,
+    TIMELINE_STORAGE_KEY,
+    EVENT_STORAGE_KEY,
+    PRINCIPLE_STORAGE_KEY,
+    PROPHECY_LINKS_KEY,
+    ORDERED_EVENTS_KEY,
+    ACTOR_TIMELINES_KEY,
+    INTERACTION_GRAPH_KEY,
+    SCENE_MODELS_KEY,
+    FORMATTER_STATUS_KEY,
+    ANALYSIS_STATUS_KEY,
+    ANALYSIS_HISTORY_KEY,
+    CANONICAL_ANALYZED_PAGES_KEY,
+    CANONICAL_ANALYSIS_TARGET_KEY,
+    CROSS_REFERENCE_SET_KEY,
+    ACTIVE_SOURCE_PAGE_KEY,
+    SELECTED_RANGE_KEY,
+    ACTIVE_ADAPTER_KEY,
+    "ICE_ENTITY_ROLE_ITEMS",
+    "ICE_ENTITY_REGISTRY",
+    "ICE_RELATIONSHIP_GRAPH",
+    "ICE_CANONICAL_IDENTITIES",
+    "ICE_MENTION_INDEX",
+    "ICE_DOM_SEMANTIC_HINTS",
+    "ICE_SOURCE_ADAPTERS",
+    "ICE_SCOPE_INTEGRITY",
+    "ICE_SOURCE_DISCOVERY_INDEX",
+    "ICE_REFERENCE_GRAPH",
+    "ICE_REFERENCE_ROLES",
+    "ICE_SEMANTIC_DISTINCTIONS",
+    "ICE_ONTOLOGY_ROLES",
+    "ICE_SEMANTIC_AMBIGUITIES",
+    "ICE_ORIGIN_AUTHORITY_PATHS",
+    "ICE_ENTITY_RELATION_ROLES",
+    "ICE_SEMANTIC_CONTINUITY",
+    "ICE_MOVEMENT_SEMANTICS",
+    "ICE_SEMANTIC_CAUSALITY",
+    "ICE_TEACHING_SEMANTICS",
+    "ICE_PRINCIPLE_RELATIONSHIPS",
+    "ICE_CHARACTER_INTERACTIONS",
+    "ICE_SESSION_CONTINUITY_REVIEW",
+    "ICE_KNOWLEDGE_GRAPH",
+    "ICE_PRINCIPLE_NETWORKS",
+    "ICE_FOCUS_LENS",
+    "ICE_SCOPE_LENS",
+    "ICE_DEPTH_LENS",
+    "ICE_SEMANTIC_QUESTIONS",
+    "ICE_TRUST_VERIFICATION",
+    "ICE_PASSAGE_FUNCTIONS",
+    "ICE_REVELATION_PATTERNS",
+    "ICE_SEMANTIC_EVENTS",
+    "ICE_SEMANTIC_FLOW_CHAINS",
+    "ICE_CROSS_REFERENCE_RELATIONSHIPS",
+    "ICE_ANALYSIS_QUEUE",
+    "ICE_ANALYSIS_QUEUE_STATUS",
+    "ICE_ANALYSIS_QUEUE_HISTORY",
+    "ICE_ANALYSIS_QUEUE_MANIFEST",
+    "ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES",
+    "ICE_JOURNEY_PAGE_SNAPSHOTS",
+    "ICE_GPT_REVIEW_REPORT",
+    "ICE_LANGUAGE_RECORDS"
+  ];
   const POPUP_ADAPTER_OPTIONS = [
     { id: "lds_scripture_adapter", label: "Scripture Adapter", role: "Scripture source structure and references" },
     { id: "generic_html_adapter", label: "Generic Web Adapter", role: "Visible web page evidence" },
@@ -1742,21 +1806,72 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCaptureStatus("Page data cleared.");
   }
 
+  function preservedPanelUiState(previousUiState = {}) {
+    return {
+      selectedAdapterForNewAnalysis: previousUiState.selectedAdapterForNewAnalysis,
+      selectedLensForNewAnalysis: previousUiState.selectedLensForNewAnalysis,
+      selectedLensesForNewAnalysis: previousUiState.selectedLensesForNewAnalysis,
+      lastAction: "popup_clear_all_ice_data",
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  async function removeKnownStudyKeysFromStorageArea(area) {
+    if (!area?.remove) return [];
+    const keys = Array.from(new Set(CLEAR_ALL_STUDY_DATA_KEYS));
+    await area.remove(keys);
+    return keys;
+  }
+
+  async function clearAllIceDataFallback(previousUiState = {}) {
+    const removedLocalKeys = await removeKnownStudyKeysFromStorageArea(chrome.storage.local);
+    const removedSessionKeys = chrome.storage.session
+      ? await removeKnownStudyKeysFromStorageArea(chrome.storage.session)
+      : [];
+    await chrome.storage.local.set({
+      [PANEL_UI_STATE_KEY]: preservedPanelUiState(previousUiState)
+    });
+    return {
+      ok: true,
+      removedLocalKeys,
+      removedSessionKeys,
+      preservedKeys: [PANEL_UI_STATE_KEY],
+      fallback: true
+    };
+  }
 
   async function clearAllIceData() {
     const confirmed = window.confirm(
       "Clear all I.C.E. stored study data and analyzed pages?\n\nThis cannot be undone."
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      setCaptureStatus("Clear All canceled.");
+      return { canceled: true, removedKeys: [] };
+    }
 
     const localData = await chrome.storage.local.get(null);
-    const iceKeys = Object.keys(localData).filter((key) => key.startsWith("ICE_"));
-    if (iceKeys.length) {
-      await chrome.storage.local.remove(iceKeys);
+    const previousUiState = localData[PANEL_UI_STATE_KEY] || {};
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({
+        type: "ICE_CLEAR_ALL_STUDY_DATA",
+        preservedPanelUiState: previousUiState
+      });
+    } catch (_error) {
+      result = null;
     }
+    if (!result?.ok) result = await clearAllIceDataFallback(previousUiState);
 
     await loadAllSummaries();
     setCaptureStatus("All I.C.E. study data cleared.");
+    return {
+      canceled: false,
+      removedKeys: result.removedLocalKeys || [],
+      removedLocalKeys: result.removedLocalKeys || [],
+      removedSessionKeys: result.removedSessionKeys || [],
+      preservedKeys: result.preservedKeys || [PANEL_UI_STATE_KEY],
+      backgroundReset: !result.fallback
+    };
   }
   function normalizeWhitespace(text) {
     return String(text ?? "").replace(/\s+/g, " ").trim();
@@ -2819,21 +2934,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindClick("selectSourceUnit", () => addSourceScopeRecord("source_unit"));
   bindClick("selectRange", addRangeScopeRecord);
   bindClick("selectVolume", () => setCaptureStatus("Volume selection is preview-only until an approved volume-scope contract exists."));
-  bindClick("clearCurrentStudy", async () => {
-    const state = await storedPageWorkflowState();
-    if (!state.crossReferenceSet.length) {
-      setCaptureStatus("Current Study is already empty.");
-      return;
-    }
-    const confirmed = window.confirm(
-      "Clear the temporary Current Study?\n\nThis removes only collected Current Study items. It will not delete stored analysis, semantic records, saved studies, preferences, or canonical Study Scope."
-    );
-    if (!confirmed) {
-      setCaptureStatus("Clear All canceled.");
-      return;
-    }
-    await clearCrossReferenceSetFromPopup();
-  });
+  bindClick("clearCurrentStudy", clearAllIceData);
   bindClick("openStudyPanel", () => {
     chrome.tabs.create({
       url: chrome.runtime.getURL("study.html")

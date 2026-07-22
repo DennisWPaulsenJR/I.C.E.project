@@ -31059,6 +31059,22 @@ createRevelationPartsSection(item.subEvents)
     return refreshInFlight;
   }
 
+  function resetStudyPanelAfterClearAll(uiState = {}) {
+    studyData = normalizeLoadedStudyData({ panelUiState: uiState });
+    fullStudyDataLoaded = false;
+    loadedDeferredSections.clear();
+    scopeSnapshotViewState.selectedGraphId = "";
+    scopeSnapshotViewState.focusedPresentationKey = "";
+    scopeSnapshotViewState.focusSource = "";
+    scopeSnapshotViewState.lastFocusReason = `clear all generation ${uiState.clearAllGeneration || "unknown"}`;
+    scopeSnapshotViewState.expandedAnchorId = "";
+    scopeSnapshotViewState.copyRenderSelections = [];
+    scopeSnapshotViewState.activeCopyRenderSelectionId = "";
+    invalidateScopedComputationCache("clear all study data");
+    renderStudy();
+    showDiagnosticMessage("All I.C.E. study data cleared. Stored Session and Current Study are empty.");
+  }
+
   function scheduleRefreshStudyData(options = {}, delay = 180) {
     window.clearTimeout(refreshTimer);
     refreshTimer = window.setTimeout(() => {
@@ -31144,6 +31160,11 @@ createRevelationPartsSection(item.subEvents)
   window.addEventListener("pageshow", () => scheduleRefreshStudyData());
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
+    const panelUiState = changes[STORAGE_KEYS.panelUiState]?.newValue;
+    if (panelUiState?.lastAction === "popup_clear_all_ice_data") {
+      resetStudyPanelAfterClearAll(panelUiState);
+      return;
+    }
     const aliases = fullStudyDataLoaded ? FULL_STORAGE_ALIASES : STARTUP_STORAGE_ALIASES;
     const watchedKeys = new Set(aliases.map((alias) => STORAGE_KEYS[alias]));
     if (Object.keys(changes).some((key) => watchedKeys.has(key))) {

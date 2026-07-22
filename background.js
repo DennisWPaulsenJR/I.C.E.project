@@ -143,6 +143,109 @@ const SINGULAR_PRONOUN_SUBJECT_PATTERN = /^(?:\d+[:.)]?\s*)?(?:(?:and|but|then|a
 
 let lastPipelineStartedAt = 0;
 let pipelinePromise = null;
+let clearAllStudyDataGeneration = 0;
+const CLEAR_ALL_STUDY_DATA_KEYS = [
+  CAPTURE_STORAGE_KEY,
+  CAPTURE_HISTORY_KEY,
+  TIMELINE_STORAGE_KEY,
+  EVENT_STORAGE_KEY,
+  ORDERED_EVENTS_KEY,
+  ACTOR_TIMELINES_KEY,
+  PRINCIPLE_STORAGE_KEY,
+  PROPHECY_LINKS_KEY,
+  INTERACTION_GRAPH_KEY,
+  SCENE_MODELS_KEY,
+  ENTITY_ROLE_ITEMS_KEY,
+  ENTITY_REGISTRY_KEY,
+  RELATIONSHIP_GRAPH_KEY,
+  CANONICAL_IDENTITIES_KEY,
+  MENTION_INDEX_KEY,
+  DOM_SEMANTIC_HINTS_KEY,
+  SOURCE_ADAPTERS_KEY,
+  ACTIVE_ADAPTER_KEY,
+  SCOPE_INTEGRITY_KEY,
+  SOURCE_DISCOVERY_INDEX_KEY,
+  REFERENCE_GRAPH_KEY,
+  REFERENCE_ROLES_KEY,
+  SEMANTIC_DISTINCTIONS_KEY,
+  ONTOLOGY_ROLES_KEY,
+  SEMANTIC_AMBIGUITIES_KEY,
+  ORIGIN_AUTHORITY_PATHS_KEY,
+  ENTITY_RELATION_ROLES_KEY,
+  SEMANTIC_CONTINUITY_KEY,
+  MOVEMENT_SEMANTICS_KEY,
+  SEMANTIC_CAUSALITY_KEY,
+  TEACHING_SEMANTICS_KEY,
+  PRINCIPLE_RELATIONSHIPS_KEY,
+  CHARACTER_INTERACTIONS_KEY,
+  SESSION_CONTINUITY_REVIEW_KEY,
+  KNOWLEDGE_GRAPH_KEY,
+  PRINCIPLE_NETWORKS_KEY,
+  FOCUS_LENS_KEY,
+  SCOPE_LENS_KEY,
+  DEPTH_LENS_KEY,
+  SEMANTIC_QUESTIONS_KEY,
+  TRUST_VERIFICATION_KEY,
+  PASSAGE_FUNCTIONS_KEY,
+  REVELATION_PATTERNS_KEY,
+  SEMANTIC_EVENTS_KEY,
+  SEMANTIC_FLOW_CHAINS_KEY,
+  ANALYSIS_STATUS_KEY,
+  ANALYSIS_HISTORY_KEY,
+  CANONICAL_ANALYZED_PAGES_KEY,
+  CANONICAL_ANALYSIS_TARGET_KEY,
+  ACTIVE_SOURCE_PAGE_KEY,
+  JOURNEY_PAGE_SNAPSHOTS_KEY,
+  "ICE_CROSS_REFERENCE_SET",
+  "ICE_CROSS_REFERENCE_RELATIONSHIPS",
+  "ICE_SELECTED_RANGE",
+  "ICE_ANALYSIS_QUEUE",
+  "ICE_ANALYSIS_QUEUE_STATUS",
+  "ICE_ANALYSIS_QUEUE_HISTORY",
+  "ICE_ANALYSIS_QUEUE_MANIFEST",
+  "ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES",
+  "ICE_GPT_REVIEW_REPORT",
+  "ICE_LANGUAGE_RECORDS"
+];
+
+function preservedPanelUiState(previous = {}) {
+  return {
+    selectedAdapterForNewAnalysis: previous.selectedAdapterForNewAnalysis,
+    selectedLensForNewAnalysis: previous.selectedLensForNewAnalysis,
+    selectedLensesForNewAnalysis: previous.selectedLensesForNewAnalysis,
+    lastAction: "popup_clear_all_ice_data",
+    clearAllGeneration: clearAllStudyDataGeneration,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+async function removeKnownStudyKeysFromStorageArea(area) {
+  if (!area?.remove) return [];
+  const keys = Array.from(new Set(CLEAR_ALL_STUDY_DATA_KEYS));
+  await area.remove(keys);
+  return keys;
+}
+
+async function clearAllStudyDataFromBackground(message = {}) {
+  clearAllStudyDataGeneration += 1;
+  lastPipelineStartedAt = 0;
+  const localData = await chrome.storage.local.get(["ICE_PANEL_UI_STATE"]);
+  const previousUiState = message.preservedPanelUiState || localData.ICE_PANEL_UI_STATE || {};
+  const removedLocalKeys = await removeKnownStudyKeysFromStorageArea(chrome.storage.local);
+  const removedSessionKeys = chrome.storage.session
+    ? await removeKnownStudyKeysFromStorageArea(chrome.storage.session)
+    : [];
+  await chrome.storage.local.set({
+    ICE_PANEL_UI_STATE: preservedPanelUiState(previousUiState)
+  });
+  return {
+    ok: true,
+    clearAllGeneration: clearAllStudyDataGeneration,
+    removedLocalKeys,
+    removedSessionKeys,
+    preservedKeys: ["ICE_PANEL_UI_STATE"]
+  };
+}
 
 chrome.runtime.onInstalled.addListener(async () => {
   const keys = Object.keys(DEFAULT_SETTINGS);
@@ -8604,6 +8707,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
   }
 
   lastPipelineStartedAt = now;
+  const pipelineClearGeneration = clearAllStudyDataGeneration;
   pipelinePromise = (async () => {
     const { captures, rejectedSources: sourceIsolationRejections = [] } = await captureSources();
     const timelineItems = [];
@@ -9200,6 +9304,15 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
         [JOURNEY_PAGE_SNAPSHOTS_KEY]: journeyPageSnapshots
       });
     }
+    if (pipelineClearGeneration !== clearAllStudyDataGeneration) {
+      return {
+        ...status,
+        staleWritePrevented: true,
+        clearAllGeneration: clearAllStudyDataGeneration,
+        reason: "clear_all_study_data_invalidated_pipeline"
+      };
+    }
+
     await chrome.storage.local.set(storageUpdate);
 
     return status;
@@ -9213,6 +9326,13 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "ICE_CLEAR_ALL_STUDY_DATA") {
+    clearAllStudyDataFromBackground(message)
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message?.type !== "ICE_RUN_FULL_ANALYSIS_PIPELINE") return false;
 
   runFullAnalysisPipeline(message.reason || "message", {
