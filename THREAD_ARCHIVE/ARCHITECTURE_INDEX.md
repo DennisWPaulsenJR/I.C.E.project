@@ -22,6 +22,14 @@ Purpose: define the global product vision, architectural direction, target user 
 
 Current note: `MASTER_DESIGN.md` is reconstructed, not restored. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` controls non-negotiable trust and governance rules if the two documents conflict.
 
+### `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
+
+Authority level: foundational mission philosophy.
+
+Purpose: define why I.C.E. exists, how it should relate to human agency, discovery, transparency, model independence, knowledge architecture, historical integrity, progressive capability, and AI reasoning services.
+
+Use this with `MASTER_DESIGN.md` when evaluating product direction or proposed capabilities. It is mission-level guidance and does not override `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
+
 ### `PROJECT_STATE.md`
 
 Authority level: active operational state.
@@ -357,16 +365,17 @@ Every source, derived, discovery, perspective, and presentation record must pres
 ### Recommended Reading Order For New Developers
 
 1. `MASTER_DESIGN.md`
-2. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-3. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-4. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
-5. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
-6. `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
-7. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
-8. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
-9. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
-10. `PROJECT_STATE.md`
-11. `PROJECT_LOG.md`
+2. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
+3. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+4. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+5. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
+6. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+7. `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
+8. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
+9. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
+10. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+11. `PROJECT_STATE.md`
+12. `PROJECT_LOG.md`
 
 ### Recommended Reading Order For New AI Agents
 
@@ -374,20 +383,24 @@ Every source, derived, discovery, perspective, and presentation record must pres
 2. `PROJECT_LOG.md`
 3. `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
 4. `THREAD_ARCHIVE/AGENT_OUTBOX.md`
-5. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-6. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-7. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
-8. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
-9. Relevant task-specific architecture docs.
+5. `MASTER_DESIGN.md`
+6. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
+7. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+8. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+9. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
+10. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+11. Relevant task-specific architecture docs.
 
 ### Recommended Reading Order For Reviewers
 
 1. `PROJECT_STATE.md`
-2. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-3. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-4. Task-specific architecture doc.
-5. Relevant source files.
-6. QA report and activity log.
+2. `MASTER_DESIGN.md`
+3. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
+4. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+5. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+6. Task-specific architecture doc.
+7. Relevant source files.
+8. QA report and activity log.
 
 ## 10. Feature Placement Checklist
 

@@ -4,6 +4,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const studyHtml = fs.readFileSync(path.join(root, "study.html"), "utf8");
 const studyJs = fs.readFileSync(path.join(root, "study.js"), "utf8");
+const backgroundJs = fs.readFileSync(path.join(root, "background.js"), "utf8");
 
 function assert(condition, message) {
   if (!condition) {
@@ -110,7 +111,487 @@ function scopeSnapshotLayerControlsHarness() {
   return Function("makeElement", harness)(makeElement);
 }
 
+function unresolvedPresentationHarness() {
+  const source = extractFunctionSource("scopeSnapshotUnresolvedPresentationRecords");
+  const harness = `
+    function toDisplayText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      if (Array.isArray(value)) return value.map(toDisplayText).filter(Boolean).join(", ");
+      if (value && typeof value === "object") {
+        for (const key of ["label", "name", "title", "displayName", "canonicalName", "id"]) {
+          if (value[key] != null) return toDisplayText(value[key]);
+        }
+        return JSON.stringify(value);
+      }
+      return String(value);
+    }
+    function normalizeText(text) {
+      return toDisplayText(text).replace(/\\s+/g, " ").trim();
+    }
+    function asArray(value) {
+      return Array.isArray(value) ? value : value == null ? [] : [value];
+    }
+    function scopeSnapshotHash(value = "") {
+      const text = normalizeText(value);
+      let hash = 0;
+      for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(index);
+        hash |= 0;
+      }
+      return Math.abs(hash).toString(36);
+    }
+    function currentStudyScopeLabel() {
+      return "Matthew 7";
+    }
+    ${source}
+    return { scopeSnapshotUnresolvedPresentationRecords };
+  `;
+  return Function(harness)();
+}
+
+function scopeSnapshotAxisHarness(options = {}) {
+  const axisSource = extractFunctionSource("scopeSnapshotAxisBounds");
+  const requestedSource = extractFunctionSource("scopeSnapshotRequestedBounds");
+  const boundarySource = extractFunctionSource("scopeSnapshotBoundaryDifference");
+  const harness = `
+    const requestedPages = pages;
+    const activePage = active;
+    function toDisplayText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      return String(value);
+    }
+    function normalizeText(text) {
+      return toDisplayText(text).replace(/\\s+/g, " ").trim();
+    }
+    function asArray(value) {
+      return Array.isArray(value) ? value : value == null ? [] : [value];
+    }
+    function sourceVerseBookTitle(value = "") {
+      return normalizeText(value).replace(/\\b\\w/g, (char) => char.toUpperCase());
+    }
+    function scopeSnapshotScopePages() {
+      return requestedPages;
+    }
+    function activeSourcePageRecord() {
+      return activePage;
+    }
+    function scopeSnapshotCurrentModeLabel() {
+      return modeLabel;
+    }
+    ${axisSource}
+    ${requestedSource}
+    ${boundarySource}
+    return { scopeSnapshotAxisBounds, scopeSnapshotRequestedBounds, scopeSnapshotBoundaryDifference };
+  `;
+  return Function("pages", "active", "modeLabel", harness)(
+    options.pages || [],
+    options.active || null,
+    options.modeLabel || "Selected Scope"
+  );
+}
+
+function scopeSnapshotReferenceHarness(options = {}) {
+  const sources = [
+    "sourceVerseBookTitle",
+    "recognizedSourceVerseBook",
+    "recognizedSourceVerseBookTitle",
+    "sourceVerseNumbers",
+    "sourceVersePartsFromText",
+    "sourceVerseLabel",
+    "scopeSnapshotSafeRecord",
+    "scopeSnapshotRawReferenceFields",
+    "scopeSnapshotReferenceDiagnostics",
+    "scopeSnapshotRecordReference"
+  ].map(extractFunctionSource).join("\n");
+  const harness = `
+    const activePage = active;
+    function toDisplayText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      if (Array.isArray(value)) return value.map(toDisplayText).filter(Boolean).join(", ");
+      return String(value);
+    }
+    function normalizeText(text) {
+      return toDisplayText(text).replace(/\\s+/g, " ").trim();
+    }
+    function asArray(value) {
+      return Array.isArray(value) ? value : value == null ? [] : [value];
+    }
+    function recordStudyGeneration(record = {}) {
+      return Number(record.studyGeneration || record.clearAllGeneration || 0);
+    }
+    function resolveSourceVerseReference() {
+      return null;
+    }
+    function activeSourcePageRecord() {
+      return activePage;
+    }
+    ${sources}
+    return { scopeSnapshotRecordReference, scopeSnapshotReferenceDiagnostics };
+  `;
+  return Function("active", harness)(options.active || null);
+}
+
+function normalizeLoadedStudyDataHarness() {
+  const source = extractFunctionSource("normalizeLoadedStudyData");
+  const harness = `
+    const STORAGE_KEYS = {
+      orderedEvents: "ICE_ORDERED_EVENTS",
+      relationshipGraph: "ICE_RELATIONSHIP_GRAPH",
+      teachingSemantics: "ICE_TEACHING_SEMANTICS",
+      principleRelationships: "ICE_PRINCIPLE_RELATIONSHIPS",
+      principleNetworks: "ICE_PRINCIPLE_NETWORKS",
+      principleItems: "ICE_PRINCIPLE_ITEMS",
+      analysisHistory: "ICE_ANALYSIS_HISTORY",
+      canonicalAnalyzedPages: "ICE_CANONICAL_ANALYZED_PAGES",
+      journeyPageSnapshots: "ICE_JOURNEY_PAGE_SNAPSHOTS",
+      crossReferenceSet: "ICE_CROSS_REFERENCE_SET",
+      crossReferenceRelationships: "ICE_CROSS_REFERENCE_RELATIONSHIPS"
+    };
+    function asArray(value) {
+      return Array.isArray(value) ? value : value == null ? [] : [value];
+    }
+    function normalizeStudyGeneration(value) {
+      const number = Number(value || 0);
+      return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0;
+    }
+    function activeStudyGenerationFromData(data = {}) {
+      return normalizeStudyGeneration(data.ICE_STUDY_GENERATION || data.studyGeneration || data.analysisStatus?.studyGeneration);
+    }
+    function recordStudyGeneration(record = {}) {
+      return normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration);
+    }
+    function recordMatchesStudyGeneration(record = {}, generation = activeStudyGenerationFromData()) {
+      const recordGeneration = recordStudyGeneration(record);
+      if (generation <= 0) return recordGeneration === 0;
+      return recordGeneration === generation;
+    }
+    function filterRecordsForStudyGeneration(records = [], generation = activeStudyGenerationFromData(), sourceKey = "unknown") {
+      return asArray(records).filter((record) => recordMatchesStudyGeneration(record, generation));
+    }
+    ${source}
+    return { normalizeLoadedStudyData };
+  `;
+  return Function(harness)();
+}
+
+function scopeSnapshotEventContextHarness() {
+  const sources = [
+    "scopeSnapshotRawField",
+    "scopeSnapshotExistingContextValue",
+    "scopeSnapshotRecordedParticipants",
+    "scopeSnapshotRecordedActionPhrase",
+    "scopeSnapshotSequenceContextLines",
+    "scopeSnapshotNarrativeEventContext",
+    "scopeSnapshotDetailSummaryText"
+  ].map(extractFunctionSource).join("\n");
+  const harness = `
+    function toDisplayText(value) {
+      if (value == null) return "";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      if (Array.isArray(value)) return value.map(toDisplayText).filter(Boolean).join(", ");
+      if (value && typeof value === "object") {
+        for (const key of ["label", "name", "title", "displayName", "canonicalName", "id"]) {
+          if (value[key] != null) return toDisplayText(value[key]);
+        }
+        return JSON.stringify(value);
+      }
+      return String(value);
+    }
+    function normalizeText(text) {
+      return toDisplayText(text).replace(/\\s+/g, " ").trim();
+    }
+    function asArray(value) {
+      return Array.isArray(value) ? value : value == null ? [] : [value];
+    }
+    function trimText(value = "", limit = 120) {
+      const text = normalizeText(value);
+      return text.length > limit ? text.slice(0, limit - 1).trimEnd() + "…" : text;
+    }
+    function uniqueStudyList(values = []) {
+      return Array.from(new Set(asArray(values).flat(Infinity).map(normalizeText).filter(Boolean)));
+    }
+    ${sources}
+    return { scopeSnapshotNarrativeEventContext, scopeSnapshotDetailSummaryText };
+  `;
+  return Function(harness)();
+}
+
 const checks = [
+  {
+    name: "Unresolved graph records are distinguishable and deduped conservatively",
+    run: () => {
+      const fn = extractFunctionSource("scopeSnapshotUnresolvedPresentationRecords");
+      assert(/Scope Snapshot presentation-only unresolved deduplication/.test(fn), "Unresolved dedupe must be presentation-only.");
+      assert(!/resolvedEntity\s*:/.test(fn), "Unresolved presentation helper must not synthesize resolved referents.");
+      assert(/candidateEntities/.test(fn), "Unresolved presentation helper should preserve candidate metadata.");
+      assert(/rejectedCandidates/.test(fn), "Unresolved presentation helper should preserve rejection metadata.");
+      assert(/sourceUnavailable/.test(fn), "Unresolved presentation helper should expose source-unavailable state.");
+      const caller = studyJs.match(/function scopeSnapshotSourceNodes[\s\S]*?\n  function scopeSnapshotSourceCollectionCounts/);
+      assert(caller, "scopeSnapshotSourceNodes function block was not found.");
+      assert(/scopeSnapshotUnresolvedPresentationRecords\(\[/.test(caller[0]), "Unresolved lane does not use the presentation dedupe helper.");
+
+      const { scopeSnapshotUnresolvedPresentationRecords } = unresolvedPresentationHarness();
+      const fixture = [
+        {
+          pronoun: "he",
+          tokenId: "language.0.12",
+          sourceReference: "Matthew 7:1",
+          status: "unresolved",
+          resolutionType: "unresolved",
+          evidence: "No grounded candidate found.",
+          rejectedCandidates: [{ value: "", reason: "empty candidate" }],
+          provenance: "I.C.E. conservative pronoun resolution v2 preview"
+        },
+        {
+          pronoun: "they",
+          tokenId: "language.0.18",
+          sourceReference: "Matthew 7:2",
+          status: "unresolved",
+          resolutionType: "unresolved",
+          evidence: "No grounded candidate found.",
+          rejectedCandidates: [{ value: "crowd", reason: "candidate does not match plural pronoun constraints" }],
+          provenance: "I.C.E. conservative pronoun resolution v2 preview"
+        },
+        {
+          sourceReference: "Matthew 7",
+          status: "unresolved",
+          resolutionType: "unresolved",
+          evidence: "No candidate survived conservative pronoun resolution rules; rejected=blank (empty candidate).",
+          rejectedCandidates: [{ value: "", reason: "empty candidate" }],
+          provenance: "I.C.E. conservative pronoun resolution v2 preview"
+        },
+        {
+          sourceReference: "Matthew 7",
+          status: "unresolved",
+          resolutionType: "unresolved",
+          evidence: "No candidate survived conservative pronoun resolution rules; rejected=blank (empty candidate).",
+          rejectedCandidates: [{ value: "", reason: "empty candidate" }],
+          provenance: "I.C.E. conservative pronoun resolution v2 preview"
+        },
+        {
+          sourceReference: "Matthew 7",
+          status: "unresolved",
+          resolutionType: "unresolved",
+          evidence: "No candidate survived conservative pronoun resolution rules; rejected=blank (empty candidate).",
+          rejectedCandidates: [{ value: "", reason: "empty candidate" }],
+          provenance: "I.C.E. conservative pronoun resolution v2 preview"
+        }
+      ];
+      const records = scopeSnapshotUnresolvedPresentationRecords(fixture);
+      assert(records.length === 3, "Duplicate blank unresolved placeholders should collapse into one presentation record.");
+      assert(records.some((record) => /"he" unresolved pronoun/.test(record.label)), "Distinct unresolved pronoun token 'he' should remain distinguishable.");
+      assert(records.some((record) => /"they" unresolved pronoun/.test(record.label)), "Distinct unresolved pronoun token 'they' should remain distinguishable.");
+      const grouped = records.find((record) => /source-unavailable unresolved pronoun \(3\)/.test(record.label));
+      assert(grouped, "Blank source-unavailable placeholders should be grouped with a visible count.");
+      assert(grouped.diagnosticRecordCount === 3, "Grouped unresolved placeholder count should be preserved.");
+      assert(/Source text unavailable/.test(grouped.evidence), "Source-unavailable state should be visible in evidence.");
+      assert(/empty candidate/.test(grouped.evidence), "Rejection reasons should remain visible.");
+      assert(/presentation-only unresolved deduplication/.test(grouped.provenance), "Presentation dedupe provenance should be preserved.");
+      assert(records.every((record) => record.status === "unresolved"), "Unresolved records must remain unresolved.");
+      assert(records.every((record) => !record.resolvedEntity), "No unresolved graph record should infer a referent.");
+      const secondPass = scopeSnapshotUnresolvedPresentationRecords(fixture);
+      assert(secondPass.map((record) => record.graphPresentationKey).join("|") === records.map((record) => record.graphPresentationKey).join("|"), "Unresolved presentation keys should be stable across repeated projection.");
+    }
+  },
+  {
+    name: "Generic Event 1 ordinals never become Matthew 1 coordinates",
+    run: () => {
+      const { scopeSnapshotRecordReference, scopeSnapshotReferenceDiagnostics } = scopeSnapshotReferenceHarness({
+        active: { book: "Matthew", chapter: "3", sourceCaptureBook: "Matthew", sourceCaptureChapter: "3" }
+      });
+      const genericOrdinal = {
+        principleId: "principle-preview-explicit-prophetic-principle",
+        principleName: "Explicit prophetic principle",
+        sourceReference: "Event 1",
+        sourceScope: "Event 1",
+        supportingEvents: ["Event 1"],
+        eventId: "event-1",
+        eventIndex: 1,
+        sequence: 1,
+        studyGeneration: 4
+      };
+      const reference = scopeSnapshotRecordReference(genericOrdinal);
+      const diagnostics = scopeSnapshotReferenceDiagnostics(genericOrdinal, reference, "principleExtractionRecords");
+      assert(reference === null, `Generic Event 1 should be unpositioned, got ${JSON.stringify(reference)}.`);
+      assert(diagnostics.normalizedReference.includes("Event 1"), "Diagnostics should preserve the raw Event 1 ordinal.");
+      assert(diagnostics.positioningReference === "", "Diagnostics should not invent a positioning reference for Event 1.");
+
+      const matthewThreePrinciple = {
+        ...genericOrdinal,
+        sourceReference: "Matthew 3",
+        sourceScope: "Matthew 3",
+        supportingEvents: ["Event 1"],
+        studyGeneration: 5
+      };
+      const matthewThreeReference = scopeSnapshotRecordReference(matthewThreePrinciple);
+      assert(matthewThreeReference?.book === "Matthew" && matthewThreeReference.chapter === 3, `Matthew 3 scoped Event 1 principle should position at Matthew 3, got ${JSON.stringify(matthewThreeReference)}.`);
+
+      const genuineMatthewOne = scopeSnapshotRecordReference({ sourceReference: "Matthew 1:1", label: "Real Matthew 1 record" });
+      assert(genuineMatthewOne?.book === "Matthew" && genuineMatthewOne.chapter === 1, "A genuine Matthew 1 reference should still render at Matthew 1.");
+    }
+  },
+  {
+    name: "Old-generation principle and relationship feeds are rejected on load",
+    run: () => {
+      const { normalizeLoadedStudyData } = normalizeLoadedStudyDataHarness();
+      const data = normalizeLoadedStudyData({
+        ICE_STUDY_GENERATION: 7,
+        analysisStatus: { studyGeneration: 7 },
+        activeSourcePage: { sourceCaptureBook: "Matthew", sourceCaptureChapter: "3", studyGeneration: 7 },
+        canonicalAnalyzedPages: [{ sourceCaptureBook: "Matthew", sourceCaptureChapter: "3", studyGeneration: 7 }],
+        principleRelationships: [
+          { principle: "stale prophetic principle", sourceReference: "Matthew 1", studyGeneration: 6 },
+          { principle: "current prophetic principle", sourceReference: "Matthew 3", studyGeneration: 7 }
+        ],
+        principleNetworks: [
+          { corePrinciple: "stale relationship-supported principle", verseRange: "Matthew 1", studyGeneration: 6 },
+          { corePrinciple: "current relationship-supported principle", verseRange: "Matthew 3", studyGeneration: 7 }
+        ],
+        teachingSemantics: [
+          { teachingTopic: "current teaching", sourceReference: "Matthew 3", studyGeneration: 7 }
+        ],
+        relationshipGraph: [
+          { relationshipId: "old-rel", sourceReference: "Matthew 1", studyGeneration: 6 },
+          { relationshipId: "current-rel", sourceReference: "Matthew 3", studyGeneration: 7 }
+        ],
+        orderedEvents: [
+          { eventId: "old-event-1", sourceReference: "Matthew 1", studyGeneration: 6 },
+          { eventId: "current-event-1", sourceReference: "Matthew 3", studyGeneration: 7 }
+        ]
+      });
+      assert(data.principleRelationships.length === 1 && data.principleRelationships[0].sourceReference === "Matthew 3", "Old-generation principle relationships should be filtered.");
+      assert(data.principleNetworks.length === 1 && data.principleNetworks[0].verseRange === "Matthew 3", "Old-generation principle networks should be filtered.");
+      assert(data.relationshipGraph.length === 1 && data.relationshipGraph[0].relationshipId === "current-rel", "Old-generation relationship graph records should be filtered.");
+      assert(data.orderedEvents.length === 1 && data.orderedEvents[0].eventId === "current-event-1", "Old-generation ordered events should be filtered.");
+    }
+  },
+  {
+    name: "Generated principle and relationship feeds are generation-stamped at write time",
+    run: () => {
+      assert(/function withStudyGenerationRecords/.test(backgroundJs), "Background writer is missing the array study-generation stamping helper.");
+      [
+        "ORDERED_EVENTS_KEY",
+        "RELATIONSHIP_GRAPH_KEY",
+        "TEACHING_SEMANTICS_KEY",
+        "PRINCIPLE_RELATIONSHIPS_KEY",
+        "PRINCIPLE_NETWORKS_KEY",
+        "PRINCIPLE_STORAGE_KEY"
+      ].forEach((key) => {
+        const pattern = new RegExp(`\\[${key}\\]: withStudyGenerationRecords\\(`);
+        assert(pattern.test(backgroundJs), `${key} is not generation-stamped before storage.`);
+      });
+    }
+  },
+  {
+    name: "Focused narrative event card uses existing event context",
+    run: () => {
+      assert(/scopeSnapshotNarrativeEventContext/.test(studyJs), "Missing Snapshot narrative event context helper.");
+      assert(/scope-snapshot-event-context/.test(studyJs), "Focused Snapshot detail card does not render event context.");
+      assert(/Presentation Type/.test(studyJs), "Focused card should keep technical presentation type separately visible.");
+      const { scopeSnapshotNarrativeEventContext, scopeSnapshotDetailSummaryText } = scopeSnapshotEventContextHarness();
+      const selected = {
+        recordType: "orderedEvent",
+        semanticCategory: "Event",
+        presentationType: "narrative_event",
+        confidence: "explicit",
+        status: "resolved",
+        provenance: "I.C.E. ordered event source sequence",
+        primaryReference: "Matthew 3:1",
+        reference: { label: "Matthew 3:1" },
+        sourceText: "In those days came John the Baptist, preaching in the wilderness of Judaea,",
+        record: {
+          id: "event-matthew-3-1",
+          eventType: "narrative_event",
+          eventDisplayLabel: "Narrative Event",
+          eventClassification: "Narrative Event",
+          eventText: "In those days came John the Baptist, preaching in the wilderness of Judaea,",
+          sequenceOrder: 1,
+          orderingReason: "source sequence 1",
+          verseRef: "3:1",
+          sourceContext: { book: "Matthew", chapter: "3" },
+          subEvents: [
+            { actor: "John", action: "preaching", target: "people", participants: ["John", "people", "wilderness of Judaea"] }
+          ]
+        }
+      };
+      const context = scopeSnapshotNarrativeEventContext(selected, { activeScope: "Matthew 3" });
+      assert(/John the Baptist/.test(context.summary), "Narrative event summary should use recorded event text instead of only the type label.");
+      assert(context.summary !== "narrative_event", "Narrative event summary must not collapse to the technical type identifier.");
+      assert(/John/.test(context.participants) && /people/.test(context.participants), "Participants should be copied from existing sub-event fields.");
+      assert(/Matthew 3:1/.test(context.sourceReference), "Primary reference should remain visible in event context.");
+      assert(context.sequenceLines.some((line) => /Sequence: 1/.test(line)), "Sequence context should use recorded sequence data.");
+      assert(/John the Baptist/.test(scopeSnapshotDetailSummaryText(selected, { activeScope: "Matthew 3" })), "Focused detail summary should use the narrative context text.");
+
+      const genericSelected = {
+        recordType: "orderedEvent",
+        semanticCategory: "Event",
+        presentationType: "narrative_event",
+        primaryReference: "Matthew 3",
+        record: { eventType: "narrative_event" }
+      };
+      const genericContext = scopeSnapshotNarrativeEventContext(genericSelected, { activeScope: "Matthew 3" });
+      assert(/Narrative event at Matthew 3/.test(genericContext.summary), "Generic event fallback should mention the source reference.");
+      assert(/event classification recorded/i.test(genericContext.summary), "Generic event fallback should disclose that only classification/source availability is recorded.");
+    }
+  },
+  {
+    name: "Matthew 3-only graph nodes produce Matthew 3-only rendered extent",
+    run: () => {
+      const { scopeSnapshotAxisBounds, scopeSnapshotRequestedBounds, scopeSnapshotBoundaryDifference } = scopeSnapshotAxisHarness({
+        pages: [
+          { book: "Matthew", chapter: "1", sourceCaptureBook: "Matthew", sourceCaptureChapter: "1" },
+          { book: "Matthew", chapter: "2", sourceCaptureBook: "Matthew", sourceCaptureChapter: "2" },
+          { book: "Matthew", chapter: "3", sourceCaptureBook: "Matthew", sourceCaptureChapter: "3" }
+        ],
+        active: { book: "Matthew", chapter: "3", sourceCaptureBook: "Matthew", sourceCaptureChapter: "3" },
+        modeLabel: "Selected Scope"
+      });
+      const nodes = [
+        { reference: { book: "Matthew", chapter: 3, verses: [1], label: "Matthew 3:1" } },
+        { reference: { book: "Matthew", chapter: 3, verses: [7], label: "Matthew 3:7" } },
+        { reference: { book: "Matthew", chapter: 3, verses: [17], label: "Matthew 3:17" } }
+      ];
+      const bounds = scopeSnapshotAxisBounds(nodes);
+      const requested = scopeSnapshotRequestedBounds();
+      assert(bounds.minChapter === 3 && bounds.maxChapter === 3, `Rendered extent should be Matthew 3 only, got ${bounds.minChapter}-${bounds.maxChapter}.`);
+      assert(requested.minChapter === 1 && requested.maxChapter === 3, "Requested scope fixture should remain Matthew 1-3.");
+      assert(scopeSnapshotBoundaryDifference(bounds, requested), "Boundary difference should be explicit when requested scope is wider than rendered records.");
+      assert(!/pageChapters[\s\S]*nodeChapters[\s\S]*chapters = \[\.\.\.pageChapters/.test(extractFunctionSource("scopeSnapshotAxisBounds")), "Axis bounds must not union requested page chapters with node chapters.");
+    }
+  },
+  {
+    name: "Real Matthew 1-3 node data still renders Matthew 1-3 extent",
+    run: () => {
+      const { scopeSnapshotAxisBounds } = scopeSnapshotAxisHarness({
+        pages: [
+          { book: "Matthew", chapter: "1" },
+          { book: "Matthew", chapter: "2" },
+          { book: "Matthew", chapter: "3" }
+        ]
+      });
+      const bounds = scopeSnapshotAxisBounds([
+        { reference: { book: "Matthew", chapter: 1, verses: [1], label: "Matthew 1:1" } },
+        { reference: { book: "Matthew", chapter: 2, verses: [1], label: "Matthew 2:1" } },
+        { reference: { book: "Matthew", chapter: 3, verses: [1], label: "Matthew 3:1" } }
+      ]);
+      assert(bounds.minChapter === 1 && bounds.maxChapter === 3, `Multi-page rendered data should remain Matthew 1-3, got ${bounds.minChapter}-${bounds.maxChapter}.`);
+    }
+  },
+  {
+    name: "Snapshot range presentation distinguishes rendered and requested scope",
+    run: () => {
+      assert(/Rendered records:/.test(studyJs), "Snapshot subtitle should label rendered data extent.");
+      assert(/Requested scope/.test(studyJs), "Snapshot should expose requested scope separately when it differs.");
+      assert(/rendered_extent_with_separate_requested_scope/.test(studyJs), "Graph model should record separated rendered/requested boundary mode.");
+      assert(/scopeSnapshotRenderedReferenceDiagnostics/.test(studyJs), "Graph projection diagnostics should include rendered reference boundaries.");
+    }
+  },
   {
     name: "Graph button has stable activation hook",
     run: () => {

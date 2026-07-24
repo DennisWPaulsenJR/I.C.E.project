@@ -42,6 +42,7 @@ Current Active WIP:
 - I.C.E. Constitution v1.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
 - The Constitution is the explicit non-negotiable rule contract for trust, evidence, authority, ontology, provenance, explainability, verification, scope, lenses, corpora, adapters, perspectives, experts, and operational boundaries.
 - `MASTER_DESIGN.md` has been reconstructed from durable architecture and coordination documents after history investigation found no tracked historical copy; it is the first-read mission and architecture overview, while the Constitution records the implementation-governing rules every future semantic system must obey.
+- Foundational mission philosophy is documented in `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`: discovery before direction, human agency, transparency, knowledge architecture as durable product asset, model independence, historical integrity, progressive capability, and AI services as reasoning tools rather than source authority.
 - Full Context Evaluation Architecture is documented in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
 - The architecture formalizes the long-term direction: fully evaluate selected scripture input across Source, Context, Situation, Event, Inference, Relationship, Large Scope Comparison, and Presentation layers while keeping frontend views modular and clear.
 - Trust rule recorded: Context always wins; Meaning never rewrites Context; Relationships never rewrite Meaning; Journeys never rewrite Relationships; Study guidance never rewrites Evidence.
@@ -1302,9 +1303,20 @@ Latest graph activation repair:
 
 Latest Clear All persistence repair:
 - Popup Clear All now uses an explicit `ICE_CLEAR_ALL_STUDY_DATA` background reset contract plus an explicit known-study-key deletion list.
-- Background analysis uses a clear-generation guard to prevent stale in-flight pipeline results from rewriting deleted study data after Clear All.
+- Background analysis uses a persisted `ICE_STUDY_GENERATION` barrier plus an in-memory clear-generation guard to prevent stale in-flight pipeline results from rewriting deleted study data after Clear All.
 - Study Panel observes the clear marker in `ICE_PANEL_UI_STATE` and resets in-memory `studyData`, deferred sections, Snapshot caches, Copy Render selections, and selected graph state.
 - Session-storage study keys are cleared when `chrome.storage.session` is available.
 - Preserved keys are intentionally narrow: `ICE_PANEL_UI_STATE` keeps selected adapter/lens preferences and clear metadata. Stored Session, Current Study, selected ranges, active source, analyzed pages, queues, captures, semantic records, graph records, and snapshots are removed.
 - Automated `qa:clear-all-storage` covers Matthew 1, 3, 5, 7, and 9 reconstruction into a Matthew 1 -> Matthew 10 scope and confirms fresh reopen reconstruction is empty.
-- Live fresh-reopen verification is still required before committing this Clear All milestone.
+- Follow-up WIP for post-clear Matthew 1 repopulation now tags new scope/session records with `studyGeneration`, rejects stale canonical analyzed pages before merge, filters Study Panel reconstruction by generation, and adds background/panel generation traces.
+- Automated `qa:clear-all-storage` includes a delayed stale-write simulation: Matthew 1 from generation A is rejected after Clear All advances to generation B, and Matthew 3 reconstructs as Matthew 3 only.
+- Latest live evidence indicates the remaining Matthew 1 -> Matthew 3 Graph symptom was a false rendered-range presentation boundary, not visible Matthew 1 lane data.
+- Linear Scope Snapshot now separates rendered graph-data extent from requested/stored/selected scope. Header and SVG axis use actual projected node references; requested scope is labeled separately when wider.
+- Automated `qa:graph-activation` verifies Matthew 3-only nodes produce a Matthew 3-only rendered extent even with a Matthew 1 -> Matthew 3 requested-scope fixture, while real Matthew 1-3 node data still renders Matthew 1 -> Matthew 3.
+- Follow-up live evidence identified a plotted `Principles / Teachings` cluster with children `Event 1 - Explicit prophetic principle` and `Event 1 - Relationship-supported principle`.
+- Root cause: `scopeSnapshotRecordReference` could treat generic ordinal support text like `Event 1` as a chapter-only source reference. Reference parsing now requires recognized scripture/source books before assigning coordinates, so generic event ordinals remain unpositioned unless another valid source reference grounds them.
+- Snapshot projected nodes now expose raw reference fields, normalized reference, positioning reference, source collection, source record ID, and study generation in architect diagnostics/lazy detail.
+- Background analysis now generation-stamps generated semantic arrays, and Study Panel reconstruction generation-filters semantic arrays such as ordered events, relationship graph, teaching semantics, principle relationships, and principle networks.
+- Automated `qa:graph-activation` verifies generic `Event 1` never becomes Matthew 1, Matthew 3-scoped Event 1 principle support positions at Matthew 3, genuine Matthew 1 records still position at Matthew 1, and old-generation principle/relationship feeds are rejected.
+- Focused Snapshot Narrative Event cards now display existing event context from ordered-event fields: recorded event text/summary, participants or sub-event actors, source reference/text availability, sequence context, confidence, verification, and provenance state. The technical `narrative_event` presentation type remains visible separately and is no longer the only visible description when recorded event text exists.
+- Live Matthew 3-only Graph verification is still required before committing the stale-repopulation/range/record-positioning fixes.

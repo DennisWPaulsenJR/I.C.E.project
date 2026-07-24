@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const SELECTED_RANGE_KEY = "ICE_SELECTED_RANGE";
   const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
   const ACTIVE_ADAPTER_KEY = "ICE_ACTIVE_ADAPTER";
+  const STUDY_GENERATION_KEY = "ICE_STUDY_GENERATION";
   const CLEAR_ALL_STUDY_DATA_KEYS = [
     CAPTURE_STORAGE_KEY,
     CAPTURE_HISTORY_KEY,
@@ -83,6 +84,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     "ICE_GPT_REVIEW_REPORT",
     "ICE_LANGUAGE_RECORDS"
   ];
+
+  function normalizeStudyGeneration(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : 0;
+  }
+
+  async function activeStudyGeneration() {
+    const data = await chrome.storage.local.get([STUDY_GENERATION_KEY, PANEL_UI_STATE_KEY]);
+    return Math.max(
+      normalizeStudyGeneration(data[STUDY_GENERATION_KEY]),
+      normalizeStudyGeneration(data[PANEL_UI_STATE_KEY]?.clearAllGeneration)
+    );
+  }
+
+  function withStudyGeneration(record, generation) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) return record;
+    return { ...record, studyGeneration: generation };
+  }
+
+  function recordMatchesStudyGeneration(record = {}, generation = 0) {
+    const recordGeneration = normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration);
+    if (generation <= 0) return recordGeneration === 0;
+    return recordGeneration === generation;
+  }
+
+  function filterRecordsForStudyGeneration(records = [], generation = 0) {
+    return (Array.isArray(records) ? records : []).filter((record) => recordMatchesStudyGeneration(record, generation));
+  }
   const POPUP_ADAPTER_OPTIONS = [
     { id: "lds_scripture_adapter", label: "Scripture Adapter", role: "Scripture source structure and references" },
     { id: "generic_html_adapter", label: "Generic Web Adapter", role: "Visible web page evidence" },
@@ -425,6 +454,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeUrl: status.sourceCaptureUrl || status.activeUrl || "",
       activeAdapterName: status.activeAdapterName || "",
       analyzedAt: status.analyzedAt || "",
+      studyGeneration: normalizeStudyGeneration(status.studyGeneration ?? status.clearAllGeneration),
       pageKey: ""
     };
   }
@@ -439,6 +469,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeUrl: marker.url || marker.activeUrl || "",
       activeAdapterName: marker.adapter || marker.activeAdapterName || "",
       analyzedAt: marker.analysisTimestamp || marker.analyzedAt || "",
+      studyGeneration: normalizeStudyGeneration(marker.studyGeneration ?? marker.clearAllGeneration),
       pageKey: marker.pageKey || "",
       buildMarker: marker.buildMarker || ""
     };
@@ -454,6 +485,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeUrl: page.activeUrl || "",
       activeAdapterName: page.activeAdapterName || "",
       analyzedAt,
+      studyGeneration: normalizeStudyGeneration(page.studyGeneration ?? page.clearAllGeneration),
       pageKey: page.pageKey || pageRecordKey(page)
     };
     if (!normalized.sourceCaptureBook || !normalized.sourceCaptureChapter || !normalized.activeUrl || !normalized.analyzedAt) return null;
@@ -466,6 +498,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sourceCaptureBook: normalized.sourceCaptureBook,
       sourceCaptureChapter: normalized.sourceCaptureChapter,
       analysisTimestamp: normalized.analyzedAt,
+      studyGeneration: normalized.studyGeneration,
       buildMarker
     };
   }
@@ -570,7 +603,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       source: page.source || "popup_current_study",
       analyzed,
       analyzedAt: analyzedPage?.analyzedAt || (statusAnalyzed ? statusPage.analyzedAt : "") || page.analyzedAt || "",
-      analysisPageKey: analyzed ? canonicalKey : ""
+      analysisPageKey: analyzed ? canonicalKey : "",
+      studyGeneration: normalizeStudyGeneration(page.studyGeneration ?? analyzedPage?.studyGeneration ?? statusPage?.studyGeneration)
     };
   }
 
@@ -779,16 +813,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       CANONICAL_ANALYZED_PAGES_KEY,
       CANONICAL_ANALYSIS_TARGET_KEY,
       CROSS_REFERENCE_SET_KEY,
-      ACTIVE_ADAPTER_KEY
+      ACTIVE_ADAPTER_KEY,
+      STUDY_GENERATION_KEY,
+      PANEL_UI_STATE_KEY
     ]);
+    const studyGeneration = Math.max(
+      normalizeStudyGeneration(data[STUDY_GENERATION_KEY]),
+      normalizeStudyGeneration(data[PANEL_UI_STATE_KEY]?.clearAllGeneration)
+    );
     const { tab, page: tabPage } = await activeTabPageRecord();
     const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
-    const activePage = data[ACTIVE_SOURCE_PAGE_KEY] || pageRecordFromCanonicalMarker(data[CANONICAL_ANALYSIS_TARGET_KEY]) || statusPage || tabPage;
+    const activePageCandidate = data[ACTIVE_SOURCE_PAGE_KEY] || pageRecordFromCanonicalMarker(data[CANONICAL_ANALYSIS_TARGET_KEY]) || statusPage || tabPage;
+    const activePage = activePageCandidate && recordMatchesStudyGeneration(activePageCandidate, studyGeneration)
+      ? activePageCandidate
+      : (statusPage && recordMatchesStudyGeneration(statusPage, studyGeneration) ? statusPage : tabPage);
     const canonicalPages = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY])
-      ? data[CANONICAL_ANALYZED_PAGES_KEY].map(pageRecordFromCanonicalMarker).filter(Boolean)
+      ? filterRecordsForStudyGeneration(data[CANONICAL_ANALYZED_PAGES_KEY], studyGeneration).map(pageRecordFromCanonicalMarker).filter(Boolean)
       : [];
     const crossReferenceSet = normalizedCrossReferenceSet(data[CROSS_REFERENCE_SET_KEY], canonicalPages, statusPage);
-    return { tab, tabPage, activePage, statusPage, canonicalPages, crossReferenceSet, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null };
+    return { tab, tabPage, activePage, statusPage, canonicalPages, crossReferenceSet, activeAdapter: data[ACTIVE_ADAPTER_KEY] || null, studyGeneration };
   }
 
   async function navigatePopupPage(delta, actionName) {
@@ -831,18 +874,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function addAnalyzedPageToStoredSessionFromPopup() {
-    const data = await chrome.storage.local.get([ANALYSIS_STATUS_KEY, CANONICAL_ANALYZED_PAGES_KEY]);
+    const data = await chrome.storage.local.get([ANALYSIS_STATUS_KEY, CANONICAL_ANALYZED_PAGES_KEY, STUDY_GENERATION_KEY, PANEL_UI_STATE_KEY]);
+    const studyGeneration = Math.max(
+      normalizeStudyGeneration(data[STUDY_GENERATION_KEY]),
+      normalizeStudyGeneration(data[PANEL_UI_STATE_KEY]?.clearAllGeneration)
+    );
     const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
-    if (!statusPage?.analyzedAt) {
+    if (!statusPage?.analyzedAt || !recordMatchesStudyGeneration(statusPage, studyGeneration)) {
       setCaptureStatus("Analyze this page before adding it to the stored analyzed session.");
       return;
     }
-    const marker = canonicalMarkerFromPage(statusPage, data[ANALYSIS_STATUS_KEY]?.analysisBuildMarker || "popup-manual-page-workflow");
+    const marker = withStudyGeneration(
+      canonicalMarkerFromPage(statusPage, data[ANALYSIS_STATUS_KEY]?.analysisBuildMarker || "popup-manual-page-workflow"),
+      studyGeneration
+    );
     if (!marker) {
       setCaptureStatus("Current analyzed page is not a supported scripture/source page.");
       return;
     }
-    const existingMarkers = Array.isArray(data[CANONICAL_ANALYZED_PAGES_KEY]) ? data[CANONICAL_ANALYZED_PAGES_KEY] : [];
+    const existingMarkers = filterRecordsForStudyGeneration(data[CANONICAL_ANALYZED_PAGES_KEY], studyGeneration);
     const nextMarkers = [marker, ...existingMarkers]
       .filter((item, index, items) => items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
       .slice(0, 24);
@@ -856,9 +906,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeUrl: item.url || "",
       activeAdapterName: item.adapter || "",
       analyzedAt: item.analysisTimestamp || "",
-      pageKey: item.pageKey || ""
+      pageKey: item.pageKey || "",
+      studyGeneration
     }));
     await chrome.storage.local.set({
+      [STUDY_GENERATION_KEY]: studyGeneration,
       [CANONICAL_ANALYZED_PAGES_KEY]: nextMarkers,
       [ANALYSIS_HISTORY_KEY]: history,
       [ACTIVE_SOURCE_PAGE_KEY]: statusPage,
@@ -1824,15 +1876,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function clearAllIceDataFallback(previousUiState = {}) {
+    const previousGeneration = await activeStudyGeneration();
+    const nextGeneration = previousGeneration + 1;
     const removedLocalKeys = await removeKnownStudyKeysFromStorageArea(chrome.storage.local);
     const removedSessionKeys = chrome.storage.session
       ? await removeKnownStudyKeysFromStorageArea(chrome.storage.session)
       : [];
     await chrome.storage.local.set({
-      [PANEL_UI_STATE_KEY]: preservedPanelUiState(previousUiState)
+      [STUDY_GENERATION_KEY]: nextGeneration,
+      [PANEL_UI_STATE_KEY]: {
+        ...preservedPanelUiState(previousUiState),
+        clearAllGeneration: nextGeneration
+      }
     });
     return {
       ok: true,
+      clearAllGeneration: nextGeneration,
       removedLocalKeys,
       removedSessionKeys,
       preservedKeys: [PANEL_UI_STATE_KEY],

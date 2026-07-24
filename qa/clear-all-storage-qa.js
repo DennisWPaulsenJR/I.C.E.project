@@ -31,11 +31,14 @@ function extractFunctionSource(source, functionName) {
 
 function createClearAllHarness(options = {}) {
   const clearAllSource = extractFunctionSource(popupJs, "clearAllIceData");
+  const normalizeGenerationSource = extractFunctionSource(popupJs, "normalizeStudyGeneration");
+  const activeGenerationSource = extractFunctionSource(popupJs, "activeStudyGeneration");
   const preservedSource = extractFunctionSource(popupJs, "preservedPanelUiState");
   const fallbackSource = extractFunctionSource(popupJs, "clearAllIceDataFallback");
   const removeKnownSource = extractFunctionSource(popupJs, "removeKnownStudyKeysFromStorageArea");
   const harness = `
     const PANEL_UI_STATE_KEY = "ICE_PANEL_UI_STATE";
+    const STUDY_GENERATION_KEY = "ICE_STUDY_GENERATION";
     const CLEAR_ALL_STUDY_DATA_KEYS = clearAllKeys;
     let statusMessage = "";
     let summariesLoaded = 0;
@@ -63,6 +66,10 @@ function createClearAllHarness(options = {}) {
           if (runtimeFailure) throw new Error("simulated runtime failure");
           if (message?.type === "ICE_CLEAR_ALL_STUDY_DATA") {
             const list = Array.from(new Set(CLEAR_ALL_STUDY_DATA_KEYS));
+            const nextGeneration = Math.max(
+              Number(storage[STUDY_GENERATION_KEY] || 0),
+              Number(storage[PANEL_UI_STATE_KEY]?.clearAllGeneration || 0)
+            ) + 1;
             list.forEach((key) => {
               delete storage[key];
               delete sessionStorageData[key];
@@ -72,10 +79,11 @@ function createClearAllHarness(options = {}) {
               selectedLensForNewAnalysis: message.preservedPanelUiState?.selectedLensForNewAnalysis,
               selectedLensesForNewAnalysis: message.preservedPanelUiState?.selectedLensesForNewAnalysis,
               lastAction: "popup_clear_all_ice_data",
-              clearAllGeneration: 1,
+              clearAllGeneration: nextGeneration,
               updatedAt: "qa"
             };
-            return { ok: true, removedLocalKeys: list, removedSessionKeys: list, preservedKeys: [PANEL_UI_STATE_KEY] };
+            storage[STUDY_GENERATION_KEY] = nextGeneration;
+            return { ok: true, clearAllGeneration: nextGeneration, removedLocalKeys: list, removedSessionKeys: list, preservedKeys: [PANEL_UI_STATE_KEY] };
           }
           return { ok: false, error: "unexpected message" };
         }
@@ -91,6 +99,8 @@ function createClearAllHarness(options = {}) {
     function setCaptureStatus(message) {
       statusMessage = message;
     }
+    ${normalizeGenerationSource}
+    ${activeGenerationSource}
     ${preservedSource}
     ${removeKnownSource}
     ${fallbackSource}
@@ -140,7 +150,19 @@ function clearAllStudyDataKeysFromPopup() {
     .filter(Boolean);
 }
 
-function reconstructedChapterMarkers(storage = {}) {
+function normalizeStudyGenerationForQa(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : 0;
+}
+
+function recordMatchesStudyGenerationForQa(record = {}, generation = 0) {
+  const recordGeneration = normalizeStudyGenerationForQa(record.studyGeneration ?? record.clearAllGeneration);
+  if (generation <= 0) return recordGeneration === 0;
+  return recordGeneration === generation;
+}
+
+function reconstructedChapterMarkers(storage = {}, options = {}) {
+  const generation = options.generation == null ? null : normalizeStudyGenerationForQa(options.generation);
   const values = [
     storage.ICE_CANONICAL_ANALYZED_PAGES,
     storage.ICE_ANALYSIS_HISTORY,
@@ -150,7 +172,8 @@ function reconstructedChapterMarkers(storage = {}) {
     storage.ICE_ORDERED_EVENTS,
     storage.ICE_RELATIONSHIP_GRAPH,
     storage.ICE_SESSION_CONTINUITY_REVIEW
-  ].flat(Infinity).filter(Boolean);
+  ].flat(Infinity).filter(Boolean)
+    .filter((record) => generation == null || recordMatchesStudyGenerationForQa(record, generation));
   return Array.from(new Set(values.map((record) => {
     const text = [
       record.sourceTitle,
@@ -199,6 +222,52 @@ function matthewStorageFixture() {
   };
 }
 
+function canonicalMatthewPage(chapter, generation) {
+  return {
+    pageKey: `matthew|${chapter}|matthew ${chapter}|https://www.churchofjesuschrist.org/study/scriptures/nt/matt/${chapter}?lang=eng`,
+    sourceTitle: `Matthew ${chapter}`,
+    sourceCaptureBook: "Matthew",
+    sourceCaptureChapter: String(chapter),
+    url: `https://www.churchofjesuschrist.org/study/scriptures/nt/matt/${chapter}?lang=eng`,
+    activeUrl: `https://www.churchofjesuschrist.org/study/scriptures/nt/matt/${chapter}?lang=eng`,
+    analysisTimestamp: "2026-07-20T00:00:00.000Z",
+    analyzedAt: "2026-07-20T00:00:00.000Z",
+    studyGeneration: generation
+  };
+}
+
+function simulatedPostClearStorage() {
+  const staleMatthew1 = canonicalMatthewPage(1, 0);
+  const currentMatthew3 = canonicalMatthewPage(3, 1);
+  return {
+    ICE_STUDY_GENERATION: 1,
+    ICE_PANEL_UI_STATE: {
+      lastAction: "popup_clear_all_ice_data",
+      clearAllGeneration: 1,
+      selectedAdapterForNewAnalysis: "lds_scripture_adapter",
+      selectedLensForNewAnalysis: "recommended"
+    },
+    ICE_CANONICAL_ANALYZED_PAGES: [staleMatthew1, currentMatthew3],
+    ICE_ANALYSIS_HISTORY: [
+      { sourceTitle: "Matthew 1", sourceCaptureBook: "Matthew", sourceCaptureChapter: "1", studyGeneration: 0 },
+      { sourceTitle: "Matthew 3", sourceCaptureBook: "Matthew", sourceCaptureChapter: "3", studyGeneration: 1 }
+    ],
+    ICE_SELECTED_RANGE: {
+      sessionLabel: "Matthew 1 -> Matthew 3",
+      pages: [staleMatthew1, currentMatthew3],
+      studyGeneration: 0
+    },
+    ICE_JOURNEY_PAGE_SNAPSHOTS: [
+      { pageKey: staleMatthew1.pageKey, label: "Matthew 1", studyGeneration: 0 },
+      { pageKey: currentMatthew3.pageKey, label: "Matthew 3", studyGeneration: 1 }
+    ],
+    ICE_CROSS_REFERENCE_SET: [
+      { id: staleMatthew1.pageKey, label: "Matthew 1", canonicalKey: staleMatthew1.pageKey, studyGeneration: 0 },
+      { id: currentMatthew3.pageKey, label: "Matthew 3", canonicalKey: currentMatthew3.pageKey, studyGeneration: 1 }
+    ]
+  };
+}
+
 const checks = [
   {
     name: "Clear All button is wired to full stored-study removal",
@@ -244,6 +313,8 @@ const checks = [
       assert(storage.ICE_PANEL_UI_STATE?.selectedAdapterForNewAnalysis === "lds_scripture_adapter", "Adapter preference was not preserved.");
       assert(storage.ICE_PANEL_UI_STATE?.selectedLensForNewAnalysis === "recommended", "Lens preference was not preserved.");
       assert(storage.ICE_PANEL_UI_STATE?.lastAction === "popup_clear_all_ice_data", "Clear All did not record its last action.");
+      assert(storage.ICE_STUDY_GENERATION === 1, "Clear All did not persist the active study generation.");
+      assert(storage.ICE_PANEL_UI_STATE?.clearAllGeneration === 1, "Clear All did not stamp panel state with the active generation.");
       assert(harness.getRuntimeMessages().some((message) => message.type === "ICE_CLEAR_ALL_STUDY_DATA"), "Popup did not request background/runtime cache invalidation.");
       assert(reconstructedChapterMarkers(storage).length === 0, "Fresh Study Panel reconstruction still finds Matthew markers after Clear All.");
       assert(harness.getSummariesLoaded() === 1, "Clear All did not refresh popup summaries.");
@@ -263,7 +334,7 @@ const checks = [
       const harness = createClearAllHarness({ storage: matthewStorageFixture(), confirmResult: true });
       await harness.clearAllIceData();
       const reopenedStorage = harness.getStorage();
-      const restoredStudyKeys = Object.keys(reopenedStorage).filter((key) => key !== "ICE_PANEL_UI_STATE" && key.startsWith("ICE_"));
+      const restoredStudyKeys = Object.keys(reopenedStorage).filter((key) => !["ICE_PANEL_UI_STATE", "ICE_STUDY_GENERATION"].includes(key) && key.startsWith("ICE_"));
       assert(restoredStudyKeys.length === 0, `Deleted records remain after reopen simulation: ${restoredStudyKeys.join(", ")}`);
       assert(reconstructedChapterMarkers(reopenedStorage).length === 0, "Reopened Study Panel would still reconstruct Matthew chapter markers.");
     }
@@ -272,13 +343,31 @@ const checks = [
     name: "Background reset and stale pipeline guard are present",
     run: () => {
       assert(/ICE_CLEAR_ALL_STUDY_DATA/.test(backgroundJs), "Background does not receive explicit Clear All reset messages.");
-      assert(/clearAllStudyDataGeneration \+= 1/.test(backgroundJs), "Background clear generation is not incremented.");
+      assert(/STUDY_GENERATION_KEY = "ICE_STUDY_GENERATION"/.test(backgroundJs), "Background does not define a persisted study generation key.");
+      assert(/clearAllStudyDataGeneration = previousGeneration \+ 1/.test(backgroundJs), "Background clear generation is not advanced from persisted state.");
       assert(/pipelineClearGeneration !== clearAllStudyDataGeneration/.test(backgroundJs), "Pipeline stale-write guard is missing.");
+      assert(/writeGeneration !== pipelineStudyGeneration/.test(backgroundJs), "Pipeline does not reject writes when persisted generation changes.");
+      assert(/filterRecordsForStudyGeneration/.test(backgroundJs), "Background does not filter stale records before scope merge.");
       assert(/staleWritePrevented: true/.test(backgroundJs), "Pipeline stale-write result is not diagnosable.");
       assert(/clearAllGeneration/.test(studyJs), "Study Panel does not observe Clear All generation state.");
+      assert(/ICE_STUDY_GENERATION/.test(studyJs), "Study Panel does not load the persisted study generation.");
+      assert(/Study Reconstruction Trace/.test(studyJs), "Study Panel does not expose generation reconstruction diagnostics.");
       assert(/resetStudyPanelAfterClearAll/.test(studyJs), "Study Panel does not reset in-memory state after Clear All.");
       assert(/loadedDeferredSections\.clear\(\)/.test(studyJs), "Study Panel does not clear loaded deferred section state.");
       assert(/copyRenderSelections = \[\]/.test(studyJs), "Study Panel does not clear session-local Copy Render selections.");
+    }
+  },
+  {
+    name: "Late stale Matthew 1 write is rejected by generation-aware reconstruction",
+    run: () => {
+      const storage = simulatedPostClearStorage();
+      const allMarkers = reconstructedChapterMarkers(storage);
+      const currentMarkers = reconstructedChapterMarkers(storage, { generation: 1 });
+      assert(allMarkers.join(",") === "Matthew 1,Matthew 3", `Fixture does not simulate stale Matthew 1 plus current Matthew 3: ${allMarkers.join(", ")}`);
+      assert(currentMarkers.join(",") === "Matthew 3", `Generation filtering still reconstructs stale markers: ${currentMarkers.join(", ")}`);
+      assert(/data\.canonicalAnalyzedPages = filterRecordsForStudyGeneration/.test(studyJs), "Study Panel does not filter canonical pages by generation.");
+      assert(/previousCanonicalAnalyzedPages = filterRecordsForStudyGeneration/.test(backgroundJs), "Background merge still accepts unfiltered previous canonical pages.");
+      assert(/reason: "clear_all_study_data_invalidated_pipeline_before_scope_merge"/.test(backgroundJs), "Background does not reject stale pipelines before scope merge.");
     }
   },
   {
@@ -296,6 +385,8 @@ const checks = [
       assert(result.backgroundReset === false, "Runtime failure should use local fallback.");
       assert(!/startsWith\("ICE_"\)/.test(extractFunctionSource(popupJs, "clearAllIceData")), "Clear All should not use a broad ICE_ wildcard sweep.");
       assert(!storage.ICE_CANONICAL_ANALYZED_PAGES, "Fallback did not remove canonical pages.");
+      assert(storage.ICE_STUDY_GENERATION === 1, "Fallback did not persist the active study generation.");
+      assert(storage.ICE_PANEL_UI_STATE?.clearAllGeneration === 1, "Fallback did not stamp panel state with the active generation.");
       assert(!harness.getSessionStorage().ICE_ORDERED_EVENTS, "Fallback did not clear session study keys.");
       assert(storage.NON_ICE_SETTING?.preserved, "Fallback removed unrelated local setting.");
       assert(storage.ICE_PANEL_UI_STATE?.selectedAdapterForNewAnalysis === "lds_scripture_adapter", "Fallback did not preserve adapter preference.");
@@ -309,7 +400,8 @@ const checks = [
       await harness.clearAllIceData();
       const storage = harness.getStorage();
       const remainingStudyKeys = Object.keys(storage).filter((key) => key !== "ICE_PANEL_UI_STATE" && key.startsWith("ICE_"));
-      assert(remainingStudyKeys.length === 0, "Repeated Clear All recreated study records.");
+      assert(remainingStudyKeys.join(",") === "ICE_STUDY_GENERATION", `Repeated Clear All recreated study records: ${remainingStudyKeys.join(", ")}`);
+      assert(storage.ICE_STUDY_GENERATION === 2, "Repeated Clear All did not advance the generation idempotently.");
       assert(reconstructedChapterMarkers(storage).length === 0, "Repeated Clear All restored chapter markers.");
       assert(harness.getStatus() === "All I.C.E. study data cleared.", "Repeated Clear All did not remain successful.");
     }
@@ -323,6 +415,7 @@ const checks = [
       assert(result.canceled === true, "Canceled Clear All did not report cancellation.");
       assert(storage.ICE_CANONICAL_ANALYZED_PAGES?.length === 5, "Canceled Clear All removed stored analyzed pages.");
       assert(storage.ICE_CROSS_REFERENCE_SET?.length === 5, "Canceled Clear All removed Current Study records.");
+      assert(!storage.ICE_STUDY_GENERATION, "Canceled Clear All advanced the study generation.");
       assert(harness.getStatus() === "Clear All canceled.", "Canceled Clear All did not report cancellation.");
     }
   },

@@ -8,11 +8,14 @@ Purpose: serve as the first-read architectural overview for I.C.E. It explains m
 
 `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` governs the non-negotiable trust and governance rules. If this Master Design and the Constitution conflict, the Constitution controls.
 
+`THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md` records the foundational mission philosophy that this Master Design operationalizes: discovery before direction, human agency, transparent reasoning, model independence, and knowledge architecture as the durable product asset.
+
 ## 1. Document Status And Reconstruction Notice
 
 This document was reconstructed from durable I.C.E. architecture and coordination records, including:
 
 - `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+- `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
@@ -33,6 +36,8 @@ The investigation report concluded that no tracked historical `MASTER_DESIGN.md`
 I.C.E. is a grounded understanding and study exploration system.
 
 Its mission is to help users study scripture, talks, commentary, and eventually broader religious or comparative corpora with clarity, traceability, and trust. I.C.E. should surface what is present in the selected scope, show how records relate, preserve uncertainty, and help users explore characters, locations, events, themes, language, fulfillment, evidence, and perspective without collapsing those categories into unsupported interpretation.
+
+The broader architectural mission is to help people discover, organize, evaluate, and understand knowledge through transparent semantic reasoning while preserving human agency. I.C.E. does not replace human judgment; it expands human understanding by organizing evidence, relationships, context, and qualified reasoning.
 
 Backend precision and frontend clarity are the core product posture:
 

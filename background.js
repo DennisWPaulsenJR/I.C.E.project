@@ -56,6 +56,7 @@ const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
 const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
 const ACTIVE_SOURCE_PAGE_KEY = "ICE_ACTIVE_SOURCE_PAGE";
 const JOURNEY_PAGE_SNAPSHOTS_KEY = "ICE_JOURNEY_PAGE_SNAPSHOTS";
+const STUDY_GENERATION_KEY = "ICE_STUDY_GENERATION";
 const PIPELINE_THROTTLE_MS = 3500;
 
 const ACTION_PATTERN = /\b(born|died|began|ended|founded|created|built|destroyed|conquered|traveled|appeared|said|commanded|signed|wrote|rose|fell|attacked|returned|departed|arrived|ruled|became|baptized|crucified|resurrected|preached|preaching|repent)\b/i;
@@ -208,6 +209,80 @@ const CLEAR_ALL_STUDY_DATA_KEYS = [
   "ICE_LANGUAGE_RECORDS"
 ];
 
+function normalizeStudyGeneration(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : 0;
+}
+
+async function storedStudyGeneration() {
+  const data = await chrome.storage.local.get([STUDY_GENERATION_KEY, "ICE_PANEL_UI_STATE"]);
+  return Math.max(
+    normalizeStudyGeneration(data[STUDY_GENERATION_KEY]),
+    normalizeStudyGeneration(data.ICE_PANEL_UI_STATE?.clearAllGeneration)
+  );
+}
+
+async function activeStudyGeneration() {
+  const stored = await storedStudyGeneration();
+  clearAllStudyDataGeneration = Math.max(clearAllStudyDataGeneration, stored);
+  return clearAllStudyDataGeneration;
+}
+
+function withStudyGeneration(record, generation) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return record;
+  return {
+    ...record,
+    studyGeneration: generation
+  };
+}
+
+function withStudyGenerationRecords(records = [], generation) {
+  return Array.isArray(records) ? records.map((record) => withStudyGeneration(record, generation)) : records;
+}
+
+function recordMatchesStudyGeneration(record = {}, generation = 0) {
+  const recordGeneration = normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration);
+  if (generation <= 0) return recordGeneration === 0;
+  return recordGeneration === generation;
+}
+
+function filterRecordsForStudyGeneration(records = [], generation = 0, sourceKey = "unknown") {
+  const accepted = [];
+  const rejected = [];
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    if (recordMatchesStudyGeneration(record, generation)) {
+      accepted.push(record);
+    } else {
+      rejected.push(record);
+    }
+  });
+  if (rejected.length) {
+    console.debug("[I.C.E. Study Generation Trace]", {
+      activeGeneration: generation,
+      sourceKey,
+      accepted: accepted.map((record) => ({
+        chapter: record.sourceCaptureChapter || record.chapter || "",
+        reference: record.sourceTitle || record.label || record.pageKey || "",
+        recordId: record.pageKey || record.id || record.captureId || "",
+        recordType: record.recordType || record.itemType || "study_scope_record",
+        studyGeneration: normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration),
+        storageArea: "chrome.storage.local",
+        loadedFrom: "persistence"
+      })),
+      rejectedAsStale: rejected.map((record) => ({
+        chapter: record.sourceCaptureChapter || record.chapter || "",
+        reference: record.sourceTitle || record.label || record.pageKey || "",
+        recordId: record.pageKey || record.id || record.captureId || "",
+        recordType: record.recordType || record.itemType || "study_scope_record",
+        studyGeneration: normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration),
+        storageArea: "chrome.storage.local",
+        loadedFrom: "persistence"
+      }))
+    });
+  }
+  return accepted;
+}
+
 function preservedPanelUiState(previous = {}) {
   return {
     selectedAdapterForNewAnalysis: previous.selectedAdapterForNewAnalysis,
@@ -227,7 +302,8 @@ async function removeKnownStudyKeysFromStorageArea(area) {
 }
 
 async function clearAllStudyDataFromBackground(message = {}) {
-  clearAllStudyDataGeneration += 1;
+  const previousGeneration = Math.max(clearAllStudyDataGeneration, await storedStudyGeneration());
+  clearAllStudyDataGeneration = previousGeneration + 1;
   lastPipelineStartedAt = 0;
   const localData = await chrome.storage.local.get(["ICE_PANEL_UI_STATE"]);
   const previousUiState = message.preservedPanelUiState || localData.ICE_PANEL_UI_STATE || {};
@@ -236,6 +312,7 @@ async function clearAllStudyDataFromBackground(message = {}) {
     ? await removeKnownStudyKeysFromStorageArea(chrome.storage.session)
     : [];
   await chrome.storage.local.set({
+    [STUDY_GENERATION_KEY]: clearAllStudyDataGeneration,
     ICE_PANEL_UI_STATE: preservedPanelUiState(previousUiState)
   });
   return {
@@ -8707,6 +8784,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
   }
 
   lastPipelineStartedAt = now;
+  const pipelineStudyGeneration = await activeStudyGeneration();
   const pipelineClearGeneration = clearAllStudyDataGeneration;
   pipelinePromise = (async () => {
     const { captures, rejectedSources: sourceIsolationRejections = [] } = await captureSources();
@@ -8911,14 +8989,33 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
     const storedScopeState = await chrome.storage.local.get([
       ANALYSIS_HISTORY_KEY,
       CANONICAL_ANALYZED_PAGES_KEY,
-      JOURNEY_PAGE_SNAPSHOTS_KEY
+      JOURNEY_PAGE_SNAPSHOTS_KEY,
+      STUDY_GENERATION_KEY,
+      "ICE_PANEL_UI_STATE"
     ]);
-    const previousCanonicalAnalyzedPages = Array.isArray(storedScopeState[CANONICAL_ANALYZED_PAGES_KEY])
-      ? storedScopeState[CANONICAL_ANALYZED_PAGES_KEY]
-      : [];
-    const previousJourneyPageSnapshots = Array.isArray(storedScopeState[JOURNEY_PAGE_SNAPSHOTS_KEY])
-      ? storedScopeState[JOURNEY_PAGE_SNAPSHOTS_KEY]
-      : [];
+    const scopeStateGeneration = Math.max(
+      normalizeStudyGeneration(storedScopeState[STUDY_GENERATION_KEY]),
+      normalizeStudyGeneration(storedScopeState.ICE_PANEL_UI_STATE?.clearAllGeneration)
+    );
+    if (scopeStateGeneration !== pipelineStudyGeneration) {
+      return {
+        reason: "clear_all_study_data_invalidated_pipeline_before_scope_merge",
+        staleWritePrevented: true,
+        pipelineStudyGeneration,
+        activeStudyGeneration: scopeStateGeneration,
+        clearAllGeneration: clearAllStudyDataGeneration
+      };
+    }
+    const previousCanonicalAnalyzedPages = filterRecordsForStudyGeneration(
+      storedScopeState[CANONICAL_ANALYZED_PAGES_KEY],
+      pipelineStudyGeneration,
+      CANONICAL_ANALYZED_PAGES_KEY
+    );
+    const previousJourneyPageSnapshots = filterRecordsForStudyGeneration(
+      storedScopeState[JOURNEY_PAGE_SNAPSHOTS_KEY],
+      pipelineStudyGeneration,
+      JOURNEY_PAGE_SNAPSHOTS_KEY
+    );
     const previousConfirmedAnalysisHistory = previousCanonicalAnalyzedPages.map((item) => ({
       sourceCaptureId: item.captureId || "",
       sourceTitle: item.sourceTitle || "Current source",
@@ -9174,6 +9271,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       trustVerificationCount: trustVerification.length,
       scopedItemsCount: scopeIntegrity.scopedItemsCount,
       missingScopeCount: scopeIntegrity.missingScopeCount,
+      studyGeneration: pipelineStudyGeneration,
       analyzedAt: new Date().toISOString()
     };
     const activeSourcePage = {
@@ -9184,7 +9282,8 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       activeUrl: status.activeUrl,
       activeAdapterName: status.activeAdapterName,
       capturedAt: latestCapture.capturedAt || "",
-      updatedAt: status.analyzedAt
+      updatedAt: status.analyzedAt,
+      studyGeneration: pipelineStudyGeneration
     };
     const analysisHistoryEntry = {
       sourceCaptureId: status.sourceCaptureId,
@@ -9194,20 +9293,24 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       activeUrl: status.activeUrl,
       activeAdapterName: status.activeAdapterName,
       analyzedAt: status.analyzedAt,
-      reason: status.reason
+      reason: status.reason,
+      studyGeneration: pipelineStudyGeneration
     };
     const currentCanonicalMarker = canonicalAnalyzedPageMarker(analysisHistoryEntry, {
       analysisTimestamp: status.analyzedAt,
       buildMarker: status.analysisBuildMarker
     });
-    const canonicalAnalyzedPages = [currentCanonicalMarker, ...previousCanonicalAnalyzedPages]
+    const generatedCanonicalMarker = currentCanonicalMarker
+      ? withStudyGeneration(currentCanonicalMarker, pipelineStudyGeneration)
+      : null;
+    const canonicalAnalyzedPages = [generatedCanonicalMarker, ...previousCanonicalAnalyzedPages]
       .filter(Boolean)
       .filter((item, index, items) => item.pageKey && items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
       .slice(0, 24);
-    const currentJourneyPageSnapshot = currentCanonicalMarker ? {
+    const currentJourneyPageSnapshot = generatedCanonicalMarker ? {
       schemaVersion: 1,
-      pageKey: currentCanonicalMarker.pageKey,
-      canonicalKey: currentCanonicalMarker.pageKey,
+      pageKey: generatedCanonicalMarker.pageKey,
+      canonicalKey: generatedCanonicalMarker.pageKey,
       label: [status.sourceCaptureBook, status.sourceCaptureChapter].filter(Boolean).join(" ") || status.sourceCaptureTitle,
       sourceTitle: status.sourceCaptureTitle,
       url: status.activeUrl,
@@ -9217,6 +9320,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       adapter: status.activeAdapterName,
       analyzedAt: status.analyzedAt,
       updatedAt: status.analyzedAt,
+      studyGeneration: pipelineStudyGeneration,
       records: {
         teachingSemantics: teachingSemantics.slice(0, 48),
         principleRelationships: principleRelationships.slice(0, 72),
@@ -9247,68 +9351,81 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       analyzedAt: item.analysisTimestamp || "",
       reason: status.reason,
       pageKey: item.pageKey,
-      buildMarker: item.buildMarker || ""
+      buildMarker: item.buildMarker || "",
+      studyGeneration: pipelineStudyGeneration
     }));
     const storageUpdate = {
-      [TIMELINE_STORAGE_KEY]: timelineItems,
-      [EVENT_STORAGE_KEY]: eventItems,
-      [ORDERED_EVENTS_KEY]: orderedEvents,
-      [ACTOR_TIMELINES_KEY]: actorTimelines,
-      [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems,
-      [PROPHECY_LINKS_KEY]: prophecyLinks,
-      [INTERACTION_GRAPH_KEY]: dedupedInteractionGraph,
-      [SCENE_MODELS_KEY]: sceneModels,
-      [ENTITY_ROLE_ITEMS_KEY]: entityRoleItems,
-      [SEMANTIC_EVENTS_KEY]: semanticEvents,
-      [SEMANTIC_FLOW_CHAINS_KEY]: semanticFlowChains,
-      [ENTITY_REGISTRY_KEY]: entityRegistry,
-      [RELATIONSHIP_GRAPH_KEY]: relationshipGraph,
-      [CANONICAL_IDENTITIES_KEY]: canonicalIdentities,
-      [MENTION_INDEX_KEY]: mentionIndex,
-      [DOM_SEMANTIC_HINTS_KEY]: domSemanticHints,
-      [SOURCE_DISCOVERY_INDEX_KEY]: sourceDiscoveryIndex,
-      [REFERENCE_GRAPH_KEY]: referenceGraph,
-      [PASSAGE_FUNCTIONS_KEY]: passageFunctions,
-      [REVELATION_PATTERNS_KEY]: revelationPatterns,
-      [REFERENCE_ROLES_KEY]: referenceRoles,
-      [SEMANTIC_DISTINCTIONS_KEY]: semanticDistinctions,
-      [ONTOLOGY_ROLES_KEY]: ontologyRoles,
-      [SEMANTIC_AMBIGUITIES_KEY]: semanticAmbiguities,
-      [ORIGIN_AUTHORITY_PATHS_KEY]: originAuthorityPaths,
-      [ENTITY_RELATION_ROLES_KEY]: entityRelationRoles,
-      [SEMANTIC_CONTINUITY_KEY]: semanticContinuity,
-      [MOVEMENT_SEMANTICS_KEY]: movementSemantics,
-      [SEMANTIC_CAUSALITY_KEY]: semanticCausality,
-      [TEACHING_SEMANTICS_KEY]: teachingSemantics,
-      [PRINCIPLE_RELATIONSHIPS_KEY]: principleRelationships,
-      [CHARACTER_INTERACTIONS_KEY]: characterInteractions,
-      [SESSION_CONTINUITY_REVIEW_KEY]: sessionContinuityReview,
-      [KNOWLEDGE_GRAPH_KEY]: knowledgeGraph,
-      [PRINCIPLE_NETWORKS_KEY]: principleNetworks,
-      [FOCUS_LENS_KEY]: focusLens,
-      [SCOPE_LENS_KEY]: scopeLens,
-      [DEPTH_LENS_KEY]: depthLens,
-      [SEMANTIC_QUESTIONS_KEY]: semanticQuestions,
-      [TRUST_VERIFICATION_KEY]: trustVerification,
+      [TIMELINE_STORAGE_KEY]: withStudyGenerationRecords(timelineItems, pipelineStudyGeneration),
+      [EVENT_STORAGE_KEY]: withStudyGenerationRecords(eventItems, pipelineStudyGeneration),
+      [ORDERED_EVENTS_KEY]: withStudyGenerationRecords(orderedEvents, pipelineStudyGeneration),
+      [ACTOR_TIMELINES_KEY]: withStudyGenerationRecords(actorTimelines, pipelineStudyGeneration),
+      [PRINCIPLE_STORAGE_KEY]: withStudyGenerationRecords(dedupedPrincipleItems, pipelineStudyGeneration),
+      [PROPHECY_LINKS_KEY]: withStudyGenerationRecords(prophecyLinks, pipelineStudyGeneration),
+      [INTERACTION_GRAPH_KEY]: withStudyGenerationRecords(dedupedInteractionGraph, pipelineStudyGeneration),
+      [SCENE_MODELS_KEY]: withStudyGenerationRecords(sceneModels, pipelineStudyGeneration),
+      [ENTITY_ROLE_ITEMS_KEY]: withStudyGenerationRecords(entityRoleItems, pipelineStudyGeneration),
+      [SEMANTIC_EVENTS_KEY]: withStudyGenerationRecords(semanticEvents, pipelineStudyGeneration),
+      [SEMANTIC_FLOW_CHAINS_KEY]: withStudyGenerationRecords(semanticFlowChains, pipelineStudyGeneration),
+      [ENTITY_REGISTRY_KEY]: withStudyGenerationRecords(entityRegistry, pipelineStudyGeneration),
+      [RELATIONSHIP_GRAPH_KEY]: withStudyGenerationRecords(relationshipGraph, pipelineStudyGeneration),
+      [CANONICAL_IDENTITIES_KEY]: withStudyGenerationRecords(canonicalIdentities, pipelineStudyGeneration),
+      [MENTION_INDEX_KEY]: withStudyGenerationRecords(mentionIndex, pipelineStudyGeneration),
+      [DOM_SEMANTIC_HINTS_KEY]: withStudyGenerationRecords(domSemanticHints, pipelineStudyGeneration),
+      [SOURCE_DISCOVERY_INDEX_KEY]: withStudyGenerationRecords(sourceDiscoveryIndex, pipelineStudyGeneration),
+      [REFERENCE_GRAPH_KEY]: withStudyGenerationRecords(referenceGraph, pipelineStudyGeneration),
+      [PASSAGE_FUNCTIONS_KEY]: withStudyGenerationRecords(passageFunctions, pipelineStudyGeneration),
+      [REVELATION_PATTERNS_KEY]: withStudyGenerationRecords(revelationPatterns, pipelineStudyGeneration),
+      [REFERENCE_ROLES_KEY]: withStudyGenerationRecords(referenceRoles, pipelineStudyGeneration),
+      [SEMANTIC_DISTINCTIONS_KEY]: withStudyGenerationRecords(semanticDistinctions, pipelineStudyGeneration),
+      [ONTOLOGY_ROLES_KEY]: withStudyGenerationRecords(ontologyRoles, pipelineStudyGeneration),
+      [SEMANTIC_AMBIGUITIES_KEY]: withStudyGenerationRecords(semanticAmbiguities, pipelineStudyGeneration),
+      [ORIGIN_AUTHORITY_PATHS_KEY]: withStudyGenerationRecords(originAuthorityPaths, pipelineStudyGeneration),
+      [ENTITY_RELATION_ROLES_KEY]: withStudyGenerationRecords(entityRelationRoles, pipelineStudyGeneration),
+      [SEMANTIC_CONTINUITY_KEY]: withStudyGenerationRecords(semanticContinuity, pipelineStudyGeneration),
+      [MOVEMENT_SEMANTICS_KEY]: withStudyGenerationRecords(movementSemantics, pipelineStudyGeneration),
+      [SEMANTIC_CAUSALITY_KEY]: withStudyGenerationRecords(semanticCausality, pipelineStudyGeneration),
+      [TEACHING_SEMANTICS_KEY]: withStudyGenerationRecords(teachingSemantics, pipelineStudyGeneration),
+      [PRINCIPLE_RELATIONSHIPS_KEY]: withStudyGenerationRecords(principleRelationships, pipelineStudyGeneration),
+      [CHARACTER_INTERACTIONS_KEY]: withStudyGenerationRecords(characterInteractions, pipelineStudyGeneration),
+      [SESSION_CONTINUITY_REVIEW_KEY]: withStudyGenerationRecords(sessionContinuityReview, pipelineStudyGeneration),
+      [KNOWLEDGE_GRAPH_KEY]: withStudyGenerationRecords(knowledgeGraph, pipelineStudyGeneration),
+      [PRINCIPLE_NETWORKS_KEY]: withStudyGenerationRecords(principleNetworks, pipelineStudyGeneration),
+      [FOCUS_LENS_KEY]: withStudyGenerationRecords(focusLens, pipelineStudyGeneration),
+      [SCOPE_LENS_KEY]: withStudyGenerationRecords(scopeLens, pipelineStudyGeneration),
+      [DEPTH_LENS_KEY]: withStudyGenerationRecords(depthLens, pipelineStudyGeneration),
+      [SEMANTIC_QUESTIONS_KEY]: withStudyGenerationRecords(semanticQuestions, pipelineStudyGeneration),
+      [TRUST_VERIFICATION_KEY]: withStudyGenerationRecords(trustVerification, pipelineStudyGeneration),
       [SOURCE_ADAPTERS_KEY]: sourceAdapters,
       [ACTIVE_ADAPTER_KEY]: activeAdapter,
       [SCOPE_INTEGRITY_KEY]: scopeIntegrity,
       [ANALYSIS_STATUS_KEY]: status,
-      [ACTIVE_SOURCE_PAGE_KEY]: currentCanonicalMarker ? activeSourcePage : null,
+      [STUDY_GENERATION_KEY]: pipelineStudyGeneration,
+      [ACTIVE_SOURCE_PAGE_KEY]: generatedCanonicalMarker ? activeSourcePage : null,
     };
     if (!options.preserveCanonicalScope) {
       Object.assign(storageUpdate, {
         [ANALYSIS_HISTORY_KEY]: analysisHistory,
         [CANONICAL_ANALYZED_PAGES_KEY]: canonicalAnalyzedPages,
-        [CANONICAL_ANALYSIS_TARGET_KEY]: currentCanonicalMarker,
+        [CANONICAL_ANALYSIS_TARGET_KEY]: generatedCanonicalMarker,
         [JOURNEY_PAGE_SNAPSHOTS_KEY]: journeyPageSnapshots
       });
     }
-    if (pipelineClearGeneration !== clearAllStudyDataGeneration) {
+    const writeGeneration = await activeStudyGeneration();
+    if (pipelineClearGeneration !== clearAllStudyDataGeneration || writeGeneration !== pipelineStudyGeneration) {
+      console.debug("[I.C.E. Study Generation Trace]", {
+        activeGeneration: writeGeneration,
+        pipelineStudyGeneration,
+        backgroundCacheGeneration: clearAllStudyDataGeneration,
+        writeRejected: true,
+        reason: "clear all generation changed before storage write",
+        sourceKey: "runFullAnalysisPipeline"
+      });
       return {
         ...status,
         staleWritePrevented: true,
         clearAllGeneration: clearAllStudyDataGeneration,
+        pipelineStudyGeneration,
+        activeStudyGeneration: writeGeneration,
         reason: "clear_all_study_data_invalidated_pipeline"
       };
     }

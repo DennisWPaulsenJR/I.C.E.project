@@ -5010,3 +5010,136 @@ Automated QA:
 
 Live browser gate:
 - Pending user/live verification in the unpacked extension: analyze/store Matthew 1, 3, 5, 7, and 9; Clear All; close all Study Panel tabs; reopen twice; confirm no Matthew markers, empty Stored Session and Current Study, intentional empty graph, preserved preferences, and clean console.
+
+## 2026-07-22 - Trace and Stop Post-Clear Matthew 1 Repopulation
+
+Live evidence showed that after Clear All, analyzing Matthew 3 could still produce a Study Panel Graph scope of Matthew 1 -> Matthew 3 with a stale Matthew 1 marker.
+
+Likely originating stale record:
+- A pre-clear Matthew 1 canonical analyzed-page/session marker from `ICE_CANONICAL_ANALYZED_PAGES`, or a companion session record derived from it (`ICE_ANALYSIS_HISTORY`, `ICE_SELECTED_RANGE`, `ICE_JOURNEY_PAGE_SNAPSHOTS`, or `ICE_CROSS_REFERENCE_SET`).
+- The merge path was `runFullAnalysisPipeline` reading `previousCanonicalAnalyzedPages`, merging them with the new `currentCanonicalMarker`, then deriving `analysisHistory` and graph scope from that merged list.
+
+Root cause:
+- The previous clear guard was an in-memory background counter only.
+- The active reset epoch was not persisted as its own storage key.
+- Scope reconstruction accepted records without a matching generation, so a stale marker could survive through a worker restart, stale runtime state, or a late write and be merged into the next analysis.
+
+WIP fix:
+- Added persisted `ICE_STUDY_GENERATION` epoch.
+- Clear All advances the epoch and writes it alongside `ICE_PANEL_UI_STATE.clearAllGeneration`.
+- Background analysis captures the active generation at start, filters prior canonical pages and journey snapshots before scope merge, tags new canonical/session records with `studyGeneration`, and rejects writes if persisted generation changes before storage write.
+- Study Panel load/reconstruction filters canonical analyzed pages, analysis history, journey snapshots, Current Study records, cross-reference relationships, active source page, selected range, and analysis status by active generation.
+- Popup stored-session and Current Study reconstruction now filters/tag records by generation; fallback Clear All advances the same persisted epoch if the background runtime is unavailable.
+- Added development diagnostics:
+  - `[I.C.E. Study Generation Trace]` in background scope merge/write paths.
+  - `[I.C.E. Study Reconstruction Trace]` in Study Panel reconstruction.
+
+Automated QA:
+- Extended `qa:clear-all-storage` with a delayed stale-write simulation: Matthew 1 from generation A, Clear All to generation B, Matthew 3 under generation B.
+- QA confirms generation-aware reconstruction returns Matthew 3 only, rejects Matthew 1, preserves preferences, keeps repeated Clear All idempotent, and does not advance generation on cancellation.
+
+Live browser gate:
+- Pending: reload extension, analyze Matthew 1, Clear All while/after active analysis, wait for pending work, analyze Matthew 3, reopen Study Panel twice, confirm Matthew 3 only with no Matthew 1 marker and clean console.
+
+## 2026-07-22 - Repair False Graph Scope Range
+
+Follow-up live evidence clarified that after Clear All and analyzing Matthew 3, the Graph header/axis still showed Matthew 1 -> Matthew 3, but all rendered graph lane nodes were Matthew 3 records. This classified the remaining defect as presentation-range calculation rather than stale Matthew 1 semantic data.
+
+Exact faulty route:
+- `scopeSnapshotBuildGraphModel`
+- -> `scopeSnapshotAxisBounds(allNodes)`
+- -> `scopeSnapshotScopePages()`
+- -> `currentStudyScopePages()` / selected-stored scope metadata
+- -> page chapters were unioned with actual node chapters
+- -> header and SVG axis used the widened `bounds`
+
+Repair:
+- `scopeSnapshotAxisBounds` now derives rendered graph bounds from projected node references only.
+- Requested/stored/selected scope is calculated separately through `scopeSnapshotRequestedBounds`.
+- When requested scope differs from rendered data extent, the Snapshot subtitle shows:
+  - Rendered records: actual graph-data extent.
+  - Requested scope: wider requested/stored scope, clearly labeled.
+- SVG header and axis ticks use rendered data extent only.
+- Added `scopeSnapshotRenderedReferenceDiagnostics` so graph projection reports rendered references, min/max rendered reference, actual node chapters, actual edge chapters, header/axis bounds, requested bounds, and boundary source.
+
+Automated QA:
+- `qa:graph-activation` now verifies Matthew 3-only nodes produce a Matthew 3-only rendered extent even when requested scope is Matthew 1 -> Matthew 3.
+- The same QA verifies real Matthew 1, 2, and 3 node data still renders a Matthew 1 -> Matthew 3 extent.
+
+Live browser gate:
+- Pending: Clear All, analyze Matthew 3 only, open fresh Study Panel Graph, confirm header/axis show Matthew 3 rendered extent with no misleading Matthew 1 or Matthew 2 ticks, while any wider requested scope is labeled separately.
+
+## 2026-07-22 - Trace and Remove Mis-scoped Event 1 Record
+
+Live follow-up showed the remaining Matthew 1 -> Matthew 3 Graph symptom was not only a widened requested range. The selected plotted item was a `Principles / Teachings` cluster with two child records:
+- `Event 1 - Explicit prophetic principle`
+- `Event 1 - Relationship-supported principle`
+
+Exact source characterization:
+- The children are runtime/display principle extraction records from `principleExtractionRecords`, not committed semantic authority records.
+- They are derived from scoped teaching/principle/relationship support and can inherit support labels such as `Event 1`.
+- In the failing presentation path, `Event 1` was treated like a chapter-only source reference.
+
+Root cause:
+- `scopeSnapshotRecordReference` had a permissive chapter-only fallback that accepted arbitrary book-like text plus a number.
+- A generic event ordinal/support label such as `Event 1` matched that fallback and became `{ book: "Event", chapter: 1 }`.
+- That made an ordinal support label plot at chapter 1 and widened the rendered graph extent as if a real Matthew 1 node existed.
+
+Repair:
+- Snapshot reference parsing now allows chapter coordinates only when the parsed book is a recognized scripture/source book.
+- Generic ordinal labels such as `Event 1`, event sequence numbers, and bare support ordinals no longer become scripture coordinates.
+- Records with no valid scripture reference remain explicitly unpositioned/unavailable unless another real current-scope scripture reference grounds them.
+- Projected nodes now carry architect diagnostics: display label, source record ID, raw reference fields, normalized reference, positioning reference, study generation, and source collection.
+- Background storage now stamps generated semantic arrays, including principle relationships/networks and relationship graph records, with `studyGeneration`.
+- Study Panel load now generation-filters generated semantic arrays, not only canonical pages/history, so old-generation principle and relationship support cannot survive Clear All into a new graph.
+
+Automated QA:
+- `qa:graph-activation` verifies generic `Event 1` does not map to Matthew 1, a Matthew 3 principle with event ordinal support positions at Matthew 3, genuine Matthew 1 records still position at Matthew 1, and old-generation principle/relationship feeds are rejected.
+- `qa:clear-all-storage` still verifies stale post-clear Matthew 1 writes are rejected and Matthew 3 reconstructs by itself.
+
+Live browser gate:
+- Pending: reload extension, Clear All, close all Study Panel tabs, analyze Matthew 3 only, open a fresh Graph, and confirm no Matthew 1 plotted node, no Matthew 1 axis tick, no Matthew 1 -> Matthew 3 header, principle records are Matthew 3-positioned or explicitly unpositioned, provenance/reference diagnostics are visible, reopen remains clean, and console is clean.
+
+## 2026-07-22 - Add Context to Focused Narrative Event Presentation
+
+Live behavior after graph repair showed selected Narrative Event nodes rendered correctly but their focused detail card could describe the event only as `narrative_event` or another technical type label.
+
+Audited Matthew-shaped event fields:
+- Ordered event records are created by `createEventItem` / `createOrderedEvents`.
+- Existing fields include `id`, `sourceCaptureId`, `sourceTitle`, `sourceUrl`, `sourceContext`, `eventText`, `eventType`, `eventClassification`, `eventDisplayLabel`, `sequenceIndex`, `sequenceOrder`, `orderingReason`, `verseNumber`, `verseRef`, `scopePath`, `subEvents`, `confidence`, `extractedAt`, and `orderedAt`.
+- Sub-events can expose existing `actor`, `action`, `target`, `recipient`, `participants`, `narrator`, `quotedSpeaker`, `quotedProphet`, and `confidence`.
+
+Presentation-only repair:
+- Added a Snapshot Narrative Event context model that answers Event, What Happens, Participants, Source Context, Sequence Context, and Status from existing fields only.
+- Focused event cards now prefer recorded `eventSummary`, `eventName`, `summary`, `description`, `narrative`, `eventText`, `sourceText`, `sourceExcerpt`, `sourcePhrase`, `sourceGrounding`, or `evidence` before falling back.
+- Generic technical type identifiers remain visible separately as Presentation Type / Current event type, but no longer stand alone as the event description when better recorded context exists.
+- If only classification is available, the fallback now says `Narrative event at <reference>` or `Source text unavailable; event classification recorded` instead of treating `narrative_event` as meaning.
+- Source excerpt handling now includes `eventText` and `sourceGrounding`.
+
+Boundary:
+- No semantic records, canonical analysis, Context Lock, storage authority, graph authority, crawling, or source fetching were changed.
+
+Automated QA:
+- `qa:graph-activation` now verifies a Matthew 3 narrative event focused card uses recorded event text and participants, preserves the technical presentation type separately, and uses a neutral fallback when only classification/source reference exists.
+
+## 2026-07-23 - Document I.C.E. Architectural Mission Statement
+
+Added `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md` as a foundational mission-philosophy document.
+
+Purpose:
+- Record I.C.E.'s enduring mission: discovery, organization, evaluation, understanding, transparent semantic reasoning, and preservation of human agency.
+- Clarify that I.C.E. exists to expand human understanding, not replace human judgment.
+- Establish discovery before direction as a product principle.
+- Identify knowledge architecture, not any single language model, as the durable product asset.
+- Preserve model independence across GPT, Claude, Gemini, local models, and future models.
+- Define AI services as reasoning tools over evidence assembled by I.C.E., not authoritative knowledge sources.
+- Record the Understanding Library, historical integrity, continuous discovery, progressive device capability, and multi-tier processing philosophy.
+
+Integration:
+- `MASTER_DESIGN.md` now references the mission statement as the mission philosophy it operationalizes.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the mission statement in core constitutional documents and reading orders.
+- `PROJECT_STATE.md` now records the document and its authority level.
+
+Boundary:
+- Architecture/documentation only.
+- No semantic records, Context Lock, storage, graph behavior, crawling, queues, or runtime code changed for this mission statement.

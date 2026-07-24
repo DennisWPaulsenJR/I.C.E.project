@@ -66,6 +66,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     analysisQueuePageSummaries: "ICE_ANALYSIS_QUEUE_PAGE_SUMMARIES",
     journeyPageSnapshots: "ICE_JOURNEY_PAGE_SNAPSHOTS",
     panelUiState: "ICE_PANEL_UI_STATE",
+    studyGeneration: "ICE_STUDY_GENERATION",
     gptReviewReport: "ICE_GPT_REVIEW_REPORT"
   };
   const DISPLAY_LIMIT = 5;
@@ -85,7 +86,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "analysisQueueManifest",
     "analysisQueuePageSummaries",
     "activeAdapter",
-    "panelUiState"
+    "panelUiState",
+    "studyGeneration"
   ];
   const FULL_STORAGE_ALIASES = Object.keys(STORAGE_KEYS);
   const STARTUP_RENDERER_LABELS = new Set(["Study Scope", "Queue Summary"]);
@@ -482,6 +484,67 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function normalizeText(text) {
     return toDisplayText(text).replace(/\s+/g, " ").trim();
+  }
+
+  function normalizeStudyGeneration(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : 0;
+  }
+
+  function activeStudyGenerationFromData(data = studyData) {
+    return Math.max(
+      normalizeStudyGeneration(data.studyGeneration),
+      normalizeStudyGeneration(data.panelUiState?.clearAllGeneration)
+    );
+  }
+
+  function recordStudyGeneration(record = {}) {
+    return normalizeStudyGeneration(record.studyGeneration ?? record.clearAllGeneration);
+  }
+
+  function recordMatchesStudyGeneration(record = {}, generation = activeStudyGenerationFromData()) {
+    const recordGeneration = recordStudyGeneration(record);
+    if (generation <= 0) return recordGeneration === 0;
+    return recordGeneration === generation;
+  }
+
+  function withStudyGeneration(record, generation = activeStudyGenerationFromData()) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) return record;
+    return { ...record, studyGeneration: generation };
+  }
+
+  function filterRecordsForStudyGeneration(records = [], generation = activeStudyGenerationFromData(), sourceKey = "unknown") {
+    const accepted = [];
+    const rejected = [];
+    asArray(records).forEach((record) => {
+      if (recordMatchesStudyGeneration(record, generation)) accepted.push(record);
+      else rejected.push(record);
+    });
+    if (rejected.length) {
+      console.debug("[I.C.E. Study Reconstruction Trace]", {
+        activeGeneration: generation,
+        sourceKey,
+        accepted: accepted.map((record) => ({
+          chapter: record.sourceCaptureChapter || record.chapter || "",
+          reference: record.sourceTitle || record.label || record.pageKey || "",
+          recordId: record.pageKey || record.id || record.captureId || "",
+          recordType: record.recordType || record.itemType || "study_scope_record",
+          studyGeneration: recordStudyGeneration(record),
+          storageArea: "chrome.storage.local",
+          loadedFrom: "persistence"
+        })),
+        rejectedAsStale: rejected.map((record) => ({
+          chapter: record.sourceCaptureChapter || record.chapter || "",
+          reference: record.sourceTitle || record.label || record.pageKey || "",
+          recordId: record.pageKey || record.id || record.captureId || "",
+          recordType: record.recordType || record.itemType || "study_scope_record",
+          studyGeneration: recordStudyGeneration(record),
+          storageArea: "chrome.storage.local",
+          loadedFrom: "persistence"
+        }))
+      });
+    }
+    return accepted;
   }
 
   function nowForDiagnostics() {
@@ -1393,6 +1456,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     return aliases.get(lower) || normalized.split(/\s+/).map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`).join(" ");
   }
 
+  function recognizedSourceVerseBook(value = "") {
+    const title = sourceVerseBookTitle(value);
+    const normalized = title.toLowerCase();
+    return new Set([
+      "genesis", "exodus", "leviticus", "numbers", "deuteronomy", "joshua", "judges", "ruth",
+      "1 samuel", "2 samuel", "1 kings", "2 kings", "1 chronicles", "2 chronicles", "ezra", "nehemiah", "esther",
+      "job", "psalms", "proverbs", "ecclesiastes", "song of solomon", "isaiah", "jeremiah", "lamentations", "ezekiel", "daniel",
+      "hosea", "joel", "amos", "obadiah", "jonah", "micah", "nahum", "habakkuk", "zephaniah", "haggai", "zechariah", "malachi",
+      "matthew", "mark", "luke", "john", "acts", "romans", "1 corinthians", "2 corinthians", "galatians", "ephesians", "philippians", "colossians",
+      "1 thessalonians", "2 thessalonians", "1 timothy", "2 timothy", "titus", "philemon", "hebrews", "james", "1 peter", "2 peter",
+      "1 john", "2 john", "3 john", "jude", "revelation",
+      "1 nephi", "2 nephi", "jacob", "enos", "jarom", "omni", "words of mormon", "mosiah", "alma", "helaman", "3 nephi", "4 nephi",
+      "mormon", "ether", "moroni", "doctrine and covenants", "moses", "abraham", "joseph smith matthew", "joseph smith history", "articles of faith"
+    ]).has(normalized);
+  }
+
+  function recognizedSourceVerseBookTitle(value = "") {
+    const title = sourceVerseBookTitle(value);
+    return recognizedSourceVerseBook(title) ? title : "";
+  }
+
   function sourceVerseNumbers(value = "") {
     const numbers = [];
     String(value || "").split(",").forEach((part) => {
@@ -1418,22 +1502,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (scriptureScope) {
       const start = Number(scriptureScope[3]);
       const end = Number(scriptureScope[4] || start);
+      const book = recognizedSourceVerseBookTitle(scriptureScope[1]);
+      if (!book) return null;
       return {
-        book: sourceVerseBookTitle(scriptureScope[1]),
+        book,
         chapter: Number(scriptureScope[2]),
         verses: sourceVerseNumbers(start === end ? String(start) : `${start}-${end}`)
       };
     }
     const named = text.match(/\b([1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+):(\d+(?:\s*[-\u2013]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-\u2013]\s*\d+)?)*)/);
     if (named) {
+      const book = recognizedSourceVerseBookTitle(named[1]);
+      if (!book) return null;
       return {
-        book: sourceVerseBookTitle(named[1]),
+        book,
         chapter: Number(named[2]),
         verses: sourceVerseNumbers(named[3])
       };
     }
     const compact = text.match(/^(\d+):(\d+(?:\s*[-\u2013]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-\u2013]\s*\d+)?)*)$/);
-    if (compact && context.book) {
+    if (compact && recognizedSourceVerseBook(context.book)) {
       return {
         book: sourceVerseBookTitle(context.book),
         chapter: Number(compact[1]),
@@ -1471,10 +1559,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function sourceVerseHintMatches(hint = {}, reference = {}) {
     const hintContext = hint.sourceContext || {};
-    const hintBook = sourceVerseBookTitle(hint.book || hintContext.book);
+    const hintBook = recognizedSourceVerseBookTitle(hint.book || hintContext.book);
     const hintChapter = Number(hint.chapter || hintContext.chapter);
     const hintVerse = Number(hint.verseNumber || sourceVersePartsFromText(hint.verseRef, { book: hintBook })?.verses?.[0]);
     return hint.hintType === "verse_scope" &&
+      Boolean(hintBook) &&
       hintBook.toLowerCase() === normalizeText(reference.book).toLowerCase() &&
       hintChapter === Number(reference.chapter) &&
       asArray(reference.verses).map(Number).includes(hintVerse);
@@ -1530,15 +1619,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const groundingHint = reference ? null : sourceVerseHintFromGrounding(item);
     if (!reference && groundingHint) {
       const hintContext = groundingHint.sourceContext || {};
+      const hintBook = recognizedSourceVerseBookTitle(groundingHint.book || hintContext.book);
       reference = sourceVersePartsFromText(groundingHint.verseRef, {
         book: groundingHint.book || hintContext.book
-      }) || {
-        book: sourceVerseBookTitle(groundingHint.book || hintContext.book),
+      }) || (hintBook ? {
+        book: hintBook,
         chapter: Number(groundingHint.chapter || hintContext.chapter),
         verses: [Number(groundingHint.verseNumber)]
-      };
+      } : null);
     }
-    if (!reference && context.book && context.chapter && item.verseNumber) {
+    if (!reference && recognizedSourceVerseBook(context.book) && context.chapter && item.verseNumber) {
       reference = { book: sourceVerseBookTitle(context.book), chapter: Number(context.chapter), verses: [Number(item.verseNumber)] };
     }
     if (!reference?.verses?.length) return null;
@@ -1749,7 +1839,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       analyzedAt: marker.analysisTimestamp || marker.analyzedAt || "",
       updatedAt: marker.analysisTimestamp || marker.updatedAt || "",
       pageKey: marker.pageKey || "",
-      buildMarker: marker.buildMarker || ""
+      buildMarker: marker.buildMarker || "",
+      studyGeneration: recordStudyGeneration(marker)
     };
     return sourcePageValidationReason(page, { requireAnalyzed: true, requireMarker: true }) === "accepted" && page.pageKey === pageRecordKey(page) ? page : null;
   }
@@ -1784,7 +1875,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeUrl: status.activeUrl || "",
       activeAdapterName: status.activeAdapterName || "",
       analyzedAt: status.analyzedAt || "",
-      updatedAt: status.analyzedAt || ""
+      updatedAt: status.analyzedAt || "",
+      studyGeneration: recordStudyGeneration(status)
     };
     return validSourcePageRecord(record, { requireAnalyzed: Boolean(status.analyzedAt) }) ? record : null;
   }
@@ -2483,7 +2575,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       analyzed: Boolean(record.analyzed),
       analyzedAt: normalizeText(record.analyzedAt || ""),
       addedAt: normalizeText(record.addedAt || ""),
-      state: "MANUAL SELECTION"
+      state: "MANUAL SELECTION",
+      studyGeneration: recordStudyGeneration(record)
     };
   }
 
@@ -2513,7 +2606,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       addedAt: normalizeText(record.addedAt || ""),
       activeAdapter: normalizeText(record.activeAdapter || ""),
       activeLenses: Array.isArray(record.activeLenses) ? record.activeLenses : [],
-      provenance: record.provenance || { source: "popup source scope control", sourceUrl }
+      provenance: record.provenance || { source: "popup source scope control", sourceUrl },
+      studyGeneration: recordStudyGeneration(record)
     };
   }
 
@@ -2543,7 +2637,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       source: existing.source || "manual",
       analyzed,
       analyzedAt: analyzedPage?.analyzedAt || page.analyzedAt || "",
-      analysisPageKey: analyzed ? canonicalKey : ""
+      analysisPageKey: analyzed ? canonicalKey : "",
+      studyGeneration: recordStudyGeneration(existing) || recordStudyGeneration(page) || recordStudyGeneration(analyzedPage) || activeStudyGenerationFromData()
     };
   }
 
@@ -5224,8 +5319,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function persistActiveSourcePage(page = activeSourcePageRecord()) {
     if (!page) return null;
-    await chrome.storage.local.set({ [STORAGE_KEYS.activeSourcePage]: page });
-    return page;
+    const stampedPage = withStudyGeneration(page);
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.studyGeneration]: activeStudyGenerationFromData(),
+      [STORAGE_KEYS.activeSourcePage]: stampedPage
+    });
+    return stampedPage;
   }
 
   async function addActivePageToSession() {
@@ -5237,13 +5336,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     await persistActiveSourcePage(activePage);
-    const nextHistory = [activePage, ...analyzedPageHistory()]
+    const generation = activeStudyGenerationFromData();
+    const stampedActivePage = withStudyGeneration(activePage, generation);
+    const nextHistory = [stampedActivePage, ...analyzedPageHistory()]
       .filter((item) => validSourcePageRecord(item, { requireAnalyzed: true }))
       .filter((item, index, items) => items.findIndex((candidate) => pageRecordKey(candidate) === pageRecordKey(item)) === index)
+      .map((item) => withStudyGeneration(item, generation))
       .slice(0, 24);
     await chrome.storage.local.set({
+      [STORAGE_KEYS.studyGeneration]: generation,
       [STORAGE_KEYS.analysisHistory]: nextHistory,
-      [STORAGE_KEYS.selectedRange]: rangeFromAnalyzedPages(nextHistory),
+      [STORAGE_KEYS.selectedRange]: withStudyGeneration(rangeFromAnalyzedPages(nextHistory), generation),
       [STORAGE_KEYS.panelUiState]: { lastAction: "add_active_page_to_session", updatedAt: new Date().toISOString() }
     });
     await refreshStudyData();
@@ -5323,12 +5426,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.prophecyLinks,
       STORAGE_KEYS.analysisStatus
     ]);
+    const generation = activeStudyGenerationFromData();
     await chrome.storage.local.set({
-      [STORAGE_KEYS.analysisHistory]: remainingHistory,
-      [STORAGE_KEYS.canonicalAnalyzedPages]: remainingCanonical,
-      [STORAGE_KEYS.journeyPageSnapshots]: remainingJourneySnapshots,
-      [STORAGE_KEYS.activeSourcePage]: activePage,
-      [STORAGE_KEYS.selectedRange]: rangeFromAnalyzedPages(remainingHistory),
+      [STORAGE_KEYS.studyGeneration]: generation,
+      [STORAGE_KEYS.analysisHistory]: remainingHistory.map((item) => withStudyGeneration(item, generation)),
+      [STORAGE_KEYS.canonicalAnalyzedPages]: remainingCanonical.map((item) => withStudyGeneration(item, generation)),
+      [STORAGE_KEYS.journeyPageSnapshots]: remainingJourneySnapshots.map((item) => withStudyGeneration(item, generation)),
+      [STORAGE_KEYS.activeSourcePage]: withStudyGeneration(activePage, generation),
+      [STORAGE_KEYS.selectedRange]: withStudyGeneration(rangeFromAnalyzedPages(remainingHistory), generation),
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_active_page_analysis", updatedAt: new Date().toISOString() }
     });
     await refreshStudyData();
@@ -5390,6 +5495,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       STORAGE_KEYS.selectedRange
     ]);
     await chrome.storage.local.set({
+      [STORAGE_KEYS.studyGeneration]: activeStudyGenerationFromData(),
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_session_analysis", updatedAt: new Date().toISOString() }
     });
     await refreshStudyData();
@@ -5424,7 +5530,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       await chrome.tabs.create({ url: target.url, active: true });
     }
     await chrome.storage.local.set({
-      [STORAGE_KEYS.activeSourcePage]: target.page,
+      [STORAGE_KEYS.studyGeneration]: activeStudyGenerationFromData(),
+      [STORAGE_KEYS.activeSourcePage]: withStudyGeneration(target.page),
       [STORAGE_KEYS.panelUiState]: { lastAction: actionName, updatedAt: new Date().toISOString() }
     });
     await refreshStudyData();
@@ -5441,7 +5548,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function addActivePageToCrossReferenceSet() {
-    const page = crossReferenceCandidatePage();
+    const generation = activeStudyGenerationFromData();
+    const page = withStudyGeneration(crossReferenceCandidatePage(), generation);
     const record = crossReferenceRecordFromPage(page || {});
     if (!record) {
       showDiagnosticMessage("Open or select a supported scripture/source page before adding it to the cross-reference set.");
@@ -5451,6 +5559,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .filter((item, index, items) => items.findIndex((candidate) => candidate.canonicalKey === item.canonicalKey) === index)
       .slice(0, 48);
     await chrome.storage.local.set({
+      [STORAGE_KEYS.studyGeneration]: generation,
       [STORAGE_KEYS.crossReferenceSet]: nextSet,
       [STORAGE_KEYS.activeSourcePage]: page,
       [STORAGE_KEYS.panelUiState]: { lastAction: "add_active_page_to_cross_reference_set", updatedAt: new Date().toISOString() }
@@ -5461,6 +5570,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function clearCrossReferenceSet() {
     await chrome.storage.local.set({
+      [STORAGE_KEYS.studyGeneration]: activeStudyGenerationFromData(),
       [STORAGE_KEYS.crossReferenceSet]: [],
       [STORAGE_KEYS.panelUiState]: { lastAction: "clear_cross_reference_set", updatedAt: new Date().toISOString() }
     });
@@ -13184,7 +13294,8 @@ createRevelationPartsSection(item.subEvents)
       }
       const chapterOnly = normalizeText(candidate).match(/\b([1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+)(?:\s*(?:->|-|\u2013)\s*(?:[1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*)?\s*(\d+))?\b/);
       if (chapterOnly) {
-        const book = sourceVerseBookTitle(chapterOnly[1]);
+        const book = recognizedSourceVerseBookTitle(chapterOnly[1]);
+        if (!book) continue;
         const chapter = Number(chapterOnly[2]);
         return { book, chapter, verses: [], label: `${book} ${chapter}` };
       }
@@ -13192,9 +13303,61 @@ createRevelationPartsSection(item.subEvents)
     const resolved = resolveSourceVerseReference(record);
     if (resolved?.chapter) return { ...resolved, label: resolved.label || sourceVerseLabel(resolved) };
     const chapter = Number(record.chapter || record.sourceContext?.chapter);
-    const book = sourceVerseBookTitle(record.book || record.sourceContext?.book || activeSourcePageRecord()?.book || activeSourcePageRecord()?.sourceCaptureBook || "");
-    if (chapter) return { book, chapter, verses: [], label: `${book || "Source"} ${chapter}` };
+    const book = recognizedSourceVerseBookTitle(record.book || record.sourceContext?.book || activeSourcePageRecord()?.book || activeSourcePageRecord()?.sourceCaptureBook || "");
+    if (book && chapter) return { book, chapter, verses: [], label: `${book} ${chapter}` };
     return null;
+  }
+
+  function scopeSnapshotRawReferenceFields(record = {}) {
+    const fields = [
+      "sourceReference",
+      "primaryReference",
+      "scriptureReference",
+      "reference",
+      "verseRange",
+      "verseRef",
+      "sourceScope",
+      "scopePath",
+      "sourceScopePath",
+      "chapter",
+      "verse",
+      "verseNumber",
+      "eventId",
+      "eventIndex",
+      "sequence",
+      "sequenceNumber",
+      "ordinal",
+      "sourceUnit"
+    ];
+    return fields.reduce((details, field) => {
+      const value = record[field];
+      if (value != null && normalizeText(value)) details[field] = normalizeText(value);
+      return details;
+    }, {});
+  }
+
+  function scopeSnapshotReferenceDiagnostics(record = {}, reference = null, sourceCollection = "unknown") {
+    const rawReferenceFields = scopeSnapshotRawReferenceFields(record);
+    const normalizedReference = [
+      rawReferenceFields.sourceReference,
+      rawReferenceFields.primaryReference,
+      rawReferenceFields.scriptureReference,
+      rawReferenceFields.reference,
+      rawReferenceFields.verseRange,
+      rawReferenceFields.verseRef,
+      rawReferenceFields.sourceScope,
+      rawReferenceFields.scopePath,
+      rawReferenceFields.sourceScopePath
+    ].filter(Boolean).join(" | ");
+    return {
+      sourceRecordId: normalizeText(record.recordId || record.id || record.relationshipId || record.principleId || record.eventId || record.timelineId || record.sceneId || record.themeId || ""),
+      sourceCollection,
+      rawReferenceFields,
+      normalizedReference,
+      positioningReference: reference?.label || "",
+      studyGeneration: recordStudyGeneration(record),
+      sourceRecordType: normalizeText(record.recordType || record.itemType || record.principleCategory || record.relationshipType || record.eventType || "")
+    };
   }
 
   function scopeSnapshotReferenceLabelsFromRecord(record = {}) {
@@ -13225,7 +13388,9 @@ createRevelationPartsSection(item.subEvents)
       "exactText",
       "sourceText",
       "sourceExcerpt",
+      "eventText",
       "sourcePhrase",
+      "sourceGrounding",
       "textQuoteExact",
       "quote",
       "quotation",
@@ -13286,6 +13451,121 @@ createRevelationPartsSection(item.subEvents)
       "Existing scoped record available for inspection.",
       260
     );
+  }
+
+  function scopeSnapshotExistingContextValue(record = {}, keys = [], limit = 260) {
+    return trimText(scopeSnapshotRawField(record, keys), limit);
+  }
+
+  function scopeSnapshotRecordedParticipants(record = {}) {
+    return uniqueStudyList([
+      record.subject,
+      record.actor,
+      record.speaker,
+      record.sourceEntity,
+      record.primaryParticipant,
+      record.authority,
+      record.object,
+      record.target,
+      record.recipient,
+      record.audience,
+      record.location,
+      record.locations,
+      record.actors,
+      record.participants,
+      record.supportingParticipants,
+      asArray(record.subEvents).flatMap((event) => [
+        event.actor,
+        event.speaker,
+        event.recipient,
+        event.target,
+        event.concerning,
+        event.narrator,
+        event.quotedSpeaker,
+        event.quotedProphet,
+        event.participants
+      ])
+    ].flat(Infinity).map(normalizeText).filter(Boolean)).slice(0, 12);
+  }
+
+  function scopeSnapshotRecordedActionPhrase(record = {}) {
+    const direct = scopeSnapshotExistingContextValue(record, [
+      "eventSummary",
+      "eventName",
+      "summary",
+      "description",
+      "narrative",
+      "eventText",
+      "sourceText",
+      "sourceExcerpt",
+      "sourcePhrase",
+      "sourceGrounding",
+      "evidence"
+    ], 320);
+    if (direct) return direct;
+    const actionParts = [
+      scopeSnapshotExistingContextValue(record, ["subject", "actor", "speaker", "sourceEntity"], 90),
+      scopeSnapshotExistingContextValue(record, ["action", "predicate", "eventType"], 90),
+      scopeSnapshotExistingContextValue(record, ["object", "target", "recipient", "audience"], 90)
+    ].filter(Boolean);
+    return trimText(actionParts.join(" -> "), 260);
+  }
+
+  function scopeSnapshotSequenceContextLines(record = {}) {
+    const previous = scopeSnapshotExistingContextValue(record, ["previousEvent", "previousEventId", "previousRecord", "fromEvent"], 120);
+    const current = scopeSnapshotExistingContextValue(record, ["eventName", "eventDisplayLabel", "eventClassification", "eventType", "timelineLabel"], 120);
+    const next = scopeSnapshotExistingContextValue(record, ["nextEvent", "nextEventId", "nextRecord", "toEvent"], 120);
+    const scene = scopeSnapshotExistingContextValue(record, ["scene", "sceneTitle", "sceneType", "relatedScene", "sourceScene"], 140);
+    const sequence = scopeSnapshotExistingContextValue(record, ["sequenceOrder", "sequenceNumber", "sequenceIndex", "timelinePosition", "orderingReason"], 120);
+    return [
+      sequence ? `Sequence: ${sequence}` : "",
+      previous ? `Previous event: ${previous}` : "",
+      current ? `Current event type: ${current}` : "",
+      next ? `Next event: ${next}` : "",
+      scene ? `Scene: ${scene}` : ""
+    ].filter(Boolean);
+  }
+
+  function scopeSnapshotNarrativeEventContext(selected = {}, model = {}) {
+    const record = selected.record || {};
+    const sourceReference = selected.primaryReference || selected.reference?.label || scopeSnapshotExistingContextValue(record, ["sourceReference", "verseRange", "verseRef", "sourceScope", "scopePath"], 140) || model.activeScope || "not recorded";
+    const eventLabel = scopeSnapshotExistingContextValue(record, ["eventSummary", "eventName", "title", "label", "eventDisplayLabel", "eventClassification"], 140);
+    const actionText = scopeSnapshotRecordedActionPhrase(record);
+    const participants = scopeSnapshotRecordedParticipants(record);
+    const sourceText = selected.sourceText && !/source text unavailable/i.test(selected.sourceText)
+      ? trimText(selected.sourceText, 360)
+      : scopeSnapshotExistingContextValue(record, ["eventText", "sourceText", "sourceExcerpt", "sourcePhrase", "sourceGrounding", "evidence"], 360);
+    const sourceUnavailable = !sourceText || /source text unavailable/i.test(sourceText);
+    const sequenceLines = scopeSnapshotSequenceContextLines(record);
+    const typeLabel = scopeSnapshotExistingContextValue(record, ["eventType", "recordType"], 100) || selected.presentationType || selected.recordType || "narrative_event";
+    const genericTypeOnly = !actionText || actionText.toLowerCase() === normalizeText(typeLabel).toLowerCase();
+    const summary = !genericTypeOnly
+      ? actionText
+      : sourceReference !== "not recorded"
+        ? `Narrative event at ${sourceReference}. Source text ${sourceUnavailable ? "unavailable; event classification recorded." : "recorded below."}`
+        : "Narrative event classification recorded; source context is incomplete.";
+    return {
+      eventLabel: eventLabel || (sourceReference !== "not recorded" ? `Narrative event at ${sourceReference}` : "Narrative event"),
+      summary,
+      participants: participants.length ? participants.join(", ") : "Not recorded",
+      sourceReference,
+      sourceText: sourceText || "Source text unavailable from the current evaluation source",
+      sourceState: sourceUnavailable ? "source text unavailable or not attached to this record" : "source text/excerpt recorded",
+      sequenceLines,
+      typeLabel,
+      statusLine: [
+        `Confidence: ${selected.confidence || scopeSnapshotExistingContextValue(record, ["confidence", "evidenceWeight"], 80) || "not recorded"}`,
+        `Verification: ${/unresolved|ambiguous/i.test(selected.status || "") ? "review" : "verified display record"}`,
+        `Provenance: ${selected.provenance || scopeSnapshotExistingContextValue(record, ["provenance"], 120) || "not recorded"}`
+      ].join(" | ")
+    };
+  }
+
+  function scopeSnapshotDetailSummaryText(selected = {}, model = {}) {
+    if (/event|timeline|ordered/i.test(`${selected.recordType || ""} ${selected.semanticCategory || ""} ${selected.presentationType || ""}`)) {
+      return scopeSnapshotNarrativeEventContext(selected, model).summary;
+    }
+    return selected.evaluationText || trimText(selected.evidence || selected.provenance || "Evidence remains available in the native inspector.", 180);
   }
 
   function scopeSnapshotLayerIdsForNode(node = {}) {
@@ -13651,13 +13931,13 @@ createRevelationPartsSection(item.subEvents)
 
   function scopeSnapshotAxisBounds(nodes = []) {
     const scopePages = scopeSnapshotScopePages();
-    const pageChapters = scopePages.map((page) => Number(page.chapter || page.sourceCaptureChapter)).filter(Boolean);
     const nodeChapters = nodes.map((node) => node.reference?.chapter).filter(Boolean);
-    const chapters = [...pageChapters, ...nodeChapters];
     const firstPage = scopePages[0] || activeSourcePageRecord() || {};
-    const book = sourceVerseBookTitle(firstPage.book || firstPage.sourceCaptureBook || nodes.find((node) => node.reference?.book)?.reference?.book || "");
-    const minChapter = chapters.length ? Math.min(...chapters) : Number(firstPage.chapter || firstPage.sourceCaptureChapter) || 1;
-    const maxChapter = chapters.length ? Math.max(...chapters) : minChapter;
+    const nodeBook = nodes.find((node) => node.reference?.book)?.reference?.book || "";
+    const book = sourceVerseBookTitle(nodeBook || firstPage.book || firstPage.sourceCaptureBook || "");
+    const hasNodeChapters = nodeChapters.length > 0;
+    const minChapter = hasNodeChapters ? Math.min(...nodeChapters) : Number(firstPage.chapter || firstPage.sourceCaptureChapter) || 1;
+    const maxChapter = hasNodeChapters ? Math.max(...nodeChapters) : minChapter;
     const verseNodes = nodes.filter((node) => node.reference?.verses?.length);
     const verseValues = verseNodes.flatMap((node) => node.reference.verses.map((verse) => ({
       chapter: node.reference.chapter,
@@ -13680,6 +13960,31 @@ createRevelationPartsSection(item.subEvents)
       startLabel: minChapter === maxChapter ? `${book || "Source"} ${minChapter}:${minVerse}` : `${book || "Source"} ${minChapter}`,
       endLabel: minChapter === maxChapter ? `${book || "Source"} ${maxChapter}:${maxVerse}` : `${book || "Source"} ${maxChapter}`
     };
+  }
+
+  function scopeSnapshotRequestedBounds() {
+    const scopePages = scopeSnapshotScopePages();
+    const pageChapters = scopePages.map((page) => Number(page.chapter || page.sourceCaptureChapter)).filter(Boolean);
+    const firstPage = scopePages[0] || activeSourcePageRecord() || {};
+    const book = sourceVerseBookTitle(firstPage.book || firstPage.sourceCaptureBook || "");
+    const minChapter = pageChapters.length ? Math.min(...pageChapters) : Number(firstPage.chapter || firstPage.sourceCaptureChapter) || 1;
+    const maxChapter = pageChapters.length ? Math.max(...pageChapters) : minChapter;
+    return {
+      book,
+      minChapter,
+      maxChapter,
+      startLabel: `${book || "Source"} ${minChapter}`,
+      endLabel: `${book || "Source"} ${maxChapter}`,
+      source: scopeSnapshotCurrentModeLabel(),
+      pageCount: scopePages.length
+    };
+  }
+
+  function scopeSnapshotBoundaryDifference(bounds = {}, requestedBounds = {}) {
+    if (!bounds?.minChapter || !requestedBounds?.minChapter) return false;
+    return Number(bounds.minChapter) !== Number(requestedBounds.minChapter) ||
+      Number(bounds.maxChapter) !== Number(requestedBounds.maxChapter) ||
+      normalizeText(bounds.book).toLowerCase() !== normalizeText(requestedBounds.book).toLowerCase();
   }
 
   function scopeSnapshotAxisGranularity(bounds = {}, nodes = []) {
@@ -13833,6 +14138,7 @@ createRevelationPartsSection(item.subEvents)
       const subevaluationLabel = scopeSnapshotSubevaluationLabel(safeRecord, label || fallback);
       const sourceText = scopeSnapshotSourceTextForRecord(safeRecord, reference);
       const supportingReferences = scopeSnapshotReferenceLabelsFromRecord(safeRecord).filter((item) => item !== reference?.label);
+      const referenceDiagnostics = scopeSnapshotReferenceDiagnostics(safeRecord, reference, sourceCollection);
       const node = {
         id: unique.id,
         presentationKey: unique.id,
@@ -13854,6 +14160,10 @@ createRevelationPartsSection(item.subEvents)
         semanticCategory,
         subevaluationLabel,
         sourceText,
+        sourceCollection,
+        sourceRecordId: referenceDiagnostics.sourceRecordId,
+        sourceGeneration: referenceDiagnostics.studyGeneration,
+        referenceDiagnostics,
         evaluationText: scopeSnapshotEvaluationText(safeRecord, subevaluationLabel || label),
         graphPrimaryLabel: reference?.label || trimText(label, 42),
         graphSecondaryLabel: [semanticCategory, subevaluationLabel].filter(Boolean).join(" - ")
@@ -13872,6 +14182,75 @@ createRevelationPartsSection(item.subEvents)
     }
   }
 
+  function scopeSnapshotUnresolvedPresentationRecords(records = []) {
+    const groups = new Map();
+    const firstText = (values = []) => asArray(values).map(normalizeText).find(Boolean) || "";
+    const candidateText = (record = {}) => [
+      ...asArray(record.candidateEntities),
+      ...asArray(record.candidates).map((item) => item?.value || item),
+      ...asArray(record.rejectedCandidates).map((item) => item?.value || item)
+    ].map(normalizeText).filter(Boolean);
+    const rejectionText = (record = {}) => firstText([
+      record.rejectionReason,
+      record.reason,
+      ...asArray(record.rejectedCandidates).map((item) => item?.reason),
+      record.evidence
+    ]);
+    const sourceUnavailable = (record = {}) => {
+      const sourceFields = firstText([record.exactText, record.sourceText, record.sourceExcerpt, record.sourcePhrase, record.quote, record.quotation]);
+      return !sourceFields && /source text unavailable|current evaluation source|blank candidate|no candidate survived/i.test(normalizeText(record.evidence));
+    };
+    asArray(records).forEach((record) => {
+      const sourceReference = firstText([record.sourceReference, record.sourceScope, record.verseRange, currentStudyScopeLabel()]);
+      const phrase = firstText([record.pronoun, record.token, record.sourcePhrase, record.phrase, record.entityName, record.detectedAudience, record.detectedSpeaker]);
+      const tokenId = normalizeText(record.tokenId || record.languageTokenId || "");
+      const rule = firstText([record.resolutionType, record.attributionType, record.audienceLevel, record.relationshipType, record.rule, record.status, "unresolved"]);
+      const status = firstText([record.status, "unresolved"]);
+      const rejection = rejectionText(record);
+      const candidates = candidateText(record);
+      const blankCandidateOnly = !phrase && !tokenId && candidates.length === 0;
+      const unavailable = sourceUnavailable(record);
+      const keySeed = blankCandidateOnly
+        ? [sourceReference, status, rule, rejection, unavailable ? "source-unavailable" : "source-available", "blank-unresolved-placeholder"]
+        : [sourceReference, tokenId || phrase, status, rule, rejection];
+      const key = scopeSnapshotHash(keySeed.join("|"));
+      if (!groups.has(key)) groups.set(key, { key, records: [], sourceReference, phrase, tokenId, rule, status, rejection, unavailable });
+      groups.get(key).records.push(record);
+    });
+    return Array.from(groups.values()).map((group) => {
+      const primary = group.records[0] || {};
+      const count = group.records.length;
+      const sourceReference = group.sourceReference || currentStudyScopeLabel();
+      const kind = /pronoun/i.test(`${primary.provenance} ${primary.resolutionType} ${primary.pronoun}`) ? "pronoun" : "diagnostic";
+      const statusLabel = /ambiguous/i.test(group.status) ? "ambiguous" : "unresolved";
+      const baseLabel = group.phrase
+        ? `${sourceReference} - "${group.phrase}" ${statusLabel} ${kind}`
+        : group.unavailable
+          ? `${sourceReference} - source-unavailable ${statusLabel} ${kind}`
+          : `${sourceReference} - ${statusLabel} ${kind}`;
+      const duplicateNote = count > 1
+        ? `Grouped ${count} duplicate unresolved diagnostic emissions with the same source token/rule signature.`
+        : "Single unresolved diagnostic record.";
+      const sourceNote = group.unavailable ? "Source text unavailable from the current evaluation source." : "";
+      return {
+        ...primary,
+        label: count > 1 ? `${baseLabel} (${count})` : baseLabel,
+        graphPresentationKey: `unresolved-${group.key}`,
+        presentationKey: `unresolved-${group.key}`,
+        diagnosticRecordCount: count,
+        groupedDiagnosticIds: group.records.map((item) => normalizeText(item.pronounResolutionId || item.audienceRecordId || item.speakerRecordId || item.tokenId || item.recordId || item.id)).filter(Boolean),
+        groupedDiagnosticRecords: group.records,
+        sourceReference,
+        sourceScope: primary.sourceScope || sourceReference,
+        evidence: [primary.evidence, group.rejection, duplicateNote, sourceNote].filter(Boolean).join(" "),
+        provenance: [primary.provenance, "Scope Snapshot presentation-only unresolved deduplication; semantic records remain unresolved and unchanged."].filter(Boolean).join(" | "),
+        confidence: primary.confidence || "unresolved / diagnostic",
+        status: group.status || "unresolved",
+        sourceUnavailable: group.unavailable
+      };
+    });
+  }
+
   function scopeSnapshotSourceNodes() {
     const nodes = [];
     const index = studyReferenceIndexRecords()[0] || {};
@@ -13883,12 +14262,12 @@ createRevelationPartsSection(item.subEvents)
     asArray(promotedThemeRecords()).slice(0, 20).forEach((record) => scopeSnapshotAddNode(nodes, "themes", record, "Theme", { recordType: "theme" }));
     asArray(principleExtractionRecords()).slice(0, 20).forEach((record) => scopeSnapshotAddNode(nodes, "principles", record, "Principle", { recordType: "principle" }));
     asArray(journeyNarrativeArcRecords()).slice(0, 14).forEach((record) => scopeSnapshotAddNode(nodes, "journeys", record, "Journey", { recordType: "journey" }));
-    [
+    scopeSnapshotUnresolvedPresentationRecords([
       ...asArray(pronounResolutionPreviewRecords()).filter((record) => /unresolved|ambiguous/i.test(record.status || "")),
       ...asArray(audienceDetectionPreviewRecords()).filter((record) => /unresolved|ambiguous/i.test(record.status || "")),
       ...asArray(speakerDetectionPreviewRecords()).filter((record) => /unresolved|ambiguous/i.test(record.status || "")),
       ...asArray(studyData.semanticAmbiguities)
-    ].slice(0, 26).forEach((record) => scopeSnapshotAddNode(nodes, "unresolved", record, "Unresolved record", { recordType: "unresolved" }));
+    ]).slice(0, 26).forEach((record) => scopeSnapshotAddNode(nodes, "unresolved", record, "Unresolved record", { recordType: "unresolved" }));
     crossReferenceSetRecords()
       .filter((record) => isManualCurrentStudyRecord(record) || isSourceScopeCurrentStudyRecord(record))
       .forEach((record) => {
@@ -13978,6 +14357,46 @@ createRevelationPartsSection(item.subEvents)
     return lanes;
   }
 
+  function scopeSnapshotRenderedReferenceDiagnostics(nodes = [], positioned = [], bounds = {}, requestedBounds = {}) {
+    const references = asArray(nodes).map((node) => node.reference?.label || node.primaryReference || "").filter(Boolean);
+    const positionedReferences = asArray(positioned).map((node) => node.reference || {}).filter((reference) => reference.chapter);
+    const nodeChapters = [...new Set(positionedReferences.map((reference) => Number(reference.chapter)).filter(Boolean))].sort((a, b) => a - b);
+    return {
+      totalPresentationNodeCount: nodes.length,
+      renderedPositionedNodeCount: positioned.length,
+      renderedReferences: references.slice(0, 120),
+      projectedNodeReferences: asArray(nodes).slice(0, 80).map((node) => ({
+        label: node.label || "",
+        recordType: node.recordType || "",
+        sourceCollection: node.sourceCollection || node.referenceDiagnostics?.sourceCollection || "",
+        sourceRecordId: node.sourceRecordId || node.referenceDiagnostics?.sourceRecordId || "",
+        rawReferenceFields: node.referenceDiagnostics?.rawReferenceFields || {},
+        normalizedReference: node.referenceDiagnostics?.normalizedReference || "",
+        positioningReference: node.reference?.label || node.referenceDiagnostics?.positioningReference || "",
+        studyGeneration: node.sourceGeneration ?? node.referenceDiagnostics?.studyGeneration ?? 0
+      })),
+      minRenderedReference: bounds.startLabel || "",
+      maxRenderedReference: bounds.endLabel || "",
+      chaptersRepresentedByActualNodes: nodeChapters,
+      chaptersRepresentedByActualEdges: nodeChapters,
+      graphHeaderStart: bounds.startLabel || "",
+      graphHeaderEnd: bounds.endLabel || "",
+      axisStart: bounds.startLabel || "",
+      axisEnd: bounds.endLabel || "",
+      requestedScopeStart: requestedBounds.startLabel || "",
+      requestedScopeEnd: requestedBounds.endLabel || "",
+      boundarySources: {
+        renderedExtent: "projected node references",
+        requestedScope: requestedBounds.source || "scopeSnapshotScopePages",
+        axis: "rendered data extent",
+        header: "rendered data extent"
+      },
+      presentationRangeDefectGuard: scopeSnapshotBoundaryDifference(bounds, requestedBounds)
+        ? "requested scope differs from rendered data extent; graph header/axis use rendered data extent"
+        : "requested scope matches rendered data extent"
+    };
+  }
+
   function scopeSnapshotBuildGraphModel() {
     const started = nowForDiagnostics();
     recordScopeSnapshotRendererStage("source-resolution", { status: "started" });
@@ -13986,6 +14405,7 @@ createRevelationPartsSection(item.subEvents)
     recordScopeSnapshotRendererStage("projection", { status: "started", inputNodeCount: allNodes.length });
     const sharedEvents = scopeSnapshotSharedEventRecords();
     const bounds = scopeSnapshotAxisBounds(allNodes);
+    const requestedBounds = scopeSnapshotRequestedBounds();
     const axisGranularity = scopeSnapshotAxisGranularity(bounds, allNodes);
     const lod = scopeSnapshotLodForBounds(bounds, allNodes);
     const layerModel = scopeSnapshotLayerModel(allNodes);
@@ -14001,6 +14421,7 @@ createRevelationPartsSection(item.subEvents)
       if (x == null) unpositioned.push(nextNode);
       else positioned.push(nextNode);
     });
+    const renderedReferenceDiagnostics = scopeSnapshotRenderedReferenceDiagnostics(allNodes, positioned, bounds, requestedBounds);
     recordScopeSnapshotRendererStage("layout", { status: "positioned", inputNodeCount: allNodes.length, projectedNodeCount: positioned.length, message: `${unpositioned.length} unpositioned` });
     const laneNodes = visibleLanes.map((lane) => {
       const lanePositioned = positioned.filter((node) => node.laneId === lane.id);
@@ -14070,6 +14491,9 @@ createRevelationPartsSection(item.subEvents)
       startReference: bounds.startLabel,
       endReference: bounds.endLabel,
       bounds,
+      requestedBounds,
+      rangeBoundaryMode: scopeSnapshotBoundaryDifference(bounds, requestedBounds) ? "rendered_extent_with_separate_requested_scope" : "rendered_extent",
+      renderedReferenceDiagnostics,
       lanes: laneNodes,
       layerModel,
       allNodes,
@@ -14273,7 +14697,8 @@ createRevelationPartsSection(item.subEvents)
       return `<g class="scope-snapshot-tick"><line x1="${x}" y1="24" x2="${x}" y2="${height - 28}"></line><text x="${x}" y="18">${escapeHtml(tick.label)}</text></g>`;
     }).join("");
     const focusClass = scopeSnapshotViewState.selectedGraphId ? " has-focused-node" : "";
-    const svg = `<svg class="scope-snapshot-svg${focusClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(model.startReference)} to ${escapeHtml(model.endReference)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
+    const renderedTitle = model.startReference === model.endReference ? model.startReference : `${model.startReference} to ${model.endReference}`;
+    const svg = `<svg class="scope-snapshot-svg${focusClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Linear Scope Snapshot for ${escapeHtml(model.activeScope)}"><text class="scope-snapshot-book-label" x="8" y="42">LANES</text><text class="scope-snapshot-title" x="${laneLabelWidth}" y="42">${escapeHtml(renderedTitle)}</text>${tickRows}${chapterDivider}${laneRows}</svg>`;
     recordScopeSnapshotRendererStage("svg-create", { status: "complete", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount, svgCreated: true });
     return svg;
   }
@@ -14290,10 +14715,11 @@ createRevelationPartsSection(item.subEvents)
       `Scope mode: ${model.scopeMode}`,
       `Scope meter: ${Math.round(scopeSnapshotViewState.scopeBreadth)} (${scopeSnapshotCurrentModeLabel()}); presentation-only breadth control`,
       `Active scope: ${model.activeScope}`,
-      `Axis: ${model.axisGranularity}; ${model.startReference} to ${model.endReference}`,
+      `Axis: ${model.axisGranularity}; rendered=${model.startReference}${model.startReference === model.endReference ? "" : ` to ${model.endReference}`}; requested=${model.requestedBounds?.startLabel || "none"}${model.requestedBounds?.startLabel === model.requestedBounds?.endLabel ? "" : ` to ${model.requestedBounds?.endLabel || "none"}`}; boundaryMode=${model.rangeBoundaryMode || "rendered_extent"}`,
       `Nodes: eligible=${model.nodeCount}; anchors=${model.anchorCount}; individually rendered=${model.lanes.reduce((sum, lane) => sum + lane.nodes.length, 0)}; clustered=${model.clusteredRecordCount}; unpositioned=${model.unpositionedCount}; visible objects=${model.visibleNodeCount}; clusters=${model.clusterCount}`,
       `Dynamic layers: preset=${model.layerModel?.preset}; active=${asArray(model.layerModel?.activeLayerIds).join(", ") || "none"}; recommended=${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}; hiddenByLayer=${model.hiddenLayerNodes || 0}; selectedHidden=${model.selectedHiddenByLayer ? "true" : "false"}`,
       `Graph domain: ${JSON.stringify(model.bounds)}; unresolved records do not default to 100%.`,
+      `Rendered reference diagnostics: chapters=${asArray(model.renderedReferenceDiagnostics?.chaptersRepresentedByActualNodes).join(", ") || "none"}; min=${model.renderedReferenceDiagnostics?.minRenderedReference || "none"}; max=${model.renderedReferenceDiagnostics?.maxRenderedReference || "none"}; requested=${model.renderedReferenceDiagnostics?.requestedScopeStart || "none"} to ${model.renderedReferenceDiagnostics?.requestedScopeEnd || "none"}; guard=${model.renderedReferenceDiagnostics?.presentationRangeDefectGuard || "none"}`,
       `Copy Render: selections=${asArray(scopeSnapshotViewState.copyRenderSelections).length}; context=${scopeSnapshotViewState.copyRenderContextMode}; mode=${scopeSnapshotViewState.copyRenderEvaluationMode}; active=${scopeSnapshotViewState.activeCopyRenderSelectionId || "none"}; last=${scopeSnapshotViewState.lastCopyRenderMessage || "none"}`,
       `LOD clustering: largestCluster=${model.largestCluster}; averageRecordsPerCluster=${model.averageRecordsPerCluster}; expandedClusters=${model.expandedClusterCount}; collisionReduction=${model.collisionReduction}`,
       `Labels: visible=${model.visibleLabelCount}; suppressed=${model.suppressedLabelCount}; collisions before resolution=${model.collisionCountBeforeResolution}; unresolved collisions=${model.unresolvedCollisionCount}`,
@@ -14406,18 +14832,40 @@ createRevelationPartsSection(item.subEvents)
     const title = document.createElement("h4");
     const meta = document.createElement("p");
     const summary = document.createElement("p");
+    const narrativeContext = /event|timeline|ordered/i.test(`${selected.recordType || ""} ${selected.semanticCategory || ""} ${selected.presentationType || ""}`)
+      ? scopeSnapshotNarrativeEventContext(selected, model)
+      : null;
     title.textContent = selected.primaryReference || selected.reference?.label || selected.label;
     meta.textContent = [selected.semanticCategory, selected.subevaluationLabel].filter(Boolean).join(" | ") || `${selected.recordType} | ${selected.confidence}`;
     summary.className = "scope-snapshot-evaluation-text";
-    summary.textContent = selected.evaluationText || trimText(selected.evidence || selected.provenance || "Evidence remains available in the native inspector.", 180);
+    summary.textContent = scopeSnapshotDetailSummaryText(selected, model);
     const focusStatus = document.createElement("p");
     focusStatus.className = "scope-snapshot-focus-status";
     focusStatus.textContent = `Focused item: ${selected.presentationType || "evaluated_semantic"}; source=${scopeSnapshotViewState.focusSource || "default"}; key=${selected.presentationKey || selected.id}.`;
     const sourceBlock = document.createElement("blockquote");
     sourceBlock.className = "scope-snapshot-source-text";
-    sourceBlock.textContent = selected.sourceText || "Source text unavailable from the current evaluation source";
+    sourceBlock.textContent = narrativeContext?.sourceText || selected.sourceText || "Source text unavailable from the current evaluation source";
     content.append(title, meta, summary);
     content.appendChild(focusStatus);
+    if (narrativeContext) {
+      const contextList = document.createElement("dl");
+      contextList.className = "scope-snapshot-event-context";
+      [
+        ["Event", narrativeContext.eventLabel],
+        ["What Happens", narrativeContext.summary],
+        ["Participants", narrativeContext.participants],
+        ["Source Context", `${narrativeContext.sourceReference}; ${narrativeContext.sourceState}`],
+        ["Sequence Context", narrativeContext.sequenceLines.join(" | ") || "Not recorded"],
+        ["Status", narrativeContext.statusLine]
+      ].forEach(([term, value]) => {
+        const dt = document.createElement("dt");
+        const dd = document.createElement("dd");
+        dt.textContent = term;
+        dd.textContent = normalizeText(value || "Not recorded");
+        contextList.append(dt, dd);
+      });
+      content.appendChild(contextList);
+    }
     content.appendChild(sourceBlock);
     if (model.selectedHiddenByLayer && scopeSnapshotViewState.selectedGraphId === selected.id) {
       const hidden = document.createElement("p");
@@ -14583,6 +15031,7 @@ createRevelationPartsSection(item.subEvents)
         `Evidence distance: presentation summary over existing scoped records`,
         `Confidence: display cluster; child records retain individual confidence`,
         `Verification state: ${item.warningCount ? "review warnings present" : "verified presentation grouping"}`,
+        ...asArray(item.representativeRecords).slice(0, 6).map((node) => `Child reference diagnostics: ${node.label} | raw=${JSON.stringify(node.referenceDiagnostics?.rawReferenceFields || {})} | normalized=${node.referenceDiagnostics?.normalizedReference || "none"} | positioned=${node.referenceDiagnostics?.positioningReference || "unpositioned"} | generation=${node.referenceDiagnostics?.studyGeneration ?? "not recorded"} | collection=${node.referenceDiagnostics?.sourceCollection || "unknown"}`),
         ...asArray(item.representativeRecords).slice(0, 6).map((node) => `Child evidence: ${node.label} | ${node.reference?.label || model.activeScope} | ${node.evidence || node.provenance || "evidence not recorded on snapshot node"}`)
       ];
     }
@@ -14593,6 +15042,7 @@ createRevelationPartsSection(item.subEvents)
       `Evidence type: ${scopeSnapshotRawField(record, ["evidenceType", "recordType", "eventType", "relationshipType", "themeName", "guidanceCategory"]) || item.recordType || "scoped semantic record"}`,
       `Source adapter: ${scopeSnapshotRawField(record, ["sourceAdapter", "adapter", "translation"]) || activeSourcePageRecord()?.sourceAdapter || activeSourcePageRecord()?.adapter || "not recorded"}`,
       `Source scope: ${scopeSnapshotRawField(record, ["sourceScope", "scope", "activeScope"]) || model.activeScope || "current Study Scope"}`,
+      `Reference diagnostics: raw=${JSON.stringify(item.referenceDiagnostics?.rawReferenceFields || scopeSnapshotRawReferenceFields(record))}; normalized=${item.referenceDiagnostics?.normalizedReference || "none"}; positioned=${item.referenceDiagnostics?.positioningReference || item.reference?.label || "unpositioned"}; generation=${item.referenceDiagnostics?.studyGeneration ?? recordStudyGeneration(record)}; collection=${item.referenceDiagnostics?.sourceCollection || item.sourceCollection || "unknown"}`,
       `Evidence distance: ${scopeSnapshotRawField(record, ["evidenceDistance", "semanticDistance"]) || "snapshot presentation over existing scoped record"}`,
       `Confidence: ${item.confidence || scopeSnapshotRawField(record, ["confidence", "evidenceWeight"]) || "not recorded"}`,
       `Verification state: ${/unresolved|ambiguous/i.test(item.status || "") ? "review" : "verified display record"}`,
@@ -15016,8 +15466,17 @@ createRevelationPartsSection(item.subEvents)
     const title = document.createElement("h4");
     const subtitle = document.createElement("p");
     title.textContent = "Linear Scope Snapshot";
-    subtitle.textContent = `${model.startReference} -> ${model.endReference} | ${model.bounds.minChapter === model.bounds.maxChapter ? "chapter level" : `${Math.max(1, model.bounds.maxChapter - model.bounds.minChapter + 1)} chapters`}`;
-    titleBlock.append(title, subtitle);
+    const renderedSpan = model.bounds.minChapter === model.bounds.maxChapter ? "chapter level" : `${Math.max(1, model.bounds.maxChapter - model.bounds.minChapter + 1)} chapters`;
+    const requestedDifferent = scopeSnapshotBoundaryDifference(model.bounds, model.requestedBounds);
+    subtitle.textContent = `Rendered records: ${model.startReference}${model.startReference === model.endReference ? "" : ` -> ${model.endReference}`} | ${renderedSpan}`;
+    if (requestedDifferent) {
+      const requested = document.createElement("p");
+      requested.className = "scope-snapshot-requested-range";
+      requested.textContent = `Requested scope (${model.requestedBounds.source || scopeSnapshotCurrentModeLabel()}): ${model.requestedBounds.startLabel}${model.requestedBounds.startLabel === model.requestedBounds.endLabel ? "" : ` -> ${model.requestedBounds.endLabel}`}`;
+      titleBlock.append(title, subtitle, requested);
+    } else {
+      titleBlock.append(title, subtitle);
+    }
     top.append(titleBlock, createScopeSnapshotMetricStrip(model));
 
     const controls = document.createElement("div");
@@ -28800,6 +29259,60 @@ createRevelationPartsSection(item.subEvents)
     for (const alias of arrayAliases) {
       if (!Array.isArray(data[alias])) data[alias] = [];
     }
+    const activeGeneration = activeStudyGenerationFromData(data);
+    data.canonicalAnalyzedPages = filterRecordsForStudyGeneration(data.canonicalAnalyzedPages, activeGeneration, STORAGE_KEYS.canonicalAnalyzedPages);
+    data.analysisHistory = filterRecordsForStudyGeneration(data.analysisHistory, activeGeneration, STORAGE_KEYS.analysisHistory);
+    data.journeyPageSnapshots = filterRecordsForStudyGeneration(data.journeyPageSnapshots, activeGeneration, STORAGE_KEYS.journeyPageSnapshots);
+    data.crossReferenceSet = filterRecordsForStudyGeneration(data.crossReferenceSet, activeGeneration, STORAGE_KEYS.crossReferenceSet);
+    data.crossReferenceRelationships = filterRecordsForStudyGeneration(data.crossReferenceRelationships, activeGeneration, STORAGE_KEYS.crossReferenceRelationships);
+    [
+      "timelineItems",
+      "eventItems",
+      "orderedEvents",
+      "actorTimelines",
+      "interactionGraph",
+      "sceneModels",
+      "semanticEvents",
+      "semanticFlowChains",
+      "entityRegistry",
+      "relationshipGraph",
+      "canonicalIdentities",
+      "mentionIndex",
+      "domSemanticHints",
+      "sourceDiscoveryIndex",
+      "referenceGraph",
+      "passageFunctions",
+      "revelationPatterns",
+      "referenceRoles",
+      "semanticDistinctions",
+      "ontologyRoles",
+      "semanticAmbiguities",
+      "originAuthorityPaths",
+      "entityRelationRoles",
+      "semanticContinuity",
+      "movementSemantics",
+      "semanticCausality",
+      "teachingSemantics",
+      "principleRelationships",
+      "characterInteractions",
+      "sessionContinuityReview",
+      "knowledgeGraph",
+      "principleNetworks",
+      "focusLens",
+      "scopeLens",
+      "depthLens",
+      "semanticQuestions",
+      "trustVerification",
+      "entityRoleItems",
+      "principleItems",
+      "prophecyLinks"
+    ].forEach((alias) => {
+      data[alias] = filterRecordsForStudyGeneration(data[alias], activeGeneration, STORAGE_KEYS[alias] || alias);
+    });
+    if (data.analysisStatus && !recordMatchesStudyGeneration(data.analysisStatus, activeGeneration)) data.analysisStatus = {};
+    if (data.canonicalAnalysisTarget && !recordMatchesStudyGeneration(data.canonicalAnalysisTarget, activeGeneration)) data.canonicalAnalysisTarget = [];
+    if (data.activeSourcePage && !recordMatchesStudyGeneration(data.activeSourcePage, activeGeneration)) data.activeSourcePage = null;
+    if (data.selectedRange && activeGeneration > 0 && !recordMatchesStudyGeneration(data.selectedRange, activeGeneration)) data.selectedRange = null;
     if (!data.analysisQueueStatus || typeof data.analysisQueueStatus !== "object" || Array.isArray(data.analysisQueueStatus)) data.analysisQueueStatus = { state: "idle" };
     if (!data.analysisQueueManifest || typeof data.analysisQueueManifest !== "object" || Array.isArray(data.analysisQueueManifest)) data.analysisQueueManifest = {};
     return data;

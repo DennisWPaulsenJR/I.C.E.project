@@ -1019,6 +1019,23 @@ body {
   margin: 0;
 }
 
+.scope-snapshot-event-context {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin: 8px 0;
+  padding: 10px;
+}
+
+.scope-snapshot-event-context dt {
+  color: #1f2a44;
+}
+
+.scope-snapshot-event-context dd {
+  color: #334155;
+  line-height: 1.35;
+}
+
 .scope-snapshot-detail-actions {
   align-items: center;
   display: flex;
