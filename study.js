@@ -14446,6 +14446,10 @@ createRevelationPartsSection(item.subEvents)
         unpositionedCount: unpositioned.filter((node) => node.laneId === lane.id).length
       };
     });
+    const graphEdges = scopeSnapshotBuildGraphEdges(laneNodes, { activeScope: currentStudyScopeLabel(), bounds, requestedBounds });
+    laneNodes.forEach((lane) => {
+      lane.edges = graphEdges.filter((edge) => edge.laneId === lane.id);
+    });
     const hiddenLaneNodes = allNodes.filter((node) => !visibleLaneIds.has(node.laneId) || !activeLayerNodeIds.has(node.id)).length;
     const clusterCount = laneNodes.reduce((sum, lane) => sum + asArray(lane.clusters).length, 0);
     const clusteredRecordCount = laneNodes.reduce((sum, lane) => sum + Number(lane.clusteredCount || 0), 0);
@@ -14472,7 +14476,9 @@ createRevelationPartsSection(item.subEvents)
       return counts;
     }, {});
     const selectedExists = scopeSnapshotViewState.selectedGraphId
-      ? allNodes.some((node) => node.id === scopeSnapshotViewState.selectedGraphId) || laneNodes.some((lane) => asArray(lane.clusters).some((cluster) => cluster.clusterId === scopeSnapshotViewState.selectedGraphId || cluster.anchorId === scopeSnapshotViewState.selectedGraphId))
+      ? allNodes.some((node) => node.id === scopeSnapshotViewState.selectedGraphId) ||
+        graphEdges.some((edge) => edge.edgeId === scopeSnapshotViewState.selectedGraphId || edge.id === scopeSnapshotViewState.selectedGraphId) ||
+        laneNodes.some((lane) => asArray(lane.clusters).some((cluster) => cluster.clusterId === scopeSnapshotViewState.selectedGraphId || cluster.anchorId === scopeSnapshotViewState.selectedGraphId))
       : true;
     const fitScopeOverflow = scopeSnapshotViewState.zoomMode !== "auto" && scopeSnapshotViewState.zoomMode !== "fit" && scopeSnapshotViewState.detailLevel === "more";
     const renderTime = Math.round((nowForDiagnostics() - started) * 10) / 10;
@@ -14498,6 +14504,8 @@ createRevelationPartsSection(item.subEvents)
       layerModel,
       allNodes,
       sharedEvents,
+      edges: graphEdges,
+      edgeCount: graphEdges.length,
       positioned,
       unpositioned,
       hiddenLaneNodes,
@@ -14631,9 +14639,21 @@ createRevelationPartsSection(item.subEvents)
       const style = scopeSnapshotLaneStyle(lane.id);
       const sortedNodes = lane.nodes.slice().sort((left, right) => Number(left.x || 0) - Number(right.x || 0));
       recordScopeSnapshotRendererStage("edge-render", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
-      const connector = sortedNodes.length > 1
-        ? `<polyline points="${sortedNodes.map((node, nodeIndex) => `${xFor(node.x)},${y + ((nodeIndex % 3) - 1) * 8}`).join(" ")}" fill="none" stroke="${style.color}" stroke-width="2" stroke-opacity=".85"></polyline>`
-        : "";
+      const nodeOrder = new Map(sortedNodes.map((node, nodeIndex) => [node.id, nodeIndex]));
+      const connector = asArray(lane.edges).map((edge) => {
+        const source = sortedNodes.find((node) => node.id === edge.sourceNodeId);
+        const target = sortedNodes.find((node) => node.id === edge.targetNodeId);
+        if (!source || !target) return "";
+        const sourceIndex = nodeOrder.get(source.id) || 0;
+        const targetIndex = nodeOrder.get(target.id) || 0;
+        const x1 = xFor(source.x);
+        const x2 = xFor(target.x);
+        const y1 = y + ((sourceIndex % 3) - 1) * 8;
+        const y2 = y + ((targetIndex % 3) - 1) * 8;
+        const selected = scopeSnapshotViewState.selectedGraphId === edge.edgeId ? " selected" : "";
+        const ariaLabel = `${edge.sourceNodeLabel || "Source node"} to ${edge.targetNodeLabel || "target node"}; ${edge.relationshipType}; ${edge.confidence}`;
+        return `<line class="scope-snapshot-edge${selected}" role="button" tabindex="-1" aria-label="${escapeHtml(ariaLabel)}" data-snapshot-edge-id="${escapeHtml(edge.edgeId)}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${style.color}" stroke-width="2" stroke-opacity=".85"><title>${escapeHtml([edge.relationshipType, edge.supportingReference, edge.reasonCreated].filter(Boolean).join("\n"))}</title></line>`;
+      }).join("");
       recordScopeSnapshotRendererStage("node-render", { status: "started", inputNodeCount: model.nodeCount, projectedNodeCount: model.positionedCount, renderedObjectCount: model.visibleNodeCount });
       const nodes = sortedNodes.map((node, nodeIndex) => {
         const x = xFor(node.x);
@@ -14729,6 +14749,7 @@ createRevelationPartsSection(item.subEvents)
       `Evidence completeness: ${formatMetricPercent(metricPercent(model.evidenceComplete, model.nodeCount))}`,
       `Fit Scope: overflow=${model.fitScopeOverflow ? "true" : "false"}; aggregation=${model.aggregationApplied ? "applied" : "not needed"}; label budget=${model.visibleLabelCount}/${model.visibleLabelCount + model.suppressedLabelCount}`,
       `Shared / parallel event candidates: ${asArray(model.sharedEvents).length}`,
+      `Graph object provenance: nodes=${model.nodeCount}; edges=${model.edgeCount || 0}; selected=${scopeSnapshotViewState.selectedGraphId || "none"}`,
       `Presentation keys: stable=${model.nodeCount}; duplicateBaseKeys=${model.duplicatePresentationKeyCount || 0}; collisionSuffixes=${model.presentationKeyCollisionCount || 0}`,
       `Focus: selected=${scopeSnapshotViewState.selectedGraphId || "none"}; source=${scopeSnapshotViewState.focusSource || "none"}; explicitCenter=${scopeSnapshotViewState.lastCenteringAction || "not requested"}`,
       `Cache state: ${scopeSnapshotLastCacheState}; render/build time=${model.renderTime}ms`,
@@ -14755,6 +14776,8 @@ createRevelationPartsSection(item.subEvents)
     if (!id) return { type: "none", item: null };
     const node = model.allNodes.find((item) => item.id === id);
     if (node) return { type: "node", item: node };
+    const edge = asArray(model.edges).find((item) => item.edgeId === id || item.id === id);
+    if (edge) return { type: "edge", item: edge };
     for (const lane of asArray(model.lanes)) {
       const cluster = asArray(lane.clusters).find((item) => item.clusterId === id);
       if (cluster) return { type: "cluster", item: { ...cluster, lane } };
@@ -14765,12 +14788,84 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotPromotedRelatedItems(model = {}, selected = null, limit = 8) {
+    if (selected?.type === "scope_snapshot_edge") {
+      const source = model.allNodes.find((node) => node.id === selected.sourceNodeId);
+      const target = model.allNodes.find((node) => node.id === selected.targetNodeId);
+      return [source, target].filter(Boolean).slice(0, limit);
+    }
     if (!selected?.laneId) return [];
     const related = model.allNodes
       .filter((node) => node.laneId === selected.laneId && node.id !== selected.id)
       .sort((left, right) => Number(left.x ?? 999) - Number(right.x ?? 999))
       .slice(0, Math.max(0, limit - 1));
     return [selected, ...related];
+  }
+
+  function scopeSnapshotBuildGraphEdges(lanes = [], context = {}) {
+    const edges = [];
+    asArray(lanes).forEach((lane) => {
+      const sorted = asArray(lane.nodes).slice().sort((left, right) => Number(left.x ?? 999) - Number(right.x ?? 999));
+      sorted.forEach((sourceNode, index) => {
+        const targetNode = sorted[index + 1];
+        if (!targetNode) return;
+        const sourceReference = sourceNode.primaryReference || sourceNode.reference?.label || "";
+        const targetReference = targetNode.primaryReference || targetNode.reference?.label || "";
+        const edgeId = `snapshot-edge-${scopeSnapshotHash([lane.id, sourceNode.id, targetNode.id, sourceReference, targetReference].join("|"))}`;
+        const relationshipType = lane.id === "relationships"
+          ? "relationship_lane_sequence"
+          : lane.id === "journeys"
+            ? "journey_progression_connector"
+            : lane.id === "happenings" || lane.id === "majorEvents"
+              ? "source_order_event_connector"
+              : "lane_order_connector";
+        const supportingText = [sourceNode.sourceText, targetNode.sourceText]
+          .map((text) => /^Source text unavailable/i.test(normalizeText(text)) ? "" : normalizeText(text))
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(" | ");
+        const edge = {
+          id: edgeId,
+          edgeId,
+          type: "scope_snapshot_edge",
+          laneId: lane.id,
+          laneLabel: lane.label,
+          sourceNodeId: sourceNode.id,
+          targetNodeId: targetNode.id,
+          sourceNodeLabel: sourceNode.label,
+          targetNodeLabel: targetNode.label,
+          sourceRecordId: sourceNode.sourceRecordId || sourceNode.presentationKey || sourceNode.id,
+          targetRecordId: targetNode.sourceRecordId || targetNode.presentationKey || targetNode.id,
+          relationshipType,
+          direction: "source order",
+          sourceReference,
+          targetReference,
+          supportingReference: [sourceReference, targetReference].filter(Boolean).join(" -> "),
+          supportingText,
+          extractionRule: "SCOPE_SNAPSHOT_LANE_ORDER_CONNECTOR",
+          relationshipRule: "Connect adjacent positioned records inside the same Snapshot lane for display traversal.",
+          reasonCreated: "Display-only graph connector between existing scoped records after source-reference positioning.",
+          graphDecision: `connect adjacent ${lane.label || lane.id} records in rendered source order`,
+          graphScope: context.activeScope || currentStudyScopeLabel(),
+          eventContext: [sourceNode.subevaluationLabel, targetNode.subevaluationLabel].filter(Boolean).join(" -> ") || "not recorded",
+          confidence: "presentation connector; inspect connected records for semantic confidence",
+          verification: "display-only connector; no semantic authority",
+          ambiguity: sourceReference && targetReference && sourceReference === targetReference ? "same reference anchor; visual order only" : "not recorded",
+          evidenceDistance: "presentation graph over existing scoped records",
+          provenance: "Linear Scope Snapshot display edge derived from positioned node order; no semantic record mutation",
+          status: "display_only",
+          recordType: "scope_snapshot_edge",
+          presentationType: relationshipType,
+          semanticCategory: "Graph Relationship",
+          label: `${sourceNode.label || sourceReference || "Source node"} -> ${targetNode.label || targetReference || "Target node"}`,
+          primaryReference: [sourceReference, targetReference].filter(Boolean).join(" -> ") || context.activeScope || currentStudyScopeLabel(),
+          evidence: supportingText || [sourceNode.evidence, targetNode.evidence].map(normalizeText).filter(Boolean).join(" | "),
+          record: null
+        };
+        edge.record = edge;
+        edges.push(edge);
+      });
+    });
+    return edges;
   }
 
   function createScopeSnapshotMetricStrip(model = {}) {
@@ -14832,6 +14927,7 @@ createRevelationPartsSection(item.subEvents)
     const title = document.createElement("h4");
     const meta = document.createElement("p");
     const summary = document.createElement("p");
+    const selection = { type: selected.type === "scope_snapshot_edge" ? "edge" : "node", item: selected };
     const narrativeContext = /event|timeline|ordered/i.test(`${selected.recordType || ""} ${selected.semanticCategory || ""} ${selected.presentationType || ""}`)
       ? scopeSnapshotNarrativeEventContext(selected, model)
       : null;
@@ -14867,6 +14963,7 @@ createRevelationPartsSection(item.subEvents)
       content.appendChild(contextList);
     }
     content.appendChild(sourceBlock);
+    content.appendChild(createScopeSnapshotReasonForInclusion(selection, model));
     if (model.selectedHiddenByLayer && scopeSnapshotViewState.selectedGraphId === selected.id) {
       const hidden = document.createElement("p");
       hidden.className = "scope-snapshot-hidden-selection";
@@ -14953,6 +15050,7 @@ createRevelationPartsSection(item.subEvents)
     meta.textContent = `${cluster.recordCount || 0} record(s) | ${cluster.sourceRange || model.activeScope}`;
     summary.textContent = `${asArray(cluster.dominantRecordTypes).join(", ") || "clustered records"}; warnings=${cluster.warningCount || 0}.`;
     content.append(title, meta, summary);
+    content.appendChild(createScopeSnapshotReasonForInclusion({ type: "cluster", item: { ...cluster, lane: cluster.lane || { id: cluster.laneId, label: cluster.lane?.label } } }, model));
     const actions = document.createElement("div");
     actions.className = "scope-snapshot-detail-actions";
     [["read_detail", "Read Selected Detail"], ["zoom_in", "Zoom In"], ["center_selected", "Center Group"], ["close_group", "Close Group"], ["clear_focus", "Clear Focus"], ["open_inspector", "Open Inspector"], ["show_evidence", "Show Source Evidence"], ["show_provenance", "Show Provenance"], ["back_to_graph", "Back to selected graph item"]].forEach(([action, label]) => {
@@ -15017,9 +15115,152 @@ createRevelationPartsSection(item.subEvents)
     return selection.item?.record || {};
   }
 
+  function scopeSnapshotGraphObjectProvenance(selection = {}, model = {}) {
+    const item = selection.item || {};
+    const record = scopeSnapshotDetailRecord(selection);
+    const isEdge = selection.type === "edge" || item.type === "scope_snapshot_edge";
+    const isCluster = selection.type === "cluster";
+    const dependentEdges = !isEdge && !isCluster
+      ? asArray(model.edges).filter((edge) => edge.sourceNodeId === item.id || edge.targetNodeId === item.id)
+      : [];
+    const sourceNode = isEdge ? model.allNodes?.find?.((node) => node.id === item.sourceNodeId) : null;
+    const targetNode = isEdge ? model.allNodes?.find?.((node) => node.id === item.targetNodeId) : null;
+    const objectType = isEdge
+      ? "graph relationship"
+      : isCluster
+        ? "presentation cluster"
+        : item.semanticCategory || item.recordType || "graph node";
+    const graphKey = item.edgeId || item.clusterId || item.presentationKey || item.id || "not recorded";
+    const matchedSource = isEdge
+      ? (item.supportingText || item.supportingReference || "Connected node source evidence is available through the edge endpoints.")
+      : isCluster
+        ? `${item.recordCount || 0} existing scoped record(s) grouped in ${item.sourceRange || model.activeScope || "current scope"}`
+        : (scopeSnapshotRawField(record, ["sourceText", "sourceExcerpt", "sourcePhrase", "quote", "textQuoteExact", "evidence"]) || item.sourceText || item.evidence || "No exact excerpt recorded on this graph object.");
+    const context = isEdge
+      ? [item.graphScope || model.activeScope, item.eventContext].filter(Boolean).join("; ")
+      : isCluster
+        ? [model.activeScope, item.sourceRange, item.lane?.label].filter(Boolean).join("; ")
+        : [
+          scopeSnapshotRawField(record, ["sourceScope", "scope", "activeScope"]) || model.activeScope || currentStudyScopeLabel(),
+          scopeSnapshotRawField(record, ["eventId", "relatedEvent", "sceneId", "relatedScene"]),
+          item.reference?.label || item.primaryReference
+        ].filter(Boolean).join("; ");
+    const creationRule = isEdge
+      ? item.extractionRule
+      : isCluster
+        ? "SCOPE_SNAPSHOT_LOD_CLUSTER"
+        : scopeSnapshotRawField(record, ["extractionRule", "resolutionRule", "promotionRule", "rule", "producedByStage"]) || `${item.recordType || item.laneId || "scoped"} projection`;
+    const graphDecision = isEdge
+      ? item.graphDecision
+      : isCluster
+        ? `group ${item.recordCount || 0} nearby ${item.lane?.label || "Snapshot"} records for readable display`
+        : `project existing ${item.semanticCategory || item.recordType || "scoped record"} into ${scopeSnapshotLaneStyle(item.laneId).label || item.laneId || "Snapshot"} lane`;
+    const qualification = isEdge
+      ? item.verification
+      : isCluster
+        ? "presentation grouping only; inspect child records for semantic meaning"
+        : (/unresolved|ambiguous/i.test(item.status || "") ? "unresolved or ambiguous; review required" : "existing scoped record retained for display");
+    return {
+      schemaVersion: 1,
+      objectType,
+      graphKey,
+      stableKey: graphKey,
+      semanticClassification: item.semanticCategory || item.recordType || objectType,
+      canonicalEntityId: scopeSnapshotRawField(record, ["canonicalEntityId", "entityId", "canonicalKey", "canonicalName"]) || "not recorded",
+      graphScope: item.graphScope || model.activeScope || currentStudyScopeLabel(),
+      sourceDocument: scopeSnapshotRawField(record, ["sourceId", "sourceDocument", "sourceAdapter", "adapter", "translation"]) || activeSourcePageRecord()?.sourceAdapter || "not recorded",
+      sourceReference: item.primaryReference || item.reference?.label || item.supportingReference || scopeSnapshotRawField(record, ["sourceReference", "sourceScope", "reference"]) || model.activeScope || "not recorded",
+      textSpan: scopeSnapshotRawField(record, ["tokenId", "textSpan", "tokenRange", "quoteId"]) || "not recorded",
+      capturedSourceText: matchedSource,
+      captureMode: scopeSnapshotRawField(record, ["captureMode", "captureMethod"]) || (isEdge ? "display edge from positioned records" : "existing scoped runtime record"),
+      sourceOrder: scopeSnapshotRawField(record, ["sequenceNumber", "sequenceOrder", "sourceOrder", "eventIndex"]) || (isEdge ? item.direction : "not recorded"),
+      createdBy: isEdge ? "Linear Scope Snapshot relationship projection" : isCluster ? "Linear Scope Snapshot clustering" : item.provenance || scopeSnapshotRawField(record, ["provenance"]) || "Linear Scope Snapshot node projection",
+      rule: creationRule || "not recorded",
+      reasonForInclusion: item.reasonCreated || scopeSnapshotRawField(record, ["reasonForInclusion", "reason", "resolutionReason"]) || graphDecision,
+      matchedSource,
+      context: context || "not recorded",
+      graphDecision,
+      qualification,
+      confidence: item.confidence || scopeSnapshotRawField(record, ["confidence", "evidenceWeight"]) || "not recorded",
+      verification: item.verification || (/unresolved|ambiguous/i.test(item.status || "") ? "Review" : "Verified display record"),
+      evidenceCount: isCluster ? Number(item.recordCount || 0) : [item.evidence, item.sourceText, scopeSnapshotRawField(record, ["supportingEvidence", "evidenceLinks"])].filter(Boolean).length,
+      supportingReferences: isEdge
+        ? [item.sourceReference, item.targetReference].filter(Boolean)
+        : asArray(item.supportingReferences).length ? asArray(item.supportingReferences) : scopeSnapshotReferenceLabelsFromRecord(record),
+      resolutionStatus: item.status || scopeSnapshotRawField(record, ["resolutionStatus", "status"]) || (isEdge ? "display_only" : "resolved"),
+      canonicalTarget: scopeSnapshotRawField(record, ["resolvedEntity", "canonicalTarget", "targetEntity", "targetRecord"]) || (isEdge ? item.targetNodeLabel : "not recorded"),
+      alternativeCandidates: scopeSnapshotRawField(record, ["candidates", "candidateEntities", "alternativeCandidates", "rejectedCandidates"]) || "not recorded",
+      ambiguityReason: item.ambiguity || scopeSnapshotRawField(record, ["ambiguityReason", "rejectionReason"]) || "not recorded",
+      resolutionMethod: scopeSnapshotRawField(record, ["resolutionType", "resolutionMethod", "attributionType"]) || (isEdge ? item.relationshipRule : "not recorded"),
+      sourceNode: sourceNode ? `${sourceNode.label} (${sourceNode.primaryReference || sourceNode.reference?.label || "no reference"})` : item.sourceNodeLabel || "not applicable",
+      targetNode: targetNode ? `${targetNode.label} (${targetNode.primaryReference || targetNode.reference?.label || "no reference"})` : item.targetNodeLabel || "not applicable",
+      dependentRelationships: isEdge
+        ? "Edge is itself a display relationship; downstream semantic records are not mutated."
+        : dependentEdges.length
+          ? dependentEdges.slice(0, 8).map((edge) => `${edge.relationshipType}: ${edge.sourceNodeLabel} -> ${edge.targetNodeLabel}`).join(" | ")
+          : "No displayed graph edge currently depends on this object.",
+      diagnostics: [
+        `creation path=${isEdge ? "lane edge projection" : isCluster ? "LOD cluster" : "node projection"}`,
+        `source collection=${item.sourceCollection || item.referenceDiagnostics?.sourceCollection || "not recorded"}`,
+        `generation=${item.sourceGeneration ?? item.referenceDiagnostics?.studyGeneration ?? recordStudyGeneration(record)}`,
+        `reference diagnostics=${item.referenceDiagnostics?.normalizedReference || item.supportingReference || "not recorded"}`
+      ].join("; ")
+    };
+  }
+
+  function scopeSnapshotReasonForInclusionLines(selection = {}, model = {}) {
+    const provenance = scopeSnapshotGraphObjectProvenance(selection, model);
+    return [
+      ["Created by", provenance.createdBy],
+      ["Rule", provenance.rule],
+      ["Matched source", provenance.matchedSource],
+      ["Context", provenance.context],
+      ["Graph decision", provenance.graphDecision],
+      ["Qualification", provenance.qualification],
+      ["Confidence", provenance.confidence]
+    ];
+  }
+
+  function createScopeSnapshotReasonForInclusion(selection = {}, model = {}) {
+    const section = document.createElement("section");
+    section.className = "scope-snapshot-reason-for-inclusion";
+    const heading = document.createElement("h5");
+    heading.textContent = "Reason for Inclusion";
+    const list = document.createElement("dl");
+    scopeSnapshotReasonForInclusionLines(selection, model).forEach(([term, value]) => {
+      const dt = document.createElement("dt");
+      const dd = document.createElement("dd");
+      dt.textContent = term;
+      dd.textContent = normalizeText(value || "not recorded");
+      list.append(dt, dd);
+    });
+    section.append(heading, list);
+    return section;
+  }
+
   function scopeSnapshotEvidenceLines(selection = {}, model = {}) {
     const item = selection.item || {};
     const record = scopeSnapshotDetailRecord(selection);
+    const graphObject = scopeSnapshotGraphObjectProvenance(selection, model);
+    if (selection.type === "edge") {
+      return [
+        `Selection type: Graph relationship edge`,
+        `Relationship stable key: ${graphObject.graphKey}`,
+        `Source node: ${graphObject.sourceNode}`,
+        `Target node: ${graphObject.targetNode}`,
+        `Relationship type: ${item.relationshipType || graphObject.semanticClassification}`,
+        `Direction: ${item.direction || "not recorded"}`,
+        `Supporting reference: ${item.supportingReference || graphObject.sourceReference}`,
+        `Supporting text span: ${item.supportingText || graphObject.textSpan || "not recorded"}`,
+        `Extraction / relationship rule: ${item.extractionRule || graphObject.rule}`,
+        `Event context: ${item.eventContext || "not recorded"}`,
+        `Graph scope: ${graphObject.graphScope}`,
+        `Confidence: ${graphObject.confidence}`,
+        `Verification: ${graphObject.verification}`,
+        `Ambiguity: ${graphObject.ambiguityReason}`,
+        `Evidence distance: ${item.evidenceDistance || "presentation graph over existing scoped records"}`
+      ];
+    }
     if (selection.type === "cluster") {
       return [
         `Selection type: Presentation cluster`,
@@ -15037,6 +15278,7 @@ createRevelationPartsSection(item.subEvents)
     }
     return [
       `Selected record id: ${item.id || "not recorded"}`,
+      `Reason for inclusion: ${graphObject.reasonForInclusion}`,
       `Canonical source reference: ${item.reference?.label || scopeSnapshotRawField(record, ["sourceReference", "sourceScope", "reference", "scriptureReference"]) || model.activeScope || "not recorded"}`,
       `Exact source excerpt: ${scopeSnapshotRawField(record, ["sourceText", "sourceExcerpt", "sourcePhrase", "quote", "text", "evidence"]) || item.evidence || "No exact excerpt recorded on this snapshot node."}`,
       `Evidence type: ${scopeSnapshotRawField(record, ["evidenceType", "recordType", "eventType", "relationshipType", "themeName", "guidanceCategory"]) || item.recordType || "scoped semantic record"}`,
@@ -15056,6 +15298,7 @@ createRevelationPartsSection(item.subEvents)
   function scopeSnapshotProvenanceLines(selection = {}, model = {}) {
     const item = selection.item || {};
     const record = scopeSnapshotDetailRecord(selection);
+    const graphObject = scopeSnapshotGraphObjectProvenance(selection, model);
     const path = [
       "Primary Evidence",
       item.recordType === "orderedEvent" ? "Ordered Event" : "",
@@ -15068,6 +15311,23 @@ createRevelationPartsSection(item.subEvents)
       item.recordType === "unresolved" ? "Unresolved / QA Preview Record" : "",
       "Linear Scope Snapshot Node"
     ].filter(Boolean);
+    if (selection.type === "edge") {
+      return [
+        `Graph object type: ${graphObject.objectType}`,
+        `Relationship stable key: ${graphObject.graphKey}`,
+        `Builder / projection path: Primary Evidence -> Positioned Snapshot Nodes -> Linear Scope Snapshot Edge`,
+        `Source node: ${graphObject.sourceNode}`,
+        `Target node: ${graphObject.targetNode}`,
+        `Creation reason: ${graphObject.reasonForInclusion}`,
+        `Relationship rule: ${item.relationshipRule || graphObject.rule}`,
+        `Authority source: presentation authority only; connected records retain semantic authority.`,
+        `Confidence inheritance: ${graphObject.confidence}`,
+        `Verification status: ${graphObject.verification}`,
+        `Evidence chain: ${[item.sourceReference, item.relationshipType, item.targetReference].filter(Boolean).join(" -> ") || graphObject.sourceReference}`,
+        `Recorded provenance: ${item.provenance || graphObject.createdBy}`,
+        `Diagnostics: ${graphObject.diagnostics}`
+      ];
+    }
     if (selection.type === "cluster") {
       return [
         "Originating source record: clustered child records retain individual provenance",
@@ -30636,17 +30896,17 @@ createRevelationPartsSection(item.subEvents)
     if (!section) return;
     section.dataset.selectedGraphId = graphId;
     section.classList.toggle("has-snapshot-focus", Boolean(graphId));
-    section.querySelectorAll(".scope-snapshot-node.selected, .scope-snapshot-cluster.selected").forEach((element) => element.classList.remove("selected"));
-    section.querySelectorAll(".scope-snapshot-node, .scope-snapshot-cluster").forEach((element) => {
+    section.querySelectorAll(".scope-snapshot-node.selected, .scope-snapshot-cluster.selected, .scope-snapshot-edge.selected").forEach((element) => element.classList.remove("selected"));
+    section.querySelectorAll(".scope-snapshot-node, .scope-snapshot-cluster, .scope-snapshot-edge").forEach((element) => {
       element.setAttribute("tabindex", "-1");
     });
     const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
-    const selected = section.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"]`);
+    const selected = section.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"], [data-snapshot-edge-id="${escaped}"]`);
     selected?.classList.add("selected");
     selected?.setAttribute("aria-pressed", "true");
     selected?.setAttribute("tabindex", "0");
-    if (!selected) section.querySelector(".scope-snapshot-node, .scope-snapshot-cluster")?.setAttribute("tabindex", "0");
-    section.querySelectorAll(`.scope-snapshot-node[aria-pressed="true"], .scope-snapshot-cluster[aria-pressed="true"]`).forEach((element) => {
+    if (!selected) section.querySelector(".scope-snapshot-node, .scope-snapshot-cluster, .scope-snapshot-edge")?.setAttribute("tabindex", "0");
+    section.querySelectorAll(`.scope-snapshot-node[aria-pressed="true"], .scope-snapshot-cluster[aria-pressed="true"], .scope-snapshot-edge[aria-pressed="true"]`).forEach((element) => {
       if (element !== selected) element.removeAttribute("aria-pressed");
     });
     const minimap = section.querySelector(".scope-snapshot-minimap");
@@ -30690,7 +30950,7 @@ createRevelationPartsSection(item.subEvents)
       return false;
     }
     const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
-    const selected = graph.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"]`);
+    const selected = graph.querySelector(`[data-snapshot-node-id="${escaped}"], [data-snapshot-cluster-id="${escaped}"], [data-snapshot-edge-id="${escaped}"]`);
     if (!selected) {
       scopeSnapshotViewState.lastCenteringSuppressionReason = "Selected graph item is hidden by filters or clustering.";
       recordScopeSnapshotFocusDiagnostic(reason, graphId, [scopeSnapshotViewState.lastCenteringSuppressionReason]);
@@ -30713,7 +30973,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function scopeSnapshotFocusableGraphItems() {
-    return Array.from(document.querySelectorAll("#scopeSnapshotSection .scope-snapshot-svg [data-snapshot-node-id], #scopeSnapshotSection .scope-snapshot-svg [data-snapshot-cluster-id]"));
+    return Array.from(document.querySelectorAll("#scopeSnapshotSection .scope-snapshot-svg [data-snapshot-node-id], #scopeSnapshotSection .scope-snapshot-svg [data-snapshot-cluster-id], #scopeSnapshotSection .scope-snapshot-svg [data-snapshot-edge-id]"));
   }
 
   function moveScopeSnapshotKeyboardFocus(direction = 1) {
@@ -30723,7 +30983,7 @@ createRevelationPartsSection(item.subEvents)
     const currentIndex = Math.max(0, items.findIndex((item) => (item.dataset.snapshotNodeId || item.dataset.snapshotClusterId) === currentId));
     const nextIndex = direction === Infinity ? items.length - 1 : direction === -Infinity ? 0 : clampNumber(currentIndex + direction, 0, items.length - 1);
     const next = items[nextIndex];
-    const nextId = next.dataset.snapshotNodeId || next.dataset.snapshotClusterId || "";
+    const nextId = next.dataset.snapshotNodeId || next.dataset.snapshotClusterId || next.dataset.snapshotEdgeId || "";
     if (!nextId) return false;
     selectScopeSnapshotGraphItem(nextId, { preserveViewport: true, source: "keyboard", focusElement: true });
     next.focus?.({ preventScroll: true });
@@ -30749,7 +31009,7 @@ createRevelationPartsSection(item.subEvents)
       scrollY: Math.round(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0),
       graphScrollLeft: graph ? Math.round(graph.scrollLeft || 0) : 0,
       graphScrollTop: graph ? Math.round(graph.scrollTop || 0) : 0,
-      focusedElement: active?.id || active?.dataset?.snapshotNodeId || active?.dataset?.snapshotClusterId || active?.tagName || "none",
+      focusedElement: active?.id || active?.dataset?.snapshotNodeId || active?.dataset?.snapshotClusterId || active?.dataset?.snapshotEdgeId || active?.tagName || "none",
       graphTop: graphRect ? Math.round(graphRect.top) : "not measured",
       graphLeft: graphRect ? Math.round(graphRect.left) : "not measured",
       detailHeight: Math.round(document.getElementById("scopeSnapshotSelectedPanel")?.getBoundingClientRect?.().height || 0)
@@ -30866,7 +31126,7 @@ createRevelationPartsSection(item.subEvents)
     if (preserveViewport) restoreScopeSnapshotViewport(viewportBefore, `select ${selection.type}`);
     if (options.focusElement === true) {
       const escaped = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(graphId) : graphId.replace(/"/g, '\\"');
-      document.querySelector(`#scopeSnapshotSection [data-snapshot-node-id="${escaped}"], #scopeSnapshotSection [data-snapshot-cluster-id="${escaped}"]`)?.focus?.({ preventScroll: true });
+      document.querySelector(`#scopeSnapshotSection [data-snapshot-node-id="${escaped}"], #scopeSnapshotSection [data-snapshot-cluster-id="${escaped}"], #scopeSnapshotSection [data-snapshot-edge-id="${escaped}"]`)?.focus?.({ preventScroll: true });
     }
     if (options.scroll === true) readScopeSnapshotSelectedDetail();
   }
@@ -31168,6 +31428,14 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function handleScopeSnapshotAction(event) {
+    const edge = event.target?.closest?.("[data-snapshot-edge-id]");
+    if (edge && edge.closest?.(".scope-snapshot-svg")) {
+      event.preventDefault();
+      event.stopPropagation?.();
+      selectScopeSnapshotGraphItem(edge.dataset.snapshotEdgeId || "", { preserveViewport: true, source: "edge" });
+      enforceScopeSnapshotPresentationInvariant("click graph edge");
+      return;
+    }
     const node = event.target?.closest?.("[data-snapshot-node-id]");
     if (node && node.closest?.(".scope-snapshot-svg")) {
       event.preventDefault();
@@ -31486,7 +31754,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function handleScopeSnapshotKeydown(event) {
-    const graphItem = event.target?.closest?.("[data-snapshot-node-id], [data-snapshot-cluster-id]");
+    const graphItem = event.target?.closest?.("[data-snapshot-node-id], [data-snapshot-cluster-id], [data-snapshot-edge-id]");
     if (!graphItem || !graphItem.closest?.(".scope-snapshot-svg")) return;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
@@ -31512,7 +31780,7 @@ createRevelationPartsSection(item.subEvents)
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     event.stopPropagation?.();
-    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || "", { preserveViewport: true, source: "keyboard", focusElement: true });
+    selectScopeSnapshotGraphItem(graphItem.dataset.snapshotNodeId || graphItem.dataset.snapshotClusterId || graphItem.dataset.snapshotEdgeId || "", { preserveViewport: true, source: "keyboard", focusElement: true });
     enforceScopeSnapshotPresentationInvariant("keyboard graph selection");
   }
 

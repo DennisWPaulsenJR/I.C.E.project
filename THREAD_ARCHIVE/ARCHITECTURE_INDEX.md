@@ -246,6 +246,10 @@ Included systems:
 - Interreligious Lens
 - Prior / Current / Future Lens
 
+Related presentation contract:
+
+- Graph Object Provenance Architecture: `THREAD_ARCHIVE/GRAPH_OBJECT_PROVENANCE_ARCHITECTURE.md`
+
 Presentation architecture owns:
 
 - Display wording

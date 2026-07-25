@@ -901,6 +901,23 @@ body {
   cursor: pointer;
 }
 
+.scope-snapshot-edge {
+  cursor: pointer;
+  outline: none;
+}
+
+.scope-snapshot-edge:hover,
+.scope-snapshot-edge:focus-visible {
+  stroke-opacity: 1;
+  stroke-width: 3;
+}
+
+.scope-snapshot-edge.selected {
+  stroke: #071632;
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
+
 .scope-snapshot-cluster rect {
   fill: color-mix(in srgb, var(--snapshot-node-color) 16%, #ffffff);
   stroke: var(--snapshot-node-color, #25364d);
@@ -1034,6 +1051,20 @@ body {
 .scope-snapshot-event-context dd {
   color: #334155;
   line-height: 1.35;
+}
+
+.scope-snapshot-reason-for-inclusion {
+  background: #fbfcff;
+  border: 1px solid #dbe5f2;
+  border-radius: 8px;
+  margin: 8px 0;
+  padding: 10px;
+}
+
+.scope-snapshot-reason-for-inclusion h5 {
+  color: #17202a;
+  font-size: .8rem;
+  margin: 0 0 8px;
 }
 
 .scope-snapshot-detail-actions {

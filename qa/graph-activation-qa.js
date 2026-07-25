@@ -5,6 +5,8 @@ const root = path.resolve(__dirname, "..");
 const studyHtml = fs.readFileSync(path.join(root, "study.html"), "utf8");
 const studyJs = fs.readFileSync(path.join(root, "study.js"), "utf8");
 const backgroundJs = fs.readFileSync(path.join(root, "background.js"), "utf8");
+const architectureIndex = fs.readFileSync(path.join(root, "THREAD_ARCHIVE", "ARCHITECTURE_INDEX.md"), "utf8");
+const graphProvenanceDoc = fs.readFileSync(path.join(root, "THREAD_ARCHIVE", "GRAPH_OBJECT_PROVENANCE_ARCHITECTURE.md"), "utf8");
 
 function assert(condition, message) {
   if (!condition) {
@@ -323,6 +325,38 @@ function scopeSnapshotEventContextHarness() {
 }
 
 const checks = [
+  {
+    name: "Graph object provenance contract is documented and wired",
+    run: () => {
+      assert(/# Graph Object Provenance Architecture/.test(graphProvenanceDoc), "Missing graph object provenance architecture document.");
+      [
+        "Current End-to-End Flow",
+        "Graph Object Provenance Contract",
+        "Node Support",
+        "Relationship / Edge Support",
+        "Trust Rules"
+      ].forEach((heading) => {
+        assert(graphProvenanceDoc.includes(heading), `Graph provenance document is missing ${heading}.`);
+      });
+      assert(/GRAPH_OBJECT_PROVENANCE_ARCHITECTURE\.md/.test(architectureIndex), "Architecture Index does not link the graph object provenance contract.");
+      assert(/function scopeSnapshotGraphObjectProvenance/.test(studyJs), "Missing normalized graph object provenance adapter.");
+      assert(/function scopeSnapshotBuildGraphEdges/.test(studyJs), "Missing display-only graph edge builder.");
+      assert(/Reason for Inclusion/.test(studyJs), "Focused graph detail does not expose Reason for Inclusion.");
+      assert(/data-snapshot-edge-id/.test(studyJs), "Graph edges are not independently addressable in the SVG.");
+      assert(/Selection type: Graph relationship edge/.test(studyJs), "Lazy source evidence does not inspect graph edges independently.");
+      assert(/Relationship stable key/.test(studyJs), "Graph edge detail does not expose a stable relationship key.");
+      const selectionSource = extractFunctionSource("scopeSnapshotFindGraphSelection");
+      assert(/model\.edges/.test(selectionSource), "Graph selection lookup does not inspect edge records.");
+      const edgeBuilderSource = extractFunctionSource("scopeSnapshotBuildGraphEdges");
+      assert(/display-only graph connector/.test(edgeBuilderSource) || /display edge/.test(edgeBuilderSource), "Edge builder must label connectors as display-only.");
+      assert(!/chrome\.storage/.test(edgeBuilderSource), "Edge builder must not write or read extension storage.");
+      const provenanceSource = extractFunctionSource("scopeSnapshotGraphObjectProvenance");
+      assert(/createdBy/.test(provenanceSource), "Graph provenance should expose creation reason metadata.");
+      assert(/dependentRelationships/.test(provenanceSource), "Graph provenance should expose relationships that depend on a node.");
+      assert(/sourceNode/.test(provenanceSource) && /targetNode/.test(provenanceSource), "Graph edge provenance should expose both endpoints.");
+      assert(!/chrome\.storage/.test(provenanceSource), "Graph provenance adapter must remain display-only and avoid storage authority.");
+    }
+  },
   {
     name: "Unresolved graph records are distinguishable and deduped conservatively",
     run: () => {
