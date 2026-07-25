@@ -10,6 +10,7 @@ const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
 const TIMELINE_STORAGE_KEY = "ICE_TIMELINE_ITEMS";
 const EVENT_STORAGE_KEY = "ICE_EVENT_ITEMS";
 const ORDERED_EVENTS_KEY = "ICE_ORDERED_EVENTS";
+const OBSERVATION_RECORDS_KEY = "ICE_OBSERVATION_RECORDS";
 const ACTOR_TIMELINES_KEY = "ICE_ACTOR_TIMELINES";
 const PRINCIPLE_STORAGE_KEY = "ICE_PRINCIPLE_ITEMS";
 const PROPHECY_LINKS_KEY = "ICE_PROPHECY_LINKS";
@@ -712,6 +713,7 @@ function enrichSemanticFlowChainScopes(chains, activeAdapter) {
 function applyScopeIntegrity(data, activeAdapter) {
   enrichScopeCollection(data.domSemanticHints, "dom_hint", activeAdapter);
   enrichScopeCollection(data.mentionIndex, "mention", activeAdapter);
+  enrichScopeCollection(data.observationRecords, "observation", activeAdapter);
   enrichScopeCollection(data.semanticEvents, "event", activeAdapter);
   enrichScopeCollection(data.relationshipGraph, "relationship", activeAdapter);
   enrichScopeCollection(data.canonicalIdentities, "identity", activeAdapter);
@@ -736,6 +738,7 @@ function createScopeIntegrityReport(data, activeAdapter) {
   const scopedItems = [
     ...(data.domSemanticHints || []).map((item) => ({ ...item, scopeLayer: "dom_hint" })),
     ...(data.mentionIndex || []).map((item) => ({ ...item, scopeLayer: "mention" })),
+    ...(data.observationRecords || []).map((item) => ({ ...item, scopeLayer: "observation" })),
     ...(data.semanticEvents || []).map((item) => ({ ...item, scopeLayer: "semantic_event" })),
     ...(data.relationshipGraph || []).map((item) => ({ ...item, scopeLayer: "relationship" })),
     ...(data.canonicalIdentities || []).map((item) => ({ ...item, scopeLayer: "canonical_identity" })),
@@ -5741,6 +5744,132 @@ function createOrderedEvents(eventItems) {
   return ordered;
 }
 
+function observationTypeFromText(text = "", subEvent = {}) {
+  const haystack = normalizeWhitespace([
+    text,
+    subEvent.anchorText,
+    subEvent.originalText,
+    subEvent.action,
+    subEvent.relationshipType,
+    subEvent.eventType
+  ].filter(Boolean).join(" "));
+  if (/\?/.test(haystack) || /\b(asked|question|where is|what shall|why|how)\b/i.test(haystack)) return "question_asked";
+  if (/\b(commanded|command|fear not|arise|go ye|take|flee|repent|follow|beware|let)\b/i.test(haystack)) return "command_spoken";
+  if (/\b(promise|shall receive|shall inherit|shall be called|will give|shall have)\b/i.test(haystack)) return "promise_spoken";
+  if (/\b(said|saying|answered|spake|preach(?:ed|ing)?|teaching|cried)\b/i.test(haystack)) return "person_speaking";
+  if (/\b(came|went|departed|arrived|returned|flee|entered|followed|arose|took|dwelt|turned aside)\b/i.test(haystack)) return "person_moving";
+  if (/\b(begat|son of|father|mother|wife|brother|disciples?|unto them|recipient|audience)\b/i.test(haystack)) return "relationship_expressed";
+  if (/\b(then|after|when|in those days|from that time|afterward|before)\b/i.test(haystack)) return "temporal_transition_stated";
+  if (/\b(Bethlehem|Egypt|Nazareth|Jerusalem|Galilee|Judaea|wilderness|Jordan|mountain|sea|temple|synagogue)\b/i.test(haystack)) return "place_named";
+  if (/\b(star|book|scroll|stone|bread|net|ship|temple|altar|garment)\b/i.test(haystack)) return "object_mentioned";
+  if (/\b(born|died|baptized|fulfilled|appeared|healed|cast out|destroyed|called)\b/i.test(haystack)) return "event_occurring";
+  return "event_occurring";
+}
+
+function observationSourceReference(eventItem = {}) {
+  const context = eventItem.sourceContext || {};
+  if (context.book && eventItem.verseRef) return `${context.book} ${eventItem.verseRef}`;
+  if (context.book && context.chapter) return `${context.book} ${context.chapter}`;
+  return eventItem.sourceTitle || eventItem.sourceUrl || "current source";
+}
+
+function observationScopePath(eventItem = {}) {
+  if (eventItem.scopePath) return eventItem.scopePath;
+  const context = eventItem.sourceContext || {};
+  if (context.book && context.chapter && eventItem.verseNumber) {
+    return `${sourceScopePrefix(context)}.verse.${eventItem.verseNumber}`;
+  }
+  return context.scopePath || "";
+}
+
+function createObservationRecord(eventItem = {}, options = {}) {
+  const subEvent = options.subEvent || {};
+  const sourceText = normalizeWhitespace(options.sourceText || subEvent.originalText || subEvent.anchorText || eventItem.eventText || "");
+  if (!sourceText) return null;
+  const observationType = options.observationType || observationTypeFromText(sourceText, subEvent);
+  const sourceReference = observationSourceReference(eventItem);
+  const scopePath = observationScopePath(eventItem);
+  const subEventParticipants = Array.isArray(subEvent.participants)
+    ? subEvent.participants
+    : (subEvent.participants ? [subEvent.participants] : []);
+  const seed = [
+    eventItem.sourceCaptureId,
+    eventItem.id,
+    options.subEventIndex ?? "event",
+    observationType,
+    sourceText
+  ].join("|");
+  return {
+    observationId: `observation-${textHash(seed)}`,
+    schemaVersion: 1,
+    observationType,
+    sourceScope: sourceReference,
+    sourceReference,
+    scopePath,
+    sourceCaptureId: eventItem.sourceCaptureId || "",
+    sourceTitle: eventItem.sourceTitle || "",
+    sourceUrl: eventItem.sourceUrl || "",
+    sourceContext: eventItem.sourceContext || {},
+    sourceText,
+    matchedText: normalizeWhitespace(subEvent.anchorText || sourceText),
+    textSpan: "sentence-level explicit source phrase",
+    tokenRange: "",
+    observedSubject: normalizeWhitespace(subEvent.actor || subEvent.speaker || subEvent.narrator || ""),
+    observedAction: normalizeWhitespace(subEvent.action || eventItem.eventType || ""),
+    observedObject: normalizeWhitespace(subEvent.target || subEvent.recipient || subEvent.concerning || ""),
+    observedLocation: normalizeWhitespace(subEvent.location || (isLocationEntityName(subEvent.target || "") ? subEvent.target : "")),
+    participants: Array.from(new Set([
+      subEvent.actor,
+      subEvent.speaker,
+      subEvent.narrator,
+      subEvent.recipient,
+      subEvent.target,
+      subEvent.concerning,
+      ...subEventParticipants
+    ].map(normalizeWhitespace).filter((value) => value && !isLocationEntityName(value)))),
+    eventId: eventItem.id || "",
+    sequenceIndex: eventItem.sequenceIndex ?? null,
+    sequenceOrder: eventItem.sequenceOrder ?? null,
+    candidateSource: options.subEvent ? "explicit semantic sub-event" : "candidate event sentence",
+    extractionRule: options.subEvent ? "EXPLICIT_SUB_EVENT_OBSERVATION" : "EVENT_SENTENCE_OBSERVATION",
+    contextRule: "SOURCE_CONTEXT_AND_SEQUENCE_ONLY",
+    creationReason: options.subEvent
+      ? "Explicit extractor sub-event retained as an observation before semantic interpretation."
+      : "Candidate event sentence retained as a direct observation before semantic interpretation.",
+    evidence: sourceText,
+    evidenceDistance: 2,
+    inferenceLevel: "direct_observation",
+    confidence: options.subEvent ? (subEvent.confidence || "explicit") : (eventItem.confidence || 0.7),
+    verificationStatus: options.subEvent ? "explicit_source_pattern" : "candidate_event_sentence",
+    status: "observed",
+    provenance: "Observation Engine Phase 1; deterministic source-text observation; no doctrine/theme/motive/symbolism/application inference",
+    boundary: "Observation records preserve explicit source presentation and do not rewrite Context Lock or higher semantic records."
+  };
+}
+
+function createObservationRecords(eventItems = [], orderedEvents = []) {
+  const orderById = new Map((orderedEvents || []).map((item) => [item.id, item]));
+  const observations = [];
+  const seen = new Set();
+  const add = (record) => {
+    if (!record) return;
+    const key = [record.observationType, record.sourceReference, record.matchedText, record.eventId, record.observedSubject, record.observedAction, record.observedObject].join("|");
+    if (seen.has(key)) return;
+    seen.add(key);
+    observations.push(record);
+  };
+  for (const item of eventItems || []) {
+    if (item.eventType === "source_summary" || isSourceSummarySentence(item.eventText || "", item.sequenceIndex)) continue;
+    const ordered = orderById.get(item.id) || item;
+    add(createObservationRecord(ordered, { sourceText: item.eventText, observationType: observationTypeFromText(item.eventText) }));
+    (item.subEvents || []).forEach((subEvent, subEventIndex) => {
+      if (!/explicit/i.test(String(subEvent.confidence || ""))) return;
+      add(createObservationRecord(ordered, { subEvent, subEventIndex }));
+    });
+  }
+  return observations;
+}
+
 function normalizeActorName(actorText) {
   const normalized = normalizeWhitespace(actorText).replace(/[^\w\s]/g, "").toLowerCase();
   if (!normalized) return "";
@@ -8827,6 +8956,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
     const prophecyLinks = createProphecyLinks(dedupedPrincipleItems);
     const orderedEvents = createOrderedEvents(eventItems);
+    const observationRecords = createObservationRecords(eventItems, orderedEvents);
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
     const semanticEvents = createSemanticEvents(eventItems, orderedEvents);
     const interactionGraph = createInteractionGraph(orderedEvents, actorTimelines);
@@ -9111,6 +9241,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
     applyScopeIntegrity({
       domSemanticHints,
       mentionIndex,
+      observationRecords,
       semanticEvents,
       relationshipGraph,
       canonicalIdentities,
@@ -9143,6 +9274,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
     const scopeIntegrity = createScopeIntegrityReport({
       domSemanticHints,
       mentionIndex,
+      observationRecords,
       semanticEvents,
       relationshipGraph,
       canonicalIdentities,
@@ -9214,6 +9346,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       timelineCount: timelineItems.length,
       eventCount: eventItems.length,
       orderedEventCount: orderedEvents.length,
+      observationCount: observationRecords.length,
       actorTimelineCount: actorTimelines.length,
       principleCount: dedupedPrincipleItems.length,
       prophecyLinkCount: prophecyLinks.length,
@@ -9358,6 +9491,7 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
       [TIMELINE_STORAGE_KEY]: withStudyGenerationRecords(timelineItems, pipelineStudyGeneration),
       [EVENT_STORAGE_KEY]: withStudyGenerationRecords(eventItems, pipelineStudyGeneration),
       [ORDERED_EVENTS_KEY]: withStudyGenerationRecords(orderedEvents, pipelineStudyGeneration),
+      [OBSERVATION_RECORDS_KEY]: withStudyGenerationRecords(observationRecords, pipelineStudyGeneration),
       [ACTOR_TIMELINES_KEY]: withStudyGenerationRecords(actorTimelines, pipelineStudyGeneration),
       [PRINCIPLE_STORAGE_KEY]: withStudyGenerationRecords(dedupedPrincipleItems, pipelineStudyGeneration),
       [PROPHECY_LINKS_KEY]: withStudyGenerationRecords(prophecyLinks, pipelineStudyGeneration),

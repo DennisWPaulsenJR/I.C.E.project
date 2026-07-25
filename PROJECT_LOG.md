@@ -5143,3 +5143,26 @@ Integration:
 Boundary:
 - Architecture/documentation only.
 - No semantic records, Context Lock, storage, graph behavior, crawling, queues, or runtime code changed for this mission statement.
+
+## 2026-07-25 - Implement Observation Engine Phase 1
+
+Implemented Observation Engine Phase 1 as a deterministic, provenance-backed layer between candidate extraction/context resolution and graph projection or higher semantic interpretation.
+
+Runtime:
+- Added `ICE_OBSERVATION_RECORDS` generation output from existing event candidates and accepted ordered-event context.
+- Observation records preserve source scope, source reference, source context, source text, matched text, observed subject/action/object/location, participants, event id, sequence metadata, extraction/context rules, creation reason, evidence, evidence distance, confidence, provenance, and boundary notes.
+- Supported conservative observation types include person speaking, person moving, object mentioned, place named, event occurring, command spoken, promise spoken, question asked, relationship expressed, and temporal transition stated.
+- Explicit sub-event observations are emitted only from explicitly marked sub-event evidence; duplicate emissions are deduplicated by type, reference, matched text, event id, subject, action, and object.
+
+Presentation:
+- Added the Study Panel `Observation Engine` section and diagnostics count.
+- Added scoped observation nodes to the Linear Scope Snapshot presentation feed.
+- Added Observation Records to promotion coverage, Editor / Architect counts, Architecture Graph, and Integrated Semantic Pipeline.
+
+Architecture:
+- Added `THREAD_ARCHIVE/OBSERVATION_ENGINE_PHASE_1.md`.
+- Registered the Observation Engine in `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`.
+
+Boundary:
+- Observation records do not infer doctrine, theme, motive, symbolism, application, fulfillment, or semantic authority.
+- No crawling, queue processing, automatic study progression, Context Lock rewrite, semantic rewrite, or Study View meaning change was introduced.

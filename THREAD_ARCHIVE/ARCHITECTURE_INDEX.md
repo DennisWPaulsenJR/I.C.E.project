@@ -87,6 +87,7 @@ Primary references:
 - `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+- `THREAD_ARCHIVE/OBSERVATION_ENGINE_PHASE_1.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 
@@ -109,6 +110,7 @@ Responsibilities:
 - Define entity classes.
 - Define relationship classes.
 - Define truth/status classes.
+- Define direct Observation Layer records before higher semantic interpretation.
 - Define promotion criteria.
 - Define prohibited promotions.
 - Preserve source scope, evidence, confidence, provenance, and inference level.

@@ -31,6 +31,10 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Observation Engine Phase 1 is implemented locally as a deterministic, provenance-backed layer between candidate extraction/context resolution and graph/higher semantic layers.
+- Observation records are stored under `ICE_OBSERVATION_RECORDS`, generation-stamped, scope-integrity enriched, displayed in the Study Panel Observation Engine section, counted in diagnostics, projected into the Linear Scope Snapshot as presentation nodes, and represented in the Architecture Graph / Integrated Semantic Pipeline.
+- Observation boundaries are explicit: records preserve directly supportable source-text occurrences only and do not infer doctrine, theme, motive, symbolism, application, fulfillment, or semantic authority.
+- Observation architecture is documented in `THREAD_ARCHIVE/OBSERVATION_ENGINE_PHASE_1.md` and registered in `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`.
 - Graph Presentation Rendering repair is implemented locally but remains at the GPT/live-browser review gate until the graph is visibly observed in Chrome.
 - Boundary 1: `8977c47` fixed the initial Graph button activation regression. Boundary 2: current route WIP canonicalizes Graph to `overview` + `snapshot`, hides diagnostics, marks the Snapshot section active, forces linear graph mode, reapplies after full study data load, and records live graph host diagnostics.
 - Boundary 3: current renderer WIP adds stage diagnostics and presentation-only normalization so malformed/non-object graph candidates are neutralized or skipped with diagnostics instead of crashing the base graph. It also adds fallback presentation keys and clamps invalid SVG coordinates.

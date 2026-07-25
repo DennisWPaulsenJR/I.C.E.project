@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     timelineItems: "ICE_TIMELINE_ITEMS",
     eventItems: "ICE_EVENT_ITEMS",
     orderedEvents: "ICE_ORDERED_EVENTS",
+    observationRecords: "ICE_OBSERVATION_RECORDS",
     actorTimelines: "ICE_ACTOR_TIMELINES",
     interactionGraph: "ICE_INTERACTION_GRAPH",
     sceneModels: "ICE_SCENE_MODELS",
@@ -177,6 +178,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Journey Hubs": "Narrative and Events",
     "Scenes": "Narrative and Events",
     "Ordered Events": "Narrative and Events",
+    "Observation Engine": "Narrative and Events",
     "Semantic Events": "Narrative and Events",
     "Semantic Flow Chains": "Narrative and Events",
     "Movement Semantics": "Narrative and Events",
@@ -290,6 +292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Actors": "Detected actors from the current source.",
     "Scenes": "Detected scene records from the current source.",
     "Ordered Events": "Chronologically ordered event records.",
+    "Observation Engine": "Direct source-text occurrence records before higher semantic interpretation.",
     "Interactions": "Interaction graph records from the current source.",
     "Principles": "Extracted principle records.",
     "Prophecy Links": "Prophecy and fulfillment link records.",
@@ -330,6 +333,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Mention Index": "mentionIndex",
     "Actors": "actorTimelines",
     "Scenes": "sceneModels",
+    "Observation Engine": "observationRecords",
     "Ordered Events": "orderedEvents",
     "Interactions": "interactionGraph",
     "Principles": "principleItems",
@@ -345,6 +349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Teaching / Discourse Structure": "teachingSemantics",
     "Principle Relationships": "principleRelationships",
     "Principle Networks": "principleNetworks",
+    "Observation Engine": "observationRecords",
     "Semantic Continuity": "semanticContinuity",
     "Movement Semantics": "movementSemantics",
     "Semantic Causality": "semanticCausality"
@@ -13224,6 +13229,8 @@ createRevelationPartsSection(item.subEvents)
       record.canonicalName ||
       record.entityName ||
       record.name ||
+      record.observationType ||
+      record.matchedText ||
       record.eventName ||
       record.eventType ||
       record.timelineLabel ||
@@ -13424,6 +13431,7 @@ createRevelationPartsSection(item.subEvents)
     return trimText(
       record.relationshipType ||
       record.dialogueType ||
+      record.observationType ||
       record.eventType ||
       record.timelineLabel ||
       record.sceneType ||
@@ -14255,6 +14263,7 @@ createRevelationPartsSection(item.subEvents)
     const nodes = [];
     const index = studyReferenceIndexRecords()[0] || {};
     asArray(index.actors).slice(0, 24).forEach((line) => scopeSnapshotAddNode(nodes, "characters", { label: line, confidence: "grounded", provenance: "Study Reference Index actor summary", sourceReference: index.activeScope }, line, { recordType: "actor" }));
+    asArray(scopedSemanticRecords(studyData.observationRecords)).slice(0, 28).forEach((record) => scopeSnapshotAddNode(nodes, "happenings", record, "Observation", { recordType: "observation", targetSection: "observationEngineSection" }));
     asArray(scopedSemanticRecords(studyData.orderedEvents)).slice(0, 28).forEach((record) => scopeSnapshotAddNode(nodes, "happenings", record, "Ordered event", { recordType: "orderedEvent" }));
     asArray(promotedTimelineRecords()).slice(0, 28).forEach((record) => scopeSnapshotAddNode(nodes, "majorEvents", record, "Timeline event", { recordType: "timeline" }));
     asArray(promotedRelationshipRecords()).slice(0, 22).forEach((record) => scopeSnapshotAddNode(nodes, "relationships", record, "Relationship", { recordType: "relationship" }));
@@ -14309,6 +14318,7 @@ createRevelationPartsSection(item.subEvents)
     return {
       studyReferenceActors: safeCount(() => asArray(studyReferenceIndexRecords()[0]?.actors).length),
       orderedEvents: safeCount(() => scopedSemanticRecords(studyData.orderedEvents).length),
+      observationRecords: safeCount(() => scopedSemanticRecords(studyData.observationRecords).length),
       timelineRecords: safeCount(() => promotedTimelineRecords().length),
       relationshipRecords: safeCount(() => promotedRelationshipRecords().length),
       dialoguePreview: safeCount(() => dialogueRelationshipPreviewRecords().length),
@@ -16218,6 +16228,7 @@ createRevelationPartsSection(item.subEvents)
     return [
       editorArchitectLayerCount("sourceDiscoveryIndex", "Discovery records"),
       editorArchitectLayerCount("mentionIndex", "Mention records"),
+      editorArchitectLayerCount("observationRecords", "Observation records"),
       editorArchitectLayerCount("referenceGraph", "Reference graph records"),
       editorArchitectLayerCount("semanticEvents", "Semantic events"),
       {
@@ -16300,6 +16311,7 @@ createRevelationPartsSection(item.subEvents)
     const categories = [
       { label: "Source Discovery Records", records: scopedSemanticRecords(studyData.sourceDiscoveryIndex), discoveredFallback: scopedSemanticRecords(studyData.sourceDiscoveryIndex).length },
       { label: "Mention Records", records: scopedSemanticRecords(studyData.mentionIndex), discoveredFallback: scopedSemanticRecords(studyData.mentionIndex).length },
+      { label: "Observation Records", records: scopedSemanticRecords(studyData.observationRecords), discoveredFallback: scopedSemanticRecords(studyData.observationRecords).length },
       { label: "Semantic Events", records: scopedSemanticRecords(studyData.semanticEvents), discoveredFallback: scopedSemanticRecords(studyData.semanticEvents).length },
       { label: "Scene Models", records: promotedSceneRecords(), discoveredFallback: Math.max(contextLockRecords().length, promotedTimelineRecords().length, scopedSemanticRecords(studyData.sceneModels).length) },
       { label: "Timeline Promotions", records: promotedTimelineRecords(), discoveredFallback: scopedSemanticRecords(studyData.orderedEvents).length },
@@ -16789,14 +16801,15 @@ createRevelationPartsSection(item.subEvents)
   function architectureGraphNodes() {
     const registryStatus = "registry-only / no runtime graph mutation";
     const nodeDefinitions = [
-      ["primary_evidence", "Primary Evidence", "Evidence", [], ["Context Lock", "Source Discovery", "Mention Index"], "Primary Evidence Authority", 0, ["source-grounded evidence"], ["source rewrite", "context mutation"], "Primary evidence remains authoritative."],
-      ["context_lock", "Context Lock", "Evidence", ["Primary Evidence"], ["Entity Registry", "Timeline Records", "Scene Records"], "Context Lock Authority", 2, ["locked context diagnostics"], ["role inversion", "participant rewrite"], "Context Lock may constrain derived records and may not be rewritten by them."],
-      ["source_discovery", "Source Discovery", "Evidence", ["Primary Evidence"], ["Mention Index", "Reference Graph"], "Source Text Authority", 1, ["source discovery diagnostics"], ["semantic authority creation"], "Discovery surfaces source signals without replacing source text."],
-      ["mention_index", "Mention Index", "Evidence", ["Source Discovery"], ["Entity Registry", "Relationship Records"], "Source Text Authority", 2, ["mention diagnostics"], ["entity-class rewrite"], "Mention records support classification but do not become classification authority."],
-      ["entity_registry", "Entity Registry", "Semantic", ["Context Lock", "Mention Index", "Ontology Registry"], ["Timeline Records", "Scene Records", "Relationship Records"], "Ontology Classification Authority", 3, ["entity classification records"], ["Context Lock rewrite", "hierarchy flattening"], "Entity classification depends on context and ontology boundaries."],
-      ["timeline_records", "Timeline Records", "Semantic", ["Context Lock", "Entity Registry"], ["Scene Records", "Relationship Records"], "Context Lock Authority", 4, ["ordered timeline records"], ["source order rewrite"], "Timeline records summarize accepted source order only."],
+      ["primary_evidence", "Primary Evidence", "Evidence", [], ["Context Lock", "Source Discovery", "Mention Index", "Observation Records"], "Primary Evidence Authority", 0, ["source-grounded evidence"], ["source rewrite", "context mutation"], "Primary evidence remains authoritative."],
+      ["context_lock", "Context Lock", "Evidence", ["Primary Evidence"], ["Observation Records", "Entity Registry", "Timeline Records", "Scene Records"], "Context Lock Authority", 2, ["locked context diagnostics"], ["role inversion", "participant rewrite"], "Context Lock may constrain derived records and may not be rewritten by them."],
+      ["source_discovery", "Source Discovery", "Evidence", ["Primary Evidence"], ["Mention Index", "Observation Records", "Reference Graph"], "Source Text Authority", 1, ["source discovery diagnostics"], ["semantic authority creation"], "Discovery surfaces source signals without replacing source text."],
+      ["mention_index", "Mention Index", "Evidence", ["Source Discovery"], ["Observation Records", "Entity Registry", "Relationship Records"], "Source Text Authority", 2, ["mention diagnostics"], ["entity-class rewrite"], "Mention records support classification but do not become classification authority."],
+      ["observation_records", "Observation Records", "Evidence", ["Primary Evidence", "Source Discovery", "Mention Index", "Context Lock"], ["Entity Registry", "Timeline Records", "Scene Records", "Relationship Records", "Graph Projection"], "Primary Evidence Authority / Context Lock Authority", 2, ["direct source-text occurrence records"], ["doctrine inference", "theme creation", "motive inference", "symbolism inference"], "Observation records preserve explicit source presentation before semantic interpretation."],
+      ["entity_registry", "Entity Registry", "Semantic", ["Context Lock", "Mention Index", "Observation Records", "Ontology Registry"], ["Timeline Records", "Scene Records", "Relationship Records"], "Ontology Classification Authority", 3, ["entity classification records"], ["Context Lock rewrite", "hierarchy flattening"], "Entity classification depends on context, observations, and ontology boundaries."],
+      ["timeline_records", "Timeline Records", "Semantic", ["Context Lock", "Entity Registry", "Observation Records"], ["Scene Records", "Relationship Records"], "Context Lock Authority", 4, ["ordered timeline records"], ["source order rewrite"], "Timeline records summarize accepted source order only."],
       ["scene_records", "Scene Records", "Semantic", ["Context Lock", "Timeline Records", "Entity Registry"], ["Relationship Records", "Theme Records"], "Context Lock Authority", 4, ["scene summaries"], ["inferred participants"], "Scenes summarize context and may not create context."],
-      ["relationship_records", "Relationship Records", "Semantic", ["Entity Registry", "Scene Records", "Timeline Records"], ["Theme Records", "Fulfillment Confidence"], "Context Lock Authority", 5, ["relationship summaries"], ["actor rewrite", "location rewrite"], "Relationships may connect grounded records but not rewrite them."],
+      ["relationship_records", "Relationship Records", "Semantic", ["Entity Registry", "Scene Records", "Timeline Records", "Observation Records"], ["Theme Records", "Fulfillment Confidence"], "Context Lock Authority", 5, ["relationship summaries"], ["actor rewrite", "location rewrite"], "Relationships may connect grounded records but not rewrite them."],
       ["theme_records", "Theme Records", "Semantic", ["Relationship Records", "Scene Records"], ["Lens Registry"], "Perspective Authority", 6, ["theme summaries"], ["doctrine creation"], "Themes summarize grounded semantic records."],
       ["literary_records", "Literary Records", "Semantic", ["Source Discovery", "Scene Records", "Theme Records"], ["Lens Registry"], "Perspective Authority", 6, ["literary summaries"], ["source meaning rewrite"], "Literary records describe organization without creating doctrine."],
       ["fulfillment_confidence", "Fulfillment Confidence", "Semantic", ["Relationship Records", "Timeline Records", "Source Discovery"], ["Fulfillment Lens"], "Perspective Authority", 7, ["fulfillment confidence summaries"], ["implicit fulfillment promotion"], "Fulfillment confidence separates explicit, supported, possible, and attributed categories."],
@@ -16841,16 +16854,23 @@ createRevelationPartsSection(item.subEvents)
     const edgeDefinitions = [
       ["primary_context", "primary_evidence", "context_lock", "derives", "primary_to_derived", "near_to_farther", true, ""],
       ["primary_discovery", "primary_evidence", "source_discovery", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["primary_observation", "primary_evidence", "observation_records", "derives", "primary_to_derived", "near_to_farther", true, ""],
       ["discovery_mentions", "source_discovery", "mention_index", "derives", "primary_to_derived", "near_to_farther", true, ""],
+      ["discovery_observation", "source_discovery", "observation_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["mentions_observation", "mention_index", "observation_records", "informs", "primary_to_derived", "same_distance", true, ""],
+      ["context_observation", "context_lock", "observation_records", "constrains", "primary_to_derived", "same_distance", true, ""],
       ["context_entities", "context_lock", "entity_registry", "constrains", "primary_to_derived", "near_to_farther", true, ""],
       ["mentions_entities", "mention_index", "entity_registry", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["observations_entities", "observation_records", "entity_registry", "informs", "primary_to_derived", "near_to_farther", true, ""],
       ["ontology_entities", "ontology_registry", "entity_registry", "informs", "registry_to_semantic", "farther_supports_closer_without_override", true, ""],
       ["entities_timeline", "entity_registry", "timeline_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["observations_timeline", "observation_records", "timeline_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
       ["context_timeline", "context_lock", "timeline_records", "constrains", "primary_to_derived", "near_to_farther", true, ""],
       ["timeline_scenes", "timeline_records", "scene_records", "derives", "primary_to_derived", "same_distance_or_farther", true, ""],
       ["context_scenes", "context_lock", "scene_records", "constrains", "primary_to_derived", "near_to_farther", true, ""],
       ["scenes_relationships", "scene_records", "relationship_records", "derives", "primary_to_derived", "near_to_farther", true, ""],
       ["entities_relationships", "entity_registry", "relationship_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
+      ["observations_relationships", "observation_records", "relationship_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
       ["relationships_themes", "relationship_records", "theme_records", "derives", "primary_to_derived", "near_to_farther", true, ""],
       ["relationships_fulfillment", "relationship_records", "fulfillment_confidence", "informs", "primary_to_derived", "near_to_farther", true, ""],
       ["source_literary", "source_discovery", "literary_records", "informs", "primary_to_derived", "near_to_farther", true, ""],
@@ -20804,6 +20824,7 @@ createRevelationPartsSection(item.subEvents)
       ...sessionContinuityReviewRecords(),
       ...currentStudyScopePages()
     ];
+    const observationRecords = scopedSemanticRecords(studyData.observationRecords);
     const semanticRecords = [
       ...Array.from(studyReferenceActors({ includeTechnical: true }).values()),
       ...scopedSemanticRecords(studyData.entityRegistry),
@@ -20872,9 +20893,20 @@ createRevelationPartsSection(item.subEvents)
         provenanceSummary: currentStudyScopeLabel()
       },
       {
-        pipelineStageId: "stage.3.semantic",
-        stageName: "Stage 3 - Semantic Layer",
-        consumedRecords: contextRecords.length,
+        pipelineStageId: "stage.3.observation",
+        stageName: "Stage 3 - Observation Layer",
+        consumedRecords: contextRecords.length + scopedSemanticRecords(studyData.sourceDiscoveryIndex).length + scopedSemanticRecords(studyData.mentionIndex).length,
+        producedRecords: observationRecords.length,
+        unresolvedRecords: resolutionCounts(observationRecords).unresolved,
+        authoritySource: "Primary Evidence Authority / Context Lock Authority",
+        evidenceDistance: 2,
+        confidenceSummary: "direct source-text occurrences before semantic interpretation",
+        provenanceSummary: "Observation Engine Phase 1; deterministic explicit-source extraction"
+      },
+      {
+        pipelineStageId: "stage.4.semantic",
+        stageName: "Stage 4 - Semantic Layer",
+        consumedRecords: contextRecords.length + observationRecords.length,
         producedRecords: semanticRecords.length,
         unresolvedRecords: resolutionCounts(semanticRecords).unresolved,
         authoritySource: "Context Lock Authority / Ontology Classification Authority",
@@ -20883,8 +20915,8 @@ createRevelationPartsSection(item.subEvents)
         provenanceSummary: "entity, timeline, scene, relationship, theme, and literary records"
       },
       {
-        pipelineStageId: "stage.4.reasoning_support",
-        stageName: "Stage 4 - Reasoning Support",
+        pipelineStageId: "stage.5.reasoning_support",
+        stageName: "Stage 5 - Reasoning Support",
         consumedRecords: semanticRecords.length,
         producedRecords: reasoningRecords.length,
         unresolvedRecords: resolutionCounts(reasoningRecords).unresolved,
@@ -20894,8 +20926,8 @@ createRevelationPartsSection(item.subEvents)
         provenanceSummary: "action chains, causality, consequence chains, and fulfillment confidence"
       },
       {
-        pipelineStageId: "stage.5.language_expansion",
-        stageName: "Stage 5 - Language Expansion",
+        pipelineStageId: "stage.6.language_expansion",
+        stageName: "Stage 6 - Language Expansion",
         consumedRecords: languageSupport.length,
         producedRecords: languageExpansionRecords.length,
         unresolvedRecords: resolutionCounts(languageExpansionRecords).unresolved,
@@ -20905,8 +20937,8 @@ createRevelationPartsSection(item.subEvents)
         provenanceSummary: "translation, Strong alignment, and adapter registry contracts"
       },
       {
-        pipelineStageId: "stage.6.registries",
-        stageName: "Stage 6 - Registries",
+        pipelineStageId: "stage.7.registries",
+        stageName: "Stage 7 - Registries",
         consumedRecords: 0,
         producedRecords: registryRecords.length,
         unresolvedRecords: 0,
@@ -20916,8 +20948,8 @@ createRevelationPartsSection(item.subEvents)
         provenanceSummary: "ontology, corpus, authority, perspective, expert, and lens registries"
       },
       {
-        pipelineStageId: "stage.7.presentation",
-        stageName: "Stage 7 - Presentation",
+        pipelineStageId: "stage.8.presentation",
+        stageName: "Stage 8 - Presentation",
         consumedRecords: semanticRecords.length + registryRecords.length,
         producedRecords: presentationRecords.length,
         unresolvedRecords: resolutionCounts(presentationRecords).unresolved,
@@ -20975,7 +21007,7 @@ createRevelationPartsSection(item.subEvents)
         `status=${stage.status}`
       ].join(" | "));
     });
-    lines.push("Evidence distance progression: 0 Primary Evidence -> 1 Language -> 2 Context -> 3 Semantic -> 6 Reasoning Support -> 7 Expansion/Registries -> 8 Presentation.");
+    lines.push("Evidence distance progression: 0 Primary Evidence -> 1 Language -> 2 Context/Observation -> 3 Semantic -> 6 Reasoning Support -> 7 Expansion/Registries -> 8 Presentation.");
     lines.push("Authority progression: primary evidence and Context Lock constrain derived semantic, registry, reasoning, and presentation outputs.");
     lines.push("Boundary: integrated pipeline is observational and display-only, built from existing scoped runtime records and static registry metadata.");
     return lines;
@@ -28319,6 +28351,78 @@ createRevelationPartsSection(item.subEvents)
     ].filter(Boolean).join("\n");
   }
 
+  function observationRecordTitle(item = {}) {
+    return trimText(item.matchedText || item.sourceText || item.observationType || "Observation", 72);
+  }
+
+  function observationRecordBody(item = {}) {
+    return [
+      `Observation type: ${item.observationType || "not recorded"}`,
+      `What source presents: ${trimText(item.sourceText || item.evidence || "Source text unavailable from current records.", 260)}`,
+      item.observedSubject ? `Subject / actor: ${item.observedSubject}` : "",
+      item.observedAction ? `Action / speech: ${item.observedAction}` : "",
+      item.observedObject ? `Object / recipient: ${item.observedObject}` : "",
+      asArray(item.participants).length ? `Participants: ${asArray(item.participants).slice(0, 8).join(", ")}` : "",
+      `Source reference: ${item.sourceReference || item.sourceScope || "not recorded"}`,
+      `Creation reason: ${item.creationReason || "direct source-text observation"}`,
+      `Rule: ${item.extractionRule || "not recorded"}`,
+      `Confidence: ${displayConfidence(item.confidence || "not recorded")}`,
+      `Provenance: ${item.provenance || "Observation Engine Phase 1"}`,
+      "Boundary: observation only; no doctrine, theme, motive, symbolism, application, fulfillment, or semantic authority is inferred here."
+    ].filter(Boolean).join("\n");
+  }
+
+  function observationTypeCounts(records = []) {
+    return records.reduce((counts, item) => {
+      const key = item.observationType || "unknown";
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function renderObservationEngine(term) {
+    const container = document.getElementById("observationEngineCards");
+    const count = document.getElementById("observationEngineCount");
+    const observations = scopedSemanticRecords(studyData.observationRecords);
+    const filtered = observations.filter((item) =>
+      itemMatches(item, [
+        "observationType",
+        "sourceText",
+        "matchedText",
+        "observedSubject",
+        "observedAction",
+        "observedObject",
+        "sourceReference",
+        "extractionRule",
+        "provenance"
+      ], term)
+    );
+    if (!container || !count) return;
+    clearElement(container);
+    count.textContent = `${filtered.length} observation(s)`;
+    if (!filtered.length) {
+      appendEmpty(container, observations.length ? "No Observation Engine records match current filter." : "No Observation Engine records are available for the current scope.");
+      return;
+    }
+    const typeCounts = observationTypeCounts(observations);
+    container.appendChild(createCard(
+      "Observation Engine Phase 1",
+      [
+        `Scoped observations: ${observations.length}`,
+        `Types: ${Object.entries(typeCounts).map(([type, value]) => `${type}=${value}`).join(", ") || "none"}`,
+        "Purpose: record directly supportable source-text occurrences before graph projection or higher semantic interpretation.",
+        "Boundary: deterministic extraction only; no doctrine, theme, motive, symbolism, application, crawling, queue processing, scope mutation, or storage authority change beyond generated analysis output."
+      ].join("\n"),
+      "ICE_OBSERVATION_RECORDS"
+    ));
+    filtered.slice(0, DISPLAY_LIMIT).forEach((item) => container.appendChild(createCard(
+      observationRecordTitle(item),
+      observationRecordBody(item),
+      [item.observationType, item.sourceReference || item.sourceScope, item.verificationStatus].filter(Boolean).join(" | ")
+    )));
+    if (filtered.length > DISPLAY_LIMIT) appendEmpty(container, `${filtered.length - DISPLAY_LIMIT} more observation record(s) hidden by preview limit. Use search/filter to narrow.`);
+  }
+
   function renderOrderedEvents(term) {
     const container = document.getElementById("orderedEventCards");
     const count = document.getElementById("orderedEventCount");
@@ -29469,6 +29573,7 @@ createRevelationPartsSection(item.subEvents)
       "timelineItems",
       "eventItems",
       "orderedEvents",
+      "observationRecords",
       "actorTimelines",
       "interactionGraph",
       "sceneModels",
@@ -29529,6 +29634,7 @@ createRevelationPartsSection(item.subEvents)
       "timelineItems",
       "eventItems",
       "orderedEvents",
+      "observationRecords",
       "actorTimelines",
       "interactionGraph",
       "sceneModels",
@@ -29646,6 +29752,7 @@ createRevelationPartsSection(item.subEvents)
       { label: "Mention Index", sectionId: "mentionIndexSection", renderer: renderMentionIndex },
       { label: "Actors", sectionId: "actorsSection", renderer: renderActors },
       { label: "Scenes", sectionId: "scenesSection", renderer: renderScenes },
+      { label: "Observation Engine", sectionId: "observationEngineSection", renderer: renderObservationEngine },
       { label: "Ordered Events", sectionId: "orderedEventsSection", renderer: renderOrderedEvents },
       { label: "Interactions", sectionId: "interactionsSection", renderer: renderInteractions },
       { label: "Principles", sectionId: "principlesSection", renderer: renderPrinciples },
@@ -30344,6 +30451,7 @@ createRevelationPartsSection(item.subEvents)
     const timelineCount = countItems(studyData.timelineItems);
     const eventCount = countItems(studyData.eventItems);
     const orderedCount = countItems(studyData.orderedEvents);
+    const observationCount = countItems(studyData.observationRecords);
     const actorCount = countItems(studyData.actorTimelines);
     const interactionCount = dedupeInteractions(studyData.interactionGraph).length;
     const sceneCount = countItems(promotedSceneRecords());
@@ -30392,7 +30500,7 @@ createRevelationPartsSection(item.subEvents)
     const principleCount = countItems(studyData.principleItems);
     const prophecyLinkCount = countItems(studyData.prophecyLinks);
     const totalRenderable = captureCount + timelineCount + eventCount +
-      orderedCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
+      orderedCount + observationCount + actorCount + interactionCount + sceneCount + semanticEventCount + semanticFlowChainCount + entityRegistryCount + relationshipGraphCount + canonicalIdentityCount + mentionCount + domHintCount +
       principleCount + prophecyLinkCount + referenceGraphCount + passageFunctionCount + revelationPatternCount + referenceRoleCount + semanticDistinctionCount + ontologyRoleCount + semanticAmbiguityCount + originAuthorityPathCount + entityRelationRoleCount + semanticContinuityCount + movementSemanticsCount + semanticCausalityCount + teachingSemanticsCount + principleRelationshipsCount + principleNetworksCount + focusLensCount + scopeLensCount + depthLensCount + viewLensCount + journeyNodesCount + journeyPathsCount + journeyHubsCount + characterInteractionsCount + resolutionExplanationCount + knowledgeGraphCount + semanticQuestionsCount + trustVerificationCount;
     const message = document.getElementById("diagnosticMessage");
 
@@ -30400,6 +30508,7 @@ createRevelationPartsSection(item.subEvents)
     setElementText("diagnosticTimeline", diagnosticCount(timelineCount));
     setElementText("diagnosticEvents", diagnosticCount(eventCount));
     setElementText("diagnosticOrderedEvents", diagnosticCount(orderedCount));
+    setElementText("diagnosticObservationRecords", diagnosticCount(observationCount));
     setElementText("diagnosticActors", diagnosticCount(actorCount));
     setElementText("diagnosticInteractions", diagnosticCount(interactionCount));
     setElementText("diagnosticScenes", diagnosticCount(sceneCount));
