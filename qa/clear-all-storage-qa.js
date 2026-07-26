@@ -78,6 +78,7 @@ function createClearAllHarness(options = {}) {
               selectedAdapterForNewAnalysis: message.preservedPanelUiState?.selectedAdapterForNewAnalysis,
               selectedLensForNewAnalysis: message.preservedPanelUiState?.selectedLensForNewAnalysis,
               selectedLensesForNewAnalysis: message.preservedPanelUiState?.selectedLensesForNewAnalysis,
+              selectedExaltationPresentationMode: message.preservedPanelUiState?.selectedExaltationPresentationMode,
               lastAction: "popup_clear_all_ice_data",
               clearAllGeneration: nextGeneration,
               updatedAt: "qa"
@@ -216,6 +217,7 @@ function matthewStorageFixture() {
       selectedAdapterForNewAnalysis: "lds_scripture_adapter",
       selectedLensForNewAnalysis: "recommended",
       selectedLensesForNewAnalysis: ["recommended"],
+      selectedExaltationPresentationMode: "exaltation_lens_v1",
       lastAction: "before_clear"
     },
     NON_ICE_SETTING: { preserved: true }
@@ -245,7 +247,8 @@ function simulatedPostClearStorage() {
       lastAction: "popup_clear_all_ice_data",
       clearAllGeneration: 1,
       selectedAdapterForNewAnalysis: "lds_scripture_adapter",
-      selectedLensForNewAnalysis: "recommended"
+      selectedLensForNewAnalysis: "recommended",
+      selectedExaltationPresentationMode: "class_of_being_lens_v1"
     },
     ICE_CANONICAL_ANALYZED_PAGES: [staleMatthew1, currentMatthew3],
     ICE_ANALYSIS_HISTORY: [
@@ -312,6 +315,7 @@ const checks = [
       assert(storage.NON_ICE_SETTING?.preserved, "Unrelated non-I.C.E. local setting was removed.");
       assert(storage.ICE_PANEL_UI_STATE?.selectedAdapterForNewAnalysis === "lds_scripture_adapter", "Adapter preference was not preserved.");
       assert(storage.ICE_PANEL_UI_STATE?.selectedLensForNewAnalysis === "recommended", "Lens preference was not preserved.");
+      assert(storage.ICE_PANEL_UI_STATE?.selectedExaltationPresentationMode === "exaltation_lens_v1", "Exaltation preference was not preserved.");
       assert(storage.ICE_PANEL_UI_STATE?.lastAction === "popup_clear_all_ice_data", "Clear All did not record its last action.");
       assert(storage.ICE_STUDY_GENERATION === 1, "Clear All did not persist the active study generation.");
       assert(storage.ICE_PANEL_UI_STATE?.clearAllGeneration === 1, "Clear All did not stamp panel state with the active generation.");
@@ -390,6 +394,7 @@ const checks = [
       assert(!harness.getSessionStorage().ICE_ORDERED_EVENTS, "Fallback did not clear session study keys.");
       assert(storage.NON_ICE_SETTING?.preserved, "Fallback removed unrelated local setting.");
       assert(storage.ICE_PANEL_UI_STATE?.selectedAdapterForNewAnalysis === "lds_scripture_adapter", "Fallback did not preserve adapter preference.");
+      assert(storage.ICE_PANEL_UI_STATE?.selectedExaltationPresentationMode === "exaltation_lens_v1", "Fallback did not preserve Exaltation preference.");
     }
   },
   {

@@ -289,6 +289,7 @@ function preservedPanelUiState(previous = {}) {
     selectedAdapterForNewAnalysis: previous.selectedAdapterForNewAnalysis,
     selectedLensForNewAnalysis: previous.selectedLensForNewAnalysis,
     selectedLensesForNewAnalysis: previous.selectedLensesForNewAnalysis,
+    selectedExaltationPresentationMode: previous.selectedExaltationPresentationMode,
     lastAction: "popup_clear_all_ice_data",
     clearAllGeneration: clearAllStudyDataGeneration,
     updatedAt: new Date().toISOString()

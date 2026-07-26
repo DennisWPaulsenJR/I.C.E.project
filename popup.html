@@ -166,6 +166,39 @@
       text-align: center;
     }
 
+    .compact-selector-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+
+    .compact-selector-bar label {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 800;
+    }
+
+    .compact-selector-bar select {
+      width: 100%;
+      min-width: 0;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: .82rem;
+    }
+
+    .compact-selector-bar select:focus-visible {
+      outline: 3px solid #8ab4ff;
+      outline-offset: 2px;
+    }
+
     details.control-disclosure {
       margin: 0 0 10px;
       border: 1px solid var(--line);
@@ -368,6 +401,15 @@
     <button id="manualSelect" type="button">Manual Select</button>
     <button id="clearCurrentStudy" class="danger" type="button" title="Clear all stored I.C.E. study data and analyzed pages">Clear All</button>
     <button id="openStudyPanel" class="primary wide" type="button">Open Study Panel</button>
+  </section>
+
+  <section class="compact-selector-bar" aria-label="Highlighter and Exaltation selectors">
+    <label>Highlighter
+      <select id="highlighterSelect" aria-label="Highlighter mode"></select>
+    </label>
+    <label>Exaltation
+      <select id="exaltationSelect" aria-label="Exaltation presentation mode"></select>
+    </label>
   </section>
 
   <details class="control-disclosure" id="sourceScopeControls">

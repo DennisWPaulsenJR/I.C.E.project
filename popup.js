@@ -130,6 +130,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     { id: "everything", label: "Everything" },
     { id: "custom", label: "Custom" }
   ];
+  const POPUP_HIGHLIGHTER_OPTIONS = [
+    { id: "off", label: "Off", settings: { enabled: false, strictMode: true, highlightPronouns: false }, role: "Disable page highlighting" },
+    { id: "strict", label: "Strict", settings: { enabled: true, strictMode: true, highlightPronouns: false }, role: "Highlight strict divine-title references" },
+    { id: "strict_pronouns", label: "Strict + pronouns", settings: { enabled: true, strictMode: true, highlightPronouns: true }, role: "Highlight strict references and supported pronouns" },
+    { id: "flexible", label: "Flexible", settings: { enabled: true, strictMode: false, highlightPronouns: false }, role: "Highlight broader supported reference matches" },
+    { id: "flexible_pronouns", label: "Flexible + pronouns", settings: { enabled: true, strictMode: false, highlightPronouns: true }, role: "Highlight broader matches and supported pronouns" }
+  ];
+  const POPUP_EXALTATION_OPTIONS = [
+    { id: "standard", label: "Standard", role: "No Exaltation-specific presentation intent" },
+    { id: "class_of_being_lens_v1", label: "Class of Being", role: "Use supported ontology hierarchy presentation where available" },
+    { id: "exaltation_lens_v1", label: "Exaltation", role: "Use attributed Exaltation/Class-of-Being presentation where available" }
+  ];
   const ACTION_INDICATORS = [
     "born",
     "died",
@@ -375,6 +387,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (input) input.checked = value;
   }
 
+  function optionById(options = [], id = "") {
+    return options.find((option) => option.id === id) || null;
+  }
+
+  function highlighterModeFromSettings(value = {}) {
+    const normalized = {
+      enabled: value.enabled !== false,
+      strictMode: value.strictMode !== false,
+      highlightPronouns: Boolean(value.highlightPronouns)
+    };
+    if (!normalized.enabled) return "off";
+    if (normalized.strictMode && normalized.highlightPronouns) return "strict_pronouns";
+    if (normalized.strictMode) return "strict";
+    if (normalized.highlightPronouns) return "flexible_pronouns";
+    return "flexible";
+  }
+
+  function populateSelect(select, options = []) {
+    if (!select || select.children.length) return;
+    options.forEach((option) => {
+      const item = document.createElement("option");
+      item.value = option.id;
+      item.textContent = option.label;
+      item.title = option.role || option.label;
+      select.appendChild(item);
+    });
+  }
+
+  function renderRestoredSelectors(syncSettings = settings, uiState = {}) {
+    const highlighterSelect = document.getElementById("highlighterSelect");
+    const exaltationSelect = document.getElementById("exaltationSelect");
+    populateSelect(highlighterSelect, POPUP_HIGHLIGHTER_OPTIONS);
+    populateSelect(exaltationSelect, POPUP_EXALTATION_OPTIONS);
+    if (highlighterSelect) highlighterSelect.value = highlighterModeFromSettings(syncSettings);
+    if (exaltationSelect) {
+      const saved = uiState.selectedExaltationPresentationMode || "standard";
+      exaltationSelect.value = optionById(POPUP_EXALTATION_OPTIONS, saved) ? saved : "standard";
+    }
+  }
+
   async function saveSetting(id) {
     const value = document.getElementById(id).checked;
     await chrome.storage.sync.set({
@@ -395,6 +447,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (error) {
       setCaptureStatus(`Overlay setting saved. Reload the active page if overlay did not update: ${error.message}`);
     }
+  }
+
+  async function saveHighlighterSelectorState() {
+    const mode = document.getElementById("highlighterSelect")?.value || "strict";
+    const option = optionById(POPUP_HIGHLIGHTER_OPTIONS, mode) || POPUP_HIGHLIGHTER_OPTIONS[1];
+    await chrome.storage.sync.set(option.settings);
+    Object.assign(settings, option.settings);
+    renderRestoredSelectors(settings, await currentPanelUiState());
+    setCaptureStatus(`Highlighter saved: ${option.label}.`);
+  }
+
+  async function currentPanelUiState() {
+    const data = await chrome.storage.local.get(PANEL_UI_STATE_KEY);
+    return data[PANEL_UI_STATE_KEY] || {};
   }
 
   function pageRecordKey(page = {}) {
@@ -1205,6 +1271,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const adapterSelect = document.getElementById("adapterSelect");
     const lensSelect = document.getElementById("lensSelect");
     const status = document.getElementById("studyOptionsStatus");
+    renderRestoredSelectors(settings, uiState);
     if (adapterSelect && !adapterSelect.children.length) {
       POPUP_ADAPTER_OPTIONS.forEach((option) => {
         const item = document.createElement("option");
@@ -1305,18 +1372,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ui = data[PANEL_UI_STATE_KEY] || {};
     const adapter = document.getElementById("adapterSelect")?.value || "";
     const lens = document.getElementById("lensSelect")?.value || "recommended";
+    const exaltation = document.getElementById("exaltationSelect")?.value || ui.selectedExaltationPresentationMode || "standard";
     await chrome.storage.local.set({
       [PANEL_UI_STATE_KEY]: {
         ...ui,
         selectedAdapterForNewAnalysis: adapter,
         selectedLensForNewAnalysis: lens,
         selectedLensesForNewAnalysis: lens === "custom" ? ["custom"] : [lens],
+        selectedExaltationPresentationMode: optionById(POPUP_EXALTATION_OPTIONS, exaltation) ? exaltation : "standard",
         lastAction: "popup_select_study_options",
         updatedAt: new Date().toISOString()
       }
     });
-    renderStudyOptions({ ...ui, selectedAdapterForNewAnalysis: adapter, selectedLensForNewAnalysis: lens }, null);
-    setCaptureStatus("Adapter/lens intent saved for new requests only; existing records were not rewritten.");
+    renderStudyOptions({ ...ui, selectedAdapterForNewAnalysis: adapter, selectedLensForNewAnalysis: lens, selectedExaltationPresentationMode: exaltation }, null);
+    setCaptureStatus("Adapter/lens and Exaltation presentation intent saved; existing records were not rewritten.");
   }
 
   async function startPageManualSelectionOverlay() {
@@ -1863,6 +1932,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       selectedAdapterForNewAnalysis: previousUiState.selectedAdapterForNewAnalysis,
       selectedLensForNewAnalysis: previousUiState.selectedLensForNewAnalysis,
       selectedLensesForNewAnalysis: previousUiState.selectedLensesForNewAnalysis,
+      selectedExaltationPresentationMode: previousUiState.selectedExaltationPresentationMode,
       lastAction: "popup_clear_all_ice_data",
       updatedAt: new Date().toISOString()
     };
@@ -3010,6 +3080,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("adapterSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Adapter selection failed.")));
   document.getElementById("lensSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Lens selection failed.")));
+  document.getElementById("highlighterSelect")?.addEventListener("change", () => saveHighlighterSelectorState().catch((error) => setCaptureStatus(error.message || "Highlighter selection failed.")));
+  document.getElementById("exaltationSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Exaltation selection failed.")));
 
   async function loadAllSummaries() {
     await loadCaptureHistory();
@@ -3018,5 +3090,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // The popup is a collection surface only; semantic organization remains in
   // the Study Panel and existing pipeline records.
+  renderRestoredSelectors(settings, await currentPanelUiState());
   await loadAllSummaries();
 });
