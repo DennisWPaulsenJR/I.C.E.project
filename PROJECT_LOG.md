@@ -1,3 +1,44 @@
+## 2026-07-26 - Document Lens Architecture And Concurrent Evaluation
+
+Added `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` as directional architecture for the I.C.E. Lens System.
+
+Purpose:
+- Define a lens as a presentation and evaluation framework that organizes existing evidence according to a defined perspective without modifying underlying evidence.
+- Define the Neutral Lens as the default presentation emphasizing observations, chronology, geography, language, provenance, confidence, source references, and unresolved questions without privileging a theological or interpretive tradition.
+- Reserve future lens categories including historical, geographical, chronological, language, Hebrew, Greek, archaeological, character, event, prophetic, literary, conference talks, cross references, comparative, Jewish, Catholic, Orthodox, Protestant, Latter-day Saint, personal study, research workspace, and future lenses.
+- Define lens independence, Concurrent Lens Evaluation, Lens Convergence, Lens Divergence, multidimensional confidence across lenses, Lens Profiles, and small-selection support.
+- Record that convergence is not truth, not majority vote, and only one confidence dimension.
+
+Integration:
+- `MASTER_DESIGN.md` now references the Lens Architecture and records Neutral Lens / Concurrent Lens Evaluation boundaries.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the Lens Architecture among directional documents, discovery/presentation responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime code, popup UI, highlighting, Knowledge Objects, semantic engine, parser, graph engine, storage, lexicon, crawling, queues, ingestion, or Study View behavior changed.
+
+## 2026-07-26 - Document Study Workspace Architecture
+
+Added `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` as directional architecture for the long-term I.C.E. Study Workspace.
+
+Purpose:
+- Define the Study Workspace as the primary research environment for observing, comparing, evaluating, organizing, and understanding evidence rather than simply reading documents.
+- Record future workspace areas: Reading Pane, Knowledge Object Inspector, Character Profile, Event Profile, Timeline, Relationship Graph, Source Confidence, Notes, Research Journal, Saved Studies, Semantic Filters, Cross References, Language Tools, Perspective Comparison, Common Ground View, Observation History, and Evidence Explorer.
+- Define future workspace modes: Reading, Research, Comparison, Timeline, Language Study, Character Study, Topic Study, Multi-source Study, and Presentation Mode.
+- Preserve the research workflow from Source through Observation, Relationship, Evidence Review, Confidence, Knowledge Object, Study Notes, and Presentation.
+- Define AI research assistant boundaries: assistants may suggest, summarize, explain, organize, and propose research directions, but may not determine truth, replace evidence, overwrite Knowledge Objects, or silently modify conclusions.
+- Document evidence drilldown, workspace navigation, accessibility principles, persistence concepts, and future expansion space for collaboration, classroom mode, citations, export, printing, presentations, and sharing.
+
+Integration:
+- `MASTER_DESIGN.md` now references the Study Workspace as a long-term research environment.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the Study Workspace architecture in core directional documents, semantic/presentation responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime code, popup UI, storage, semantic engine, graph engine, parser, lexicon, highlighting, Knowledge Object implementation, crawling, queues, ingestion, or Study View behavior changed.
+
 ## 2026-07-18 - Browser Extension Study Collection Interface
 
 Simplified the Manifest V3 popup into a lightweight I.C.E. Study Collection Tool.

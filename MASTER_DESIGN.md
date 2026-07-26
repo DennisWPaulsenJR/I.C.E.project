@@ -14,6 +14,10 @@ Purpose: serve as the first-read architectural overview for I.C.E. It explains m
 
 `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` records the future architecture for persistent Knowledge Objects and evidence-based Character Profiles. It is directional architecture only; it does not mean exhaustive profiles, Joseph Smith Papers ingestion, multi-source confidence evaluation, or characteristic generation are currently implemented.
 
+`THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` records the future architecture for the primary I.C.E. — Integrated Comprehension Engine research workspace where users will read, inspect Knowledge Objects, compare evidence, navigate timelines and relationships, maintain notes, and prepare traceable presentations. It is documentation only and does not implement workspace persistence, UI behavior, AI research actions, or Knowledge Object mutation.
+
+`THREAD_ARCHIVE/LENS_ARCHITECTURE.md` records the future architecture for independent presentation and evaluation lenses, concurrent lens evaluation, and lens convergence. Lenses organize existing evidence through defined perspectives, but they do not modify observations, provenance, confidence, semantic records, or Knowledge Objects.
+
 ## 1. Document Status And Reconstruction Notice
 
 This document was reconstructed from durable I.C.E. architecture and coordination records, including:
@@ -22,6 +26,8 @@ This document was reconstructed from durable I.C.E. architecture and coordinatio
 - `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
 - `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
 - `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
@@ -276,6 +282,10 @@ Expert Registry defines attributable evaluators. Experts illuminate evidence; th
 
 Lens Registry defines presentation surfaces that consume ontology, evidence, and perspectives. Lenses present; they do not create truth.
 
+The Lens Architecture extends the registry with future independent lens evaluation. A lens is a presentation and evaluation framework that organizes existing evidence according to a defined perspective without modifying the underlying evidence. The Neutral Lens is the default, source-first presentation and should emphasize observations, chronology, geography, language, provenance, confidence, and unresolved questions without privileging a theological or interpretive tradition.
+
+Future Concurrent Lens Evaluation may evaluate the same subject through multiple applicable lenses in parallel, compare shared and distinct evidence, and produce a Lens Convergence Profile. Convergence is not truth and is not majority vote; it is one confidence dimension that must preserve each lens's reasoning, evidence, and attribution.
+
 Ontology Registry defines classification categories and hierarchy boundaries.
 
 Authority Registry defines what can inform what, what cannot override what, and where authority must remain limited.
@@ -327,7 +337,34 @@ User selection changes presentation only. It must not reprocess source, mutate s
 
 Study View should be clean, readable, and user-facing. Editor / Architect View should preserve technical detail, unresolved records, provenance, diagnostics, and architectural transparency.
 
-## 14. Operational Boundaries
+## 14. Study Workspace
+
+The Study Workspace is the long-term primary research environment for I.C.E. It should help users observe, compare, evaluate, organize, and understand rather than merely read documents.
+
+Future workspace areas may include the Reading Pane, Knowledge Object Inspector, Character Profile, Event Profile, Timeline, Relationship Graph, Source Confidence, Notes, Research Journal, Saved Studies, Semantic Filters, Cross References, Language Tools, Perspective Comparison, Common Ground View, Observation History, and Evidence Explorer.
+
+Workspace modes may include Reading, Research, Comparison, Timeline, Language Study, Character Study, Topic Study, Multi-source Study, and Presentation Mode. These modes organize presentation and workflow; they do not alter source authority, Context Lock, semantic records, storage authority, queues, or Knowledge Objects.
+
+Workspace lens profiles may eventually support Neutral Research, Historical Geography, Language Study, Conference Study, Temple Study, Character Study, Comparative Study, Personal Devotional Study, and user-defined profiles. Lens profiles select organization and comparison surfaces; they do not establish truth or rewrite evidence.
+
+The intended research flow is:
+
+```text
+Source
+-> Observation
+-> Relationship
+-> Evidence Review
+-> Confidence
+-> Knowledge Object
+-> Study Notes
+-> Presentation
+```
+
+Future AI research assistants may suggest, summarize, explain, organize, and propose research directions, but they may not determine truth, replace evidence, overwrite Knowledge Objects, silently modify conclusions, hide uncertainty, or create doctrine.
+
+Every workspace summary should remain drillable from summary to claim, evidence, original source, context, confidence, and revision history. Notes, saved workspaces, bookmarks, research collections, exports, and presentations require separate implementation and trust review.
+
+## 15. Operational Boundaries
 
 Operational boundaries are part of the design:
 
@@ -343,7 +380,7 @@ Operational boundaries are part of the design:
 
 The system should be powerful, but never covert. The user must be able to see what is active, what is retained, what is current scope, what is cross-reference context, what is derived, what is unresolved, and what remains possible.
 
-## 15. Future Vision
+## 16. Future Vision
 
 I.C.E. should grow from current scoped study into large-volume, library-scale understanding while preserving constitutional trust.
 

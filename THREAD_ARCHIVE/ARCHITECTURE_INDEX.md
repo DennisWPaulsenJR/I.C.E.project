@@ -46,6 +46,22 @@ Purpose: define persistent Knowledge Objects and evidence-based Character Profil
 
 Use this when designing future person/place/event/concept/document objects, Character Profiles, Joseph Smith Papers source-collection integration, multi-source confidence, identity resolution, characteristic candidates, user-contributed research materials, generated summaries, and profile presentation. It does not implement runtime behavior or authorize ingestion, crawling, storage authority, characteristic generation, or model-created profile facts.
 
+### `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
+
+Authority level: directional / future workspace architecture.
+
+Purpose: define the long-term I.C.E. — Integrated Comprehension Engine Study Workspace as the primary research environment for observing, comparing, evaluating, organizing, and understanding source-grounded evidence, Knowledge Objects, Character Profiles, timelines, relationships, notes, confidence, and future AI-assisted research.
+
+Use this when designing future workspace surfaces, workspace modes, evidence drilldowns, notes, saved studies, research journals, semantic filters, source-confidence views, and presentation workflows. It does not implement runtime UI, persistence, AI research behavior, Knowledge Object mutation, crawling, ingestion, queues, or storage authority.
+
+### `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
+
+Authority level: directional / future presentation and evaluation architecture.
+
+Purpose: define lenses as independent presentation and evaluation frameworks that organize existing evidence according to defined perspectives without modifying observations, evidence, provenance, confidence, semantic records, or Knowledge Objects.
+
+Use this when designing Neutral Lens behavior, tradition-specific lenses, language lenses, historical/geographical/chronological lenses, Concurrent Lens Evaluation, Lens Convergence, Lens Divergence, multidimensional confidence across lenses, user-configurable Lens Profiles, and small-selection lens support. It does not implement runtime behavior, storage, highlighting, graph behavior, semantic mutation, Knowledge Object mutation, crawling, ingestion, or lens activation.
+
 ### `PROJECT_STATE.md`
 
 Authority level: active operational state.
@@ -129,6 +145,7 @@ Responsibilities:
 - Define truth/status classes.
 - Define direct Observation Layer records before higher semantic interpretation.
 - Define future persistent Knowledge Objects and evidence-based Character Profiles.
+- Define Study Workspace research flow from evidence through Knowledge Objects, notes, and presentation.
 - Define promotion criteria.
 - Define prohibited promotions.
 - Preserve source scope, evidence, confidence, provenance, and inference level.
@@ -159,6 +176,7 @@ Primary documents:
 
 - `THREAD_ARCHIVE/AUTOMATIC_DISCOVERY_EXPANSION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/EVIDENCE_ENGINE_GUIDED_DISCOVERY_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
@@ -176,6 +194,9 @@ Included systems:
 - Possible similitude discovery
 - Prior / Current / Future relationships
 - Common Ground / Difference future lenses
+- Concurrent Lens Evaluation
+- Lens Convergence / Divergence
+- Lens Profiles
 - Revelation and Development modeling
 
 Discovery architecture owns:
@@ -241,6 +262,8 @@ Presentation architecture defines how prepared ontology records are shown to use
 Primary documents:
 
 - `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
@@ -252,6 +275,7 @@ Included systems:
 - Study Modules
 - View Lens
 - Future Lenses
+- Neutral Lens
 - Character Lens
 - Entity Lens
 - Location Lens
@@ -266,6 +290,28 @@ Included systems:
 - Fulfillment Lens
 - Interreligious Lens
 - Prior / Current / Future Lens
+- Historical Lens
+- Geographical Lens
+- Chronological Lens
+- Archaeological Lens
+- Jewish Lens
+- Catholic Lens
+- Orthodox Lens
+- Protestant Lens
+- Latter-day Saint Lens
+- Personal Study Lens
+- Research Workspace Lens
+- Concurrent Lens Evaluation
+- Lens Convergence Profile
+- Reading Pane
+- Knowledge Object Inspector
+- Character Profile
+- Event Profile
+- Source Confidence
+- Notes
+- Research Journal
+- Saved Studies
+- Evidence Explorer
 
 Related presentation contract:
 
@@ -279,6 +325,12 @@ Presentation architecture owns:
 - User-selectable view modules
 - Technical vs user-facing grouping
 - Evidence/provenance disclosure placement
+- Workspace region and mode boundaries
+- Notes and research-journal presentation boundaries
+- Evidence drilldown presentation
+- Independent lens organization and comparison
+- Lens convergence/divergence presentation
+- Multidimensional confidence display across lenses
 
 Presentation architecture does not own:
 
@@ -287,6 +339,8 @@ Presentation architecture does not own:
 - Semantic record mutation
 - Queue execution
 - Storage writes except presentation preferences
+- Source, semantic, or Knowledge Object mutation from workspace presentation alone
+- Lens output rewriting evidence, provenance, confidence, observations, semantic records, or Knowledge Objects
 
 ## 7. Dependency Graph
 
@@ -398,11 +452,13 @@ Every source, derived, discovery, perspective, and presentation record must pres
 7. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
 8. `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
 9. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
-10. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
-11. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
-12. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
-13. `PROJECT_STATE.md`
-14. `PROJECT_LOG.md`
+10. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
+11. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
+12. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
+13. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
+14. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+15. `PROJECT_STATE.md`
+16. `PROJECT_LOG.md`
 
 ### Recommended Reading Order For New AI Agents
 
@@ -418,7 +474,9 @@ Every source, derived, discovery, perspective, and presentation record must pres
 10. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 11. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
 12. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` when the task concerns persistent objects, profiles, identity, characteristics, or source integration.
-13. Relevant task-specific architecture docs.
+13. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` when the task concerns workspace surfaces, research workflows, notes, saved studies, evidence drilldowns, or presentation modes.
+14. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` when the task concerns lenses, perspective presentation, concurrent lens evaluation, lens convergence, divergence, or lens profiles.
+15. Relevant task-specific architecture docs.
 
 ### Recommended Reading Order For Reviewers
 
@@ -428,9 +486,11 @@ Every source, derived, discovery, perspective, and presentation record must pres
 4. `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
 5. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
 6. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-7. Task-specific architecture doc.
-8. Relevant source files.
-9. QA report and activity log.
+7. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` for workspace, research-flow, notes, saved-study, or evidence-drilldown tasks.
+8. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` for lens, perspective comparison, convergence, divergence, or lens-profile tasks.
+9. Task-specific architecture doc.
+10. Relevant source files.
+11. QA report and activity log.
 
 ## 10. Feature Placement Checklist
 
