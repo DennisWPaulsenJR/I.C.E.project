@@ -30,6 +30,22 @@ Purpose: define why I.C.E. exists, how it should relate to human agency, discove
 
 Use this with `MASTER_DESIGN.md` when evaluating product direction or proposed capabilities. It is mission-level guidance and does not override `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
 
+### `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
+
+Authority level: long-term architecture direction.
+
+Purpose: establish I.C.E. as an Understanding Engine rather than an AI assistant, define the long-term processing model from Source Material through Observation, Relationship, Continuity, Certainty, Corpus Evidence, Perspective, Research Workspace, Journey Builder, and Understanding, and preserve external models as research contributors rather than semantic authorities.
+
+Use this when evaluating future schema evolution, multi-model research, evidence engines, competing hypotheses, perspective studies, knowledge objects, and research workspaces. It does not authorize runtime crawling, ingestion, storage authority, or model-created ontology without separate approved implementation work.
+
+### `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
+
+Authority level: directional / future architecture.
+
+Purpose: define persistent Knowledge Objects and evidence-based Character Profiles as traceable semantic representations assembled from observations, relationships, claims, source records, confidence profiles, coverage profiles, and review state.
+
+Use this when designing future person/place/event/concept/document objects, Character Profiles, Joseph Smith Papers source-collection integration, multi-source confidence, identity resolution, characteristic candidates, user-contributed research materials, generated summaries, and profile presentation. It does not implement runtime behavior or authorize ingestion, crawling, storage authority, characteristic generation, or model-created profile facts.
+
 ### `PROJECT_STATE.md`
 
 Authority level: active operational state.
@@ -100,6 +116,7 @@ Primary documents:
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
 - `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 
@@ -111,6 +128,7 @@ Responsibilities:
 - Define relationship classes.
 - Define truth/status classes.
 - Define direct Observation Layer records before higher semantic interpretation.
+- Define future persistent Knowledge Objects and evidence-based Character Profiles.
 - Define promotion criteria.
 - Define prohibited promotions.
 - Preserve source scope, evidence, confidence, provenance, and inference level.
@@ -120,6 +138,7 @@ Semantic architecture owns:
 - Entity type classification
 - Relationship type classification
 - Event classification
+- Knowledge Object and Character Profile architecture
 - Theme record grounding
 - Fulfillment relationship grounding
 - Meaning Staging alignment
@@ -372,16 +391,18 @@ Every source, derived, discovery, perspective, and presentation record must pres
 
 1. `MASTER_DESIGN.md`
 2. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
-3. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-4. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-5. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
-6. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
-7. `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
-8. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
-9. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
-10. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
-11. `PROJECT_STATE.md`
-12. `PROJECT_LOG.md`
+3. `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
+4. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+5. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+6. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
+7. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+8. `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
+9. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
+10. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
+11. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
+12. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+13. `PROJECT_STATE.md`
+14. `PROJECT_LOG.md`
 
 ### Recommended Reading Order For New AI Agents
 
@@ -391,22 +412,25 @@ Every source, derived, discovery, perspective, and presentation record must pres
 4. `THREAD_ARCHIVE/AGENT_OUTBOX.md`
 5. `MASTER_DESIGN.md`
 6. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
-7. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-8. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-9. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
-10. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
-11. Relevant task-specific architecture docs.
+7. `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
+8. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+9. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+10. `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
+11. `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+12. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` when the task concerns persistent objects, profiles, identity, characteristics, or source integration.
+13. Relevant task-specific architecture docs.
 
 ### Recommended Reading Order For Reviewers
 
 1. `PROJECT_STATE.md`
 2. `MASTER_DESIGN.md`
 3. `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
-4. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
-5. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
-6. Task-specific architecture doc.
-7. Relevant source files.
-8. QA report and activity log.
+4. `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
+5. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+6. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+7. Task-specific architecture doc.
+8. Relevant source files.
+9. QA report and activity log.
 
 ## 10. Feature Placement Checklist
 

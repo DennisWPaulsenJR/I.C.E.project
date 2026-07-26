@@ -5166,3 +5166,46 @@ Architecture:
 Boundary:
 - Observation records do not infer doctrine, theme, motive, symbolism, application, fulfillment, or semantic authority.
 - No crawling, queue processing, automatic study progression, Context Lock rewrite, semantic rewrite, or Study View meaning change was introduced.
+
+## 2026-07-25 - Document Understanding Engine Roadmap
+
+Added `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md` as a long-term architecture direction document.
+
+Purpose:
+- Record that I.C.E. is an Understanding Engine, not an AI assistant.
+- Preserve external AI systems, language models, historical databases, geographic datasets, scholarly works, and public knowledge repositories as research contributors rather than semantic authorities.
+- Define the long-term processing model from Source Material through Observation Engine, Relationship Engine, Continuity Engine, Certainty & Inference Engine, Corpus Evidence Engine, Perspective Engine, Research Workspace, Journey Builder, and Understanding Engine.
+- Record persistent conclusion classifications from Explicit through Contradicted.
+- Preserve the principles of discovery before direction, evidence before conclusion, competing hypotheses, perspective studies, knowledge objects, disciplined schema evolution, source attribution, divine attribution, research workspaces, and historical discovery.
+
+Integration:
+- `MASTER_DESIGN.md` now references the roadmap as the long-term Understanding Engine direction.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the roadmap among core directional documents and reading orders.
+- `PROJECT_STATE.md` now records the roadmap and its authority boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime behavior, semantic records, Context Lock, storage, graph behavior, crawling, queues, ingestion, or Study View output changed for this roadmap.
+
+## 2026-07-25 - Document Knowledge Object And Character Profile Architecture
+
+Added `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` as directional / future architecture for persistent Knowledge Objects and evidence-based Character Profiles.
+
+Purpose:
+- Define Knowledge Objects as persistent semantic representations of identifiable persons, places, events, documents, names, titles, concepts, teachings, commands, covenants, promises, prophecies, symbols, language terms, organizations, historical periods, geographic features, source collections, and future approved categories.
+- Define Character Profiles as specialized Person Knowledge Objects assembled from observations, relationships, claims, source records, confidence profiles, coverage profiles, and review state rather than manually authored biography or AI-generated fact summary.
+- Define profile dimensions such as identity, name variants, titles, roles, genealogy, chronology, locations, journeys, events, relationships, statements, teachings, commands, promises, prophecies, covenants, actions, characteristics, authority claims, source references, conflicts, confidence, coverage, provenance, and review history.
+- Define characteristic accumulation from source record through explicit observation, action or behavior classification, pattern, candidate, supporting/conflicting evidence, confidence evaluation, review state, and presentation.
+- Preserve distinctions among explicit, behavior-derived, traditionally attributed, model-proposed, and user-proposed characteristics.
+- Define source integration boundaries for Scripture, official publications, conference talks, Joseph Smith Papers, historical documents, lexicons, linguistic resources, geographic and archaeological sources, scholarly publications, public datasets, user-submitted documents, and AI-generated candidate analyses.
+- Preserve Joseph Smith Papers as a source collection with document metadata, direct versus editorial statements, and relationship candidates rather than a single undifferentiated authority.
+- Define identity resolution, name/semantic component handling, multidimensional confidence, coverage profiles, generated-summary boundaries, multi-model contribution rules, user-contributed material handling, contradiction preservation, versioning, relationship types, and accuracy protections.
+
+Integration:
+- `MASTER_DESIGN.md` now references the Knowledge Object architecture as future directional architecture.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists it among core directional and semantic architecture documents and reading orders.
+- `PROJECT_STATE.md` now records its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime behavior, parsers, ingestion, storage, graph generation, Study View, crawling, queues, semantic extraction, confidence scoring, or profile generation changed.

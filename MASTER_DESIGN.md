@@ -10,12 +10,18 @@ Purpose: serve as the first-read architectural overview for I.C.E. It explains m
 
 `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md` records the foundational mission philosophy that this Master Design operationalizes: discovery before direction, human agency, transparent reasoning, model independence, and knowledge architecture as the durable product asset.
 
+`THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md` records the long-term direction that I.C.E. is an Understanding Engine: external models and research systems may assist discovery, but I.C.E. remains responsible for evidence organization, semantic structure, provenance, certainty evaluation, relationship construction, competing hypotheses, presentation, and transparency.
+
+`THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` records the future architecture for persistent Knowledge Objects and evidence-based Character Profiles. It is directional architecture only; it does not mean exhaustive profiles, Joseph Smith Papers ingestion, multi-source confidence evaluation, or characteristic generation are currently implemented.
+
 ## 1. Document Status And Reconstruction Notice
 
 This document was reconstructed from durable I.C.E. architecture and coordination records, including:
 
 - `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
 - `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
+- `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
+- `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
