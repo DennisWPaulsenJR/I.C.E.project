@@ -18,6 +18,16 @@ Purpose: serve as the first-read architectural overview for I.C.E. It explains m
 
 `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` records the future architecture for independent presentation and evaluation lenses, concurrent lens evaluation, and lens convergence. Lenses organize existing evidence through defined perspectives, but they do not modify observations, provenance, confidence, semantic records, or Knowledge Objects.
 
+`THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md` records the canonical Observation architecture, Evidence Basis concept, Research Gap Engine direction, Situational Completeness Profiles, translation/lens contribution boundaries, and the bridge from current Observation Engine records toward future Knowledge Objects and evidence review. It is documentation only and does not implement canonical observation runtime storage.
+
+`THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md` records the future Evidence Graph architecture and the lifecycle by which canonical observations become versioned, auditable Knowledge Objects, Question Objects, journeys, presentations, and renderings. It is documentation only and does not implement graph storage, object persistence, schema migration, rendering behavior, or runtime Observation Engine changes.
+
+`THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md` records the future architecture for comparing multiple accounts, source dependency, temporal reasoning, context windows, event sequences, transparent calculations, literary-structure proposals, reconstructions, possibilities, expert material, lens interaction, visualization hooks, and AI-assisted reconstruction boundaries. It is documentation only and does not implement convergence scoring, timeline calculation, rendering, image generation, storage, or runtime behavior.
+
+`THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md` records the future Study Workspace orchestration architecture for projects, sessions, investigations, collections, research trails, boards, comparative study, synchronized timelines, geographic workspace, visualization workspace, AI-assisted research, presentations, collaboration, notebooks, and saved calculations. It is documentation only and does not implement workspace persistence, runtime UI, storage, exports, collaboration, AI workflows, maps, timelines, or application behavior.
+
+`THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md` records the future runtime layer model, service responsibilities, processing order, conceptual contracts, event pipeline, AI boundaries, calculation services, rendering pipeline, performance architecture, extensibility points, and runtime constitution. It is documentation only and does not implement services, schemas, APIs, queues, storage, runtime behavior, rendering, exports, AI workflows, or build changes.
+
 ## 1. Document Status And Reconstruction Notice
 
 This document was reconstructed from durable I.C.E. architecture and coordination records, including:
@@ -28,6 +38,11 @@ This document was reconstructed from durable I.C.E. architecture and coordinatio
 - `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
@@ -160,7 +175,37 @@ The ontology backbone supports:
 
 Every future storage shape, adapter, plugin, model, QA harness, and lens should align with the ontology contracts.
 
-## 7. Language Architecture
+## 7. Canonical Observation And Research Gaps
+
+Canonical Observations are the future source-traceable bridge between current Observation Engine records and durable Knowledge Objects.
+
+An Observation is the smallest durable unit representing something I.C.E. has observed, extracted, normalized, calculated, correlated, questioned, or proposed. An Observation is not automatically a fact. It must preserve provenance, Evidence Basis, classification, confidence, review state, alternatives, contradictions, and version history.
+
+Evidence Basis is distinct from Observation Class. Observation Class describes what kind of record exists. Evidence Basis explains why the record is shown, such as explicit source text, deterministic derivation, linguistic analysis, historical source, cultural source, geographic calculation, translation comparison, lens-specific source, qualified absence, or generated research question.
+
+The future Research Gap Engine identifies missing information, unanswered questions, incomplete situations, possible supporting materials, reducible uncertainty, and irreducible uncertainty. It must not invent answers. Research questions are prompts, not conclusions.
+
+## 8. Evidence Graph And Knowledge Object Lifecycle
+
+The Evidence Graph is the future durable graph that connects Source Collections, Source Records, Source Spans, Canonical Observations, Relationships, Claims or Propositions, Knowledge Objects, Question Objects, Lens Evaluations, Presentation Objects, and Rendering Objects.
+
+Knowledge Objects are persistent research entities. They evolve through versioned evidence rather than overwriting earlier records. Object lifecycle states may include detected, candidate, correlated, provisional, reviewed, accepted, disputed, merged, split, superseded, archived, and future-governed deletion. Accepted means accepted within a defined authority scope; it does not mean infallible, closed, or immune to new evidence.
+
+Evidence Basis remains separate from Observation Class and must remain attached to meaningful graph contributions. Observation identity must distinguish immutable observation versions from continuing observation lineage. Knowledge Object identity must remain distinct from display name, source mention, generated summary, or current preferred label.
+
+The graph preserves merge, split, supersession, dependency, convergence, question, lens, user contribution, presentation, and rendering boundaries. Summaries, maps, timelines, scene renderings, and visual graph layouts are views over the graph; they are not evidence and may not be re-ingested as evidence without independent source registration and review.
+
+## 9. Evidence Convergence, Temporal Reasoning, And Reconstruction
+
+Evidence Convergence is the future structured comparison of observations and sources across dimensions such as identity, event occurrence, date, sequence, duration, location, route, participants, speech content, action, motive, physical conditions, quantities, literary structure, and consequence.
+
+Convergence is not source counting. Source dependency, shared sources, copies, summaries, translations, retrospective recollections, oral traditions, and unknown dependencies must remain visible so repeated derivative accounts are not mistaken for independent witnesses.
+
+Temporal reasoning organizes explicit dates, relative dates, durations, sequence statements, simultaneous events, approximate timing, uncertain placement, disputed chronology, and unknown chronology. No sequence may become the official narrative merely because it is easiest to draw.
+
+Reconstructions and possibilities are labeled models. They may organize explicit elements, historically supported elements, inferred elements, lens elements, unknowns, assumptions, and excluded alternatives, but they may never overwrite observations. Calculations must expose inputs, date boundaries, excluded days, units, formulas, uncertainty ranges, alternate calculations, and sensitivity to assumptions.
+
+## 10. Language Architecture
 
 Language architecture provides support records that help illuminate source wording without becoming source authority.
 
@@ -187,7 +232,7 @@ Language records are advisory until explicitly promoted by grounded rules. They 
 
 Future adapters should support original-language tokens, lemma, morphology, grammar, syntax, quotation boundaries, speaker/audience support, provenance, and confidence. Translation, grammar, Strong's, lexicon, and expert models remain attributable perspectives.
 
-## 8. Entity And Ontology Architecture
+## 11. Entity And Ontology Architecture
 
 Entity architecture keeps identity, ontology, status, and role distinct.
 
@@ -227,7 +272,7 @@ Hierarchy boundaries matter. A claimed deity must not become an established Divi
 
 Class of Being and Exaltation readiness should preserve hierarchy rather than flatten it. Grammar, language, and literary models may inform hierarchy, but they may not override grounded entity class or Context Lock.
 
-## 9. Events, Timelines, Scenes, And Relationships
+## 12. Events, Timelines, Scenes, And Relationships
 
 Events are promoted only from grounded source evidence, accepted ordered events, explicit source sequence, explicit context, and source references.
 
@@ -239,7 +284,7 @@ Relationships connect grounded records. Low-risk relationships include authority
 
 Relationships may summarize primary and nearer records. They may not rewrite context, create actors, create locations, infer motives, or invent fulfillment.
 
-## 10. Themes, Literary Structures, Fulfillment, And Discovery
+## 13. Themes, Literary Structures, Fulfillment, And Discovery
 
 Themes and literary structures connect grounded semantic records into study-visible patterns. They must not create doctrine or replace source meaning.
 
@@ -258,7 +303,7 @@ Fulfillment confidence must be guarded. Explicit fulfillment is explicit only wh
 
 Discovery should help users see continuity, development, fulfillment, comparison, common ground, differences, repeated themes, repeated phrases, narrative parallels, and large-scope congruencies without over-promoting uncertain connections.
 
-## 11. Registry Architecture
+## 14. Registry Architecture
 
 Registries define contracts and boundaries. They are not semantic authority by themselves.
 
@@ -290,7 +335,7 @@ Ontology Registry defines classification categories and hierarchy boundaries.
 
 Authority Registry defines what can inform what, what cannot override what, and where authority must remain limited.
 
-## 12. Architecture Observability
+## 15. Architecture Observability
 
 I.C.E. treats architecture itself as inspectable.
 
@@ -306,7 +351,7 @@ Observability surfaces include:
 
 QA checks implementation behavior. Semantic Health observes system behavior. Explainability answers why a record exists. Provenance Graph traces record lineage. Semantic Verification checks constitutional integrity. None of these tools may mutate semantic records, repair records automatically, rewrite evidence, change Context Lock, process queues, crawl, or alter Study View output.
 
-## 13. Frontend And Backend Separation
+## 16. Frontend And Backend Separation
 
 Evaluation and presentation are separate.
 
@@ -337,11 +382,13 @@ User selection changes presentation only. It must not reprocess source, mutate s
 
 Study View should be clean, readable, and user-facing. Editor / Architect View should preserve technical detail, unresolved records, provenance, diagnostics, and architectural transparency.
 
-## 14. Study Workspace
+## 17. Study Workspace
 
 The Study Workspace is the long-term primary research environment for I.C.E. It should help users observe, compare, evaluate, organize, and understand rather than merely read documents.
 
 Future workspace areas may include the Reading Pane, Knowledge Object Inspector, Character Profile, Event Profile, Timeline, Relationship Graph, Source Confidence, Notes, Research Journal, Saved Studies, Semantic Filters, Cross References, Language Tools, Perspective Comparison, Common Ground View, Observation History, and Evidence Explorer.
+
+The Study Workspace is the orchestration layer of I.C.E. It organizes research into Workspaces, Study Sessions, Projects, Research Collections, Evidence Collections, Question Collections, Notebooks, Bookmarks, Saved Searches, Research Trails, Investigations, Presentations, and Exports. It is not the evidence storage layer.
 
 Workspace modes may include Reading, Research, Comparison, Timeline, Language Study, Character Study, Topic Study, Multi-source Study, and Presentation Mode. These modes organize presentation and workflow; they do not alter source authority, Context Lock, semantic records, storage authority, queues, or Knowledge Objects.
 
@@ -364,7 +411,33 @@ Future AI research assistants may suggest, summarize, explain, organize, and pro
 
 Every workspace summary should remain drillable from summary to claim, evidence, original source, context, confidence, and revision history. Notes, saved workspaces, bookmarks, research collections, exports, and presentations require separate implementation and trust review.
 
-## 15. Operational Boundaries
+Research Trails should make investigation reproducible. Evidence Boards, synchronized timelines, geographic workspaces, visualization workspaces, presentation mode, notebooks, collaboration, and saved calculations may help users organize research, but they remain workspace artifacts. They do not become evidence and must preserve links back to the Evidence Graph.
+
+## 18. Runtime Layering And Processing Pipeline
+
+The future runtime should preserve a single-responsibility pipeline:
+
+```text
+Source
+-> Parser
+-> Normalizer
+-> Observation Engine
+-> Validation
+-> Knowledge Objects
+-> Evidence Graph
+-> Convergence
+-> Timeline
+-> Research Gap
+-> Workspace
+-> Presentation
+-> Export
+```
+
+Runtime layers may include Source Acquisition, Document Parsing, Normalization, Observation Extraction, Observation Validation, Knowledge Object Resolution, Relationship Resolution, Evidence Graph, Convergence Analysis, Temporal Reasoning, Research Gap Generation, Calculation Services, Literary Analysis, Journey Analysis, Workspace Services, Presentation Services, Export Services, AI Assistance, Rendering Services, Persistence, Configuration, Logging, and Diagnostics.
+
+Every service has one responsibility, declares its conceptual inputs and outputs, and preserves provenance. Presentation remains downstream of evidence. Persistence does not create authority. Rendering output, generated summaries, calculations, caches, and exports never become evidence by being produced or stored.
+
+## 19. Operational Boundaries
 
 Operational boundaries are part of the design:
 
@@ -380,7 +453,7 @@ Operational boundaries are part of the design:
 
 The system should be powerful, but never covert. The user must be able to see what is active, what is retained, what is current scope, what is cross-reference context, what is derived, what is unresolved, and what remains possible.
 
-## 16. Future Vision
+## 20. Future Vision
 
 I.C.E. should grow from current scoped study into large-volume, library-scale understanding while preserving constitutional trust.
 

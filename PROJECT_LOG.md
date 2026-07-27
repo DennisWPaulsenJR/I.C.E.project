@@ -1,3 +1,98 @@
+## 2026-07-26 - Document Runtime Layer And Processing Pipeline Architecture
+
+Added `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md` as future architecture for runtime layering, service boundaries, processing order, conceptual contracts, and implementation constraints.
+
+Purpose:
+- Define a runtime pipeline from Source through Parser, Normalizer, Observation Engine, Validation, Knowledge Objects, Evidence Graph, Convergence, Timeline, Research Gap, Workspace, Presentation, and Export while preserving provenance and keeping Presentation downstream of evidence.
+- Define conceptual runtime layers: Source Acquisition, Document Parsing, Normalization, Observation Extraction, Observation Validation, Knowledge Object Resolution, Relationship Resolution, Evidence Graph, Convergence Analysis, Temporal Reasoning, Research Gap Generation, Calculation Services, Literary Analysis, Journey Analysis, Workspace Services, Presentation Services, Export Services, AI Assistance, Rendering Services, Persistence, Configuration, Logging, and Diagnostics.
+- Define service responsibilities/non-responsibilities, conceptual runtime contracts, the new-source event pipeline, AI service boundaries, calculation service boundaries, rendering pipeline, performance architecture, extensibility points, runtime constitutional principles, and open runtime questions.
+
+Integration:
+- `MASTER_DESIGN.md` now references Runtime Layer / Processing Pipeline architecture and adds a Runtime Layering section.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the document in core architecture references, semantic responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records the architecture and its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, schema migration, service implementation, API interface, queue behavior, background process, Study Panel behavior, parser behavior, renderer behavior, export behavior, AI workflow, QA scripts, package scripts, build configuration, semantic data, CSS, manifest, popup UI, source connector, crawling, or automatic processing changed.
+
+## 2026-07-26 - Document Study Workspace And Research Workflow Architecture
+
+Added `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md` as future architecture for the Study Workspace orchestration layer and research investigation workflow.
+
+Purpose:
+- Define the Study Workspace as the user-facing environment for investigating evidence, not merely reading documents, and clarify that workspaces organize evidence but never replace evidence.
+- Define workspace concepts: Workspace, Study Session, Project, Research Collection, Evidence Collection, Question Collection, Notebook, Bookmarks, Saved Searches, Research Trail, Investigation, Presentation, and Export.
+- Define a research workflow from Question through Evidence Discovery, Observation Review, Knowledge Objects, Convergence, Timeline, Maps, Reconstruction, Questions, Notes, Presentation, and Export.
+- Define persistent Research Trails, workspace views, saved collections, Investigation Boards, comparative study, synchronized Timeline Workspace, Geographic Workspace, Visualization Workspace, AI Assistant Workspace, Presentation Mode, collaboration, Notebook architecture, saved calculations, workspace constitutional principles, and open questions.
+
+Integration:
+- `MASTER_DESIGN.md` now references Study Workspace / Research Workflow architecture and clarifies the workspace as an orchestration layer rather than an evidence storage layer.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the document in core architecture references, semantic responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records the architecture and its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, schema migration, QA scripts, package scripts, semantic data, CSS, manifest, popup UI, Study Panel runtime, workspace persistence, export generation, collaboration, maps, timelines, visualization, AI workflow, source connectors, crawling, queues, or application behavior changed.
+
+## 2026-07-26 - Document Evidence Convergence, Temporal Reasoning, And Reconstruction Architecture
+
+Added `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md` as future architecture for comparing multiple accounts, source dependency, temporal reasoning, transparent calculations, literary-structure proposals, reconstructions, possibilities, expert material, lenses, visualization hooks, and AI-assisted reconstruction boundaries.
+
+Purpose:
+- Define Evidence Convergence as structured comparison across observations, sources, source families, dimensions of agreement, divergence, contradiction, dependency, and silence without simple vote counting.
+- Define source independence/dependency categories including independent witness, possible independent witness, shared source, derived/copied/summarized/translated/edited/quoted sources, retrospective recollection, institutional compilation, oral tradition, unknown dependency, and disputed dependency.
+- Define temporal reasoning for explicit dates, relative dates, durations, sequence statements, simultaneous events, approximate timing, ranges, uncertain placement, inferred intervals, disputed chronology, and unknown chronology.
+- Define reusable Before / During / After Context Windows, event sequence alternatives, transparent duration/rate calculations, literary structure proposal boundaries, reconstruction classes, possibility records, practical-constraint questions, journey convergence, Book of Mormon translation research organization, non-biased presentation, multidimensional confidence, Evidence Density, Research Gap generation, expert material boundaries, lens interaction, visualization/rendering hooks, AI/GPT cycle boundaries, recalculation, review states, constitutional principles, and open questions.
+
+Integration:
+- `MASTER_DESIGN.md` now references Evidence Convergence / Temporal Reasoning / Reconstruction architecture and adds a corresponding section.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the document in core architecture references, trust/semantic/discovery responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records the architecture and its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, schema migration, QA scripts, package scripts, semantic data, CSS, manifest, popup UI, Study Panel runtime, graph database behavior, timeline calculations, convergence scores, literary analysis, reconstruction engine, image generation, rendering, maps, source connectors, crawling, queues, or external model calls changed.
+
+## 2026-07-26 - Document Knowledge Object Lifecycle And Evidence Graph Architecture
+
+Added `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md` as future architecture for the durable I.C.E. Evidence Graph and the lifecycle by which canonical observations can eventually become persistent Knowledge Objects, Question Objects, journeys, presentations, and renderings without losing provenance.
+
+Purpose:
+- Define the Evidence Graph flow from Source Collections through Source Records, Source Spans, Canonical Observations, Relationships and Claims, Knowledge Objects, Events/Places/Characters/Journeys/Situations, Research Questions, Lens Evaluations, Workspace Presentations, and Renderings.
+- Define core graph node categories: Source Collection, Source Record, Source Span, Observation, Claim or Proposition, Relationship, Knowledge Object, Question Object, Lens Evaluation, Presentation Object, and Rendering Object.
+- Preserve Evidence Basis as separate from Observation Class and require meaningful graph contributions to declare why they are relevant/displayable.
+- Define Observation identity versus Observation lineage and Knowledge Object identity versus display label, source mention, inferred identity, single Observation, or generated summary.
+- Define object lifecycle, dynamic enrichment, merge architecture, split architecture, supersession/correction, review and authority boundaries, situational relationships, Before / During / After context windows, evidence convergence, dependency relationships, Journey Objects, persistent Question lifecycle, lens interaction, user contribution boundaries, presentation summaries, rendering boundaries, recalculation/dependency propagation, auditability, reversibility, confidence evolution, runtime transition strategy, constitutional principles, and open questions.
+
+Integration:
+- `MASTER_DESIGN.md` now references the Evidence Graph lifecycle architecture and adds an Evidence Graph / Knowledge Object Lifecycle section.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the document in core architecture references, trust/semantic/discovery responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records the architecture and its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, schema migration, QA scripts, package scripts, semantic data, CSS, manifest, popup UI, Study Panel runtime, graph database behavior, Knowledge Object runtime, Observation Engine changes, Research Gap runtime, lenses, rendering, maps, timelines, source connectors, crawling, queues, or external model calls changed.
+
+## 2026-07-26 - Document Canonical Observation And Research Gap Architecture
+
+Added `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md` as the canonical architecture bridge from current Observation Engine Phase 1 records toward future canonical observations, Research Gap processing, Situational Completeness Profiles, Knowledge Objects, lens contributions, translation comparison, journeys, and rendering.
+
+Purpose:
+- Define an Observation as the smallest durable, source-traceable unit representing something I.C.E. — Integrated Comprehension Engine has observed, extracted, normalized, calculated, correlated, questioned, or proposed.
+- Define Observation classes: Explicit Observation, Normalized Observation, Derived Observation, Candidate Observation, Historical Context Observation, Cultural Context Observation, Linguistic Observation, Translation Observation, Lens Contribution, Interpretive Proposal, Situational Reconstruction, Question Observation, and Qualified Absence.
+- Define Evidence Basis as independent from Observation Class and as the answer to why an observation is being shown.
+- Define Observation lifecycle, source separation, Research Gap Engine boundaries, Situational Completeness Profiles, dynamic enrichment boundaries, translation comparison boundaries, lens contribution boundaries, Jerusalem and journey examples, multidimensional confidence, constitutional principles, relationship to current runtime, and open questions.
+
+Integration:
+- `MASTER_DESIGN.md` now references Canonical Observation and Research Gap architecture and adds a Canonical Observation section.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the document in core architecture references, trust/semantic/discovery responsibilities, and reading orders.
+- `PROJECT_STATE.md` now records the architecture and its future-only implementation boundary.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, QA scripts, package scripts, semantic data, CSS, manifest, popup UI, Study Panel runtime, runtime schemas, database, graph implementation, Knowledge Object implementation, Research Gap runtime, lenses, rendering, maps, timelines, source connectors, or external model calls changed.
+
 ## 2026-07-26 - Document Lens Architecture And Concurrent Evaluation
 
 Added `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` as directional architecture for the I.C.E. Lens System.

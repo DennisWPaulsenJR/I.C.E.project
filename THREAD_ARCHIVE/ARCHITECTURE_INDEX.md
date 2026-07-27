@@ -62,6 +62,46 @@ Purpose: define lenses as independent presentation and evaluation frameworks tha
 
 Use this when designing Neutral Lens behavior, tradition-specific lenses, language lenses, historical/geographical/chronological lenses, Concurrent Lens Evaluation, Lens Convergence, Lens Divergence, multidimensional confidence across lenses, user-configurable Lens Profiles, and small-selection lens support. It does not implement runtime behavior, storage, highlighting, graph behavior, semantic mutation, Knowledge Object mutation, crawling, ingestion, or lens activation.
 
+### `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md`
+
+Authority level: canonical observation and future research-gap architecture.
+
+Purpose: define Observation classes, Evidence Basis, Observation lifecycle, source/interpretation/presentation separation, Research Gap Engine direction, Situational Completeness Profiles, dynamic enrichment boundaries, translation comparison boundaries, lens contribution boundaries, confidence dimensions, and the relationship between current Observation Engine runtime and future canonical observation records.
+
+Use this before implementing canonical observation normalization, evidence review states, Knowledge Object enrichment, Research Gap Engine runtime, situational completeness metrics, translation comparison, lens-contained observations, journey analysis, or rendering support. It does not implement runtime behavior, storage, migrations, Knowledge Objects, lenses, maps, timelines, rendering, source connectors, QA changes, or UI controls.
+
+### `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md`
+
+Authority level: future Evidence Graph and Knowledge Object lifecycle architecture.
+
+Purpose: define the durable Evidence Graph model, graph node categories, evidence basis requirements, observation lineage, Knowledge Object identity, object lifecycle, dynamic enrichment, merge/split/supersession boundaries, situational relationships, Before / During / After context windows, convergence/dependency relationships, Journey Objects, Question Objects, lens interaction, user contributions, presentation summaries, rendering boundaries, dependency propagation, auditability, reversibility, and runtime transition strategy.
+
+Use this before implementing persistent Knowledge Objects, Evidence Graph storage, object identity/versioning, object merge/split workflows, Evidence Graph presentation, journey object persistence, persistent Question Objects, object enrichment, source convergence, rendering dependency hooks, or graph-backed workspace summaries. It does not implement runtime behavior, storage, schema migration, graph database behavior, rendering, maps, timelines, Knowledge Object runtime, Observation Engine changes, crawling, ingestion, QA changes, or UI controls.
+
+### `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
+
+Authority level: future evidence convergence, temporal reasoning, and reconstruction architecture.
+
+Purpose: define how I.C.E. compares multiple accounts, models source independence and dependency, evaluates dimensional agreement and divergence, reasons about time and event sequence, exposes transparent calculations, presents literary-structure proposals, labels situational reconstructions and possibilities, handles expert material and lenses, reserves visualization/rendering hooks, and keeps AI-assisted outputs attributable and reviewable.
+
+Use this before implementing Evidence Convergence runtime, source-dependency analysis, temporal reasoning, alternate chronology presentation, duration/rate calculations, literary-structure analysis, situational reconstruction, possibility records, evidence-density views, journey convergence, translation chronology research tools, expert-contribution convergence, AI-assisted rendering prompts, or convergence-backed Research Gap generation. It does not implement runtime behavior, storage, schema migration, graph database behavior, timeline calculations, convergence scores, literary analysis, image generation, rendering, maps, QA changes, crawling, ingestion, or UI controls.
+
+### `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md`
+
+Authority level: future Study Workspace orchestration and investigation architecture.
+
+Purpose: define the Study Workspace as the user-facing orchestration layer for Workspaces, Study Sessions, Projects, Research Collections, Evidence Collections, Question Collections, Notebooks, Bookmarks, Saved Searches, Research Trails, Investigations, Presentation, Export, workspace views, collections, investigation boards, comparative study, synchronized timelines, geographic workspace, visualization workspace, AI-assisted research, presentation mode, collaboration, notebooks, and saved calculations.
+
+Use this before implementing workspace persistence, saved investigations, research trails, evidence boards, workspace collections, notebooks, bookmarks, saved searches, synchronized timeline workspaces, map workspaces, visualization workspaces, AI-assisted research workflows, presentation mode, exports, collaboration, or saved calculations. It does not implement runtime behavior, storage, schema migration, Study Panel behavior, maps, timelines, visualization, AI workflows, export generation, collaboration, QA changes, crawling, ingestion, or UI controls.
+
+### `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md`
+
+Authority level: future runtime layering and service-boundary architecture.
+
+Purpose: define the conceptual runtime layer model, processing order, service responsibilities, conceptual contracts, event pipeline, AI service boundaries, calculation service boundaries, rendering pipeline, performance architecture, extensibility points, runtime constitution, and open runtime questions that connect the approved architecture documents into one processing pipeline.
+
+Use this before implementing runtime modules, service boundaries, canonical processing order, source acquisition, parsing, normalization, observation validation, Knowledge Object resolution, Evidence Graph services, convergence services, temporal reasoning, Research Gap generation, calculation services, rendering services, workspace services, presentation/export services, AI-assisted runtime workflows, caching, dependency tracking, background indexing, diagnostics, logging, persistence boundaries, or plugin interfaces. It does not implement runtime behavior, storage, schema migration, APIs, services, queues, crawling, QA changes, UI controls, rendering, exports, AI workflows, package changes, or build changes.
+
 ### `PROJECT_STATE.md`
 
 Authority level: active operational state.
@@ -119,6 +159,11 @@ Primary references:
 - `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+- `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/OBSERVATION_ENGINE_PHASE_1.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
@@ -131,8 +176,11 @@ Primary documents:
 
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ONTOLOGY_RECORD_CONTRACTS.md`
+- `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/ENTITY_RELATIONSHIP_CLASSIFICATION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
 
@@ -144,8 +192,13 @@ Responsibilities:
 - Define relationship classes.
 - Define truth/status classes.
 - Define direct Observation Layer records before higher semantic interpretation.
+- Define canonical Observation classes and Evidence Basis before runtime normalization.
 - Define future persistent Knowledge Objects and evidence-based Character Profiles.
+- Define future Evidence Graph identity, lineage, lifecycle, convergence, dependency, merge, split, supersession, and rendering boundaries.
+- Define future evidence convergence, source dependency, temporal reasoning, transparent calculation, reconstruction, possibility, and evidence-density boundaries.
 - Define Study Workspace research flow from evidence through Knowledge Objects, notes, and presentation.
+- Define future Study Workspace orchestration for projects, sessions, collections, boards, research trails, notebooks, presentations, exports, collaboration, and saved calculations.
+- Define future runtime layering, service responsibilities, conceptual contracts, processing order, AI/calculation/rendering boundaries, performance, extensibility, logging, diagnostics, and persistence responsibilities.
 - Define promotion criteria.
 - Define prohibited promotions.
 - Preserve source scope, evidence, confidence, provenance, and inference level.
@@ -156,6 +209,10 @@ Semantic architecture owns:
 - Relationship type classification
 - Event classification
 - Knowledge Object and Character Profile architecture
+- Evidence Graph and Knowledge Object lifecycle architecture
+- Evidence Convergence, temporal reasoning, and reconstruction architecture
+- Study Workspace and research workflow architecture
+- Runtime layer and processing pipeline architecture
 - Theme record grounding
 - Fulfillment relationship grounding
 - Meaning Staging alignment
@@ -189,6 +246,13 @@ Included systems:
 - Theme Discovery
 - Discovery Measurement
 - Evidence Engine / Guided Discovery
+- Research Gap Engine
+- Situational Completeness Profiles
+- Persistent Question Objects
+- Evidence convergence / dependency analysis
+- Temporal reasoning and alternate chronology
+- Reconstruction and possibility modeling
+- Evidence-density visualization
 - Comparative evidence collections
 - Evidence convergence metrics
 - Possible similitude discovery
@@ -454,11 +518,16 @@ Every source, derived, discovery, perspective, and presentation record must pres
 9. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
 10. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md`
 11. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md`
-12. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
-13. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
-14. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
-15. `PROJECT_STATE.md`
-16. `PROJECT_LOG.md`
+12. `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md`
+13. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md`
+14. `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
+15. `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md`
+16. `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md`
+17. `THREAD_ARCHIVE/SEMANTIC_PROMOTION_ARCHITECTURE.md`
+18. `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
+19. `THREAD_ARCHIVE/MODULAR_STUDY_PRESENTATION_ARCHITECTURE.md`
+20. `PROJECT_STATE.md`
+21. `PROJECT_LOG.md`
 
 ### Recommended Reading Order For New AI Agents
 
@@ -476,7 +545,12 @@ Every source, derived, discovery, perspective, and presentation record must pres
 12. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md` when the task concerns persistent objects, profiles, identity, characteristics, or source integration.
 13. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` when the task concerns workspace surfaces, research workflows, notes, saved studies, evidence drilldowns, or presentation modes.
 14. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` when the task concerns lenses, perspective presentation, concurrent lens evaluation, lens convergence, divergence, or lens profiles.
-15. Relevant task-specific architecture docs.
+15. `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md` when the task concerns canonical observations, Evidence Basis, Research Gap Engine, Situational Completeness, canonical observation runtime normalization, or observation review boundaries.
+16. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md` when the task concerns Evidence Graph identity, Knowledge Object lifecycle, object lineage, merge/split/supersession, convergence, dependency relationships, persistent questions, rendering boundaries, or graph-backed workspace summaries.
+17. `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md` when the task concerns multiple accounts, source independence, convergence/divergence, temporal reasoning, alternate event sequences, transparent calculations, literary structure proposals, reconstructions, possibilities, evidence density, expert-material contribution, or AI-assisted rendering boundaries.
+18. `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md` when the task concerns Study Workspace orchestration, saved investigations, research trails, boards, collections, notebooks, bookmarks, synchronized timeline workspaces, map workspaces, visualization workspace, presentation mode, exports, collaboration, or saved calculations.
+19. `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md` when the task concerns runtime layering, service boundaries, processing order, conceptual service contracts, AI/calculation/rendering services, persistence, logging, diagnostics, extensibility, caching, dependency tracking, or background indexing.
+20. Relevant task-specific architecture docs.
 
 ### Recommended Reading Order For Reviewers
 
@@ -488,9 +562,14 @@ Every source, derived, discovery, perspective, and presentation record must pres
 6. `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 7. `THREAD_ARCHIVE/STUDY_WORKSPACE_ARCHITECTURE.md` for workspace, research-flow, notes, saved-study, or evidence-drilldown tasks.
 8. `THREAD_ARCHIVE/LENS_ARCHITECTURE.md` for lens, perspective comparison, convergence, divergence, or lens-profile tasks.
-9. Task-specific architecture doc.
-10. Relevant source files.
-11. QA report and activity log.
+9. `THREAD_ARCHIVE/CANONICAL_OBSERVATION_AND_RESEARCH_GAP_ARCHITECTURE.md` for canonical Observation, Evidence Basis, Research Gap, Situational Completeness, or observation review tasks.
+10. `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_LIFECYCLE_AND_EVIDENCE_GRAPH_ARCHITECTURE.md` for Evidence Graph, Knowledge Object lifecycle, lineage, convergence, dependency, merge, split, supersession, rendering-boundary, or persistent-question tasks.
+11. `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md` for convergence, source dependency, temporal reasoning, calculations, reconstructions, possibility, evidence density, and rendering-hook review.
+12. `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md` for workspace, investigation, research-trail, collection, board, notebook, presentation, export, collaboration, and saved-calculation review.
+13. `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md` for runtime layer, service boundary, processing pipeline, persistence, diagnostics, AI service, calculation service, rendering service, and extensibility review.
+14. Task-specific architecture doc.
+15. Relevant source files.
+16. QA report and activity log.
 
 ## 10. Feature Placement Checklist
 
