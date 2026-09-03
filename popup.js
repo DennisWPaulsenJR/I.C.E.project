@@ -464,9 +464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function pageRecordKey(page = {}) {
-    return [page.sourceCaptureBook || page.book, page.sourceCaptureChapter || page.chapter, page.sourceTitle || page.title, page.activeUrl || page.url]
-      .map((value) => normalizeWhitespace(value || "").toLowerCase())
-      .join("|");
+    return ICESourceIdentityHelpers.identityKey(page);
   }
 
   function sourceBookFromSlug(slug = "") {

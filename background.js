@@ -1,3 +1,5 @@
+importScripts("study-source-identity-helpers.js");
+
 const DEFAULT_SETTINGS = {
   enabled: true,
   strictMode: true,
@@ -2521,9 +2523,7 @@ function canonicalAnalyzedPageMarker(page = {}, { analysisTimestamp = "", buildM
     analyzedAt: analysisTimestamp || page.analyzedAt || ""
   };
   if (!validStudyScopePageRecord(normalized, { requireAnalyzed: true })) return null;
-  const pageKey = [normalized.sourceCaptureBook, normalized.sourceCaptureChapter, normalized.sourceTitle, normalized.activeUrl]
-    .map((value) => normalizeWhitespace(value || "").toLowerCase())
-    .join("|");
+  const pageKey = ICESourceIdentityHelpers.identityKey(normalized);
   return {
     pageKey,
     url: normalized.activeUrl,
@@ -2587,7 +2587,7 @@ function createSessionContinuityReview(captures = [], analysisHistory = [], sema
     activeAdapterName: capture.sourceAdapter?.adapterName || "",
     analyzedAt: capture.capturedAt || new Date().toISOString()
   };
-  const pageKey = (page = {}) => [page.sourceCaptureBook || page.book || "", page.sourceCaptureChapter || page.chapter || "", page.sourceTitle || "", page.activeUrl || page.url || ""].map((value) => normalizeWhitespace(value || "").toLowerCase()).join("|");
+  const pageKey = (page = {}) => ICESourceIdentityHelpers.identityKey(page);
   const pageLabel = (page = {}) => {
     const book = page.sourceCaptureBook || page.book || "";
     const chapter = page.sourceCaptureChapter || page.chapter || "";

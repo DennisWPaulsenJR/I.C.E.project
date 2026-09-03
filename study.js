@@ -1762,9 +1762,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
   function pageRecordKey(page = {}) {
-    return [page.sourceCaptureBook || page.book, page.sourceCaptureChapter || page.chapter, page.sourceTitle || page.title, page.activeUrl || page.url]
-      .map((value) => normalizeText(value || "").toLowerCase())
-      .join("|");
+    return ICESourceIdentityHelpers.identityKey(page);
   }
   const approvedStudySourceAdapters = new Set(["lds_scripture_adapter"]);
 
