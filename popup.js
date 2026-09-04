@@ -887,7 +887,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
     const { tab, page: tabPage } = await activeTabPageRecord();
     const statusPage = pageRecordFromStatus(data[ANALYSIS_STATUS_KEY] || {});
-    const activePageCandidate = data[ACTIVE_SOURCE_PAGE_KEY] || pageRecordFromCanonicalMarker(data[CANONICAL_ANALYSIS_TARGET_KEY]) || statusPage || tabPage;
+    const canonicalTargetPage = pageRecordFromCanonicalMarker(data[CANONICAL_ANALYSIS_TARGET_KEY]);
+    const validCanonicalTarget = canonicalTargetPage?.pageKey && recordMatchesStudyGeneration(canonicalTargetPage, studyGeneration)
+      ? canonicalTargetPage
+      : null;
+    const activePageCandidate = validCanonicalTarget || data[ACTIVE_SOURCE_PAGE_KEY] || statusPage || tabPage;
     const activePage = activePageCandidate && recordMatchesStudyGeneration(activePageCandidate, studyGeneration)
       ? activePageCandidate
       : (statusPage && recordMatchesStudyGeneration(statusPage, studyGeneration) ? statusPage : tabPage);
