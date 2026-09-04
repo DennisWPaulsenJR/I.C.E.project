@@ -1985,22 +1985,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     return explicitSelectedRangeFromAnalyzedPages(analyzedPages) || selectedSessionScopeFromPages(sortedAnalyzedPages(analyzedPages));
   }
 
-  function explicitSelectedRangeFromAnalyzedPages(analyzedPages = []) {
-    const sorted = sortedAnalyzedPages(analyzedPages);
-    const selected = studyData.selectedRange || null;
-    if (!selected?.start || !selected?.end) return null;
-    const pagesByKey = new Map(sorted.map((page) => [pageRecordKey(page), page]));
-    const start = pagesByKey.get(pageRecordKey(selected.start));
-    const end = pagesByKey.get(pageRecordKey(selected.end));
+  function selectedRangeEligibility(persistedRange, canonicalAnalyzedPages = [], activeGeneration = activeStudyGenerationFromData()) {
+    if (!persistedRange?.start || !persistedRange?.end) return null;
+    if (activeGeneration > 0 && !recordMatchesStudyGeneration(persistedRange, activeGeneration)) return null;
+    const canonicalPages = sortedAnalyzedPages(canonicalAnalyzedPages);
+    const pagesByKey = new Map(canonicalPages.map((page) => [pageRecordKey(page), page]));
+    const start = pagesByKey.get(pageRecordKey(persistedRange.start));
+    const end = pagesByKey.get(pageRecordKey(persistedRange.end));
     if (!start || !end) return null;
     const book = pageBookName(start).toLowerCase();
     const startChapter = pageChapterNumber(start);
     const endChapter = pageChapterNumber(end);
     if (!book || !startChapter || !endChapter || book !== pageBookName(end).toLowerCase()) return null;
+    const persistedMembers = Array.isArray(persistedRange.pages) ? persistedRange.pages : [];
+    if (persistedMembers.some((page) => !pagesByKey.has(pageRecordKey(page)))) return null;
     const min = Math.min(startChapter, endChapter);
     const max = Math.max(startChapter, endChapter);
-    const selectedPages = sorted.filter((page) => pageBookName(page).toLowerCase() === book && pageChapterNumber(page) >= min && pageChapterNumber(page) <= max);
+    const selectedPages = canonicalPages.filter((page) => pageBookName(page).toLowerCase() === book && pageChapterNumber(page) >= min && pageChapterNumber(page) <= max);
     return selectedPages.length ? selectedSessionScopeFromPages(selectedPages) : null;
+  }
+
+  function explicitSelectedRangeFromAnalyzedPages(analyzedPages = []) {
+    const selected = studyData.selectedRange || null;
+    return selectedRangeEligibility(selected, analyzedPages, activeStudyGenerationFromData());
   }
 
   function currentStudyScopeAnchorPage() {
