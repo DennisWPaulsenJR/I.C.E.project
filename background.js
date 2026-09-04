@@ -2536,6 +2536,32 @@ function canonicalAnalyzedPageMarker(page = {}, { analysisTimestamp = "", buildM
     buildMarker
   };
 }
+async function admitCanonicalAnalyzedPageFromPopup(message = {}) {
+  const studyGeneration = normalizeStudyGeneration(message.studyGeneration);
+  const currentGeneration = await activeStudyGeneration();
+  if (studyGeneration !== currentGeneration) return { ok: false, error: "study generation is no longer current" };
+  const suppliedPage = message.page || {};
+  const page = {
+    ...suppliedPage,
+    activeAdapterName: suppliedPage.activeAdapterName || suppliedPage.adapter || "",
+    analyzedAt: suppliedPage.analyzedAt || suppliedPage.analysisTimestamp || ""
+  };
+  if (!validStudyScopePageRecord(page, { requireAnalyzed: true })) return { ok: false, error: "page is not an eligible analyzed source page" };
+  const marker = withStudyGeneration(canonicalAnalyzedPageMarker(page, {
+    analysisTimestamp: page.analysisTimestamp || page.analyzedAt || "",
+    buildMarker: page.buildMarker || "popup-manual-page-workflow"
+  }), studyGeneration);
+  if (!marker) return { ok: false, error: "page is not an eligible analyzed source page" };
+  const data = await chrome.storage.local.get([CANONICAL_ANALYZED_PAGES_KEY]);
+  const existingMarkers = filterRecordsForStudyGeneration(data[CANONICAL_ANALYZED_PAGES_KEY], studyGeneration, CANONICAL_ANALYZED_PAGES_KEY);
+  const duplicate = existingMarkers.find((item) => item.pageKey === marker.pageKey);
+  if (duplicate) return { ok: true, admitted: false, duplicate: true, marker: duplicate };
+  const nextMarkers = [marker, ...existingMarkers]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
+    .slice(0, 24);
+  await chrome.storage.local.set({ [CANONICAL_ANALYZED_PAGES_KEY]: nextMarkers });
+  return { ok: true, admitted: true, duplicate: false, marker };
+}
 function sessionContinuityReviewRecord(record = {}) {
   const key = [
     "session-continuity-review",
@@ -9580,6 +9606,13 @@ async function runFullAnalysisPipeline(reason = "manual", options = {}) {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "ICE_CLEAR_ALL_STUDY_DATA") {
     clearAllStudyDataFromBackground(message)
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
+  if (message?.type === "ICE_ADMIT_CANONICAL_ANALYZED_PAGE") {
+    admitCanonicalAnalyzedPageFromPopup(message)
       .then((result) => sendResponse(result))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;

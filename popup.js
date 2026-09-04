@@ -956,8 +956,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       setCaptureStatus("Current analyzed page is not a supported scripture/source page.");
       return;
     }
+    const admission = await chrome.runtime.sendMessage({
+      type: "ICE_ADMIT_CANONICAL_ANALYZED_PAGE",
+      page: marker,
+      studyGeneration
+    });
+    if (!admission?.ok) {
+      setCaptureStatus("Current analyzed page could not be added to the stored analyzed session.");
+      return;
+    }
+    const admittedMarker = admission.marker || marker;
     const existingMarkers = filterRecordsForStudyGeneration(data[CANONICAL_ANALYZED_PAGES_KEY], studyGeneration);
-    const nextMarkers = [marker, ...existingMarkers]
+    const nextMarkers = [admittedMarker, ...existingMarkers]
       .filter((item, index, items) => items.findIndex((candidate) => candidate.pageKey === item.pageKey) === index)
       .slice(0, 24);
     const nextPages = nextMarkers.map(pageRecordFromCanonicalMarker).filter(Boolean);
@@ -975,7 +985,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }));
     await chrome.storage.local.set({
       [STUDY_GENERATION_KEY]: studyGeneration,
-      [CANONICAL_ANALYZED_PAGES_KEY]: nextMarkers,
       [ANALYSIS_HISTORY_KEY]: history,
       [ACTIVE_SOURCE_PAGE_KEY]: statusPage,
       [SELECTED_RANGE_KEY]: range,
