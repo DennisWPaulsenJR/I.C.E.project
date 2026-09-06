@@ -1825,9 +1825,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadInteractionCount() {
     const data = await chrome.storage.local.get(INTERACTION_GRAPH_KEY);
-    const interactions = Array.isArray(data[INTERACTION_GRAPH_KEY])
-      ? data[INTERACTION_GRAPH_KEY]
-      : [];
+    const interactions = filterRecordsForStudyGeneration(
+      data[INTERACTION_GRAPH_KEY],
+      await activeStudyGeneration()
+    );
 
     document.getElementById("interactionCount").textContent =
       interactions.length;
@@ -1835,9 +1836,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadSceneCount() {
     const data = await chrome.storage.local.get(SCENE_MODELS_KEY);
-    const scenes = Array.isArray(data[SCENE_MODELS_KEY])
-      ? data[SCENE_MODELS_KEY]
-      : [];
+    const scenes = filterRecordsForStudyGeneration(
+      data[SCENE_MODELS_KEY],
+      await activeStudyGeneration()
+    );
 
     document.getElementById("sceneCount").textContent = scenes.length;
   }

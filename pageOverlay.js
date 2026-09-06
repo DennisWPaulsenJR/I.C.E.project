@@ -11,7 +11,8 @@
     sceneModels: "ICE_SCENE_MODELS",
     orderedEvents: "ICE_ORDERED_EVENTS",
     interactionGraph: "ICE_INTERACTION_GRAPH",
-    latestCapture: "ICE_LATEST_CAPTURE"
+    latestCapture: "ICE_LATEST_CAPTURE",
+    studyGeneration: "ICE_STUDY_GENERATION"
   };
   const WATCHED_LOCAL_KEYS = new Set(Object.values(STORAGE_KEYS));
   const HOST_ID = "ice-page-overlay-host";
@@ -94,6 +95,20 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "Unknown";
     return date.toLocaleString();
+  }
+
+  function normalizeStudyGeneration(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.floor(numeric) : 0;
+  }
+
+  function recordMatchesStudyGeneration(record, generation) {
+    const recordGeneration = normalizeStudyGeneration(record?.studyGeneration ?? record?.clearAllGeneration);
+    return generation <= 0 ? recordGeneration === 0 : recordGeneration === generation;
+  }
+
+  function filterRecordsForStudyGeneration(records, generation) {
+    return asArray(records).filter((record) => recordMatchesStudyGeneration(record, generation));
   }
 
   function statusCount(status, key, fallback) {
@@ -187,9 +202,10 @@
 
     const status = latestData[STORAGE_KEYS.analysisStatus] || {};
     const actors = asArray(latestData[STORAGE_KEYS.actorTimelines]);
-    const scenes = asArray(latestData[STORAGE_KEYS.sceneModels]);
+    const activeGeneration = normalizeStudyGeneration(latestData[STORAGE_KEYS.studyGeneration]);
+    const scenes = filterRecordsForStudyGeneration(latestData[STORAGE_KEYS.sceneModels], activeGeneration);
     const orderedEvents = asArray(latestData[STORAGE_KEYS.orderedEvents]);
-    const interactions = asArray(latestData[STORAGE_KEYS.interactionGraph]);
+    const interactions = filterRecordsForStudyGeneration(latestData[STORAGE_KEYS.interactionGraph], activeGeneration);
     const latestCapture = latestData[STORAGE_KEYS.latestCapture] || {};
 
     const actorItems = actors
