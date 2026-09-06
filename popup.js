@@ -2619,7 +2619,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const orderedEvents = createOrderedEvents(eventItems);
 
     const currentData = await chrome.storage.local.get(ORDERED_EVENTS_KEY);
-    if (!hasCurrentCanonicalSemanticRecords(currentData[ORDERED_EVENTS_KEY], await activeStudyGeneration())) {
+    const governedUpstreamPreserved = hasCurrentCanonicalSemanticRecords(
+      currentData[ORDERED_EVENTS_KEY],
+      await activeStudyGeneration()
+    );
+    if (!governedUpstreamPreserved) {
       await chrome.storage.local.set({
         [ORDERED_EVENTS_KEY]: orderedEvents
       });
@@ -2628,7 +2632,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderOrderedEvents(orderedEvents);
     await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
     renderActorTimelines([]);
-    await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
+    if (!governedUpstreamPreserved) {
+      await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
+    }
     await loadInteractionCount();
     await loadSceneCount();
     setCaptureStatus(`Ordered ${orderedEvents.length} event(s).`);
@@ -2991,12 +2997,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
 
     const currentData = await chrome.storage.local.get(ACTOR_TIMELINES_KEY);
-    if (!hasCurrentCanonicalSemanticRecords(currentData[ACTOR_TIMELINES_KEY], await activeStudyGeneration())) {
+    const governedUpstreamPreserved = hasCurrentCanonicalSemanticRecords(
+      currentData[ACTOR_TIMELINES_KEY],
+      await activeStudyGeneration()
+    );
+    if (!governedUpstreamPreserved) {
       await chrome.storage.local.set({
         [ACTOR_TIMELINES_KEY]: actorTimelines
       });
     }
-    await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
+    if (!governedUpstreamPreserved) {
+      await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
+    }
 
     renderActorTimelines(actorTimelines);
     await loadInteractionCount();
