@@ -2704,7 +2704,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function analysisQueueRecords(records = studyData.analysisQueue) {
+    const activeGeneration = activeStudyGenerationFromData();
     return asArray(records)
+      .filter((item) => recordMatchesStudyGeneration(item, activeGeneration))
       .map((item) => ({
         id: normalizeText(item.id || item.canonicalKey || item.url || ""),
         label: normalizeText(item.label || [item.book, item.chapter].filter(Boolean).join(" ") || item.url || "Queued page"),
@@ -2722,6 +2724,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         lastAttemptedUrl: normalizeText(item.lastAttemptedUrl || ""),
         expectedCanonicalKey: normalizeText(item.expectedCanonicalKey || item.canonicalKey || ""),
         actualAnalyzedCanonicalKey: normalizeText(item.actualAnalyzedCanonicalKey || ""),
+        studyGeneration: recordStudyGeneration(item),
         source: ["range", "book", "volume", "manual"].includes(item.source) ? item.source : "manual"
       }))
       .filter((item) => item.url && item.book && item.chapter && item.canonicalKey)
@@ -2840,6 +2843,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastAttemptedUrl: "",
       expectedCanonicalKey: canonicalKey,
       actualAnalyzedCanonicalKey: "",
+      studyGeneration: activeStudyGenerationFromData(),
       source
     };
   }
@@ -29632,6 +29636,7 @@ createRevelationPartsSection(item.subEvents)
     const activeGeneration = activeStudyGenerationFromData(data);
     data.canonicalAnalyzedPages = filterRecordsForStudyGeneration(data.canonicalAnalyzedPages, activeGeneration, STORAGE_KEYS.canonicalAnalyzedPages);
     data.analysisHistory = filterRecordsForStudyGeneration(data.analysisHistory, activeGeneration, STORAGE_KEYS.analysisHistory);
+    data.analysisQueue = filterRecordsForStudyGeneration(data.analysisQueue, activeGeneration, STORAGE_KEYS.analysisQueue);
     data.journeyPageSnapshots = filterRecordsForStudyGeneration(data.journeyPageSnapshots, activeGeneration, STORAGE_KEYS.journeyPageSnapshots);
     data.crossReferenceSet = filterRecordsForStudyGeneration(data.crossReferenceSet, activeGeneration, STORAGE_KEYS.crossReferenceSet);
     data.crossReferenceRelationships = filterRecordsForStudyGeneration(data.crossReferenceRelationships, activeGeneration, STORAGE_KEYS.crossReferenceRelationships);
