@@ -109,6 +109,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return recordGeneration === generation;
   }
 
+  function hasCurrentCanonicalSemanticRecords(records, generation) {
+    const currentGeneration = normalizeStudyGeneration(generation);
+    return currentGeneration > 0 && Array.isArray(records) && records.some((record) =>
+      record && normalizeStudyGeneration(record.studyGeneration) === currentGeneration
+    );
+  }
+
   function filterRecordsForStudyGeneration(records = [], generation = 0) {
     return (Array.isArray(records) ? records : []).filter((record) => recordMatchesStudyGeneration(record, generation));
   }
@@ -2257,9 +2264,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Phase 3 local MVP. Phase 4 should add timeline review UI, event editing,
     // source comparison, and AI-assisted extraction on top of these local items.
-    await chrome.storage.local.set({
-      [TIMELINE_STORAGE_KEY]: timelineItems
-    });
+    const currentData = await chrome.storage.local.get(TIMELINE_STORAGE_KEY);
+    if (!hasCurrentCanonicalSemanticRecords(currentData[TIMELINE_STORAGE_KEY], await activeStudyGeneration())) {
+      await chrome.storage.local.set({
+        [TIMELINE_STORAGE_KEY]: timelineItems
+      });
+    }
 
     renderTimeline(timelineItems);
     setCaptureStatus(`Extracted ${timelineItems.length} timeline item(s).`);
@@ -2317,9 +2327,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Phase 3.1 local event candidates. Future work should add a timeline
     // ordering engine, "what happened first?" reasoning, event graph
     // visualization, and AI-assisted event cleanup.
-    await chrome.storage.local.set({
-      [EVENT_STORAGE_KEY]: eventItems
-    });
+    const currentData = await chrome.storage.local.get(EVENT_STORAGE_KEY);
+    if (!hasCurrentCanonicalSemanticRecords(currentData[EVENT_STORAGE_KEY], await activeStudyGeneration())) {
+      await chrome.storage.local.set({
+        [EVENT_STORAGE_KEY]: eventItems
+      });
+    }
 
     renderEvents(eventItems);
     setCaptureStatus(`Extracted ${eventItems.length} event candidate(s).`);
@@ -2481,9 +2494,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // confidence.
     const dedupedPrincipleItems = dedupePrincipleItems(principleItems);
 
-    await chrome.storage.local.set({
-      [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems
-    });
+    const currentData = await chrome.storage.local.get(PRINCIPLE_STORAGE_KEY);
+    if (!hasCurrentCanonicalSemanticRecords(currentData[PRINCIPLE_STORAGE_KEY], await activeStudyGeneration())) {
+      await chrome.storage.local.set({
+        [PRINCIPLE_STORAGE_KEY]: dedupedPrincipleItems
+      });
+    }
 
     renderPrinciples(dedupedPrincipleItems);
     setCaptureStatus(`Extracted ${dedupedPrincipleItems.length} principle item(s).`);
@@ -2602,9 +2618,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // grouping remains roadmap-only and should not be implemented here.
     const orderedEvents = createOrderedEvents(eventItems);
 
-    await chrome.storage.local.set({
-      [ORDERED_EVENTS_KEY]: orderedEvents
-    });
+    const currentData = await chrome.storage.local.get(ORDERED_EVENTS_KEY);
+    if (!hasCurrentCanonicalSemanticRecords(currentData[ORDERED_EVENTS_KEY], await activeStudyGeneration())) {
+      await chrome.storage.local.set({
+        [ORDERED_EVENTS_KEY]: orderedEvents
+      });
+    }
 
     renderOrderedEvents(orderedEvents);
     await chrome.storage.local.remove(ACTOR_TIMELINES_KEY);
@@ -2971,9 +2990,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // cross-document entity merging work.
     const actorTimelines = dedupeActorTimelines(createActorTimelines(orderedEvents));
 
-    await chrome.storage.local.set({
-      [ACTOR_TIMELINES_KEY]: actorTimelines
-    });
+    const currentData = await chrome.storage.local.get(ACTOR_TIMELINES_KEY);
+    if (!hasCurrentCanonicalSemanticRecords(currentData[ACTOR_TIMELINES_KEY], await activeStudyGeneration())) {
+      await chrome.storage.local.set({
+        [ACTOR_TIMELINES_KEY]: actorTimelines
+      });
+    }
     await chrome.storage.local.remove(INTERACTION_GRAPH_KEY);
 
     renderActorTimelines(actorTimelines);
