@@ -8371,9 +8371,17 @@ function enrichKnownIdentity(record) {
 
 function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEvents, entityRoleItems) {
   const identities = new Map();
+  const registryIdentityKeys = new Set((entityRegistry || [])
+    .map((entity) => canonicalEntityName(entity.canonicalName || "").toLowerCase())
+    .filter(Boolean));
+  const registryIdentityRecordFor = (name, entityType = "entity") => {
+    const canonicalName = canonicalEntityName(name || "");
+    if (!canonicalName || !registryIdentityKeys.has(canonicalName.toLowerCase())) return null;
+    return identityRecordFor(identities, canonicalName, entityType);
+  };
 
   for (const entity of entityRegistry || []) {
-    const record = identityRecordFor(identities, entity.canonicalName, entity.entityType || "entity");
+    const record = registryIdentityRecordFor(entity.canonicalName, entity.entityType || "entity");
     if (!record) continue;
     addIdentitySurface(record, entity.displayName || entity.canonicalName);
     for (const alias of entity.aliases || []) addIdentitySurface(record, alias);
@@ -8384,7 +8392,7 @@ function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEv
 
   for (const event of semanticEvents || []) {
     for (const surface of [event.actor, event.target, event.recipient, event.concerning, ...(event.participants || [])]) {
-      const record = identityRecordFor(identities, surface, inferEntityType(surface, []));
+      const record = registryIdentityRecordFor(surface, inferEntityType(surface, []));
       if (!record) continue;
       addIdentitySurface(record, surface);
       addIdentityContext(record, event.sourceContext || {});
@@ -8394,7 +8402,7 @@ function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEv
   }
 
   for (const role of entityRoleItems || []) {
-    const record = identityRecordFor(identities, role.entityName, inferEntityType(role.entityName, [entityRoleTypeFromGroup(role.roleGroup)]));
+    const record = registryIdentityRecordFor(role.entityName, inferEntityType(role.entityName, [entityRoleTypeFromGroup(role.roleGroup)]));
     if (!record) continue;
     addIdentitySurface(record, role.entityName);
     addIdentityContext(record, role.sourceContext || {});
@@ -8404,7 +8412,7 @@ function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEv
 
   for (const edge of relationshipGraph || []) {
     for (const surface of [edge.fromEntity, edge.toEntity]) {
-      const record = identityRecordFor(identities, surface, inferEntityType(surface, []));
+      const record = registryIdentityRecordFor(surface, inferEntityType(surface, []));
       if (!record) continue;
       addIdentitySurface(record, surface);
       addIdentityContext(record, edge.sourceContext || {});
@@ -8419,11 +8427,13 @@ function createCanonicalIdentities(entityRegistry, relationshipGraph, semanticEv
   );
   if (hasMatthewFiveJesus && !identities.has("jesus christ")) {
     const jesus = identities.get("jesus");
-    const record = identityRecordFor(identities, "JESUS CHRIST", "divine");
-    addIdentitySurface(record, "JESUS");
-    addIdentitySurface(record, "CHRIST");
-    addIdentityEvidence(record, "Matthew 5 teaching speaker: JESUS; canonical/source identity preserved as JESUS CHRIST");
-    for (const context of jesus?.sourceContexts || []) addIdentityContext(record, context);
+    const record = registryIdentityRecordFor("JESUS CHRIST", "divine");
+    if (record) {
+      addIdentitySurface(record, "JESUS");
+      addIdentitySurface(record, "CHRIST");
+      addIdentityEvidence(record, "Matthew 5 teaching speaker: JESUS; canonical/source identity preserved as JESUS CHRIST");
+      for (const context of jesus?.sourceContexts || []) addIdentityContext(record, context);
+    }
   }
 
   for (const record of identities.values()) enrichKnownIdentity(record);
