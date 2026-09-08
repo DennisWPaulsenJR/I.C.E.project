@@ -6,7 +6,25 @@ This is a reconstruction, not a restoration. It must not be treated as the origi
 
 Purpose: serve as the first-read architectural overview for I.C.E. It explains mission, direction, system layers, trust model, major subsystems, frontend/backend relationship, and future vision.
 
-`THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` governs the non-negotiable trust and governance rules. If this Master Design and the Constitution conflict, the Constitution controls.
+`THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md` governs the non-negotiable trust and governance rules for future work. If this Master Design and the Constitution conflict, the Constitution controls. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` remains retained as historical architecture.
+
+`THREAD_ARCHIVE/ARCHITECTURE_BASELINE_V1.md` declares I.C.E. Architecture Baseline Version 1.0 and identifies I.C.E. as an Evidence-Centered Research Platform. Architecture approval and runtime completion remain separate.
+
+`IMPLEMENTATION_MANIFEST.md` defines the ordered implementation program that translates the approved architecture into runtime work. The first recommended implementation-adjacent task is `ICE-RUN-0001 - Current Runtime Contract and Compatibility Inventory`; runtime implementation has not begun under this baseline.
+
+ALIGN - Adaptive Living Intelligence & Guidance Network - is now established as a first-class adjacent platform architecture for human-centered coordination and guidance. ALIGN begins with Family as its first deployment domain while preserving a domain-portable architecture for education, sports, teams, business, healthcare, community organizations, government, military, volunteer groups, and future modules. ALIGN may consume I.C.E. evidence, observations, provenance, confidence, verification, and perspective outputs as support material, but it does not replace I.C.E. and does not create runtime behavior in this baseline. Its foundational documents are `THREAD_ARCHIVE/ALIGN_PLATFORM_VISION.md`, `THREAD_ARCHIVE/ALIGN_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_CONSTITUTION.md`, `THREAD_ARCHIVE/ALIGN_PLATFORM_ROADMAP.md`, and `THREAD_ARCHIVE/ALIGN_TERMINOLOGY.md`.
+
+ALIGN early detection and situational awareness architecture is documented in `THREAD_ARCHIVE/ALIGN_EARLY_DETECTION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_SITUATIONAL_AWARENESS_MODEL.md`, `THREAD_ARCHIVE/ALIGN_IOT_AND_DEVICE_INTEGRATION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_CONTROLLED_ESCALATION_FRAMEWORK.md`, `THREAD_ARCHIVE/ALIGN_PASS_INTEGRATION_BOUNDARY.md`, and `THREAD_ARCHIVE/ALIGN_SIGNAL_CONFIDENCE_AND_ANOMALY_MODEL.md`. These documents define future platform principles for detecting meaningful change, preserving the distinction between drift, anomaly, concern, and confirmed condition, receiving authorized IoT/device/P.A.S.S. signals, maintaining safety-independent operation, and routing controlled escalation through evidence, policy, minimum disclosure, and human review. They are documentation only and do not implement device integration, APIs, UI, databases, automation, or runtime behavior.
+
+I.C.E. Context Resolution and Situational Understanding architecture is documented in `THREAD_ARCHIVE/ICE_CONTEXT_RESOLUTION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_SITUATIONAL_UNDERSTANDING_MODEL.md`, `THREAD_ARCHIVE/ICE_STATE_MODEL.md`, and `THREAD_ARCHIVE/ICE_CONTEXT_SERVICE_SPECIFICATION.md`. These documents define how I.C.E. may organize observations into evidence-backed context, descriptive states, competing explanations, confidence, unknowns, and situation summaries for future consumers such as ALIGN, P.A.S.S., and domain modules. They are documentation only and do not implement runtime services, APIs, schemas, UI, storage, or code.
+
+I.C.E. Evaluation Reliability and Trust architecture is documented in `THREAD_ARCHIVE/ICE_EVALUATION_RELIABILITY_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_CONFIDENCE_CALIBRATION_MODEL.md`, `THREAD_ARCHIVE/ICE_EVALUATION_COVERAGE_MODEL.md`, `THREAD_ARCHIVE/ICE_CAPABILITY_BOUNDARY_ARCHITECTURE.md`, and `THREAD_ARCHIVE/ICE_TRUST_AND_LIMITATIONS_MODEL.md`. These documents define how I.C.E. should report what was evaluated, how it was evaluated, what evidence was inspected, what evidence is missing, what remains unknown, what confidence is justified, and what limitations apply. They are documentation only and do not implement runtime evaluators, APIs, schemas, UI, storage, or code.
+
+I.C.E. Runtime Component architecture is documented in `THREAD_ARCHIVE/ICE_RUNTIME_COMPONENT_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_COMPONENT_RESPONSIBILITY_CATALOG.md`, `THREAD_ARCHIVE/ICE_SERVICE_CONTRACT_MODEL.md`, `THREAD_ARCHIVE/ICE_DEPENDENCY_AND_EXECUTION_GRAPH.md`, `THREAD_ARCHIVE/ICE_EXTENSION_FRAMEWORK_ARCHITECTURE.md`, and `THREAD_ARCHIVE/ICE_CONSUMER_INTEGRATION_BOUNDARY.md`. These documents translate existing constitutional, evidence, context, confidence, and reliability decisions into a conceptual component blueprint, service-contract model, dependency/lifecycle graph, extension framework, and consumer integration boundary. They are documentation only and do not select a programming language, framework, database, message broker, deployment platform, cloud provider, executable APIs, schemas, source code, queues, services, or UI.
+
+Phase I Architecture Consolidation is documented in `docs/architecture/ICE_PHASE1_ARCHITECTURE_INDEX.md`, `docs/architecture/ICE_ARCHITECTURE_GLOSSARY.md`, `docs/architecture/ICE_ARCHITECTURE_DEPENDENCY_MAP.md`, and `docs/architecture/ICE_PHASE1_COMPLETENESS_REPORT.md`. These documents organize the approved Phase I architecture corpus, define canonical terminology, map conceptual dependencies, and assess readiness for Phase II inventory and compatibility work. They are documentation only and do not redesign architecture or implement runtime behavior.
+
+The controlled cross-domain authority freeze verified by I.C.E._AA_0071 is recorded in `docs/architecture/ICE_ARCHITECTURE_FREEZE_AA_0072.md`, with deferred non-blocking assurance, reproducibility, provenance, lifecycle, and terminology debt listed in `docs/architecture/ICE_DEFERRED_DEBT_APPENDIX_AA_0072.md`. These records freeze documentation contracts only; they do not change runtime behavior or authorize implementation of deferred debt.
 
 `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md` records the foundational mission philosophy that this Master Design operationalizes: discovery before direction, human agency, transparent reasoning, model independence, and knowledge architecture as the durable product asset.
 
@@ -33,6 +51,7 @@ Purpose: serve as the first-read architectural overview for I.C.E. It explains m
 This document was reconstructed from durable I.C.E. architecture and coordination records, including:
 
 - `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`
+- `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md`
 - `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`
 - `THREAD_ARCHIVE/UNDERSTANDING_ENGINE_ROADMAP.md`
 - `THREAD_ARCHIVE/KNOWLEDGE_OBJECT_ARCHITECTURE.md`
@@ -43,6 +62,38 @@ This document was reconstructed from durable I.C.E. architecture and coordinatio
 - `THREAD_ARCHIVE/EVIDENCE_CONVERGENCE_TEMPORAL_REASONING_AND_RECONSTRUCTION_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/STUDY_WORKSPACE_AND_RESEARCH_WORKFLOW_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_BASELINE_V1.md`
+- `IMPLEMENTATION_MANIFEST.md`
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_VISION.md`
+- `THREAD_ARCHIVE/ALIGN_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_CONSTITUTION.md`
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_ROADMAP.md`
+- `THREAD_ARCHIVE/ALIGN_TERMINOLOGY.md`
+- `THREAD_ARCHIVE/ALIGN_EARLY_DETECTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_SITUATIONAL_AWARENESS_MODEL.md`
+- `THREAD_ARCHIVE/ALIGN_IOT_AND_DEVICE_INTEGRATION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_CONTROLLED_ESCALATION_FRAMEWORK.md`
+- `THREAD_ARCHIVE/ALIGN_PASS_INTEGRATION_BOUNDARY.md`
+- `THREAD_ARCHIVE/ALIGN_SIGNAL_CONFIDENCE_AND_ANOMALY_MODEL.md`
+- `THREAD_ARCHIVE/ICE_CONTEXT_RESOLUTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_SITUATIONAL_UNDERSTANDING_MODEL.md`
+- `THREAD_ARCHIVE/ICE_STATE_MODEL.md`
+- `THREAD_ARCHIVE/ICE_CONTEXT_SERVICE_SPECIFICATION.md`
+- `THREAD_ARCHIVE/ICE_EVALUATION_RELIABILITY_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_CONFIDENCE_CALIBRATION_MODEL.md`
+- `THREAD_ARCHIVE/ICE_EVALUATION_COVERAGE_MODEL.md`
+- `THREAD_ARCHIVE/ICE_CAPABILITY_BOUNDARY_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_TRUST_AND_LIMITATIONS_MODEL.md`
+- `THREAD_ARCHIVE/ICE_RUNTIME_COMPONENT_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_COMPONENT_RESPONSIBILITY_CATALOG.md`
+- `THREAD_ARCHIVE/ICE_SERVICE_CONTRACT_MODEL.md`
+- `THREAD_ARCHIVE/ICE_DEPENDENCY_AND_EXECUTION_GRAPH.md`
+- `THREAD_ARCHIVE/ICE_EXTENSION_FRAMEWORK_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_CONSUMER_INTEGRATION_BOUNDARY.md`
+- `docs/architecture/ICE_PHASE1_ARCHITECTURE_INDEX.md`
+- `docs/architecture/ICE_ARCHITECTURE_GLOSSARY.md`
+- `docs/architecture/ICE_ARCHITECTURE_DEPENDENCY_MAP.md`
+- `docs/architecture/ICE_PHASE1_COMPLETENESS_REPORT.md`
 - `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
 - `THREAD_ARCHIVE/SEMANTIC_ONTOLOGY_BACKBONE_ARCHITECTURE.md`
 - `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`
@@ -57,6 +108,14 @@ This document was reconstructed from durable I.C.E. architecture and coordinatio
 - `QA_REPORTS/master-design-investigation.md`
 
 The investigation report concluded that no tracked historical `MASTER_DESIGN.md` copy exists in the current checkout, tracked Git history, current branches, or tags. This document is therefore a reconstructed first-read design overview.
+
+## Architecture Baseline Version 1.0
+
+Architecture Baseline Version 1.0 is complete pending GPT review. It consolidates the constitutional, observation, Evidence Graph, convergence, workspace, runtime layering, and implementation roadmap architecture needed before the next implementation-adjacent phase.
+
+The governing constitutional reference for future work is `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md`. The implementation entry point is `IMPLEMENTATION_MANIFEST.md`, beginning with `ICE-RUN-0001 - Current Runtime Contract and Compatibility Inventory`.
+
+Runtime implementation under this baseline has not begun.
 
 ## 2. Mission
 
@@ -271,6 +330,8 @@ Truth and status classes must preserve distinctions such as:
 Hierarchy boundaries matter. A claimed deity must not become an established Divine Being. A false god, idol, graven image, or crafted object may be a false deity claim or object of worship, but not automatically a real divine being. Literary figures, parable figures, and symbolic beings must remain literary or symbolic unless source context establishes otherwise.
 
 Class of Being and Exaltation readiness should preserve hierarchy rather than flatten it. Grammar, language, and literary models may inform hierarchy, but they may not override grounded entity class or Context Lock.
+
+The Exaltation may govern human-readable language in documentation, explanations, and presentation, but executable identifiers, storage keys, APIs, schemas, DOM contracts, module paths, and other machine-dependent contracts remain protected unless a separately authorized migration changes them.
 
 ## 12. Events, Timelines, Scenes, And Relationships
 
