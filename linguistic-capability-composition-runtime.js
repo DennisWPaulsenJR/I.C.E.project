@@ -1,0 +1,6 @@
+"use strict";
+const CAPABILITIES=Object.freeze(["TOKENIZATION","WORD_NORMALIZATION","LEMMA_LOOKUP","PART_OF_SPEECH_LOOKUP","MORPHOLOGICAL_ANALYSIS","LEXICAL_SENSE_LOOKUP","LEXICAL_RELATION_LOOKUP","PHRASE_LOOKUP"]);
+function requirement(capability,options={}){if(!CAPABILITIES.includes(capability))throw new Error("UNKNOWN_LINGUISTIC_CAPABILITY");return Object.freeze({requirementId:`linguistic-${capability}-${options.language||"ENGLISH"}`,capability,language:options.language||"ENGLISH",offlinePreference:true,networkAllowed:false,createdFrom:options.createdFrom||"CAPABILITY_GAP"});}
+function coverage(){return Object.freeze(Object.fromEntries(CAPABILITIES.map(c=>[c,["TOKENIZATION","WORD_NORMALIZATION","PHRASE_LOOKUP"].includes(c)?"LOCAL_PARTIAL":"GAP"])));}
+function compose(words=[]){const w=words.filter(x=>x.surface);const [first,second,third]=w;return Object.freeze({tokens:w.map(x=>x.tokenRef),phrase:w.map(x=>x.surface).join(" "),clauseCandidates:w.length>=3?[{subjectTokenRef:first.tokenRef,predicateTokenRef:second.tokenRef,objectTokenRef:third.tokenRef,state:"CANDIDATE"}]:[],syntaxIsSemantics:false,truthPromoted:false,sourceMutated:false});}
+module.exports={CAPABILITIES,requirement,coverage,compose};
