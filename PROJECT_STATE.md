@@ -31,6 +31,31 @@ MCDX convention:
 - Completed `mcdx` work goes in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
 
 Current Active WIP:
+- Architecture Version 1.0 is complete pending GPT review and is declared in `THREAD_ARCHIVE/ARCHITECTURE_BASELINE_V1.md`.
+- `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md` is the governing constitutional reference for future work. `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` remains retained as historical architecture.
+- `IMPLEMENTATION_MANIFEST.md` defines the ordered implementation roadmap and GPT Review Gate standard.
+- Runtime implementation has not begun under Architecture Baseline Version 1.0.
+- First recommended implementation-adjacent task: `ICE-RUN-0001 - Current Runtime Contract and Compatibility Inventory`. `ICE-OBS-0002` should follow only after `ICE-RUN-0001` is reviewed.
+- ALIGN - Adaptive Living Intelligence & Guidance Network - is established as a first-class adjacent platform architecture for human-centered coordination and guidance.
+- ALIGN's first deployment domain is Family. The architecture intentionally remains portable to Education, Sports, Teams, Business, Healthcare, Community Organizations, Government, Military, Volunteer Groups, and future domains without changing the core model.
+- ALIGN architecture is documented in `THREAD_ARCHIVE/ALIGN_PLATFORM_VISION.md`, `THREAD_ARCHIVE/ALIGN_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_CONSTITUTION.md`, `THREAD_ARCHIVE/ALIGN_PLATFORM_ROADMAP.md`, and `THREAD_ARCHIVE/ALIGN_TERMINOLOGY.md`.
+- ALIGN may consume I.C.E. evidence, observations, provenance, confidence, verification, and perspective outputs as support material, but it does not replace I.C.E. and no ALIGN runtime, UI, APIs, database, automation, crawling, ingestion, or storage authority is implemented.
+- P.A.S.S. remains an adjacent ecosystem boundary whose acronym expansion and operating contract are not defined in the current tracked architecture corpus; ALIGN must not assume P.A.S.S. permissions, data access, or authority without a separate architecture contract.
+- ALIGN early detection and situational awareness architecture is documented in `THREAD_ARCHIVE/ALIGN_EARLY_DETECTION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_SITUATIONAL_AWARENESS_MODEL.md`, `THREAD_ARCHIVE/ALIGN_IOT_AND_DEVICE_INTEGRATION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ALIGN_CONTROLLED_ESCALATION_FRAMEWORK.md`, `THREAD_ARCHIVE/ALIGN_PASS_INTEGRATION_BOUNDARY.md`, and `THREAD_ARCHIVE/ALIGN_SIGNAL_CONFIDENCE_AND_ANOMALY_MODEL.md`.
+- Early detection is a future platform capability only: it distinguishes drift, anomaly, concern, and confirmed condition; treats signals as evidence rather than conclusions; favors private confirmation and least intrusive effective response; and requires policy/human review before consequential escalation.
+- Future IoT/device/P.A.S.S. participation is bounded to authorized safety/status signals and does not grant ALIGN direct control over devices, firearm-related safety behavior, physical authorization, BLE/cellular integration, APIs, databases, automation, or storage authority.
+- I.C.E. Context Resolution and Situational Understanding architecture is documented in `THREAD_ARCHIVE/ICE_CONTEXT_RESOLUTION_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_SITUATIONAL_UNDERSTANDING_MODEL.md`, `THREAD_ARCHIVE/ICE_STATE_MODEL.md`, and `THREAD_ARCHIVE/ICE_CONTEXT_SERVICE_SPECIFICATION.md`.
+- Context Resolution is defined as organizing evidence into an understandable description of a current situation without asserting unsupported conclusions. Facts alone are insufficient; meaning requires context; context requires evidence.
+- I.C.E. may produce evidence-centered states, differences, competing explanations, unknowns, confidence, and situation summaries for future consumers such as ALIGN, P.A.S.S., and domain modules, but it does not coordinate families, manage organizations, schedule people, perform mitigation, control devices, create policy, authorize actions, or implement runtime services in this documentation task.
+- I.C.E. Evaluation Reliability, Confidence Calibration, Coverage, Capability Boundary, and Trust/Limitation architecture is documented in `THREAD_ARCHIVE/ICE_EVALUATION_RELIABILITY_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_CONFIDENCE_CALIBRATION_MODEL.md`, `THREAD_ARCHIVE/ICE_EVALUATION_COVERAGE_MODEL.md`, `THREAD_ARCHIVE/ICE_CAPABILITY_BOUNDARY_ARCHITECTURE.md`, and `THREAD_ARCHIVE/ICE_TRUST_AND_LIMITATIONS_MODEL.md`.
+- The governing reliability principle is that evaluation reliability is limited by evidence inspected, methods employed, process reproducibility, and transparency of uncertainty. Confidence is earned through evidence, not assertion.
+- Future I.C.E. evaluations should report what was evaluated, how it was evaluated, what evidence supports the conclusion, what evidence is missing, what remains unknown, what confidence is justified, and what limitations apply. This is documentation only and does not implement runtime evaluators, APIs, schemas, databases, UI, storage, or code.
+- I.C.E. Runtime Component Architecture, Component Responsibility Catalog, Service Contract Model, Dependency and Execution Graph, Extension Framework, and Consumer Integration Boundary are documented in `THREAD_ARCHIVE/ICE_RUNTIME_COMPONENT_ARCHITECTURE.md`, `THREAD_ARCHIVE/ICE_COMPONENT_RESPONSIBILITY_CATALOG.md`, `THREAD_ARCHIVE/ICE_SERVICE_CONTRACT_MODEL.md`, `THREAD_ARCHIVE/ICE_DEPENDENCY_AND_EXECUTION_GRAPH.md`, `THREAD_ARCHIVE/ICE_EXTENSION_FRAMEWORK_ARCHITECTURE.md`, and `THREAD_ARCHIVE/ICE_CONSUMER_INTEGRATION_BOUNDARY.md`.
+- The governing component principle is that I.C.E. components are separated by responsibility so evidence, context, reasoning, confidence, policy, and action authority cannot become silently coupled. Boundaries must preserve provenance, uncertainty, reproducibility, correction history, and consumer independence.
+- ICE-ARCH-0016 organizes existing architecture into a conceptual component blueprint only. It does not select language, framework, database, broker, deployment platform, cloud provider, executable APIs, schemas, source code, storage, queues, UI, services, crawling, or runtime behavior.
+- Phase I Architecture Consolidation is documented in `docs/architecture/ICE_PHASE1_ARCHITECTURE_INDEX.md`, `docs/architecture/ICE_ARCHITECTURE_GLOSSARY.md`, `docs/architecture/ICE_ARCHITECTURE_DEPENDENCY_MAP.md`, and `docs/architecture/ICE_PHASE1_COMPLETENESS_REPORT.md`.
+- Phase I is assessed as substantially complete for conceptual architecture and conditionally ready for Phase II inventory and compatibility work, not direct feature implementation.
+- Remaining Phase I consolidation questions include whether `THREAD_ARCHIVE` and `docs/architecture` review packets should both remain, be cross-referenced, or be consolidated before commit.
 - Observation Engine Phase 1 is implemented locally as a deterministic, provenance-backed layer between candidate extraction/context resolution and graph/higher semantic layers.
 - Observation records are stored under `ICE_OBSERVATION_RECORDS`, generation-stamped, scope-integrity enriched, displayed in the Study Panel Observation Engine section, counted in diagnostics, projected into the Linear Scope Snapshot as presentation nodes, and represented in the Architecture Graph / Integrated Semantic Pipeline.
 - Observation boundaries are explicit: records preserve directly supportable source-text occurrences only and do not infer doctrine, theme, motive, symbolism, application, fulfillment, or semantic authority.
@@ -52,8 +77,9 @@ Current Active WIP:
 - Temporary Current Study collection uses the existing `ICE_CROSS_REFERENCE_SET` contract for page and manual-selection items. Individual removal and Clear All affect only this temporary collection; they do not delete stored analysis, semantic records, saved studies, preferences, or canonical Study Scope.
 - Popup-triggered Analyze Page uses the existing analysis pipeline with canonical-scope preservation for the collection workflow. Analysis status can mark the temporary Current Study page item as analyzed, but Analyzed remains distinct from Added.
 - Manual Select captures only explicit visible user-selected text through the active content script and requires user confirmation before it is added. It does not collect hidden text, linked pages, or inferred surrounding context.
-- I.C.E. Constitution v1.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md`.
-- The Constitution is the explicit non-negotiable rule contract for trust, evidence, authority, ontology, provenance, explainability, verification, scope, lenses, corpora, adapters, perspectives, experts, and operational boundaries.
+- I.C.E. Constitution v1.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` and retained as historical architecture.
+- I.C.E. Constitution v2.0 is documented in `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md` and supersedes V1 for future architecture and implementation decisions.
+- The Constitution is the explicit non-negotiable rule contract for trust, evidence, authority, ontology, provenance, explainability, verification, scope, lenses, corpora, adapters, perspectives, experts, research workflow, visualization, AI assistance, calculations, automation boundaries, and operational boundaries.
 - `MASTER_DESIGN.md` has been reconstructed from durable architecture and coordination documents after history investigation found no tracked historical copy; it is the first-read mission and architecture overview, while the Constitution records the implementation-governing rules every future semantic system must obey.
 - Foundational mission philosophy is documented in `THREAD_ARCHIVE/ICE_ARCHITECTURAL_MISSION_STATEMENT.md`: discovery before direction, human agency, transparency, knowledge architecture as durable product asset, model independence, historical integrity, progressive capability, and AI services as reasoning tools rather than source authority.
 - Full Context Evaluation Architecture is documented in `THREAD_ARCHIVE/FULL_CONTEXT_EVALUATION_ARCHITECTURE.md`.
@@ -843,7 +869,7 @@ The QA harness exports:
 
 Quick repo-visible QA snapshot:
 
-`QA status.MD`
+`QA_STATUS.md`
 
 Generated `qa-output/` files should remain uncommitted unless intentionally requested.
 
@@ -871,6 +897,12 @@ Repo memory convention:
 - `PROJECT_LOG.md` remains milestone/decision history.
 - `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` records ongoing multi-agent activity updates.
 - `THREAD_ARCHIVE/AGENT_OUTBOX.md` records quick current handoff messages and should not replace durable activity logging.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` is the quick direct-message lane for short actor-to-actor handoffs, especially messages Dennis asks MCDX to send PCDX.
+- Keep the outbox separate from the activity log: use the outbox for direct chat/handoff messages and the activity log for implementation history, validation, commits, and status.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` is the quick direct-message lane for short actor-to-actor handoffs, especially messages Dennis asks MCDX to send PCDX.
+- Keep the outbox separate from the activity log: use the outbox for direct chat/handoff messages and the activity log for implementation history, validation, commits, and status.
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md` is the quick direct-message lane for short actor-to-actor handoffs, especially messages Dennis asks MCDX to send PCDX.
+- Keep the outbox separate from the activity log: use the outbox for direct chat/handoff messages and the activity log for implementation history, validation, commits, and status.
 - Do not paste full chat transcripts unless explicitly requested.
 
 ## Phase 8.3a Matthew 2 Adversarial / Protective Semantic Refinement
@@ -1313,6 +1345,11 @@ Latest graph activation repair:
 - Graph button activation now uses a delegated `data-open-scope-snapshot` hook plus explicit Enter/Space keyboard handling.
 - Opening Graph now loads full study data, renders Linear Scope Snapshot directly, and displays either existing graphable records, `No graphable records are available for the current study.`, or `Graph could not be displayed.`
 - Repair is presentation-only and adds no semantic mutation, storage authority, queue processing, crawling, or source-scope changes.
+
+Latest Exaltation compliance boundary note:
+- Added `THREAD_ARCHIVE/EXALTATION_INTERNAL_CODE_AND_LANGUAGE_COMPLIANCE_BOUNDARY.md` to record how The Exaltation may govern human-readable language in documentation, explanations, and presentation while preserving executable identifiers, storage keys, APIs, schemas, DOM contracts, module paths, and other machine-dependent contracts.
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now points to the new note as future Exaltation compliance boundary guidance.
+- The note is architecture/documentation only and does not authorize runtime transformation, source migration, or repository-wide renaming.
 
 Latest Clear All persistence repair:
 - Popup Clear All now uses an explicit `ICE_CLEAR_ALL_STUDY_DATA` background reset contract plus an explicit known-study-key deletion list.

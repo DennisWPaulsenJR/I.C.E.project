@@ -1,3 +1,194 @@
+## 2026-07-26 - Consolidate Phase I Architecture Baseline
+
+Added ICE-ARCH-0019 documentation for Phase I architecture consolidation.
+
+Created:
+- `docs/architecture/ICE_PHASE1_ARCHITECTURE_INDEX.md`
+- `docs/architecture/ICE_ARCHITECTURE_GLOSSARY.md`
+- `docs/architecture/ICE_ARCHITECTURE_DEPENDENCY_MAP.md`
+- `docs/architecture/ICE_PHASE1_COMPLETENESS_REPORT.md`
+
+Updated:
+- `MASTER_DESIGN.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+
+Purpose:
+- Organize approved Phase I architecture documents by major domain, purpose, dependency, and architectural layer.
+- Define canonical glossary terms for Evidence, Provenance, Identity, Context, Situation, State, Confidence, Reliability, Explanation, Constitutional Principle, Rule, Consumer, and Extension.
+- Map conceptual dependencies from mission/constitution through evidence, provenance, context, state, situation, confidence, reliability, rules, explanation, runtime components, extensions, consumers, workspace, lenses, Knowledge Objects, Evidence Graph, ALIGN, and P.A.S.S.
+- Assess Phase I completeness, remaining conceptual gaps, candidate Phase II topics, recommended implementation readiness, risks, and future architectural priorities.
+
+Findings:
+- Phase I is substantially complete as a conceptual baseline.
+- Phase II should begin with inventory, compatibility review, and consolidation decisions rather than direct feature implementation.
+- Duplicate review lanes exist between `THREAD_ARCHIVE` and `docs/architecture`; this should be resolved by GPT review before committing large documentation batches.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, schemas, databases, services, storage authority, queues, source code, configuration, crawling, package files, dependencies, build configuration, executable rules, language/framework/database/broker/deployment choices, commits, or pushes changed.
+
+## 2026-07-26 - Document I.C.E. Runtime Component Architecture
+
+Added ICE-ARCH-0016 documentation for Runtime Component Architecture, Component Responsibility Catalog, Service Contract Model, Dependency and Execution Graph, Extension Framework, and Consumer Integration Boundary.
+
+Created:
+- `THREAD_ARCHIVE/ICE_RUNTIME_COMPONENT_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_COMPONENT_RESPONSIBILITY_CATALOG.md`
+- `THREAD_ARCHIVE/ICE_SERVICE_CONTRACT_MODEL.md`
+- `THREAD_ARCHIVE/ICE_DEPENDENCY_AND_EXECUTION_GRAPH.md`
+- `THREAD_ARCHIVE/ICE_EXTENSION_FRAMEWORK_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_CONSUMER_INTEGRATION_BOUNDARY.md`
+
+Updated:
+- `MASTER_DESIGN.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+
+Purpose:
+- Translate completed constitutional, evidence, context, confidence, evaluation-reliability, extension, and consumer-boundary architecture into a stable conceptual component blueprint.
+- Define component classes for Intake and Observation, Normalization, Identity and Reference Resolution, Provenance, Evidence Management, Chronology, Context Resolution, State Resolution, Situation Construction, Difference and Drift Evaluation, Competing Explanation Evaluation, Confidence Calibration, Coverage Evaluation, Capability Boundary Evaluation, Trust and Limitation Evaluation, Correction and Revision, Audit and Reproducibility, Consumer Presentation, Extension Coordination, and Governance / Constitutional Validation.
+- Define component ownership boundaries, conceptual service contracts, allowed dependency direction, execution lifecycle, permitted feedback paths, prohibited dependency patterns, extension requirements, consumer boundaries, failure behavior, and constitutional validation responsibilities.
+- Preserve the rule that evidence, context, reasoning, confidence, policy, and action authority cannot become silently coupled.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, schemas, databases, services, storage authority, queues, source code, configuration, crawling, package files, dependencies, build configuration, executable diagram tooling, language/framework/database/broker/deployment choices, commits, or pushes changed.
+
+## 2026-07-26 - Document I.C.E. Evaluation Reliability And Trust Architecture
+
+Added ICE-ARCH-0015 documentation for Evaluation Reliability, Confidence Calibration, Evaluation Coverage, Capability Boundaries, and Trust/Limitations.
+
+Created:
+- `THREAD_ARCHIVE/ICE_EVALUATION_RELIABILITY_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_CONFIDENCE_CALIBRATION_MODEL.md`
+- `THREAD_ARCHIVE/ICE_EVALUATION_COVERAGE_MODEL.md`
+- `THREAD_ARCHIVE/ICE_CAPABILITY_BOUNDARY_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_TRUST_AND_LIMITATIONS_MODEL.md`
+
+Updated:
+- `MASTER_DESIGN.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+
+Purpose:
+- Establish that evaluation reliability is limited by the evidence inspected, methods employed, process reproducibility, and transparency of uncertainty.
+- Establish that confidence is earned through evidence, not assertion, and that I.C.E. must communicate both what it knows and the boundaries of what it can know.
+- Define reliable evidence, reliable process, reliable conclusion, evaluation coverage, capability calibration, confidence calibration, reproducibility, unknowns, limitations, completeness levels, trust dimensions, self-evaluation, and correction.
+- Preserve the rule that confidence must never exceed evidence, unknowns and limitations remain visible, capability must never be exaggerated, consumers deserve transparency, and correction strengthens trust.
+- Apply the architecture across software repositories, research, business operations, manufacturing, healthcare coordination, education, family systems, ALIGN, P.A.S.S., and future domains without implementing domain-specific behavior.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, schemas, databases, services, storage authority, queues, crawling, ingestion, package files, dependencies, build configuration, QA scripts, semantic data, commits, or pushes changed.
+
+## 2026-07-26 - Document I.C.E. Context Resolution And Situational Understanding Architecture
+
+Added ICE-ARCH-0014 documentation for Context Resolution, Situational Understanding, descriptive State modeling, and the conceptual Context Service.
+
+Created:
+- `THREAD_ARCHIVE/ICE_CONTEXT_RESOLUTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ICE_SITUATIONAL_UNDERSTANDING_MODEL.md`
+- `THREAD_ARCHIVE/ICE_STATE_MODEL.md`
+- `THREAD_ARCHIVE/ICE_CONTEXT_SERVICE_SPECIFICATION.md`
+
+Updated:
+- `MASTER_DESIGN.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+
+Purpose:
+- Define Context Resolution as organizing evidence into an understandable description of the current situation without asserting unsupported conclusions.
+- Establish the principles that facts alone are insufficient, meaning requires context, and context requires evidence.
+- Define and distinguish Observation, Evidence, Context, Situation, State, Condition, Expectation, Baseline, Difference, Anomaly, Drift, Risk, Confidence, Competing Explanation, Recommendation, and Action.
+- Define descriptive state categories: Observed, Expected, Historical, Declared, Authorized, Unknown, Transition, Derived, and Contextual.
+- Define conceptual flow from Observations through Evidence normalization, Evidence Graph, Context Resolution, State Construction, Competing Explanations, Confidence Evaluation, Situation Summary, and consumer platforms.
+- Clarify that I.C.E. produces evidence-centered understanding for future consumers such as ALIGN, P.A.S.S., and domain modules, but does not produce policy, coordinate families, manage organizations, schedule people, perform mitigation, control devices, authorize actions, or hide uncertainty.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, schemas, services, databases, storage authority, queues, crawling, ingestion, package files, dependencies, build configuration, QA scripts, semantic data, commits, or pushes changed.
+
+## 2026-07-26 - Document ALIGN Early Detection And Escalation Architecture
+
+Added ALIGN-ARCH-0002 documentation for early detection, situational awareness, IoT/device integration boundaries, P.A.S.S. integration boundaries, controlled escalation, and signal confidence/anomaly handling.
+
+Created:
+- `THREAD_ARCHIVE/ALIGN_EARLY_DETECTION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_SITUATIONAL_AWARENESS_MODEL.md`
+- `THREAD_ARCHIVE/ALIGN_IOT_AND_DEVICE_INTEGRATION_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_CONTROLLED_ESCALATION_FRAMEWORK.md`
+- `THREAD_ARCHIVE/ALIGN_PASS_INTEGRATION_BOUNDARY.md`
+- `THREAD_ARCHIVE/ALIGN_SIGNAL_CONFIDENCE_AND_ANOMALY_MODEL.md`
+
+Updated:
+- `MASTER_DESIGN.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md`
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_VISION.md`
+- `THREAD_ARCHIVE/ALIGN_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_CONSTITUTION.md`
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_ROADMAP.md`
+- `THREAD_ARCHIVE/ALIGN_TERMINOLOGY.md`
+
+Purpose:
+- Establish the principle that early awareness creates time for understanding, communication, mitigation, and proportionate action.
+- Preserve the distinctions that deviation is not guilt, a signal is not a conclusion, an anomaly invites evaluation, and the objective is prevention and restoration rather than surveillance or punishment.
+- Define drift, anomaly, concern, confirmed condition, signal taxonomy, confidence levels, baseline types, situational awareness, controlled escalation stages, privacy/minimum disclosure, GPT Check Layer review, and auditability.
+- Define future authorized IoT/device signal roles while preserving that evidence-producing devices do not automatically become action endpoints.
+- Define the P.A.S.S. integration boundary: P.A.S.S. may provide authorized safety/status signals to ALIGN, but P.A.S.S. retains responsibility for physical authorization, specialized safety behavior, and firearm-related controls. ALIGN must not become a sole operational dependency for P.A.S.S. safety.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, databases, BLE, cellular, IoT integration, P.A.S.S. device integration, storage authority, schemas, migrations, crawling, ingestion, queues, automation execution, package files, dependencies, build configuration, QA scripts, semantic data, commits, or pushes changed.
+
+## 2026-07-26 - Document ALIGN Platform Architecture
+
+Added foundational documentation for ALIGN - Adaptive Living Intelligence & Guidance Network - as a first-class adjacent platform architecture for human-centered coordination and guidance.
+
+Created:
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_VISION.md`
+- `THREAD_ARCHIVE/ALIGN_ARCHITECTURE.md`
+- `THREAD_ARCHIVE/ALIGN_CONSTITUTION.md`
+- `THREAD_ARCHIVE/ALIGN_PLATFORM_ROADMAP.md`
+- `THREAD_ARCHIVE/ALIGN_TERMINOLOGY.md`
+
+Purpose:
+- Establish ALIGN's mission, vision, philosophy, scope, boundaries, terminology, constitution, platform roadmap, domain model, ecosystem position, and relationship to I.C.E.
+- Define Family as the first deployment domain while preserving domain portability for Education, Sports, Teams, Business, Healthcare, Community Organizations, Government, Military, Volunteer Groups, and future modules.
+- Define ALIGN as a collection of cooperating architecture engines: Goal, Relationship, Coordination, Communication, Teaching, Mitigation, Safety Mesh, Health, Automation, Permission, Policy, GPT Check, and I.C.E. Integration.
+- Preserve the rule that I.C.E. provides evidence-centered understanding while ALIGN provides coordination and guidance, and ALIGN recommendations do not become truth or action authority by themselves.
+- Record P.A.S.S. as an adjacent ecosystem boundary that requires a separate architecture contract before ALIGN assumes any authority, permissions, or data access.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, UI, APIs, databases, storage authority, schemas, migrations, crawling, ingestion, queues, automation, domain modules, I.C.E. runtime integration, P.A.S.S. integration, QA scripts, package files, build configuration, semantic data, or commits changed.
+
+## 2026-07-26 - Declare Architecture Baseline Version 1.0 And Constitution V2
+
+Added final architecture consolidation documents before implementation:
+
+- `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md`
+- `IMPLEMENTATION_MANIFEST.md`
+- `THREAD_ARCHIVE/ARCHITECTURE_BASELINE_V1.md`
+
+Purpose:
+- Consolidate the governing constitutional principles introduced across the completed architecture documents.
+- Declare I.C.E. Architecture Baseline Version 1.0.
+- Identify I.C.E. as an Evidence-Centered Research Platform, with the browser extension as one current interface and acquisition environment.
+- Define the ordered implementation roadmap from runtime inventory through canonical observations, review workflow, Knowledge Objects, Evidence Graph runtime, dynamic enrichment, Research Gap Engine, temporal reasoning, convergence, GeoChronology, calculations/literary services, Study Workspace, visualization/rendering, AI assistance, collaboration/export/presentation, and later goal/decision/automation boundaries.
+
+Key governance:
+- `THREAD_ARCHIVE/ICE_CONSTITUTION_V2.md` supersedes `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` for future work.
+- `THREAD_ARCHIVE/ICE_CONSTITUTION_V1.md` remains retained as historical architecture.
+- Runtime implementation has not begun under Architecture Baseline Version 1.0.
+- First recommended implementation-adjacent task is `ICE-RUN-0001 - Current Runtime Contract and Compatibility Inventory`.
+- `ICE-OBS-0002` should follow only after `ICE-RUN-0001` is reviewed.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime JavaScript, extension behavior, storage, schemas, migrations, QA scripts, package files, build configuration, semantic data, popup UI, Study Panel behavior, observations, Knowledge Objects, convergence, timelines, maps, AI, rendering, automation, commits, tags, or pushes changed.
+
 ## 2026-07-26 - Document Runtime Layer And Processing Pipeline Architecture
 
 Added `THREAD_ARCHIVE/RUNTIME_LAYER_AND_PROCESSING_PIPELINE_ARCHITECTURE.md` as future architecture for runtime layering, service boundaries, processing order, conceptual contracts, and implementation constraints.
@@ -5345,3 +5536,22 @@ Integration:
 Boundary:
 - Architecture/documentation only.
 - No runtime behavior, parsers, ingestion, storage, graph generation, Study View, crawling, queues, semantic extraction, confidence scoring, or profile generation changed.
+
+## 2026-08-09 - Exaltation Internal Code And Language Compliance Boundary
+
+Added `THREAD_ARCHIVE/EXALTATION_INTERNAL_CODE_AND_LANGUAGE_COMPLIANCE_BOUNDARY.md` as a proposed architecture note.
+
+Purpose:
+- Define how The Exaltation may govern and evaluate human-readable language in the I.C.E. repository while protecting executable semantics, external interfaces, storage contracts, identifiers, and runtime stability.
+- Distinguish code semantics from language semantics so presentation, documentation, and generated explanations can be evaluated without silently mutating machine-dependent contracts.
+- Record the three compliance levels: presentation compliance, development compliance, and future source compliance requiring explicit authorization.
+- Preserve the rule that uncertain machine-contract classifications must not be transformed without review.
+
+Integration:
+- `THREAD_ARCHIVE/ARCHITECTURE_INDEX.md` now lists the note as future Exaltation compliance boundary guidance.
+- `MASTER_DESIGN.md` now distinguishes human-readable language governance from protected machine-dependent contracts.
+- `PROJECT_STATE.md` now records the note as documentation-only architecture guidance.
+
+Boundary:
+- Architecture/documentation only.
+- No runtime behavior, storage, graph generation, source transformation, or contract migration changed.

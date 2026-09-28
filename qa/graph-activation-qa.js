@@ -3,6 +3,16 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const studyHtml = fs.readFileSync(path.join(root, "study.html"), "utf8");
+const studyDiagnosticHelpers = fs.readFileSync(path.join(root, "study-diagnostic-helpers.js"), "utf8");
+const studyPresentationHelpers = fs.readFileSync(path.join(root, "study-presentation-helpers.js"), "utf8");
+const studySnapshotProvenanceHelpers = fs.readFileSync(path.join(root, "study-snapshot-provenance-helpers.js"), "utf8");
+const studyGraphProjectionHelpers = fs.readFileSync(path.join(root, "study-graph-projection-helpers.js"), "utf8");
+const studyInspectorDisplayHelpers = fs.readFileSync(path.join(root, "study-inspector-display-helpers.js"), "utf8");
+const studyPanelDisplayStateHelpers = fs.readFileSync(path.join(root, "study-panel-display-state-helpers.js"), "utf8");
+const studyPanelSummaryViewModelHelpers = fs.readFileSync(path.join(root, "study-panel-summary-view-model-helpers.js"), "utf8");
+const studyPanelVisibilityHelpers = fs.readFileSync(path.join(root, "study-panel-visibility-helpers.js"), "utf8");
+const studyPanelSummaryLabelHelpers = fs.readFileSync(path.join(root, "study-panel-summary-label-helpers.js"), "utf8");
+const studyPanelCardMetadataHelpers = fs.readFileSync(path.join(root, "study-panel-card-metadata-helpers.js"), "utf8");
 const studyJs = fs.readFileSync(path.join(root, "study.js"), "utf8");
 const backgroundJs = fs.readFileSync(path.join(root, "background.js"), "utf8");
 const architectureIndex = fs.readFileSync(path.join(root, "THREAD_ARCHIVE", "ARCHITECTURE_INDEX.md"), "utf8");
@@ -16,6 +26,185 @@ function assert(condition, message) {
 
 function includes(pattern, text = studyJs) {
   return pattern.test(text);
+}
+
+function extractHelperFunctionSource(functionName) {
+  const start = studyPresentationHelpers.indexOf(`function ${functionName}`);
+  assert(start >= 0, `Missing helper function ${functionName}.`);
+  const paramsEnd = studyPresentationHelpers.indexOf(")", start);
+  assert(paramsEnd >= 0, `Missing helper function parameters for ${functionName}.`);
+  const bodyStart = studyPresentationHelpers.indexOf("{", paramsEnd);
+  assert(bodyStart >= 0, `Missing helper function body for ${functionName}.`);
+  let depth = 0;
+  for (let index = bodyStart; index < studyPresentationHelpers.length; index += 1) {
+    const char = studyPresentationHelpers[index];
+    if (char === "{") depth += 1;
+    if (char === "}") depth -= 1;
+    if (depth === 0) return studyPresentationHelpers.slice(start, index + 1);
+  }
+  throw new Error(`Unclosed helper function body for ${functionName}.`);
+}
+
+function extractDiagnosticHelperSource(functionName) {
+  const start = studyDiagnosticHelpers.indexOf(`function ${functionName}`);
+  assert(start >= 0, `Missing diagnostic helper function ${functionName}.`);
+  const paramsEnd = studyDiagnosticHelpers.indexOf(")", start);
+  assert(paramsEnd >= 0, `Missing diagnostic helper function parameters for ${functionName}.`);
+  const bodyStart = studyDiagnosticHelpers.indexOf("{", paramsEnd);
+  assert(bodyStart >= 0, `Missing diagnostic helper function body for ${functionName}.`);
+  let depth = 0;
+  for (let index = bodyStart; index < studyDiagnosticHelpers.length; index += 1) {
+    const char = studyDiagnosticHelpers[index];
+    if (char === "{") depth += 1;
+    if (char === "}") depth -= 1;
+    if (depth === 0) return studyDiagnosticHelpers.slice(start, index + 1);
+  }
+  throw new Error(`Unclosed diagnostic helper function body for ${functionName}.`);
+}
+
+function presentationHelperHarness() {
+  const wordingSource = extractHelperFunctionSource("presentationSemanticWordingProvenanceLines");
+  const evidenceSource = extractHelperFunctionSource("presentationSemanticEvidenceWeightLines");
+  const harness = `
+    function normalizeText(value) {
+      return value == null ? "" : String(value);
+    }
+    function asArray(value) {
+      return Array.isArray(value) ? value : [];
+    }
+    ${wordingSource}
+    ${evidenceSource}
+    return {
+      presentationSemanticWordingProvenanceLines,
+      presentationSemanticEvidenceWeightLines
+    };
+  `;
+  return Function(harness)();
+}
+
+function snapshotProvenanceHelperHarness() {
+  const harness = `
+    ${studySnapshotProvenanceHelpers}
+    return {
+      scopeSnapshotReasonForInclusionRowsCore,
+      scopeSnapshotProvenanceLinesCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function graphProjectionHelperHarness() {
+  const harness = `
+    ${studyGraphProjectionHelpers}
+    return {
+      scopeSnapshotLayerControlViewModelCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function inspectorDisplayHelperHarness() {
+  const harness = `
+    ${studyInspectorDisplayHelpers}
+    return {
+      progressiveDisclosureSummaryLabelCore,
+      shouldCollapseStudyDetailCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function studyPanelDisplayStateHelperHarness() {
+  const harness = `
+    ${studyPanelDisplayStateHelpers}
+    return {
+      studyPanelCountLabelCore,
+      studyPanelStatusLineCore,
+      studyPanelPlaceholderTextCore,
+      studyPanelEmptyStateMessageCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function studyPanelSummaryViewModelHelperHarness() {
+  const harness = `
+    ${studyPanelSummaryViewModelHelpers}
+    return {
+      studyPanelGroupSummaryViewModelCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function studyPanelVisibilityHelperHarness() {
+  const harness = `
+    ${studyPanelVisibilityHelpers}
+    return {
+      studyPanelSectionModulesCore,
+      studyPanelSectionVisibleCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function studyPanelSummaryLabelHelperHarness() {
+  const harness = `
+    ${studyInspectorDisplayHelpers}
+    ${studyPanelSummaryLabelHelpers}
+    return {
+      studyPanelSummaryLabelCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function studyPanelCardMetadataHelperHarness() {
+  const harness = `
+    ${studyInspectorDisplayHelpers}
+    ${studyPanelCardMetadataHelpers}
+    return {
+      studyPanelCardMetadataCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function metricStateHelperHarness() {
+  const harness = `
+    ${fs.readFileSync(path.join(root, "study-metric-state-helpers.js"), "utf8")}
+    return {
+      metricStateCore
+    };
+  `;
+  return Function(harness)();
+}
+
+function diagnosticHelperHarness() {
+  const detailSource = extractDiagnosticHelperSource("diagnosticDetailLine");
+  const displaySource = extractDiagnosticHelperSource("diagnosticDisplayValue");
+  const statusSource = extractDiagnosticHelperSource("diagnosticStatusValue");
+  const countSource = extractDiagnosticHelperSource("diagnosticPresentationCount");
+  const failureSource = extractDiagnosticHelperSource("diagnosticFailureMessage");
+  const harness = `
+    const fullStudyDataLoaded = true;
+    function normalizeText(value) {
+      return value == null ? "" : String(value);
+    }
+    ${detailSource}
+    ${displaySource}
+    ${statusSource}
+    ${countSource}
+    ${failureSource}
+    return {
+      diagnosticDetailLine,
+      diagnosticDisplayValue,
+      diagnosticStatusValue,
+      diagnosticPresentationCount,
+      diagnosticFailureMessage
+    };
+  `;
+  return Function(harness)();
 }
 
 function extractFunctionSource(functionName) {
@@ -107,6 +296,7 @@ function scopeSnapshotLayerControlsHarness() {
     function asArray(value) {
       return Array.isArray(value) ? value : [];
     }
+    ${studyGraphProjectionHelpers}
     ${source}
     return { createScopeSnapshotLayerControls, created };
   `;
@@ -687,6 +877,191 @@ const checks = [
     }
   },
   {
+    name: "Presentation helpers are externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-presentation-helpers.js"></script>`), "Missing study presentation helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-presentation-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Presentation helper must load before study.js.");
+      assert(!/function presentationSemanticWordingProvenanceLines/.test(studyJs), "presentationSemanticWordingProvenanceLines should live in study-presentation-helpers.js.");
+      assert(!/function presentationSemanticEvidenceWeightLines/.test(studyJs), "presentationSemanticEvidenceWeightLines should live in study-presentation-helpers.js.");
+      const presentationHelpers = presentationHelperHarness();
+      assert(presentationHelpers.presentationSemanticWordingProvenanceLines({ source: "S", label: "L" }).includes("Source: S"), "Missing wording provenance helper behavior.");
+      assert(presentationHelpers.presentationSemanticEvidenceWeightLines({ evidenceType: "T", supportingRecords: ["A", "B", "C", "D", "E", "F"] }).includes("Supporting Records Hidden: 1"), "Missing evidence weight helper behavior.");
+    }
+  },
+  {
+    name: "Snapshot provenance helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-snapshot-provenance-helpers.js"></script>`), "Missing snapshot provenance helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-snapshot-provenance-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Snapshot provenance helper must load before study.js.");
+      assert(!/function scopeSnapshotReasonForInclusionRowsCore/.test(studyJs), "scopeSnapshotReasonForInclusionRowsCore should live in study-snapshot-provenance-helpers.js.");
+      assert(!/function scopeSnapshotProvenanceLinesCore/.test(studyJs), "scopeSnapshotProvenanceLinesCore should live in study-snapshot-provenance-helpers.js.");
+      assert(/scopeSnapshotReasonForInclusionRowsCore\(provenance\)/.test(studyJs), "scopeSnapshotReasonForInclusionLines should delegate to the extracted helper.");
+      assert(/scopeSnapshotProvenanceLinesCore\(provenanceLinesModel\)/.test(studyJs), "scopeSnapshotProvenanceLines should delegate to the extracted helper.");
+      const snapshotHelpers = snapshotProvenanceHelperHarness();
+      const reasonRows = snapshotHelpers.scopeSnapshotReasonForInclusionRowsCore({
+        createdBy: "graph projection",
+        rule: "scope-snapshot",
+        matchedSource: "Matthew 3:1",
+        context: "current scope",
+        graphDecision: "display node",
+        qualification: "presentation only",
+        confidence: "high"
+      });
+      assert(reasonRows[0][0] === "Created by" && reasonRows[0][1] === "graph projection", "Snapshot provenance helper reason rows failed.");
+      const provenanceLines = snapshotHelpers.scopeSnapshotProvenanceLinesCore({
+        selectionType: "node",
+        item: { reference: { label: "Matthew 3:1" }, recordType: "event", status: "verified", provenance: "source record" },
+        graphObject: { createdBy: "graph projection", graphKey: "snapshot-node", confidence: "high", sourceReference: "Matthew 3:1", diagnostics: "ok" },
+        path: ["Primary Evidence", "Linear Scope Snapshot Node"],
+        activeScope: "Matthew 3",
+        originatingSource: "Matthew 3:1",
+        intermediateDerivedLayers: "event",
+        authoritySource: "primary evidence",
+        confidenceInheritance: "high",
+        evidenceChain: "Matthew 3:1 -> event -> Snapshot Node"
+      });
+      assert(provenanceLines.some((line) => line.includes("Originating source record: Matthew 3:1")), "Snapshot provenance helper did not preserve originating source.");
+      assert(provenanceLines.some((line) => line.includes("Show Full Provenance Chain")), "Snapshot provenance helper did not preserve provenance drilldown.");
+    }
+  },
+  {
+    name: "Inspector display helpers are externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-inspector-display-helpers.js"></script>`), "Missing inspector display helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-inspector-display-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Inspector display helper must load before study.js.");
+      assert(/progressiveDisclosureSummaryLabelCore\(title\)/.test(studyJs), "progressiveDisclosureSummaryLabel should delegate to the extracted helper.");
+      assert(/shouldCollapseStudyDetailCore\(title, options\)/.test(studyJs), "shouldCollapseStudyDetail should delegate to the extracted helper.");
+      const inspectorHelpers = inspectorDisplayHelperHarness();
+      assert(inspectorHelpers.progressiveDisclosureSummaryLabelCore("Reasoning Path") === "Show Reasoning", "Inspector summary helper failed reasoning-path labeling.");
+      assert(inspectorHelpers.progressiveDisclosureSummaryLabelCore("Evidence Weight") === "Show Evidence", "Inspector summary helper failed evidence labeling.");
+      assert(inspectorHelpers.shouldCollapseStudyDetailCore("Evidence Weight", {}) === true, "Inspector collapse helper failed evidence collapse.");
+      assert(inspectorHelpers.shouldCollapseStudyDetailCore("General Detail", { collapsed: false }) === false, "Inspector collapse helper should respect explicit open detail.");
+    }
+  },
+  {
+    name: "Study panel display-state helpers are externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-panel-display-state-helpers.js"></script>`), "Missing study panel display-state helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-panel-display-state-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Study panel display-state helper must load before study.js.");
+      assert(!/function studyPanelCountLabelCore/.test(studyJs), "studyPanelCountLabelCore should live in study-panel-display-state-helpers.js.");
+      assert(!/function studyPanelStatusLineCore/.test(studyJs), "studyPanelStatusLineCore should live in study-panel-display-state-helpers.js.");
+      const displayHelpers = studyPanelDisplayStateHelperHarness();
+      assert(displayHelpers.studyPanelCountLabelCore(null) === "Not loaded", "Study panel count helper failed not-loaded text.");
+      assert(displayHelpers.studyPanelCountLabelCore(4) === "4 record(s)", "Study panel count helper failed loaded count text.");
+      assert(displayHelpers.studyPanelStatusLineCore(null) === "Details not rendered.", "Study panel status helper failed empty text.");
+      assert(displayHelpers.studyPanelStatusLineCore(0) === "No records · Details not rendered.", "Study panel status helper failed empty-record text.");
+      assert(displayHelpers.studyPanelStatusLineCore(3) === "3 record(s) · Details not rendered.", "Study panel status helper failed record count text.");
+      assert(displayHelpers.studyPanelStatusLineCore(3, true) === "3 record(s) · Details rendered.", "Study panel status helper failed rendered text.");
+      assert(displayHelpers.studyPanelPlaceholderTextCore() === "Not rendered yet. Expand to load details for the current Study Scope.", "Study panel placeholder helper failed default text.");
+      assert(displayHelpers.studyPanelEmptyStateMessageCore() === "No graphable records are available for the current study.", "Study panel empty-state helper failed default text.");
+      assert(/studyPanelPlaceholderTextCore\(options\.lazyPlaceholder\)/.test(studyJs), "createPassageFunctionSection should delegate lazy placeholder text to the extracted helper.");
+      assert(/studyPanelEmptyStateMessageCore\(message\)/.test(studyJs), "renderScopeSnapshotEmptyState should delegate empty-state text to the extracted helper.");
+      assert(/studyPanelStatusLineCore\(deferredSectionRecordCount\(label\)\)/.test(studyJs), "Deferred section status should delegate to the extracted helper.");
+      assert(/studyPanelCountLabelCore\(deferredSectionRecordCount\(label\)\)/.test(studyJs), "Deferred section count should delegate to the extracted helper.");
+      assert(/studyPanelStatusLineCore\(deferredSectionRecordCount\(entry\.label\), Boolean\(options\.loadedNodes\)\)/.test(studyJs), "Deferred section rendered status should delegate to the extracted helper.");
+    }
+  },
+  {
+    name: "Study panel summary view-model helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-panel-summary-view-model-helpers.js"></script>`), "Missing study panel summary view-model helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-panel-summary-view-model-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Study panel summary view-model helper must load before study.js.");
+      assert(!/function studyPanelGroupSummaryViewModelCore/.test(studyJs), "studyPanelGroupSummaryViewModelCore should live in study-panel-summary-view-model-helpers.js.");
+      const summaryHelpers = studyPanelSummaryViewModelHelperHarness();
+      const hidden = summaryHelpers.studyPanelGroupSummaryViewModelCore({ visibleEntries: 0, warningCount: 0, rendered: 0, notLoaded: 2, recordTotal: 6, matchCount: 0, term: "" });
+      assert(hidden.statusText === "Hidden by view", "Study panel summary helper failed hidden status text.");
+      assert(hidden.countText === "0 section(s) · 0 rendered · 2 not loaded · 6 record(s)", "Study panel summary helper failed count text.");
+      assert(hidden.matchText === "", "Study panel summary helper failed empty match text.");
+      const ready = summaryHelpers.studyPanelGroupSummaryViewModelCore({ visibleEntries: 3, warningCount: 1, rendered: 2, notLoaded: 1, recordTotal: 8, matchCount: 4, term: "scope" });
+      assert(ready.statusText === "1 warning(s)", "Study panel summary helper failed warning status text.");
+      assert(ready.countText === "3 section(s) · 2 rendered · 1 not loaded · 8 record(s)", "Study panel summary helper failed rendered count text.");
+      assert(ready.matchText === "4 match(es)", "Study panel summary helper failed match text.");
+      assert(/studyPanelGroupSummaryViewModelCore\(\{/.test(studyJs), "updateStudyGroupSummary should delegate to the extracted summary helper.");
+    }
+  },
+  {
+    name: "Study panel section visibility helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-panel-visibility-helpers.js"></script>`), "Missing study panel visibility helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-panel-visibility-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Study panel visibility helper must load before study.js.");
+      assert(!/function studyPanelSectionModulesCore/.test(studyJs), "studyPanelSectionModulesCore should live in study-panel-visibility-helpers.js.");
+      assert(!/function studyPanelSectionVisibleCore/.test(studyJs), "studyPanelSectionVisibleCore should live in study-panel-visibility-helpers.js.");
+      const visibilityHelpers = studyPanelVisibilityHelperHarness();
+      assert(visibilityHelpers.studyPanelSectionModulesCore("Linear Scope Snapshot").includes("snapshot"), "Study panel visibility helper failed snapshot module mapping.");
+      assert(visibilityHelpers.studyPanelSectionModulesCore("Study Scope").length === 1, "Study panel visibility helper failed study-scope module mapping.");
+      assert(visibilityHelpers.studyPanelSectionVisibleCore("Study Scope", new Set(["overview"])) === true, "Study panel visibility helper failed visible-state resolution.");
+      assert(visibilityHelpers.studyPanelSectionVisibleCore("Study Scope", new Set(["theme"])) === false, "Study panel visibility helper failed hidden-state resolution.");
+      assert(/studyPanelSectionVisibleCore\(label, selectedPresentationModules\)/.test(studyJs), "presentationModuleSelected should delegate to the extracted visibility helper.");
+    }
+  },
+  {
+    name: "Study panel summary-label helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-panel-summary-label-helpers.js"></script>`), "Missing study panel summary-label helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-panel-summary-label-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Study panel summary-label helper must load before study.js.");
+      assert(!/function studyPanelSummaryLabelCore/.test(studyJs), "studyPanelSummaryLabelCore should live in study-panel-summary-label-helpers.js.");
+      const summaryLabelHelpers = studyPanelSummaryLabelHelperHarness();
+      assert(summaryLabelHelpers.studyPanelSummaryLabelCore({ title: "Reasoning Path", useProgressiveDisclosure: true }) === "Show Reasoning", "Study panel summary-label helper failed progressive label text.");
+      assert(summaryLabelHelpers.studyPanelSummaryLabelCore({ title: "Evidence Weight", summaryLabel: "Show Evidence" }) === "Show Evidence", "Study panel summary-label helper failed explicit label text.");
+      assert(summaryLabelHelpers.studyPanelSummaryLabelCore({ title: "Study Scope" }) === "Show Study Scope", "Study panel summary-label helper failed plain fallback text.");
+      assert(/studyPanelSummaryLabelCore\(\{ title, summaryLabel: options\.summaryLabel, useProgressiveDisclosure: true \}\)/.test(studyJs), "createPassageFunctionSection should delegate summary text to the extracted helper.");
+      assert(/studyPanelSummaryLabelCore\(\{ title, summaryLabel: options\.summaryLabel \}\)/.test(studyJs), "createLazyInspectorSection should delegate summary text to the extracted helper.");
+    }
+  },
+  {
+    name: "Study panel card metadata helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-panel-card-metadata-helpers.js"></script>`), "Missing study panel card metadata helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-panel-card-metadata-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Study panel card metadata helper must load before study.js.");
+      assert(!/function studyPanelCardMetadataCore/.test(studyJs), "studyPanelCardMetadataCore should live in study-panel-card-metadata-helpers.js.");
+      const cardHelpers = studyPanelCardMetadataHelperHarness();
+      const cardMetadata = cardHelpers.studyPanelCardMetadataCore("Title", "Body line", "Meta label");
+      assert(cardMetadata.titleText === "Title", "Study panel card metadata helper failed title passthrough.");
+      assert(cardMetadata.bodyText === "Body line", "Study panel card metadata helper failed body passthrough.");
+      assert(cardMetadata.metaText === "Meta label", "Study panel card metadata helper failed meta passthrough.");
+      const emptyMetadata = cardHelpers.studyPanelCardMetadataCore("", "", "");
+      assert(emptyMetadata.titleText === "Untitled", "Study panel card metadata helper failed untitled fallback.");
+      assert(emptyMetadata.bodyText === "No detail available.", "Study panel card metadata helper failed no-detail fallback.");
+      assert(emptyMetadata.metaText === "", "Study panel card metadata helper failed empty meta fallback.");
+      assert(/const cardMetadata = studyPanelCardMetadataCore\(title, body, meta\);/.test(studyJs), "createCard should delegate metadata shaping to the extracted helper.");
+    }
+  },
+  {
+    name: "Metric state helper is externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-metric-state-helpers.js"></script>`), "Missing metric state helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-metric-state-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Metric state helper must load before study.js.");
+      assert(/metricStateCore\(\{ active, denominator, numerator, unresolved, unsupported, applicable, unavailable \}\)/.test(studyJs), "metricState should delegate to the extracted helper.");
+      const metricHelpers = metricStateHelperHarness();
+      assert(metricHelpers.metricStateCore({ applicable: false }) === "not_applicable", "Metric helper should preserve not-applicable state.");
+      assert(metricHelpers.metricStateCore({ unavailable: true }) === "unavailable_from_current_scope", "Metric helper should preserve unavailable state.");
+      assert(metricHelpers.metricStateCore({ active: false }) === "inactive", "Metric helper should preserve inactive state.");
+      assert(metricHelpers.metricStateCore({ active: true, denominator: 0 }) === "active_no_records", "Metric helper should preserve empty active state.");
+      assert(metricHelpers.metricStateCore({ active: true, denominator: 4, numerator: 2, unresolved: 2 }) === "active_with_records", "Metric helper should preserve active-with-records state.");
+    }
+  },
+  {
+    name: "Diagnostic presentation helpers are externalized and loaded before study.js",
+    run: () => {
+      assert(studyHtml.includes(`<script src="study-diagnostic-helpers.js"></script>`), "Missing diagnostic helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-diagnostic-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Diagnostic helper must load before study.js.");
+      const renderDiagnosticsSource = studyJs.match(/function renderDiagnostics[\s\S]*?\n  function showDiagnosticMessage/)?.[0] || "";
+      assert(/function exportLine\(label, value\) \{\s*return diagnosticDetailLine\(label, value\);\s*\}/.test(studyJs), "exportLine should delegate to the diagnostic detail-line helper.");
+      assert(!/function diagnosticDisplayValue/.test(studyJs), "diagnosticDisplayValue should live in study-diagnostic-helpers.js.");
+      assert(!/function diagnosticFailureMessage/.test(studyJs), "diagnosticFailureMessage should live in study-diagnostic-helpers.js.");
+      const diagnosticHelpers = diagnosticHelperHarness();
+      assert(diagnosticHelpers.diagnosticDetailLine("Label", "Value") === "Label: Value", "Diagnostic detail helper formatting failed.");
+      assert(diagnosticHelpers.diagnosticDetailLine("Label", 0) === "Label: Not recorded", "Diagnostic detail helper zero fallback failed.");
+      assert(diagnosticHelpers.diagnosticDisplayValue("hello") === "hello", "Diagnostic display helper passthrough failed.");
+      assert(diagnosticHelpers.diagnosticDisplayValue("", true, "Fallback") === "Fallback", "Diagnostic display helper empty fallback failed.");
+      assert(diagnosticHelpers.diagnosticDisplayValue("ignored", false, "Fallback") === "Fallback", "Diagnostic display helper unavailable fallback failed.");
+      assert(diagnosticHelpers.diagnosticStatusValue("", "Fallback") === "Fallback", "Diagnostic status helper fallback failed.");
+      assert(diagnosticHelpers.diagnosticPresentationCount(4, false) === "Not loaded", "Diagnostic count helper availability check failed.");
+      assert(diagnosticHelpers.diagnosticFailureMessage("Navigation failed", new Error("boom")) === "Navigation failed: boom", "Diagnostic failure helper formatting failed.");
+      assert(diagnosticHelpers.diagnosticFailureMessage("Navigation failed", undefined) === "Navigation failed: Unknown error", "Diagnostic failure helper fallback failed.");
+    }
+  },
+  {
     name: "Source-scope predicate is executable and globally visible",
     run: () => {
       const firstPredicateIndex = studyJs.indexOf("function isSourceScopeCurrentStudyRecord");
@@ -781,12 +1156,16 @@ const checks = [
       const fn = studyJs.match(/function createScopeSnapshotLayerControls[\s\S]*?\n  function createCopyRenderPanel/);
       assert(fn, "createScopeSnapshotLayerControls function block was not found.");
       assert(/function createScopeSnapshotLayerControls\(model = \{\}\)/.test(fn[0]), "Layer controls should receive the Snapshot projection model explicitly.");
+      assert(/scopeSnapshotLayerControlViewModelCore\(model, scopeSnapshotViewState\.layerPreset, SCOPE_SNAPSHOT_LAYER_PRESETS\)/.test(fn[0]), "Layer controls do not delegate view-model shaping to the extracted helper.");
       assert(/const layerStatus = document\.createElement\("p"\)/.test(fn[0]), "Layer controls do not create a local layer status element.");
       assert(/panel\.append\(layerStatus, presetRow, layerGroups, note\)/.test(fn[0]), "Layer controls still append the wrong header binding.");
       assert(!/(^|[^\w$."'-])summary\b/.test(fn[0]), "Layer controls still reference an undeclared bare summary identifier.");
       const caller = studyJs.match(/function createScopeSnapshotCard[\s\S]*?\n  function renderScopeSnapshot/);
       assert(caller, "createScopeSnapshotCard function block was not found.");
       assert(/createScopeSnapshotLayerControls\(model\)/.test(caller[0]), "Snapshot card does not pass the projection model into layer controls.");
+      assert(studyHtml.includes(`<script src="study-graph-projection-helpers.js"></script>`), "Missing graph projection helper script tag.");
+      assert(studyHtml.indexOf(`<script src="study-graph-projection-helpers.js"></script>`) < studyHtml.indexOf(`<script src="study.js"></script>`), "Graph projection helper must load before study.js.");
+      assert(!/function scopeSnapshotLayerControlViewModelCore/.test(studyJs), "scopeSnapshotLayerControlViewModelCore should live in study-graph-projection-helpers.js.");
 
       const { createScopeSnapshotLayerControls } = scopeSnapshotLayerControlsHarness();
       const normalPanel = createScopeSnapshotLayerControls({
@@ -804,6 +1183,22 @@ const checks = [
       assert(normalPanel.tagName === "section", "Layer controls did not return a section.");
       assert(normalPanel.children.length === 4, "Layer controls should render status, presets, groups, and note.");
       assert(/Layers: 2 active/.test(normalPanel.children[0].textContent), "Layer status does not reflect active layer count.");
+      const projectionHelpers = graphProjectionHelperHarness();
+      const viewModel = projectionHelpers.scopeSnapshotLayerControlViewModelCore({
+        hiddenLayerNodes: 4,
+        layerModel: {
+          activeLayerIds: ["characters", "events"],
+          recommendedLayerIds: ["characters"],
+          availability: [
+            { id: "characters", group: "Core", label: "Characters", available: true, recommendationReason: "range relevant", unresolvedCount: 0 },
+            { id: "events", group: "Core", label: "Events", available: true, recommendationReason: "range relevant", unresolvedCount: 1 },
+            { id: "technical", group: "Debug", label: "Technical", available: false, dependencyUnavailable: true, recommendationReason: "not loaded", unresolvedCount: 0 }
+          ]
+        }
+      }, "auto", { auto: { label: "Auto" }, custom: { label: "Custom" } });
+      assert(viewModel.activeCount === 2 && viewModel.recommendedCount === 1, "Graph projection helper count summary failed.");
+      assert(viewModel.groupedLayers.length === 2, "Graph projection helper did not preserve group ordering.");
+      assert(viewModel.presetItems[0].label === "Auto", "Graph projection helper preset mapping failed.");
 
       const emptyPanel = createScopeSnapshotLayerControls({});
       assert(emptyPanel.children.length === 4, "Empty layer controls should still render safely.");

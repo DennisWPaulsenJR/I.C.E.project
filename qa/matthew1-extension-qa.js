@@ -80,6 +80,68 @@ function loadPlaywright() {
   }
 }
 
+function writeQaBundle(bundle) {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(bundle, null, 2));
+}
+
+function findLocalPlaywrightPackage() {
+  let current = EXTENSION_ROOT;
+
+  while (true) {
+    const candidate = path.join(current, "node_modules", "playwright", "package.json");
+    if (fs.existsSync(candidate)) return candidate;
+
+    const parent = path.dirname(current);
+    if (parent === current) return "";
+    current = parent;
+  }
+}
+
+function buildPlaywrightMissingBundle() {
+  return {
+    testedAt: new Date().toISOString(),
+    url: TEST_URL,
+    pass: false,
+    failureType: "missing-playwright",
+    failures: [
+      "Playwright is not installed in this environment, so Matthew 1 extension QA could not launch Chromium."
+    ],
+    setupCommands: [
+      "npm install",
+      "npx playwright install chromium",
+      "npm run qa:matthew1"
+    ],
+    environment: {
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      npmProxy: process.env.npm_config_https_proxy || process.env.npm_config_http_proxy || "",
+      httpsProxy: process.env.HTTPS_PROXY || process.env.https_proxy || "",
+      httpProxy: process.env.HTTP_PROXY || process.env.http_proxy || ""
+    },
+    counts: {},
+    samples: {},
+    pageHtmlSample: "",
+    mainContentHtmlSample: ""
+  };
+}
+
+function requirePlaywright() {
+  if (!findLocalPlaywrightPackage()) {
+    const bundle = buildPlaywrightMissingBundle();
+    writeQaBundle(bundle);
+
+    console.error("FAIL: Playwright is not installed.");
+    console.error("Setup commands:");
+    for (const command of bundle.setupCommands) console.error(`  ${command}`);
+    console.error(`Bundle: ${OUTPUT_FILE}`);
+    process.exit(1);
+  }
+
+  return require("playwright");
+}
+
 function count(value) {
   return Array.isArray(value) ? value.length : value && typeof value === "object" ? 1 : 0;
 }
@@ -197,7 +259,10 @@ function buildSamples(storageData) {
 
 function writeQaBundle(bundle) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(bundle, null, 2));
+  const temporaryFile = path.join(OUTPUT_DIR, `.latest-qa-bundle-${process.pid}.tmp`);
+  fs.writeFileSync(temporaryFile, JSON.stringify(bundle, null, 2), "utf8");
+  fs.renameSync(temporaryFile, OUTPUT_FILE);
+  JSON.parse(fs.readFileSync(OUTPUT_FILE, "utf8"));
   return OUTPUT_FILE;
 }
 

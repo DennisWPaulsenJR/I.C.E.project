@@ -5191,3 +5191,629 @@ Validation:
 
 Next recommended step:
 - Browser presentation smoke to confirm bottom sections no longer show retained Matthew 1-3 when the active Study Scope is another page or a narrower explicit scope.
+Status:
+- Investigated; file not found locally or on `origin/master`
+
+## 2026-05-13 03:00 - mcdx - Add optional live page overlay
+
+Task:
+- Implement the previously planned lightweight page overlay/sidebar without replacing `content.js` or `engine.js`.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `git diff --check` passed.
+- `npm run qa:matthew1` blocked because Playwright is not installed.
+- `npm install` blocked by npm registry/proxy 403 for `playwright`.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Have pcdx pull/apply the patch bridge if MCDX shell GitHub push remains blocked by proxy 403.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 04:10 - mcdx - Make Matthew QA report Playwright readiness
+
+Task:
+- Address requirement that Playwright QA must produce a report before commit, even when MCDX cannot install Playwright because of the shell/npm proxy.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `npm run qa:matthew1` now writes `qa-output/latest-qa-bundle.json` before failing with `failureType: missing-playwright` when Playwright is unavailable.
+- `npm install` remains blocked by npm registry/proxy 403 for `playwright` in MCDX.
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX/desktop should still run `npm install`, `npx playwright install chromium`, and `npm run qa:matthew1` for full browser QA after applying/pulling MCDX changes.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 00:00 - mcdx - Establish direct agent outbox
+
+Task:
+- Create a separate quick direct-message outbox for actor-to-actor handoffs while keeping the activity log as chronological work history.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should read `THREAD_ARCHIVE/AGENT_OUTBOX.md` as the quick MCDX-to-PCDX message lane and use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable work logs.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell GitHub proxy remains blocked.
+
+## 2026-05-13 05:20 - mcdx - Add repo-visible QA status snapshot
+
+Task:
+- Add a concise QA readiness snapshot so `gpt`, `mgpt`, `pcdx`, and `mcdx` can quickly see current QA commands, supported QA, latest known desktop validation, blockers, and bridge workflow.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `python3 -m json.tool manifest.json` passed.
+- `python3 -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm run qa:matthew1` wrote `qa-output/latest-qa-bundle.json` and exited with `failureType: missing-playwright` because Playwright is not installed in MCDX.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub access remains blocked by proxy CONNECT 403.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell proxy remains blocked.
+
+## 2026-05-13 05:45 - mcdx - Add environment enablement QA note
+
+Task:
+- Add MCDX environment enablement details to the repo-visible QA snapshot, including current MCDX capabilities, current proxy blockers, preferred allowlist, verification sequence, and bridge workflow note.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js` passed via individual checks.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub and run desktop validation if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+
+## 2026-05-13 06:15 - mcdx - Add thread accounting report
+
+Task:
+- Add a report-style MCDX thread accounting file so PCDX can quickly understand what this MCDX thread worked on, which commits were bridged, what validations ran, and what still needs bridge support.
+
+Files changed:
+- `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+- Investigated; file not found locally or on `origin/master`
+
+## 2026-05-13 03:00 - mcdx - Add optional live page overlay
+
+Task:
+- Implement the previously planned lightweight page overlay/sidebar without replacing `content.js` or `engine.js`.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `git diff --check` passed.
+- `npm run qa:matthew1` blocked because Playwright is not installed.
+- `npm install` blocked by npm registry/proxy 403 for `playwright`.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Have pcdx pull/apply the patch bridge if MCDX shell GitHub push remains blocked by proxy 403.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 04:10 - mcdx - Make Matthew QA report Playwright readiness
+
+Task:
+- Address requirement that Playwright QA must produce a report before commit, even when MCDX cannot install Playwright because of the shell/npm proxy.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `npm run qa:matthew1` now writes `qa-output/latest-qa-bundle.json` before failing with `failureType: missing-playwright` when Playwright is unavailable.
+- `npm install` remains blocked by npm registry/proxy 403 for `playwright` in MCDX.
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX/desktop should still run `npm install`, `npx playwright install chromium`, and `npm run qa:matthew1` for full browser QA after applying/pulling MCDX changes.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 00:00 - mcdx - Establish direct agent outbox
+
+Task:
+- Create a separate quick direct-message outbox for actor-to-actor handoffs while keeping the activity log as chronological work history.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should read `THREAD_ARCHIVE/AGENT_OUTBOX.md` as the quick MCDX-to-PCDX message lane and use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable work logs.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell GitHub proxy remains blocked.
+
+## 2026-05-13 05:20 - mcdx - Add repo-visible QA status snapshot
+
+Task:
+- Add a concise QA readiness snapshot so `gpt`, `mgpt`, `pcdx`, and `mcdx` can quickly see current QA commands, supported QA, latest known desktop validation, blockers, and bridge workflow.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `python3 -m json.tool manifest.json` passed.
+- `python3 -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm run qa:matthew1` wrote `qa-output/latest-qa-bundle.json` and exited with `failureType: missing-playwright` because Playwright is not installed in MCDX.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub access remains blocked by proxy CONNECT 403.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell proxy remains blocked.
+
+## 2026-05-13 05:45 - mcdx - Add environment enablement QA note
+
+Task:
+- Add MCDX environment enablement details to the repo-visible QA snapshot, including current MCDX capabilities, current proxy blockers, preferred allowlist, verification sequence, and bridge workflow note.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js` passed via individual checks.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub and run desktop validation if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+
+## 2026-05-13 06:15 - mcdx - Add thread accounting report
+
+Task:
+- Add a report-style MCDX thread accounting file so PCDX can quickly understand what this MCDX thread worked on, which commits were bridged, what validations ran, and what still needs bridge support.
+
+Files changed:
+- `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+- Investigated; file not found locally or on `origin/master`
+
+## 2026-05-13 03:00 - mcdx - Add optional live page overlay
+
+Task:
+- Implement the previously planned lightweight page overlay/sidebar without replacing `content.js` or `engine.js`.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `git diff --check` passed.
+- `npm run qa:matthew1` blocked because Playwright is not installed.
+- `npm install` blocked by npm registry/proxy 403 for `playwright`.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Have pcdx pull/apply the patch bridge if MCDX shell GitHub push remains blocked by proxy 403.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 04:10 - mcdx - Make Matthew QA report Playwright readiness
+
+Task:
+- Address requirement that Playwright QA must produce a report before commit, even when MCDX cannot install Playwright because of the shell/npm proxy.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `npm run qa:matthew1` now writes `qa-output/latest-qa-bundle.json` before failing with `failureType: missing-playwright` when Playwright is unavailable.
+- `npm install` remains blocked by npm registry/proxy 403 for `playwright` in MCDX.
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX/desktop should still run `npm install`, `npx playwright install chromium`, and `npm run qa:matthew1` for full browser QA after applying/pulling MCDX changes.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 00:00 - mcdx - Establish direct agent outbox
+
+Task:
+- Create a separate quick direct-message outbox for actor-to-actor handoffs while keeping the activity log as chronological work history.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should read `THREAD_ARCHIVE/AGENT_OUTBOX.md` as the quick MCDX-to-PCDX message lane and use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable work logs.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell GitHub proxy remains blocked.
+
+## 2026-05-13 05:20 - mcdx - Add repo-visible QA status snapshot
+
+Task:
+- Add a concise QA readiness snapshot so `gpt`, `mgpt`, `pcdx`, and `mcdx` can quickly see current QA commands, supported QA, latest known desktop validation, blockers, and bridge workflow.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `python3 -m json.tool manifest.json` passed.
+- `python3 -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm run qa:matthew1` wrote `qa-output/latest-qa-bundle.json` and exited with `failureType: missing-playwright` because Playwright is not installed in MCDX.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub access remains blocked by proxy CONNECT 403.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell proxy remains blocked.
+
+## 2026-05-13 05:45 - mcdx - Add environment enablement QA note
+
+Task:
+- Add MCDX environment enablement details to the repo-visible QA snapshot, including current MCDX capabilities, current proxy blockers, preferred allowlist, verification sequence, and bridge workflow note.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js` passed via individual checks.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub and run desktop validation if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+
+## 2026-05-13 06:15 - mcdx - Add thread accounting report
+
+Task:
+- Add a report-style MCDX thread accounting file so PCDX can quickly understand what this MCDX thread worked on, which commits were bridged, what validations ran, and what still needs bridge support.
+
+Files changed:
+- `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+- Investigated; file not found locally or on `origin/master`
+- Investigated; file not found locally or on `origin/master`
+
+## 2026-05-13 03:00 - mcdx - Add optional live page overlay
+
+Task:
+- Implement the previously planned lightweight page overlay/sidebar without replacing `content.js` or `engine.js`.
+
+Files changed:
+- `manifest.json`
+- `background.js`
+- `popup.html`
+- `popup.js`
+- `pageOverlay.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `git diff --check` passed.
+- `npm run qa:matthew1` blocked because Playwright is not installed.
+- `npm install` blocked by npm registry/proxy 403 for `playwright`.
+
+Commit:
+- This commit
+
+Next recommended step:
+- Have pcdx pull/apply the patch bridge if MCDX shell GitHub push remains blocked by proxy 403.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 04:10 - mcdx - Make Matthew QA report Playwright readiness
+
+Task:
+- Address requirement that Playwright QA must produce a report before commit, even when MCDX cannot install Playwright because of the shell/npm proxy.
+
+Files changed:
+- `qa/matthew1-extension-qa.js`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `npm run qa:matthew1` now writes `qa-output/latest-qa-bundle.json` before failing with `failureType: missing-playwright` when Playwright is unavailable.
+- `npm install` remains blocked by npm registry/proxy 403 for `playwright` in MCDX.
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX/desktop should still run `npm install`, `npx playwright install chromium`, and `npm run qa:matthew1` for full browser QA after applying/pulling MCDX changes.
+
+Status:
+- Implemented locally and committed on `work`; GitHub push still requires pcdx/proxy bridge.
+
+## 2026-05-13 00:00 - mcdx - Establish direct agent outbox
+
+Task:
+- Create a separate quick direct-message outbox for actor-to-actor handoffs while keeping the activity log as chronological work history.
+
+Files changed:
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should read `THREAD_ARCHIVE/AGENT_OUTBOX.md` as the quick MCDX-to-PCDX message lane and use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable work logs.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell GitHub proxy remains blocked.
+
+## 2026-05-13 05:20 - mcdx - Add repo-visible QA status snapshot
+
+Task:
+- Add a concise QA readiness snapshot so `gpt`, `mgpt`, `pcdx`, and `mcdx` can quickly see current QA commands, supported QA, latest known desktop validation, blockers, and bridge workflow.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js qa/matthew1-extension-qa.js` passed via individual checks.
+- `python3 -m json.tool manifest.json` passed.
+- `python3 -m json.tool package.json` passed.
+- `git diff --check` passed.
+- `npm run qa:matthew1` wrote `qa-output/latest-qa-bundle.json` and exited with `failureType: missing-playwright` because Playwright is not installed in MCDX.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub access remains blocked by proxy CONNECT 403.
+
+Status:
+- Implemented locally on `work`; GitHub push still requires PCDX bridge if MCDX shell proxy remains blocked.
+
+## 2026-05-13 05:45 - mcdx - Add environment enablement QA note
+
+Task:
+- Add MCDX environment enablement details to the repo-visible QA snapshot, including current MCDX capabilities, current proxy blockers, preferred allowlist, verification sequence, and bridge workflow note.
+
+Files changed:
+- `QA_STATUS.md`
+- `PROJECT_STATE.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+- `node --check background.js content.js engine.js popup.js study.js pageOverlay.js` passed via individual checks.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub and run desktop validation if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.
+
+## 2026-05-13 06:15 - mcdx - Add thread accounting report
+
+Task:
+- Add a report-style MCDX thread accounting file so PCDX can quickly understand what this MCDX thread worked on, which commits were bridged, what validations ran, and what still needs bridge support.
+
+Files changed:
+- `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md`
+- `THREAD_ARCHIVE/README.md`
+- `THREAD_ARCHIVE/AGENT_OUTBOX.md`
+- `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`
+
+Validation:
+- `git diff --check` passed.
+- `python3 -m json.tool package.json` passed.
+- `python3 -m json.tool manifest.json` passed.
+- `node --check qa/matthew1-extension-qa.js` passed.
+
+Commit:
+- This commit
+
+Next recommended step:
+- PCDX should bridge this commit to GitHub if MCDX shell GitHub push remains blocked.
+
+Status:
+- Implemented locally on `work`; `git push origin work` failed with proxy CONNECT 403, so PCDX bridge is required.

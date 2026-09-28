@@ -403,6 +403,58 @@
     <button id="openStudyPanel" class="primary wide" type="button">Open Study Panel</button>
   </section>
 
+  <section class="popup-settings" aria-label="Popup settings">
+  <h3>Biblical Highlighter</h3>
+
+  <label>
+    <input type="checkbox" id="enabled">
+    Enable Highlighting
+  </label>
+
+  <label>
+    <input type="checkbox" id="strictMode">
+    Strict Context Mode
+  </label>
+
+  <label>
+    <input type="checkbox" id="highlightPronouns">
+    Highlight Pronouns
+  </label>
+
+  <label>
+    <input type="checkbox" id="autoCaptureOnPageLoad">
+    Auto capture on page load
+  </label>
+
+  <label>
+    <input type="checkbox" id="showPageOverlay">
+    Show page overlay
+  </label>
+
+  <button id="runFullAnalysis">Run Full Analysis</button>
+  <button id="clearPageData">Clear Page Data</button>
+
+  <hr>
+
+  <section class="analysis-summary">
+    <p>Capture status: <span id="analysisStatus">Not run</span></p>
+    <p>Saved captures: <span id="historyCount">0</span></p>
+    <p>Timeline items: <span id="timelineCount">0</span></p>
+    <p>Event candidates: <span id="eventCount">0</span></p>
+    <p>Ordered events: <span id="orderedEventCount">0</span></p>
+    <p>Actor timelines: <span id="actorTimelineCount">0</span></p>
+    <p>Interactions: <span id="interactionCount">0</span></p>
+    <p>Scenes: <span id="sceneCount">0</span></p>
+    <p>Principles: <span id="principleCount">0</span></p>
+    <p>Last analysis: <span id="lastAnalysisAt">Never</span></p>
+  </section>
+  </section>
+
+  <details class="control-disclosure" id="sourceAdmissionDiagnostic">
+    <summary>Source Diagnostic</summary>
+    <pre id="sourceAdmissionDiagnosticOutput">No source-admission diagnostic recorded.</pre>
+  </details>
+
   <section class="compact-selector-bar" aria-label="Highlighter and Exaltation selectors">
     <label>Highlighter
       <select id="highlighterSelect" aria-label="Highlighter mode"></select>
@@ -454,9 +506,11 @@
   </section>
 
   <p id="collectionStatus" class="status-line" role="status"></p>
-  <script src="study-source-identity-helpers.js"></script>
   <p class="handoff-note">The popup collects. The Study Panel organizes the Current Study and keeps semantic records authoritative.</p>
 
+  <script src="study-source-identity-helpers.js"></script>
+  <script src="popup-normalization-helpers.js"></script>
+  <script src="popup-config-helpers.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

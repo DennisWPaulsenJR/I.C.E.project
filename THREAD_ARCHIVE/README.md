@@ -29,3 +29,11 @@ Result reporting convention:
 - Use `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` for durable completed-task summaries.
 - Use `THREAD_ARCHIVE/AGENT_OUTBOX.md` when Dennis asks for a quick current handoff that `gpt`, `mgpt`, `pcdx`, or `mcdx` should review next.
 - Keep summaries concise and link/reference the relevant repo files instead of pasting long raw transcripts.
+
+Direct-message outbox:
+- Use `THREAD_ARCHIVE/AGENT_OUTBOX.md` for short direct messages one actor asks another actor to read, especially MCDX-to-PCDX handoffs.
+- Keep the outbox separate from the activity log: outbox entries are quick chat/handoff messages; activity log entries are durable work history and validation records.
+- Do not store secrets, credentials, private keys, or long raw transcripts in the outbox.
+
+Thread accounting reports:
+- Use `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md` for report-style MCDX work summaries, commit/bridge accounting, validation ledger, and current bridge gaps.

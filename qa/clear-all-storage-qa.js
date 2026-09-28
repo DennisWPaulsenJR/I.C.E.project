@@ -362,6 +362,17 @@ const checks = [
     }
   },
   {
+    name: "Study Panel full reset delegates to the governed background contract",
+    run: () => {
+      const studyResetSource = extractFunctionSource(studyJs, "clearAllSessionData");
+      assert(/type:\s*"ICE_CLEAR_ALL_STUDY_DATA"/.test(studyResetSource), "Study Panel full reset does not request the governed background command.");
+      assert(!/chrome\.storage\.local\.remove/.test(studyResetSource), "Study Panel still performs an independent full-storage delete.");
+      assert(!/clearAllIceDataFallback/.test(studyResetSource), "Study Panel improperly duplicates popup fallback authority.");
+      assert(/if \(!result\?\.ok\)/.test(studyResetSource), "Study Panel does not fail closed when the background reset fails.");
+      assert(/resetStudyPanelAfterClearAll/.test(studyResetSource), "Study Panel does not clear presentation state after a successful governed reset.");
+    }
+  },
+  {
     name: "Late stale Matthew 1 write is rejected by generation-aware reconstruction",
     run: () => {
       const storage = simulatedPostClearStorage();

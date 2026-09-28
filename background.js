@@ -1,4 +1,4 @@
-importScripts("study-source-identity-helpers.js");
+importScripts("study-source-identity-helpers.js", "source-admission-diagnostic-helpers.js");
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -54,6 +54,8 @@ const REVELATION_PATTERNS_KEY = "ICE_REVELATION_PATTERNS";
 const SEMANTIC_EVENTS_KEY = "ICE_SEMANTIC_EVENTS";
 const SEMANTIC_FLOW_CHAINS_KEY = "ICE_SEMANTIC_FLOW_CHAINS";
 const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
+const SOURCE_ADMISSION_DIAGNOSTIC_KEY = "ICE_SOURCE_ADMISSION_DIAGNOSTIC";
+let sourceAdmissionDiagnosticSequence = 0;
 const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
 const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
 const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
@@ -2535,6 +2537,39 @@ function canonicalAnalyzedPageMarker(page = {}, { analysisTimestamp = "", buildM
     analysisTimestamp: normalized.analyzedAt,
     buildMarker
   };
+}
+
+async function recordSourceAdmissionDiagnostic(invocation = {}, status = {}) {
+  const data = await chrome.storage.local.get([CAPTURE_STORAGE_KEY, ACTIVE_SOURCE_PAGE_KEY, CANONICAL_ANALYSIS_TARGET_KEY, STUDY_GENERATION_KEY]);
+  const capture = data[CAPTURE_STORAGE_KEY] || {};
+  const page = sourceIsolationPageRecordFromCapture(capture);
+  const urlMatch = studyScopeSourceMatchFromUrl(capture.url || "");
+  const titleMatch = studyScopeSourceMatchFromTitle(capture.title || "");
+  const checks = {
+    validStudyScopeSourceUrl: validStudyScopeSourceUrl(page.activeUrl),
+    approvedAdapter: APPROVED_STUDY_SCOPE_ADAPTERS.has(page.activeAdapterName),
+    bookPresent: Boolean(page.sourceCaptureBook), chapterPresent: Boolean(page.sourceCaptureChapter),
+    urlBookAgreement: Boolean(urlMatch && urlMatch.book === page.sourceCaptureBook),
+    urlChapterAgreement: Boolean(urlMatch && String(urlMatch.chapter) === String(page.sourceCaptureChapter)),
+    titleBookAgreement: !titleMatch || titleMatch.book === page.sourceCaptureBook,
+    titleChapterAgreement: !titleMatch || String(titleMatch.chapter) === String(page.sourceCaptureChapter),
+    analyzedState: true
+  };
+  const diagnostic = {
+    capture: { url: capture.url || "", title: capture.title || "", wordCount: capture.wordCount || 0, characterCount: capture.characterCount || 0, captureReason: invocation.reason || "", capturedAt: capture.capturedAt || "" },
+    sourceAdapter: capture.sourceAdapter || { adapterName: page.activeAdapterName || "", adapterId: "", version: "" },
+    parsedIdentity: { parsedBook: page.sourceCaptureBook || "", parsedChapter: page.sourceCaptureChapter || "", urlBook: urlMatch?.book || "", urlChapter: urlMatch?.chapter || "", titleBook: titleMatch?.book || "", titleChapter: titleMatch?.chapter || "", normalizedBook: page.sourceCaptureBook || "", normalizedChapter: page.sourceCaptureChapter || "" },
+    captureIdentity: { sourceCaptureBook: page.sourceCaptureBook || "", sourceCaptureChapter: page.sourceCaptureChapter || "" },
+    scope: { preserveCanonicalScope: Boolean(invocation.preserveCanonicalScope), activeSourcePage: data[ACTIVE_SOURCE_PAGE_KEY] || null, canonicalAnalysisTarget: data[CANONICAL_ANALYSIS_TARGET_KEY] || null, currentStudyGeneration: data[STUDY_GENERATION_KEY] || null },
+    validation: { ...checks, validStudyScopePageRecord: validStudyScopePageRecord(page, { requireAnalyzed: false }) },
+    rejection: { rejectedSource: sourceIsolationRejectedSourceLabel(capture), rejectionReason: sourceIsolationRejection(capture)?.reason || "", firstFailedAdmissionCondition: globalThis.ICESourceAdmissionDiagnosticHelpers.firstSourceAdmissionFailure({ checks }) },
+    pipeline: { invocationSource: invocation.source || "other", invocationReason: invocation.reason || "", invocationIdentifier: invocation.id || "", startTimestamp: invocation.startedAt || "", completionTimestamp: new Date().toISOString(), analysisStatusWritten: status || null }
+  };
+  const current = await chrome.storage.local.get(SOURCE_ADMISSION_DIAGNOSTIC_KEY);
+  const prior = current[SOURCE_ADMISSION_DIAGNOSTIC_KEY] || {};
+  const invocations = Array.isArray(prior.invocations) ? prior.invocations : [];
+  invocations.push(diagnostic);
+  await chrome.storage.local.set({ [SOURCE_ADMISSION_DIAGNOSTIC_KEY]: { updatedAt: new Date().toISOString(), invocations: invocations.slice(-10) } });
 }
 async function admitCanonicalAnalyzedPageFromPopup(message = {}) {
   const studyGeneration = normalizeStudyGeneration(message.studyGeneration);
@@ -9630,10 +9665,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message?.type !== "ICE_RUN_FULL_ANALYSIS_PIPELINE") return false;
 
+  const diagnosticInvocation = {
+    source: message.diagnosticInvocationSource || "other",
+    reason: message.reason || "message",
+    id: message.diagnosticInvocationId || `other-${Date.now()}-${++sourceAdmissionDiagnosticSequence}`,
+    preserveCanonicalScope: Boolean(message.preserveCanonicalScope),
+    startedAt: new Date().toISOString()
+  };
   runFullAnalysisPipeline(message.reason || "message", {
     preserveCanonicalScope: Boolean(message.preserveCanonicalScope)
   })
-    .then((status) => sendResponse({ ok: true, status }))
+    .then(async (status) => {
+      await recordSourceAdmissionDiagnostic(diagnosticInvocation, status);
+      sendResponse({ ok: true, status });
+    })
     .catch((error) => sendResponse({ ok: false, error: error.message }));
 
   return true;

@@ -49,6 +49,32 @@
 
   <main class="study-shell">
 
+    <section class="study-overview" id="studyOverview" aria-labelledby="studyOverviewHeading">
+      <div class="study-overview-heading">
+        <div>
+          <p class="overview-kicker">Current scope</p>
+          <h2 id="studyOverviewHeading">Study Overview</h2>
+          <p id="studyOverviewScope" class="overview-scope">Not loaded</p>
+        </div>
+        <span class="overview-badge">Authoritative records</span>
+      </div>
+      <div class="study-overview-orientation">
+        <details class="overview-orientation" id="studyVolumeScope">
+          <summary><span>Volume / Scope</span><strong id="studyVolumeSummary">Not loaded</strong></summary>
+          <div id="studyVolumeDetails" class="overview-orientation-details"></div>
+        </details>
+        <details class="overview-orientation" id="studyComprehensionInclusion">
+          <summary><span>Comprehension Inclusion</span><strong id="studyInclusionSummary">Not loaded</strong></summary>
+          <div id="studyInclusionDetails" class="overview-orientation-details"></div>
+        </details>
+        <details class="overview-orientation" id="studyScopeCoverage">
+          <summary><span>Scope Coverage</span><strong id="studyCoverageSummary">Not loaded</strong></summary>
+          <div id="studyCoverageDetails" class="overview-orientation-details"></div>
+        </details>
+      </div>
+      <div id="studyOverviewRows" class="study-overview-rows"></div>
+    </section>
+
     <section class="study-section volume-context-section" id="volumeContextSection">
       <div class="section-heading">
         <h2>Study Scope</h2>
@@ -676,6 +702,18 @@
   </dialog>
 
   <script src="study-source-identity-helpers.js"></script>
+  <script src="study-diagnostic-helpers.js"></script>
+  <script src="study-presentation-helpers.js"></script>
+  <script src="study-snapshot-provenance-helpers.js"></script>
+  <script src="study-graph-projection-helpers.js"></script>
+  <script src="study-inspector-display-helpers.js"></script>
+  <script src="study-metric-state-helpers.js"></script>
+  <script src="study-panel-display-state-helpers.js"></script>
+  <script src="study-panel-summary-view-model-helpers.js"></script>
+  <script src="study-panel-visibility-helpers.js"></script>
+  <script src="study-panel-summary-label-helpers.js"></script>
+  <script src="study-panel-card-metadata-helpers.js"></script>
+  <script src="study-list-item-helpers.js"></script>
   <script src="study.js"></script>
 </body>
 </html>

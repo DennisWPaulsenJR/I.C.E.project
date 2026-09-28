@@ -1054,7 +1054,9 @@
 
       await safeRuntimeSendMessage({
         type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
-        reason
+        reason,
+        diagnosticInvocationSource: "content-manual-rerun",
+        diagnosticInvocationId: `content-${Date.now()}-${reason}`
       });
     } catch (error) {
       console.debug("I.C.E. auto capture skipped", {

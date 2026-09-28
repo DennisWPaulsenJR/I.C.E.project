@@ -358,3 +358,77 @@ Status: Ready after commit.
 Message: Popup UX was widened/tallened and Page Workflow controls now use a two-column grid. `showPageOverlay` now persists and applies immediately to the active page via content-script overlay rendering and `ICE_SET_PAGE_OVERLAY` messaging. Browser smoke confirmed 460px popup width, 680px max-height, no clipped Page Workflow buttons, overlay on/off persistence, and overlay show/hide on LDS Matthew 1.
 Validation: `node --check popup.js`, `node --check content.js`, `node --check background.js`, `git diff --check`, `npm.cmd run qa:matthew1`, `npm.cmd run qa:matthew-pages`, and `npm.cmd run review:matthew-session` passed. Note: first broader Matthew QA attempt had a transient LDS Matthew 1 page-load timeout, then passed on rerun.
 Next likely task: resume Phase 2B design for queue result persistence/per-page summaries, or continue popup/queue UX refinement if Dennis redirects. Do not add automatic crawling, automatic queue loops, book/volume execution, or background queue running without explicit approval.
+Fast direct-message lane for short, explicit handoffs between I.C.E. actors.
+
+## Purpose
+
+Use this file for quick messages that one actor asks another actor to read directly, especially when MCDX shell GitHub access is blocked and PCDX is acting as the push/pull bridge.
+
+This file is separate from `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`:
+
+- `AGENT_OUTBOX.md` is for short direct messages, requests, confirmations, and handoff notes.
+- `AGENT_ACTIVITY_LOG.md` is for concise chronological work history, validation, commits, and status.
+- `PROJECT_STATE.md` remains the current operational source of truth.
+- `PROJECT_LOG.md` remains milestone and decision history.
+
+## Message rules
+
+- Append new messages to the top of the `Messages` section.
+- Keep messages concise and actionable.
+- Use actor labels: `gpt`, `mgpt`, `pcdx`, and `mcdx`.
+- Include sender, intended recipient, UTC timestamp, subject, message, requested action, and status.
+- Do not paste long raw transcripts here.
+- Do not store secrets, passwords, tokens, private keys, or personal credential material here.
+- If a message results in code/document changes, summarize the completed work in `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md` after the work is done.
+
+## Message template
+
+```text
+### YYYY-MM-DD HH:MM UTC - from -> to - subject
+From:
+To:
+Status:
+Message:
+Requested action:
+Related files/commits:
+```
+
+## Messages
+
+### 2026-05-13 06:15 UTC - mcdx -> pcdx - Bridge thread accounting report
+From: `mcdx`
+To: `pcdx`
+Status: Ready for PCDX bridge because MCDX shell GitHub push remains blocked by proxy CONNECT 403.
+Message: Added `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md` as a report-style accounting of this MCDX thread, including work items, files, validation, bridge commits, current limitations, and next bridge gaps.
+Requested action: PCDX should apply/bridge this accounting commit to `origin/master`, run `git diff --check`, and use the report as the quick orientation file for this MCDX thread.
+Files changed: `THREAD_ARCHIVE/MCDX_THREAD_ACCOUNTING.md`, `THREAD_ARCHIVE/README.md`, `THREAD_ARCHIVE/AGENT_OUTBOX.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+Validation result: `git diff --check`, `python3 -m json.tool package.json`, `python3 -m json.tool manifest.json`, and `node --check qa/matthew1-extension-qa.js` passed in MCDX.
+PCDX bridge needed: Yes, unless MCDX push unexpectedly succeeds.
+Related files/commits: local MCDX commit `mcdx: Add thread accounting report`.
+
+### 2026-05-13 05:45 UTC - mcdx -> pcdx - Bridge environment enablement QA note
+From: `mcdx`
+To: `pcdx`
+Status: Ready for PCDX bridge because MCDX shell GitHub access is expected to remain blocked by proxy CONNECT 403.
+Message: Updated `QA_STATUS.md` with MCDX environment enablement details, including current capabilities, current blockers, preferred allowlist, verification sequence, 403 failure meaning, and bridge workflow note.
+Requested action: PCDX should apply/bridge the MCDX commit to `origin/master`, run `git diff --check`, and run any desktop Playwright validation deemed necessary.
+Files changed: `QA_STATUS.md`, `PROJECT_STATE.md`, `THREAD_ARCHIVE/AGENT_OUTBOX.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+Validation result: `git diff --check`, core JS `node --check`, QA harness `node --check`, and `package.json`/`manifest.json` JSON validation passed in MCDX.
+PCDX bridge needed: Yes, unless MCDX push unexpectedly succeeds.
+Related files/commits: local MCDX commit `mcdx: Add environment enablement QA note`.
+
+### 2026-05-13 05:20 UTC - mcdx -> pcdx - Bridge QA status snapshot
+From: `mcdx`
+To: `pcdx`
+Status: Open until PCDX bridges/pushes the QA snapshot to `origin/master`.
+Message: GPT requested a lightweight repo-visible QA readiness snapshot for all actors. MCDX added `QA_STATUS.md` and linked it from `PROJECT_STATE.md`.
+Requested action: PCDX should apply/bridge this commit if MCDX shell GitHub access remains blocked, then validate `git diff --check` and confirm the file is visible on GitHub.
+Related files/commits: `QA_STATUS.md`, `PROJECT_STATE.md`, `THREAD_ARCHIVE/AGENT_OUTBOX.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.
+
+### 2026-05-13 00:00 UTC - mcdx -> pcdx - Establish direct outbox lane
+From: `mcdx`
+To: `pcdx`
+Status: Open until PCDX confirms the outbox convention is visible on desktop/GitHub.
+Message: Per Dennis's instruction, this file is now the quick direct-message lane for messages he asks MCDX to send PCDX. The activity log remains separate for chronological implementation history.
+Requested action: PCDX should read this file before acting on direct MCDX-to-PCDX handoff requests and may append confirmations or replies here when useful.
+Related files/commits: `THREAD_ARCHIVE/AGENT_OUTBOX.md`, `THREAD_ARCHIVE/README.md`, `PROJECT_STATE.md`, `THREAD_ARCHIVE/AGENT_ACTIVITY_LOG.md`.

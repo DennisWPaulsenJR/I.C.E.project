@@ -1,4 +1,21 @@
+const ICE_POPUP_STARTUP_DIAGNOSTIC_KEY = "ICE_POPUP_STARTUP_DIAGNOSTIC";
+const popupStartupDiagnostic = { stages: [], renderPageIdentityReached: false, renderPageIdentityCompleted: false, sourceDiagnosticLoadReached: false, sourceDiagnosticLoadCompleted: false };
+let popupStartupStage = "POPUP_START";
+function recordPopupStartupStage(stage, extra = {}) {
+  popupStartupStage = stage;
+  popupStartupDiagnostic.stages.push({ stage, timestamp: new Date().toISOString(), ...extra });
+  chrome.storage?.local?.set({ [ICE_POPUP_STARTUP_DIAGNOSTIC_KEY]: { ...popupStartupDiagnostic, currentStage: stage } }).catch(() => {});
+}
+function showPopupStartupError(error) {
+  const message = error?.message || String(error || "Unknown error");
+  document.getElementById("pageIdentity")?.replaceChildren("POPUP STARTUP ERROR");
+  document.getElementById("pageAnalysisState")?.replaceChildren(`Stage: ${popupStartupStage} | Error: ${message}`);
+  recordPopupStartupStage("POPUP_INITIALIZATION_ERROR", { errorName: error?.name || "Error", errorMessage: message, stack: error?.stack || "" });
+}
+window.addEventListener("unhandledrejection", (event) => showPopupStartupError(event.reason));
+window.addEventListener("error", (event) => showPopupStartupError(event.error || event.message));
 document.addEventListener("DOMContentLoaded", async () => {
+  recordPopupStartupStage("POPUP_START");
   const CAPTURE_STORAGE_KEY = "ICE_LATEST_CAPTURE";
   const CAPTURE_HISTORY_KEY = "ICE_CAPTURE_HISTORY";
   const TIMELINE_STORAGE_KEY = "ICE_TIMELINE_ITEMS";
@@ -11,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const SCENE_MODELS_KEY = "ICE_SCENE_MODELS";
   const FORMATTER_STATUS_KEY = "ICE_FORMATTER_STATUS";
   const ANALYSIS_STATUS_KEY = "ICE_ANALYSIS_STATUS";
+  const SOURCE_ADMISSION_DIAGNOSTIC_KEY = "ICE_SOURCE_ADMISSION_DIAGNOSTIC";
   const ANALYSIS_HISTORY_KEY = "ICE_ANALYSIS_HISTORY";
   const CANONICAL_ANALYZED_PAGES_KEY = "ICE_CANONICAL_ANALYZED_PAGES";
   const CANONICAL_ANALYSIS_TARGET_KEY = "ICE_CANONICAL_ANALYSIS_TARGET";
@@ -387,7 +405,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     showPageOverlay: false
   };
 
+  recordPopupStartupStage("SYNC_SETTINGS_READ_START");
   const settings = await chrome.storage.sync.get(defaults);
+  recordPopupStartupStage("SYNC_SETTINGS_READ_COMPLETE");
 
   for (const [key, value] of Object.entries(settings)) {
     const input = document.getElementById(key);
@@ -395,20 +415,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function optionById(options = [], id = "") {
-    return options.find((option) => option.id === id) || null;
+    return popupOptionById(options, id);
   }
 
   function highlighterModeFromSettings(value = {}) {
-    const normalized = {
-      enabled: value.enabled !== false,
-      strictMode: value.strictMode !== false,
-      highlightPronouns: Boolean(value.highlightPronouns)
-    };
-    if (!normalized.enabled) return "off";
-    if (normalized.strictMode && normalized.highlightPronouns) return "strict_pronouns";
-    if (normalized.strictMode) return "strict";
-    if (normalized.highlightPronouns) return "flexible_pronouns";
-    return "flexible";
+    return popupHighlighterModeFromSettings(value);
   }
 
   function populateSelect(select, options = []) {
@@ -466,7 +477,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function currentPanelUiState() {
+    recordPopupStartupStage("PANEL_UI_STATE_READ_START");
     const data = await chrome.storage.local.get(PANEL_UI_STATE_KEY);
+    recordPopupStartupStage("PANEL_UI_STATE_READ_COMPLETE");
     return data[PANEL_UI_STATE_KEY] || {};
   }
 
@@ -859,10 +872,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function runPipeline(reason, options = {}) {
+    const diagnosticInvocationId = `popup-${Date.now()}-${reason}`;
     const response = await chrome.runtime.sendMessage({
       type: "ICE_RUN_FULL_ANALYSIS_PIPELINE",
       reason,
-      preserveCanonicalScope: Boolean(options.preserveCanonicalScope)
+      preserveCanonicalScope: Boolean(options.preserveCanonicalScope),
+      diagnosticInvocationSource: "popup-run-full-analysis",
+      diagnosticInvocationId
     });
 
     if (!response?.ok) {
@@ -873,7 +889,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function activeTabPageRecord() {
+    recordPopupStartupStage("ACTIVE_TAB_LOOKUP_START");
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    recordPopupStartupStage("ACTIVE_TAB_LOOKUP_COMPLETE", { tabExists: Boolean(tab), url: tab?.url || "", title: tab?.title || "", tabId: tab?.id || null });
     return { tab, page: pageRecordFromTab(tab || {}) };
   }
 
@@ -1215,9 +1233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function trimText(text, maxLength = 120) {
-    const normalized = normalizeWhitespace(text);
-    if (normalized.length <= maxLength) return normalized;
-    return `${normalized.slice(0, maxLength - 3).trim()}...`;
+    return popupTrimText(text, maxLength);
   }
 
   function selectionTypeForText(text = "") {
@@ -1254,6 +1270,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderPageIdentity(state = {}) {
+    popupStartupDiagnostic.renderPageIdentityReached = true;
+    recordPopupStartupStage("RENDER_PAGE_IDENTITY_START");
     const identity = document.getElementById("pageIdentity");
     const analysis = document.getElementById("pageAnalysisState");
     if (!identity || !analysis) return;
@@ -1262,6 +1280,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!page) {
       identity.textContent = "No supported page recognized";
       analysis.textContent = "Use Manual Select for visible text, or open a supported scripture page.";
+      popupStartupDiagnostic.renderPageIdentityCompleted = true;
+      recordPopupStartupStage("RENDER_PAGE_IDENTITY_COMPLETE");
       return;
     }
 
@@ -1397,7 +1417,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         selectedAdapterForNewAnalysis: adapter,
         selectedLensForNewAnalysis: lens,
         selectedLensesForNewAnalysis: lens === "custom" ? ["custom"] : [lens],
-        selectedExaltationPresentationMode: optionById(POPUP_EXALTATION_OPTIONS, exaltation) ? exaltation : "standard",
+        selectedExaltationPresentationMode: popupOptionById(POPUP_EXALTATION_OPTIONS, exaltation) ? exaltation : "standard",
         lastAction: "popup_select_study_options",
         updatedAt: new Date().toISOString()
       }
@@ -1500,10 +1520,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const count = Array.isArray(history) ? history.length : 0;
 
     document.getElementById("historyCount").textContent = count;
-    document.getElementById("clearHistory").disabled = count === 0;
-    document.getElementById("extractTimeline").disabled = count === 0;
-    document.getElementById("extractEvents").disabled = count === 0;
-    document.getElementById("extractPrinciples").disabled = count === 0;
+    document.getElementById("clearHistory")?.toggleAttribute("disabled", count === 0);
+    document.getElementById("extractTimeline")?.toggleAttribute("disabled", count === 0);
+    document.getElementById("extractEvents")?.toggleAttribute("disabled", count === 0);
+    document.getElementById("extractPrinciples")?.toggleAttribute("disabled", count === 0);
   }
 
   function compactLabelList(labels = []) {
@@ -1717,6 +1737,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadCaptureHistory() {
+    recordPopupStartupStage("CAPTURE_HISTORY_READ_START");
     const data = await chrome.storage.local.get([
       CAPTURE_HISTORY_KEY,
       CANONICAL_ANALYZED_PAGES_KEY,
@@ -1737,6 +1758,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       data[CANONICAL_ANALYZED_PAGES_KEY],
       data[CROSS_REFERENCE_SET_KEY]
     );
+    recordPopupStartupStage("CAPTURE_HISTORY_COMPLETE");
   }
 
   async function loadFormatterStatus() {
@@ -1745,6 +1767,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadAnalysisStatus() {
+    recordPopupStartupStage("ANALYSIS_STATUS_READ_START");
     const data = await chrome.storage.local.get(ANALYSIS_STATUS_KEY);
     const status = data[ANALYSIS_STATUS_KEY];
 
@@ -1766,6 +1789,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderPageIdentity(state);
     renderSourceNavigation(state);
     renderStudyOptions(data[PANEL_UI_STATE_KEY] || {}, state.activeAdapter);
+    recordPopupStartupStage("ANALYSIS_STATUS_COMPLETE");
   }
 
   async function getTimelineItems() {
@@ -2023,7 +2047,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
   function normalizeWhitespace(text) {
-    return String(text ?? "").replace(/\s+/g, " ").trim();
+    return popupNormalizeWhitespace(text);
   }
 
   function cleanCopiedText(text) {
@@ -3101,6 +3125,165 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  async function loadSourceAdmissionDiagnostic() {
+    popupStartupDiagnostic.sourceDiagnosticLoadReached = true;
+    recordPopupStartupStage("SOURCE_DIAGNOSTIC_LOAD_START");
+    const data = await chrome.storage.local.get(SOURCE_ADMISSION_DIAGNOSTIC_KEY);
+    const output = document.getElementById("sourceAdmissionDiagnosticOutput");
+    if (!output) return;
+    const invocations = data[SOURCE_ADMISSION_DIAGNOSTIC_KEY]?.invocations || [];
+    output.textContent = invocations.length
+      ? invocations.map((item, index) => {
+          const c = item.capture || {}, p = item.parsedIdentity || {}, v = item.validation || {};
+          return `INVOCATION ${index + 1}\nURL: ${c.url || "Not recorded"}\nTITLE: ${c.title || "Not recorded"}\nADAPTER: ${item.sourceAdapter?.adapterName || "Not recorded"}\nBOOK: ${item.captureIdentity?.sourceCaptureBook || "Not recorded"}\nCHAPTER: ${item.captureIdentity?.sourceCaptureChapter || "Not recorded"}\nURL BOOK/CHAPTER: ${p.urlBook || "Not recorded"} / ${p.urlChapter || "Not recorded"}\nTITLE BOOK/CHAPTER: ${p.titleBook || "Not recorded"} / ${p.titleChapter || "Not recorded"}\nADMISSION: ${v.validStudyScopePageRecord ? "ADMITTED" : "REJECTED"}\nFIRST FAILURE: ${item.rejection?.firstFailedAdmissionCondition || "Not recorded"}\nINVOCATION: ${item.pipeline?.invocationSource || "other"} (${item.pipeline?.invocationIdentifier || "Not recorded"})\nPRESERVE CANONICAL SCOPE: ${item.scope?.preserveCanonicalScope ? "true" : "false"}\nANALYSIS STATUS: ${item.pipeline?.analysisStatusWritten?.reason || "Not recorded"}`;
+        }).join("\n\n")
+      : "No source-admission diagnostic recorded.";
+    popupStartupDiagnostic.sourceDiagnosticLoadCompleted = true;
+    recordPopupStartupStage("SOURCE_DIAGNOSTIC_LOAD_COMPLETE");
+  }
+
+  async function loadAnalysisSummaryCounts() {
+    const data = await chrome.storage.local.get([
+      TIMELINE_STORAGE_KEY, EVENT_STORAGE_KEY, ORDERED_EVENTS_KEY,
+      ACTOR_TIMELINES_KEY, INTERACTION_GRAPH_KEY, SCENE_MODELS_KEY,
+      PRINCIPLE_STORAGE_KEY, STUDY_GENERATION_KEY
+    ]);
+    const generation = await activeStudyGeneration();
+    const count = (key) => filterRecordsForStudyGeneration(data[key], generation).length;
+    const values = {
+      timelineCount: count(TIMELINE_STORAGE_KEY),
+      eventCount: count(EVENT_STORAGE_KEY),
+      orderedEventCount: count(ORDERED_EVENTS_KEY),
+      actorTimelineCount: count(ACTOR_TIMELINES_KEY),
+      interactionCount: count(INTERACTION_GRAPH_KEY),
+      sceneCount: count(SCENE_MODELS_KEY),
+      principleCount: count(PRINCIPLE_STORAGE_KEY)
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    });
+  }
+
+  document.getElementById("enabled")
+    .addEventListener("change", () => saveSetting("enabled"));
+
+  document.getElementById("strictMode")
+    .addEventListener("change", () => saveSetting("strictMode"));
+
+  document.getElementById("highlightPronouns")
+    .addEventListener("change", () => saveSetting("highlightPronouns"));
+
+  document.getElementById("autoCaptureOnPageLoad")
+    .addEventListener("change", () => saveSetting("autoCaptureOnPageLoad"));
+
+  document.getElementById("showPageOverlay")
+    .addEventListener("change", () => saveSetting("showPageOverlay"));
+
+  document.getElementById("runFullAnalysis")
+    .addEventListener("click", () => {
+      runFullAnalysisFromPopup().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearPageData")
+    .addEventListener("click", () => {
+      clearPageData().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("capture")?.addEventListener("click", () => {
+      captureActivePage().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyCapture")?.addEventListener("click", () => {
+      copyLatestCapture().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearHistory")?.addEventListener("click", () => {
+      clearCaptureHistory().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("extractTimeline")?.addEventListener("click", () => {
+      extractTimeline().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearTimeline")?.addEventListener("click", () => {
+      clearTimeline().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyTimelineItems")?.addEventListener("click", () => {
+      copyTimelineItems().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("extractEvents")?.addEventListener("click", () => {
+      extractEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearEvents")?.addEventListener("click", () => {
+      clearEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyEventItems")?.addEventListener("click", () => {
+      copyEventItems().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("extractPrinciples")?.addEventListener("click", () => {
+      extractPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyPrinciples")?.addEventListener("click", () => {
+      copyPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearPrinciples")?.addEventListener("click", () => {
+      clearPrinciples().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("orderEvents")?.addEventListener("click", () => {
+      orderEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("clearOrderedEvents")?.addEventListener("click", () => {
+      clearOrderedEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
+  document.getElementById("copyOrderedEvents")?.addEventListener("click", () => {
+      copyOrderedEvents().catch((error) => {
+        setCaptureStatus(error.message);
+      });
+    });
+
   bindClick("analyzePage", analyzePageForCurrentStudy);
   bindClick("addPage", addPageToCrossReferenceSetFromPopup);
   bindClick("manualSelect", startPageManualSelectionOverlay);
@@ -3131,8 +3314,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("exaltationSelect")?.addEventListener("change", () => saveStudyOptionState().catch((error) => setCaptureStatus(error.message || "Exaltation selection failed.")));
 
   async function loadAllSummaries() {
+    recordPopupStartupStage("LOAD_ALL_SUMMARIES_START");
     await loadCaptureHistory();
+    await loadAnalysisSummaryCounts();
     await loadAnalysisStatus();
+    await loadSourceAdmissionDiagnostic();
+    recordPopupStartupStage("POPUP_INITIALIZATION_COMPLETE");
   }
 
   // The popup is a collection surface only; semantic organization remains in

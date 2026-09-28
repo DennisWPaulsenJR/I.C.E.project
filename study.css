@@ -115,6 +115,30 @@ body {
   border-color: #1f4f7a;
   background: #1f4f7a;
 }
+.study-overview { background: #f7f9fc; border: 1px solid #d8e0ea; border-radius: 8px; margin-bottom: 18px; padding: 18px; }
+.study-overview-heading { align-items: start; display: flex; justify-content: space-between; gap: 16px; }
+.overview-kicker { color: #687587; font-size: .75rem; letter-spacing: .08em; margin: 0 0 3px; text-transform: uppercase; }
+.study-overview h2 { color: #25364d; margin: 0; }
+.overview-scope { color: #536274; margin: 4px 0 14px; }
+.overview-badge { color: #536274; font-size: .78rem; }
+.study-overview-rows { display: grid; gap: 6px; }
+.study-overview-orientation { display: grid; gap: 6px; margin-bottom: 10px; }
+.overview-orientation { background: #fff; border: 1px solid #d8e0ea; border-radius: 6px; }
+.overview-orientation summary { align-items: center; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; list-style: none; padding: 10px 12px; }
+.overview-orientation summary::-webkit-details-marker { display: none; }
+.overview-orientation summary span { color: #25364d; font-weight: 700; }
+.overview-orientation summary strong { color: #536274; font-size: .9rem; font-weight: 600; text-align: right; }
+.overview-orientation-details { border-top: 1px solid #edf0f4; color: #536274; display: grid; gap: 4px; padding: 10px 12px; }
+.overview-orientation-details p { margin: 0; }
+.study-overview-row { background: #fff; border: 1px solid #e0e6ed; border-radius: 6px; }
+.study-overview-row summary { align-items: center; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 12px; list-style: none; padding: 10px 12px; }
+.study-overview-row summary::-webkit-details-marker { display: none; }
+.overview-category { color: #25364d; font-weight: 700; }
+.study-overview-row summary strong { color: #b07c18; font-size: 1.1rem; }
+.overview-row-body { align-items: center; border-top: 1px solid #edf0f4; color: #536274; display: flex; gap: 12px; justify-content: space-between; padding: 10px 12px; }
+.overview-focus-button { background: #25364d; border: 0; border-radius: 5px; color: #fff; cursor: pointer; padding: 7px 10px; }
+.overview-focus-button:focus-visible, .study-overview-row summary:focus-visible { outline: 3px solid #d5a43a; outline-offset: 2px; }
+@media (max-width: 640px) { .study-overview-heading, .overview-row-body { align-items: stretch; flex-direction: column; } .overview-badge { align-self: start; } }
 
 .presentation-controls {
   padding: 14px 24px;

@@ -490,6 +490,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function normalizeText(text) {
     return toDisplayText(text).replace(/\s+/g, " ").trim();
   }
+  globalThis.ICENormalizeText = normalizeText;
 
   function normalizeStudyGeneration(value) {
     const numeric = Number(value);
@@ -1397,17 +1398,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const card = document.createElement("article");
     const heading = document.createElement("h3");
     const content = document.createElement("p");
+    const cardMetadata = studyPanelCardMetadataCore(title, body, meta);
 
     card.className = "study-card";
-    heading.textContent = renderIceBeingDisplayText(title || "Untitled", { divineContext: hasDivineDisplayContext([title]), humanContext: hasHumanBeingDisplayContext([title]), preferHolySpirit: true });
-    content.textContent = renderStudyCardBodyText(body || "No detail available.", { divineContext: hasDivineDisplayContext([title, body]), humanContext: hasHumanBeingDisplayContext([title, body]), preferHolySpirit: true });
+    heading.textContent = renderIceBeingDisplayText(cardMetadata.titleText, { divineContext: hasDivineDisplayContext([title]), humanContext: hasHumanBeingDisplayContext([title]), preferHolySpirit: true });
+    content.textContent = renderStudyCardBodyText(cardMetadata.bodyText, { divineContext: hasDivineDisplayContext([title, body]), humanContext: hasHumanBeingDisplayContext([title, body]), preferHolySpirit: true });
 
     card.append(heading, content);
 
     if (meta) {
       const metaText = document.createElement("span");
       metaText.className = "meta";
-      metaText.textContent = renderIceBeingDisplayText(meta, { divineContext: hasDivineDisplayContext([title, body, meta]), humanContext: hasHumanBeingDisplayContext([title, body, meta]), preferHolySpirit: true });
+      metaText.textContent = renderIceBeingDisplayText(cardMetadata.metaText, { divineContext: hasDivineDisplayContext([title, body, meta]), humanContext: hasHumanBeingDisplayContext([title, body, meta]), preferHolySpirit: true });
       card.appendChild(metaText);
     }
 
@@ -1438,7 +1440,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         body.dataset.loaded = "true";
         recordRenderTiming(`Lazy nested detail: ${summaryText}`, nowForDiagnostics() - started);
       } catch (error) {
-        body.textContent = `Load failed: ${error.message}`;
+        body.textContent = diagnosticFailureMessage("Load failed", error);
         body.dataset.loadError = "true";
         console.error("I.C.E. lazy nested record detail failed", error);
       }
@@ -1724,7 +1726,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("I.C.E. record detail render failed", { hiddenLabel, index, item, error });
         container.appendChild(createCard(
           `Render error in ${hiddenLabel} ${index + 1}`,
-          `Record detail failed to render: ${error.message}`,
+          diagnosticFailureMessage("Record detail failed to render", error),
           "record-level failure isolated"
         ));
       }
@@ -3069,7 +3071,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function exportLine(label, value) {
-    return `${label}: ${normalizeText(value || "Not recorded")}`;
+    return diagnosticDetailLine(label, value);
   }
 
   function layerCountPairs() {
@@ -3605,7 +3607,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       showDiagnosticMessage(`${kind} copied (${output.length} characters).`);
     } catch (error) {
-      showDiagnosticMessage(`${kind} copy failed: ${error.message}`);
+      showDiagnosticMessage(diagnosticFailureMessage(`${kind} copy failed`, error));
     }
   }
 
@@ -5518,8 +5520,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function clearAllSessionData() {
     if (!window.confirm("Clear all local I.C.E. data for this browser profile?")) return;
-    await chrome.storage.local.remove(Object.values(STORAGE_KEYS));
-    await refreshStudyData();
+    const panelStateData = await chrome.storage.local.get(STORAGE_KEYS.panelUiState);
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({
+        type: "ICE_CLEAR_ALL_STUDY_DATA",
+        preservedPanelUiState: panelStateData[STORAGE_KEYS.panelUiState] || studyData.panelUiState || {}
+      });
+    } catch (error) {
+      showDiagnosticMessage(diagnosticFailureMessage("Clear failed", error));
+      return;
+    }
+    if (!result?.ok) {
+      showDiagnosticMessage(`Clear failed: ${normalizeText(result?.error) || "Background reset unavailable."}`);
+      return;
+    }
+    const resetStateData = await chrome.storage.local.get(STORAGE_KEYS.panelUiState);
+    resetStudyPanelAfterClearAll(resetStateData[STORAGE_KEYS.panelUiState] || {
+      lastAction: "popup_clear_all_ice_data",
+      clearAllGeneration: result.clearAllGeneration
+    });
     showDiagnosticMessage("All local I.C.E. data cleared.");
   }
 
@@ -5855,53 +5875,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     const action = button.dataset.volumeAction;
     if (action === "previousPage") {
       const target = pageNavigationTarget(activeSourcePageRecord() || selectedRangeFromAnalyzedPages(analyzedPageHistory())?.end || {}, -1);
-      navigateToSourcePage(target, "previous_page_navigation").catch((error) => showDiagnosticMessage(`Navigation failed: ${error.message}`));
+      navigateToSourcePage(target, "previous_page_navigation").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Navigation failed", error)));
     } else if (action === "nextPage") {
       const target = pageNavigationTarget(activeSourcePageRecord() || selectedRangeFromAnalyzedPages(analyzedPageHistory())?.end || {}, 1);
-      navigateToSourcePage(target, "next_page_navigation").catch((error) => showDiagnosticMessage(`Navigation failed: ${error.message}`));
+      navigateToSourcePage(target, "next_page_navigation").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Navigation failed", error)));
     } else if (action === "openSuggestedNext") {
       const target = suggestedNextPageTarget(activeSourcePageRecord(), selectedRangeFromAnalyzedPages(analyzedPageHistory()));
-      navigateToSourcePage(target, "open_suggested_next").catch((error) => showDiagnosticMessage(`Navigation failed: ${error.message}`));
+      navigateToSourcePage(target, "open_suggested_next").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Navigation failed", error)));
     } else if (action === "analyzeCurrentPage") {
-      runAnalysisFromStudyPanel().catch((error) => showDiagnosticMessage(`Analysis failed: ${error.message}`));
+      runAnalysisFromStudyPanel().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Analysis failed", error)));
     } else if (action === "analyzeAndAddToSession") {
-      analyzeAndAddActivePageToSession().catch((error) => showDiagnosticMessage(`Analyze/add failed: ${error.message}`));
+      analyzeAndAddActivePageToSession().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Analyze/add failed", error)));
     } else if (action === "addActivePageToSession") {
-      addActivePageToSession().catch((error) => showDiagnosticMessage(`Add failed: ${error.message}`));
+      addActivePageToSession().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Add failed", error)));
     } else if (action === "addActivePageToCrossReferenceSet") {
-      addActivePageToCrossReferenceSet().catch((error) => showDiagnosticMessage(`Add failed: ${error.message}`));
+      addActivePageToCrossReferenceSet().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Add failed", error)));
     } else if (action === "buildSelectedRangeQueue") {
-      buildSelectedRangeQueue().catch((error) => showDiagnosticMessage(`Queue build failed: ${error.message}`));
+      buildSelectedRangeQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue build failed", error)));
     } else if (action === "showAnalysisQueue") {
       showAnalysisQueue();
     } else if (action === "clearAnalysisQueue") {
-      clearAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue clear failed: ${error.message}`));
+      clearAnalysisQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue clear failed", error)));
     } else if (action === "startAnalysisQueue") {
-      startAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue start failed: ${error.message}`));
+      startAnalysisQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue start failed", error)));
     } else if (action === "openCurrentQueueItem") {
-      openCurrentQueueItem().catch((error) => showDiagnosticMessage(`Queue navigation failed: ${error.message}`));
+      openCurrentQueueItem().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue navigation failed", error)));
     } else if (action === "analyzeCurrentQueueItem") {
-      analyzeCurrentQueueItem().catch((error) => showDiagnosticMessage(`Queue analysis failed: ${error.message}`));
+      analyzeCurrentQueueItem().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue analysis failed", error)));
     } else if (action === "selectNextQueueItem") {
-      selectNextQueueItem().catch((error) => showDiagnosticMessage(`Queue selection failed: ${error.message}`));
+      selectNextQueueItem().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue selection failed", error)));
     } else if (action === "pauseAnalysisQueue") {
-      pauseAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue pause failed: ${error.message}`));
+      pauseAnalysisQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue pause failed", error)));
     } else if (action === "resumeAnalysisQueue") {
-      resumeAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue resume failed: ${error.message}`));
+      resumeAnalysisQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue resume failed", error)));
     } else if (action === "cancelAnalysisQueue") {
-      cancelAnalysisQueue().catch((error) => showDiagnosticMessage(`Queue cancel failed: ${error.message}`));
+      cancelAnalysisQueue().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue cancel failed", error)));
     } else if (action === "retryFailedQueueItems") {
-      retryFailedQueueItems().catch((error) => showDiagnosticMessage(`Queue retry failed: ${error.message}`));
+      retryFailedQueueItems().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue retry failed", error)));
     } else if (action === "clearCompletedQueueItems") {
-      clearCompletedQueueItems().catch((error) => showDiagnosticMessage(`Queue cleanup failed: ${error.message}`));
+      clearCompletedQueueItems().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Queue cleanup failed", error)));
     } else if (action === "reanalyzeCurrentRange") {
       showDiagnosticMessage("Range re-analysis is ready as a controlled UI concept, but automatic range crawling is not enabled yet. Build a queue explicitly when ready; queued pages remain pending until future processing is approved.");
     } else if (action === "clearCurrentPageAnalysis") {
-      clearCurrentPageAnalysis().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+      clearCurrentPageAnalysis().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Clear failed", error)));
     } else if (action === "clearSessionAnalysis") {
-      clearSessionAnalysis().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+      clearSessionAnalysis().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Clear failed", error)));
     } else if (action === "clearAllSessionData") {
-      clearAllSessionData().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+      clearAllSessionData().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Clear failed", error)));
     } else if (action === "showAnalyzedPages") {
       loadDeferredSection("Current Page").then(() => scrollToStudySection("currentPageSection"));
     } else if (action === "showContinuityMap") {
@@ -5909,7 +5929,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else if (action === "showCrossReferenceSet") {
       showCrossReferenceSet();
     } else if (action === "clearCrossReferenceSet") {
-      clearCrossReferenceSet().catch((error) => showDiagnosticMessage(`Clear failed: ${error.message}`));
+      clearCrossReferenceSet().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Clear failed", error)));
     }
   }  function renderCurrentPage(term) {
     const container = document.getElementById("currentPageSummary");
@@ -8847,17 +8867,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function progressiveDisclosureSummaryLabel(title) {
-    const normalizedTitle = normalizeText(title).toLowerCase();
-    if (/reasoning path|semantic resolution trace/.test(normalizedTitle)) return "Show Reasoning";
-    if (/provenance|wording provenance|source\b|source phrase|source wording|derived meaning/.test(normalizedTitle)) return "Show Provenance";
-    if (/evidence|grounding|supporting layers|supporting records|related semantic layers|semantic layers|strict layers|grounded layers|elaborate layers|technical detail|scope\b|storage|adapter/.test(normalizedTitle)) return "Show Evidence";
-    return `Show ${normalizeText(title).toLowerCase()}`;
+    return progressiveDisclosureSummaryLabelCore(title);
   }
 
   function shouldCollapseStudyDetail(title, options = {}) {
-    if (options.collapsed === false || options.alwaysVisible) return false;
-    const normalizedTitle = normalizeText(title).toLowerCase();
-    return /source phrase|source wording|derived meaning|provenance|wording provenance|evidence weight|^evidence$|reasoning path|technical detail|supporting layers|supporting records|related semantic layers|strict layers|grounded layers|elaborate layers|grounding|source grounding|source evidence|supporting evidence|key evidence|full evidence|related evidence|grounding \/ evidence|semantic resolution trace/.test(normalizedTitle);
+    return shouldCollapseStudyDetailCore(title, options);
   }
 
   function createPassageFunctionSection(title, content, options = {}) {
@@ -8879,13 +8893,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (collapsed) {
       const details = document.createElement("details");
       const summary = document.createElement("summary");
-      summary.textContent = options.summaryLabel || progressiveDisclosureSummaryLabel(title);
+      summary.textContent = studyPanelSummaryLabelCore({ title, summaryLabel: options.summaryLabel, useProgressiveDisclosure: true });
       details.appendChild(summary);
       if (options.lazyContentFactory || options.lazyListFactory) {
         details.dataset.lazyInspector = title;
         const lazyBody = document.createElement("div");
         lazyBody.className = "semantic-section-body lazy-semantic-section-body";
-        lazyBody.textContent = options.lazyPlaceholder || "Not rendered yet. Expand to load details for the current Study Scope.";
+        lazyBody.textContent = studyPanelPlaceholderTextCore(options.lazyPlaceholder);
         details.addEventListener("toggle", () => {
           if (!details.open && lazyBody.dataset.loaded === "true" && lazyBody.dataset.detached !== "true") {
             lazyBody.dataset.detachedHtml = lazyBody.innerHTML;
@@ -8998,10 +9012,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
             recordRenderTiming(`Lazy section: ${title}`, nowForDiagnostics() - started);
           } catch (error) {
-            lazyBody.textContent = `Load failed: ${error.message}`;
+            lazyBody.textContent = diagnosticFailureMessage("Load failed", error);
             lazyBody.dataset.loadError = "true";
             lazyBody.dataset.inspectorTitle = title;
-            showDiagnosticMessage(`Lazy section load failed in ${title}: ${error.message}`);
+            showDiagnosticMessage(diagnosticFailureMessage(`Lazy section load failed in ${title}`, error));
             console.error(`I.C.E. lazy inspector failed: ${title}`, error);
           }
         });
@@ -9022,16 +9036,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
 
-  function semanticWordingProvenanceLines({ source, label, layer, storageKey, scopePath, generated = true, rule = "" } = {}) {
-    return [
-      `Source: ${source || "I.C.E. Generated"}`,
-      `Label: ${normalizeText(label || "Not recorded.")}`,
-      layer ? `Layer: ${layer}` : "Layer: Not recorded.",
-      storageKey ? `Storage key: ${storageKey}` : "Storage key: Not recorded.",
-      scopePath ? `Scope path: ${scopePath}` : "Scope path: Not recorded.",
-      `Generated or source-provided: ${generated ? "I.C.E. generated display wording" : "source-provided wording"}`,
-      rule ? `Rule: ${rule}` : ""
-    ].filter(Boolean);
+  function semanticWordingProvenanceLines(options = {}) {
+    return presentationSemanticWordingProvenanceLines(options);
   }
 
   function createWordingProvenanceSection(options = {}) {
@@ -9043,15 +9049,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
 
-  function semanticEvidenceWeightLines({ evidenceType, evidenceStrength, sourceGrounding, supportingRecords = [], sourcePhrase = "" } = {}) {
-    const records = asArray(supportingRecords).map((value) => normalizeText(value)).filter(Boolean);
-    return [
-      `Evidence Type: ${evidenceType || "Derived Semantic Evidence"}`,
-      `Evidence Strength: ${evidenceStrength || "grounded by current semantic record"}`,
-      `Source Grounding: ${normalizeText(sourceGrounding || sourcePhrase || "Not recorded.")}`,
-      `Supporting Records: ${records.length ? records.slice(0, 5).join("; ") : "Not recorded."}`,
-      records.length > 5 ? `Supporting Records Hidden: ${records.length - 5}` : ""
-    ].filter(Boolean);
+  function semanticEvidenceWeightLines(options = {}) {
+    return presentationSemanticEvidenceWeightLines(options);
   }
 
   function createEvidenceWeightSection(options = {}) {
@@ -15229,15 +15228,7 @@ createRevelationPartsSection(item.subEvents)
 
   function scopeSnapshotReasonForInclusionLines(selection = {}, model = {}) {
     const provenance = scopeSnapshotGraphObjectProvenance(selection, model);
-    return [
-      ["Created by", provenance.createdBy],
-      ["Rule", provenance.rule],
-      ["Matched source", provenance.matchedSource],
-      ["Context", provenance.context],
-      ["Graph decision", provenance.graphDecision],
-      ["Qualification", provenance.qualification],
-      ["Confidence", provenance.confidence]
-    ];
+    return scopeSnapshotReasonForInclusionRowsCore(provenance);
   }
 
   function createScopeSnapshotReasonForInclusion(selection = {}, model = {}) {
@@ -15330,46 +15321,20 @@ createRevelationPartsSection(item.subEvents)
       item.recordType === "unresolved" ? "Unresolved / QA Preview Record" : "",
       "Linear Scope Snapshot Node"
     ].filter(Boolean);
-    if (selection.type === "edge") {
-      return [
-        `Graph object type: ${graphObject.objectType}`,
-        `Relationship stable key: ${graphObject.graphKey}`,
-        `Builder / projection path: Primary Evidence -> Positioned Snapshot Nodes -> Linear Scope Snapshot Edge`,
-        `Source node: ${graphObject.sourceNode}`,
-        `Target node: ${graphObject.targetNode}`,
-        `Creation reason: ${graphObject.reasonForInclusion}`,
-        `Relationship rule: ${item.relationshipRule || graphObject.rule}`,
-        `Authority source: presentation authority only; connected records retain semantic authority.`,
-        `Confidence inheritance: ${graphObject.confidence}`,
-        `Verification status: ${graphObject.verification}`,
-        `Evidence chain: ${[item.sourceReference, item.relationshipType, item.targetReference].filter(Boolean).join(" -> ") || graphObject.sourceReference}`,
-        `Recorded provenance: ${item.provenance || graphObject.createdBy}`,
-        `Diagnostics: ${graphObject.diagnostics}`
-      ];
-    }
-    if (selection.type === "cluster") {
-      return [
-        "Originating source record: clustered child records retain individual provenance",
-        `Builder / promotion path: Primary Evidence -> Scoped semantic records -> Lane clustering -> Snapshot cluster`,
-        `Intermediate derived layers: ${asArray(item.dominantRecordTypes).join(", ") || "mixed scoped records"}`,
-        "Authority source: presentation authority only; child records remain authoritative for meaning.",
-        "Confidence inheritance: not inherited by cluster; inspect child records for confidence.",
-        `Verification status: ${item.warningCount ? "review warnings present" : "verified presentation grouping"}`,
-        `Evidence chain: ${asArray(item.representativeRecords).slice(0, 6).map((node) => node.reference?.label || node.label).join(" -> ") || "not recorded"}`,
-        item.recordCount > asArray(item.representativeRecords).length ? `Show Full Provenance Chain: ${item.recordCount - asArray(item.representativeRecords).length} additional child record(s) available through zoom/detail.` : "Show Full Provenance Chain: representative child records shown above."
-      ];
-    }
-    return [
-      `Originating source record: ${scopeSnapshotRawField(record, ["sourceId", "sourceRecord", "sourceReference", "sourceScope"]) || item.reference?.label || model.activeScope || "not recorded"}`,
-      `Builder / promotion path: ${path.join(" -> ")}`,
-      `Intermediate derived layers: ${scopeSnapshotRawField(record, ["promotionRule", "producedByStage", "semanticSourceLayer", "sourceCollection"]) || item.recordType || "snapshot node builder"}`,
-      `Authority source: ${scopeSnapshotRawField(record, ["authoritySource", "authority", "authorityPath"]) || "primary evidence plus current scoped semantic record"}`,
-      `Confidence inheritance: ${scopeSnapshotRawField(record, ["confidence", "confidencePath", "confidenceSummary"]) || item.confidence || "not recorded"}`,
-      `Verification status: ${/unresolved|ambiguous/i.test(item.status || "") ? "review" : "verified display record"}`,
-      `Evidence chain: ${scopeSnapshotRawField(record, ["evidenceChain", "supportingEvidence", "evidenceLinks"]) || [item.reference?.label, item.recordType, "Snapshot Node"].filter(Boolean).join(" -> ")}`,
-      item.provenance ? `Recorded provenance: ${item.provenance}` : "Missing provenance warning: snapshot node has no explicit provenance beyond its source record.",
-      "Show Full Provenance Chain: use Open Inspector for the native record inspector and full scoped lineage."
-    ];
+    const provenanceLinesModel = {
+      selectionType: selection.type,
+      item,
+      record,
+      graphObject,
+      path,
+      activeScope: model.activeScope,
+      originatingSource: scopeSnapshotRawField(record, ["sourceId", "sourceRecord", "sourceReference", "sourceScope"]) || item.reference?.label || model.activeScope || "not recorded",
+      intermediateDerivedLayers: scopeSnapshotRawField(record, ["promotionRule", "producedByStage", "semanticSourceLayer", "sourceCollection"]) || item.recordType || "snapshot node builder",
+      authoritySource: scopeSnapshotRawField(record, ["authoritySource", "authority", "authorityPath"]) || "primary evidence plus current scoped semantic record",
+      confidenceInheritance: scopeSnapshotRawField(record, ["confidence", "confidencePath", "confidenceSummary"]) || item.confidence || "not recorded",
+      evidenceChain: scopeSnapshotRawField(record, ["evidenceChain", "supportingEvidence", "evidenceLinks"]) || [item.reference?.label, item.recordType, "Snapshot Node"].filter(Boolean).join(" -> ")
+    };
+    return scopeSnapshotProvenanceLinesCore(provenanceLinesModel);
   }
 
   function createScopeSnapshotDetailSection(kind = "evidence", lines = []) {
@@ -15447,7 +15412,7 @@ createRevelationPartsSection(item.subEvents)
     } catch (error) {
       const section = createScopeSnapshotDetailSection(kind, [
         `Detail action failed for ${scopeSnapshotViewState.selectedGraphId || "unknown selection"}.`,
-        `Error: ${error.message}`
+        diagnosticFailureMessage("Error", error)
       ]);
       section.dataset.loadError = "true";
       panel.appendChild(section);
@@ -15535,25 +15500,25 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function createScopeSnapshotLayerControls(model = {}) {
+    const viewModel = scopeSnapshotLayerControlViewModelCore(model, scopeSnapshotViewState.layerPreset, SCOPE_SNAPSHOT_LAYER_PRESETS);
     const panel = document.createElement("section");
     panel.className = "scope-snapshot-layer-panel";
     panel.setAttribute("aria-label", "Scope Snapshot information layers");
     const layerStatus = document.createElement("p");
     layerStatus.className = "scope-snapshot-layer-summary";
     layerStatus.textContent = [
-      `Layers: ${asArray(model.layerModel?.activeLayerIds).length} active`,
-      `recommended ${asArray(model.layerModel?.recommendedLayerIds).length}`,
-      `available ${asArray(model.layerModel?.availability).filter((layer) => layer.available).length}`
+      `Layers: ${viewModel.activeCount} active`,
+      `recommended ${viewModel.recommendedCount}`,
+      `available ${viewModel.availableCount}`
     ].join(" | ");
     const presetRow = document.createElement("div");
     presetRow.className = "scope-snapshot-layer-presets";
-    Object.entries(SCOPE_SNAPSHOT_LAYER_PRESETS).forEach(([presetId, preset]) => {
-      if (presetId === "custom" && scopeSnapshotViewState.layerPreset !== "custom") return;
+    viewModel.presetItems.forEach((preset) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.dataset.scopeSnapshotLayerPreset = presetId;
+      button.dataset.scopeSnapshotLayerPreset = preset.presetId;
       button.textContent = preset.label;
-      button.setAttribute("aria-pressed", scopeSnapshotViewState.layerPreset === presetId ? "true" : "false");
+      button.setAttribute("aria-pressed", preset.pressed ? "true" : "false");
       presetRow.appendChild(button);
     });
     const restore = document.createElement("button");
@@ -15566,38 +15531,33 @@ createRevelationPartsSection(item.subEvents)
     layerGroups.className = "scope-snapshot-layer-groups";
     const active = new Set(asArray(model.layerModel?.activeLayerIds));
     const recommended = new Set(asArray(model.layerModel?.recommendedLayerIds));
-    const grouped = new Map();
-    asArray(model.layerModel?.availability).forEach((layer) => {
-      if (!grouped.has(layer.group)) grouped.set(layer.group, []);
-      grouped.get(layer.group).push(layer);
-    });
-    grouped.forEach((layers, groupName) => {
+    viewModel.groupedLayers.forEach(({ groupName, layers }) => {
       const group = document.createElement("div");
       group.className = "scope-snapshot-layer-group";
       const label = document.createElement("span");
       label.textContent = groupName;
       group.appendChild(label);
       layers.forEach((layer) => {
-        if (!layer.available && !layer.dependencyUnavailable) return;
+        if (!layer.visible) return;
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.scopeSnapshotLayerId = layer.id;
-        button.textContent = `${active.has(layer.id) ? "✓ " : ""}${layer.label}`;
+        button.textContent = `${layer.selected ? "✓ " : ""}${layer.label}`;
         button.disabled = !layer.available;
         button.className = [
-          active.has(layer.id) ? "selected" : "unselected",
-          recommended.has(layer.id) ? "recommended" : "",
+          layer.selected ? "selected" : "unselected",
+          layer.recommended ? "recommended" : "",
           layer.unresolvedCount ? "contains-unresolved" : "",
           layer.dependencyUnavailable && !layer.available ? "dependency-unavailable" : ""
         ].filter(Boolean).join(" ");
-        button.setAttribute("aria-pressed", active.has(layer.id) ? "true" : "false");
-        button.title = `${layer.recommendationReason}${recommended.has(layer.id) ? "; recommended for range relevance" : ""}`;
+        button.setAttribute("aria-pressed", layer.selected ? "true" : "false");
+        button.title = `${layer.recommendationReason}${layer.recommended ? "; recommended for range relevance" : ""}`;
         group.appendChild(button);
       });
       layerGroups.appendChild(group);
     });
     const note = document.createElement("p");
-    note.textContent = `Range relevance: ${asArray(model.layerModel?.recommendedLayerIds).join(", ") || "none"}. Preset: ${SCOPE_SNAPSHOT_LAYER_PRESETS[scopeSnapshotViewState.layerPreset]?.label || "Custom"}. Hidden by layers: ${model.hiddenLayerNodes || 0}.`;
+    note.textContent = viewModel.noteText;
     panel.append(layerStatus, presetRow, layerGroups, note);
     return panel;
   }
@@ -15894,7 +15854,7 @@ createRevelationPartsSection(item.subEvents)
     const heading = document.createElement("h3");
     const text = document.createElement("p");
     heading.textContent = "Linear Scope Snapshot";
-    text.textContent = message;
+    text.textContent = studyPanelEmptyStateMessageCore(message);
     card.append(heading, text);
     container.appendChild(card);
     const count = document.getElementById("scopeSnapshotCount");
@@ -19695,13 +19655,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function metricState({ active = true, denominator = 0, numerator = 0, unresolved = 0, unsupported = 0, applicable = true, unavailable = false } = {}) {
-    if (!applicable) return "not_applicable";
-    if (unavailable) return "unavailable_from_current_scope";
-    if (!active) return "inactive";
-    if (!denominator) return "active_no_records";
-    if (unsupported) return "unsupported";
-    if (unresolved && !numerator) return "unresolved";
-    return "active_with_records";
+    return metricStateCore({ active, denominator, numerator, unresolved, unsupported, applicable, unavailable });
   }
 
   function metricRecord({
@@ -23262,7 +23216,7 @@ createRevelationPartsSection(item.subEvents)
       plainList: true,
       preserveExact: true,
       collapsed: true,
-      summaryLabel: options.summaryLabel || `Show ${title}`,
+      summaryLabel: studyPanelSummaryLabelCore({ title, summaryLabel: options.summaryLabel }),
       lazyListFactory: () => scopedComputationCached(`inspectorLines.${title}`, lineFactory),
       lazyPlaceholder: options.lazyPlaceholder || "Not rendered yet. Expand to load current-scope inspector details.",
       ...options
@@ -23285,7 +23239,7 @@ createRevelationPartsSection(item.subEvents)
     const copyDashboardButton = document.createElement("button");
     copyDashboardButton.type = "button";
     copyDashboardButton.textContent = "Copy QA Dashboard";
-    copyDashboardButton.addEventListener("click", () => copyPlainTextReport("QA Architecture Dashboard", asArray(item.qaDashboardLines).join("\n")).catch((error) => showDiagnosticMessage(`QA dashboard copy failed: ${error.message}`)));
+    copyDashboardButton.addEventListener("click", () => copyPlainTextReport("QA Architecture Dashboard", asArray(item.qaDashboardLines).join("\n")).catch((error) => showDiagnosticMessage(diagnosticFailureMessage("QA dashboard copy failed", error))));
     [
       createPassageFunctionSection("System Metrics Overview", "", { list: item.systemMetricsOverviewLines, plainList: true, preserveExact: true }),
       createPassageFunctionSection("Quick Bottleneck Summary", "", { list: item.quickBottleneckLines, plainList: true, preserveExact: true }),
@@ -28458,20 +28412,6 @@ createRevelationPartsSection(item.subEvents)
     return role?.actorName || "";
   }
 
-  function formatRoleValue(label, role) {
-    if (!roleName(role)) return "";
-    return `${label}: ${role.actorName} (${displayAppConfidence(role.confidence || "probable")})`;
-  }
-
-  function formatRoleList(label, roles) {
-    const values = asArray(roles)
-      .filter((role) => roleName(role))
-      .slice(0, 3)
-      .map((role) => `${role.actorName} (${displayAppConfidence(role.confidence || "probable")})`);
-
-    return values.length ? `${label}: ${values.join(", ")}` : "";
-  }
-
   function formatPrincipleFocus(principleFocus) {
     if (!principleFocus?.principleText) return "";
     return `Principle: ${trimText(principleFocus.principleText, 90)} (${displayAppConfidence(principleFocus.confidence || "probable")})`;
@@ -29570,7 +29510,7 @@ createRevelationPartsSection(item.subEvents)
       renderer(term);
     } catch (error) {
       console.error(`I.C.E. Study Panel section render failed: ${label}`, error);
-      showDiagnosticMessage(`Study Panel section render error in ${label}: ${error.message}`);
+      showDiagnosticMessage(diagnosticFailureMessage(`Study Panel section render error in ${label}`, error));
     } finally {
       recordRenderTiming(label, nowForDiagnostics() - started);
     }
@@ -29854,14 +29794,11 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function deferredSectionStatusLine(label) {
-    const count = deferredSectionRecordCount(label);
-    if (count == null) return "Details not rendered.";
-    return count > 0 ? `${count} record(s) · Details not rendered.` : "No records · Details not rendered.";
+    return studyPanelStatusLineCore(deferredSectionRecordCount(label));
   }
 
   function deferredSectionCountLabel(label) {
-    const count = deferredSectionRecordCount(label);
-    return count == null ? "Not loaded" : `${count} record(s)`;
+    return studyPanelCountLabelCore(deferredSectionRecordCount(label));
   }
 
   function createDeferredSectionDetails(entry, options = {}) {
@@ -29878,9 +29815,7 @@ createRevelationPartsSection(item.subEvents)
     title.textContent = entry.label;
     const status = document.createElement("span");
     status.className = "deferred-study-section-status";
-    status.textContent = options.loadedNodes
-      ? `${deferredSectionCountLabel(entry.label)} · Details rendered.`
-      : deferredSectionStatusLine(entry.label);
+    status.textContent = studyPanelStatusLineCore(deferredSectionRecordCount(entry.label), Boolean(options.loadedNodes));
     summary.append(title, status);
 
     const body = document.createElement("div");
@@ -29928,8 +29863,8 @@ createRevelationPartsSection(item.subEvents)
         if (!details.open || loadedDeferredSections.has(entry.label)) return;
         note.textContent = "Loading details...";
         loadDeferredSection(entry.label).catch((error) => {
-          note.textContent = `Load failed in ${entry.label}: ${error.message}`;
-          showDiagnosticMessage(`Load failed in ${entry.label}: ${error.message}`);
+          note.textContent = diagnosticFailureMessage(`Load failed in ${entry.label}`, error);
+          showDiagnosticMessage(diagnosticFailureMessage(`Load failed in ${entry.label}`, error));
         });
       }, { once: false });
     }
@@ -30087,8 +30022,8 @@ createRevelationPartsSection(item.subEvents)
       if (!details.open || fullStudyDataLoaded) return;
       note.textContent = "Loading source diagnostics...";
       loadStudyScopeDiagnostics().catch((error) => {
-        note.textContent = `Diagnostics load failed: ${error.message}`;
-        showDiagnosticMessage(`Diagnostics load failed: ${error.message}`);
+        note.textContent = diagnosticFailureMessage("Diagnostics load failed", error);
+        showDiagnosticMessage(diagnosticFailureMessage("Diagnostics load failed", error));
       });
     });
     body.appendChild(note);
@@ -30176,8 +30111,7 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function presentationModuleSelected(label = "") {
-    const moduleIds = presentationModulesForSection(label);
-    return moduleIds.some((id) => selectedPresentationModules.has(id));
+    return studyPanelSectionVisibleCore(label, selectedPresentationModules);
   }
 
   function currentSearchTerm() {
@@ -30301,22 +30235,18 @@ createRevelationPartsSection(item.subEvents)
     const status = details.querySelector("[data-study-group-status]");
     const countLabel = details.querySelector("[data-study-group-counts]");
     const matchLabel = details.querySelector("[data-study-group-matches]");
-    if (status) {
-      status.textContent = visibleEntries.length
-        ? `${warningCount ? `${warningCount} warning(s)` : "Ready"}`
-        : "Hidden by view";
-    }
-    if (countLabel) {
-      countLabel.textContent = [
-        `${visibleEntries.length} section(s)`,
-        `${rendered} rendered`,
-        notLoaded ? `${notLoaded} not loaded` : "",
-        recordTotal ? `${recordTotal} record(s)` : ""
-      ].filter(Boolean).join(" · ");
-    }
-    if (matchLabel) {
-      matchLabel.textContent = term ? `${matchCount} match(es)` : "";
-    }
+    const summaryViewModel = studyPanelGroupSummaryViewModelCore({
+      visibleEntries: visibleEntries.length,
+      warningCount,
+      rendered,
+      notLoaded,
+      recordTotal,
+      matchCount,
+      term
+    });
+    if (status) status.textContent = summaryViewModel.statusText;
+    if (countLabel) countLabel.textContent = summaryViewModel.countText;
+    if (matchLabel) matchLabel.textContent = summaryViewModel.matchText;
     details.hidden = visibleEntries.length === 0;
     details.dataset.warningCount = String(warningCount);
     details.dataset.matchCount = String(matchCount);
@@ -30411,6 +30341,7 @@ createRevelationPartsSection(item.subEvents)
     const renderStarted = nowForDiagnostics();
     const searchInput = document.getElementById("searchInput");
     const term = normalizeText(searchInput?.value || "").toLowerCase();
+    renderStudyOverview();
     studySectionRenderers().forEach((entry) => {
       if (STARTUP_RENDERER_LABELS.has(entry.label)) {
         const section = document.getElementById(entry.sectionId);
@@ -30453,8 +30384,8 @@ createRevelationPartsSection(item.subEvents)
   }
 
   function renderDiagnostics() {
-    const statusValue = (value, loadedFallback = "Not loaded") => normalizeText(value) || loadedFallback;
-    const diagnosticCount = (value, available = fullStudyDataLoaded) => available ? value : "Not loaded";
+    const statusValue = diagnosticStatusValue;
+    const diagnosticCount = diagnosticPresentationCount;
     const activeDiagnosticPage = activeSourcePageRecord() || {};
     const captureCount = (studyData.latestCapture?.text ? 1 : 0) +
       countItems(studyData.captureHistory);
@@ -30641,7 +30572,7 @@ createRevelationPartsSection(item.subEvents)
       showDiagnosticMessage("");
     } catch (error) {
       console.error(`I.C.E. deferred section load failed: ${label}`, error);
-      showDiagnosticMessage(`Load failed in ${label}: ${error.message}`);
+      showDiagnosticMessage(diagnosticFailureMessage(`Load failed in ${label}`, error));
       applyStudyPanelInformationArchitecture();
       throw error;
     }
@@ -30670,7 +30601,7 @@ createRevelationPartsSection(item.subEvents)
       body.dataset.loaded = "true";
       recordRenderTiming("Lazy nested detail: cached record", nowForDiagnostics() - started);
     } catch (error) {
-      body.textContent = `Load failed: ${error.message}`;
+      body.textContent = diagnosticFailureMessage("Load failed", error);
       body.dataset.loadError = "true";
       console.error("I.C.E. cached lazy nested record detail failed", error);
     }
@@ -31034,6 +30965,154 @@ createRevelationPartsSection(item.subEvents)
     minimap?.querySelector(`[data-snapshot-minimap-id="${escaped}"]`)?.classList.add("selected");
   }
 
+  function studyOverviewModel() {
+    const generation = activeStudyGenerationFromData();
+    const pages = currentStudyScopePages();
+    const range = selectedSessionScopeFromPages(pages);
+    const analysisComplete = Boolean(currentAnalyzedStatusRecord() || frozenAnalysisTargetRecord()?.analyzedAt);
+    const scoped = (key) => asArray(studyData[key]).filter((item) => recordMatchesStudyGeneration(item, generation) && recordMatchesCurrentStudyScope(item));
+    const beings = [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)]
+      .filter((item) => recordMatchesStudyGeneration(item, generation) && recordMatchesCurrentStudyScope(item))
+      .map((item) => item.canonicalName || item.displayName || item.entityName || item.name || "")
+      .map((value) => normalizeText(value).toLowerCase())
+      .filter(Boolean);
+    const uniqueBeings = [...new Set(beings)];
+    const locations = new Set(scoped("movementSemantics").flatMap((item) => [item.originLocation, item.destinationLocation, item.location, item.place]).map((value) => normalizeText(value).toLowerCase()).filter(Boolean));
+    const unresolved = scoped("semanticAmbiguities");
+    const scopePage = pages[0] || activeSourcePageRecord() || {};
+    const sourceUrl = scopePage.activeUrl || scopePage.sourceUrl || scopePage.url || "";
+    const volumeToken = sourceUrl.match(/\/scriptures\/([^/]+)/i)?.[1]?.toLowerCase() || "";
+    const controlledVolumes = { nt: "New Testament", ot: "Old Testament" };
+    const hierarchy = {
+      collection: /\/scriptures\//i.test(sourceUrl) ? "Scripture" : "Not classified",
+      volume: controlledVolumes[volumeToken] || "Not yet classified"
+    };
+    const dimensionDefinitions = [
+      ["Beings", "entityRegistry", "Entity Registry / Canonical Identities", "Identity and classification"],
+      ["Events", "semanticEvents", "Semantic Events", "Event records"],
+      ["Relationships", "relationshipGraph", "Relationship Graph", "Relationship records"],
+      ["Locations", "movementSemantics", "Movement Semantics", "Named locations attached to grounded movement records"],
+      ["Movement / Travel", "movementSemantics", "Movement Semantics", "Grounded movement records"],
+      ["Prophecy / Fulfillment", "prophecyLinks", "Prophecy Links", "Prophecy and fulfillment links"],
+      ["Principles / Teachings", "principleItems", "Principle Items", "Principle and teaching records"],
+      ["Unresolved", "semanticAmbiguities", "Semantic Ambiguities", "Ambiguity and unresolved review"]
+    ];
+    const inclusion = dimensionDefinitions.map(([label, key, source, depth]) => {
+      const records = key === "entityRegistry" ? [...asArray(studyData.entityRegistry), ...asArray(studyData.canonicalIdentities)].filter((item) => recordMatchesStudyGeneration(item, generation) && recordMatchesCurrentStudyScope(item)) : scoped(key);
+      const count = label === "Locations" ? locations.size : records.length;
+      return { label, source, depth, count, state: count ? "INCLUDED" : (analysisComplete ? "INCLUDED — 0 RESULTS" : "NOT RUN / NOT AVAILABLE") };
+    });
+    return {
+      scope: currentStudyScopeLabel(),
+      generation,
+      range,
+      volume: {
+        work: hierarchy.volume,
+        collection: hierarchy.collection,
+        book: pageBookName(pages[0] || activeSourcePageRecord()) || "Not classified",
+        chapters: [...new Set(pages.map(pageChapterNumber).filter(Boolean))],
+        pages: pages.length,
+        continuity: range?.isContiguous ? "Continuous" : (pages.length > 1 ? "Non-contiguous" : "Single analyzed page"),
+        missingLabels: range?.missingLabels || [],
+        verseRange: pages.map((page) => page.verseRange || page.sourceVerseRange || "").find(Boolean) || "Not available",
+        adapter: pages[0]?.activeAdapterName || studyData.activeAdapter?.adapterName || "Not classified",
+        lastAnalyzed: pages.map((page) => page.analyzedAt || page.updatedAt || "").find(Boolean) || "Not available"
+      },
+      coverage: {
+        selected: range?.pages?.length || pages.length,
+        analyzed: pages.length,
+        continuity: range?.isContiguous ? "Continuous" : (pages.length > 1 ? "Non-contiguous" : "Single analyzed page"),
+        requested: "Not separately recorded",
+        pending: "Not separately recorded",
+        crossReference: "Not included in primary scope",
+        missing: range?.missingLabels?.length ? range.missingLabels : [],
+        excluded: "Not separately recorded"
+      },
+      inclusion,
+      categories: [
+        { id: "beings", label: "Beings", count: uniqueBeings.length, summary: `${uniqueBeings.slice(0, 3).join(", ") || "No named beings recorded"}` },
+        { id: "events", label: "Events", count: scoped("semanticEvents").length, summary: "Current semantic event records" },
+        { id: "relationships", label: "Relationships", count: scoped("relationshipGraph").length, summary: "Current relationship records" },
+        { id: "locations", label: "Locations", count: locations.size, summary: locations.size ? [...locations].slice(0, 3).join(", ") : "No authoritative locations recorded" },
+        { id: "movement", label: "Movement / Travel", count: scoped("movementSemantics").length, summary: scoped("movementSemantics").length ? "Grounded movement records" : "No physical movement identified in the current analyzed scope" },
+        { id: "prophecy", label: "Prophecy / Fulfillment", count: scoped("prophecyLinks").length, summary: "Current prophecy and fulfillment links" },
+        { id: "principles", label: "Principles / Teachings", count: scoped("principleItems").length, summary: "Current principle records" },
+        { id: "unresolved", label: "Unresolved", count: unresolved.length, summary: unresolved.length ? "Ambiguity remains visible" : "No unresolved records" }
+      ]
+    };
+  }
+
+  function renderStudyOverview() {
+    const rows = document.getElementById("studyOverviewRows");
+    const scope = document.getElementById("studyOverviewScope");
+    if (!rows || !scope) return;
+    const model = studyOverviewModel();
+    scope.textContent = model.scope;
+    const volumeSummary = document.getElementById("studyVolumeSummary");
+    const volumeDetails = document.getElementById("studyVolumeDetails");
+    const inclusionSummary = document.getElementById("studyInclusionSummary");
+    const inclusionDetails = document.getElementById("studyInclusionDetails");
+    const coverageSummary = document.getElementById("studyCoverageSummary");
+    const coverageDetails = document.getElementById("studyCoverageDetails");
+    if (volumeSummary && volumeDetails) {
+      const chapters = model.volume.chapters;
+      const chapterLabel = chapters.length === 1 ? `${model.volume.book} ${chapters[0]}` : (model.volume.book || model.scope);
+      volumeSummary.textContent = `${chapterLabel} · ${model.volume.pages} page${model.volume.pages === 1 ? "" : "s"}`;
+      volumeDetails.replaceChildren();
+      [["Scriptural Collection", model.volume.collection], ["Scriptural Volume / Work", model.volume.work], ["Book", model.volume.book], ["Chapter / Range", chapters.length ? chapters.join(", ") : "Not available"], ["Analyzed Scope", model.scope], ["Analyzed pages", String(model.volume.pages)], ["Continuity", model.volume.continuity], ["Missing / gaps", model.volume.missingLabels.length ? model.volume.missingLabels.join(", ") : "None recorded"], ["Verses / source range", model.volume.verseRange], ["Source adapter", model.volume.adapter], ["Current generation", String(model.generation)], ["Last analyzed", model.volume.lastAnalyzed]].forEach(([label, value]) => {
+        const line = document.createElement("p");
+        line.textContent = `${label}: ${value}`;
+        volumeDetails.appendChild(line);
+      });
+    }
+    if (inclusionSummary && inclusionDetails) {
+      inclusionSummary.textContent = `${model.inclusion.filter((item) => item.state === "INCLUDED").length} of ${model.inclusion.length} dimensions represented`;
+      inclusionDetails.replaceChildren();
+      model.inclusion.forEach((item) => {
+        const line = document.createElement("p");
+        line.textContent = `${item.label}: ${item.state}${item.count ? ` · ${item.count} result${item.count === 1 ? "" : "s"}` : ""}`;
+        line.title = `${item.source}; ${item.depth}`;
+        inclusionDetails.appendChild(line);
+      });
+    }
+    if (coverageSummary && coverageDetails) {
+      coverageSummary.textContent = `${model.coverage.analyzed} analyzed · ${model.coverage.continuity.toLowerCase()}`;
+      coverageDetails.replaceChildren();
+      [["Selected scope", String(model.coverage.selected)], ["Analyzed", String(model.coverage.analyzed)], ["Requested", model.coverage.requested], ["Pending / queued", model.coverage.pending], ["Cross-reference only", model.coverage.crossReference], ["Missing / failed", model.coverage.missing.length ? model.coverage.missing.join(", ") : "No proven gaps"], ["Excluded", model.coverage.excluded], ["Continuity", model.coverage.continuity]].forEach(([label, value]) => {
+        const line = document.createElement("p");
+        line.textContent = `${label}: ${value}`;
+        coverageDetails.appendChild(line);
+      });
+    }
+    rows.textContent = "";
+    model.categories.forEach((category) => {
+      const details = document.createElement("details");
+      details.className = "study-overview-row";
+      const summary = document.createElement("summary");
+      summary.innerHTML = `<span class="overview-category">${category.label}</span><strong>${category.count}</strong>`;
+      const body = document.createElement("div");
+      body.className = "overview-row-body";
+      const text = document.createElement("span");
+      text.textContent = category.summary;
+      const focus = document.createElement("button");
+      focus.type = "button";
+      focus.className = "overview-focus-button";
+      focus.textContent = "Focus in Graph";
+      focus.dataset.overviewFocus = category.id;
+      body.append(text, focus);
+      details.append(summary, body);
+      rows.appendChild(details);
+    });
+  }
+
+  function formatRoleValue(label, role) {
+    return globalThis.ICEStudyListItemHelpers.formatRoleValue(label, role, displayConfidence);
+  }
+
+  function formatRoleList(label, roles) {
+    return globalThis.ICEStudyListItemHelpers.formatRoleList(label, roles, displayConfidence);
+  }
+
   function recordScopeSnapshotFocusDiagnostic(action = "", graphId = "", notes = []) {
     const entry = {
       action,
@@ -31047,7 +31126,6 @@ createRevelationPartsSection(item.subEvents)
     scopeSnapshotViewState.focusDiagnostics = scopeSnapshotViewState.focusDiagnostics.slice(0, 12);
     return entry;
   }
-
   function clearScopeSnapshotFocus(reason = "clear focus") {
     const viewportBefore = scopeSnapshotViewportState();
     scopeSnapshotViewState.selectedGraphId = "";
@@ -31219,7 +31297,7 @@ createRevelationPartsSection(item.subEvents)
         if (selection.type === "cluster") renderScopeSnapshotClusterPanel(panel, model, selection.item);
         else renderScopeSnapshotDetailPanel(panel, model, selection.item);
       } catch (error) {
-        panel.textContent = `Selection detail failed for ${graphId}: ${error.message}`;
+        panel.textContent = diagnosticFailureMessage(`Selection detail failed for ${graphId}`, error);
         console.error("I.C.E. Scope Snapshot selection detail failed", error);
       }
     }
@@ -31519,7 +31597,7 @@ createRevelationPartsSection(item.subEvents)
       showDiagnosticMessage(`Opened ${inspectorTitle} for ${selectedLabel}. Use Back to Snapshot to return to the selected graph item.`);
       window.requestAnimationFrame(() => enforceScopeSnapshotPresentationInvariant("after open inspector"));
     } catch (error) {
-      showDiagnosticMessage(`Open Inspector failed for ${selectedLabel}: ${error.message}`);
+      showDiagnosticMessage(diagnosticFailureMessage(`Open Inspector failed for ${selectedLabel}`, error));
       if (button) {
         button.disabled = false;
         button.textContent = "Open Inspector";
@@ -31687,7 +31765,7 @@ createRevelationPartsSection(item.subEvents)
       return;
     }
     if (action === "copy") {
-      copyPlainTextReport("Linear Scope Snapshot", scopeSnapshotSummaryLines(scopeSnapshotGraphModel()).join("\n")).catch((error) => showDiagnosticMessage(`Scope Snapshot copy failed: ${error.message}`));
+      copyPlainTextReport("Linear Scope Snapshot", scopeSnapshotSummaryLines(scopeSnapshotGraphModel()).join("\n")).catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Scope Snapshot copy failed", error)));
       return;
     }
     if (action === "restore_recommended_layers") {
@@ -31944,7 +32022,7 @@ createRevelationPartsSection(item.subEvents)
         await loadStudyData({ full: Boolean(options.full || fullStudyDataLoaded) });
         renderStudy();
       } catch (error) {
-        showDiagnosticMessage(`Study Panel load error: ${error.message}`);
+        showDiagnosticMessage(diagnosticFailureMessage("Study Panel load error", error));
         console.debug("I.C.E. study load failed", {
           error: error.message
         });
@@ -32009,6 +32087,12 @@ createRevelationPartsSection(item.subEvents)
     }
     scheduleRenderStudy();
   });  document.addEventListener("click", (event) => {
+    const overviewFocus = event.target.closest("button[data-overview-focus]");
+    if (overviewFocus) {
+      setPresentationModules(PRESENTATION_MODULE_PRESETS.study);
+      openScopeSnapshotPanel(event);
+      return;
+    }
     const graphButton = event.target.closest("button[data-open-scope-snapshot], #openScopeSnapshot");
     if (graphButton) {
       openScopeSnapshotPanel(event);
@@ -32018,13 +32102,13 @@ createRevelationPartsSection(item.subEvents)
     if (loadButton) {
       event.preventDefault();
       const label = loadButton.dataset.loadStudySection || "deferred section";
-      loadDeferredSection(label).catch((error) => showDiagnosticMessage(`Load failed in ${label}: ${error.message}`));
+      loadDeferredSection(label).catch((error) => showDiagnosticMessage(diagnosticFailureMessage(`Load failed in ${label}`, error)));
       return;
     }
     const diagnosticsButton = event.target.closest("button[data-load-study-scope-diagnostics]");
     if (diagnosticsButton) {
       event.preventDefault();
-      loadStudyScopeDiagnostics().catch((error) => showDiagnosticMessage(`Diagnostics load failed: ${error.message}`));
+      loadStudyScopeDiagnostics().catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Diagnostics load failed", error)));
       return;
     }
     const button = event.target.closest(".semantic-nav-button");
@@ -32047,9 +32131,9 @@ createRevelationPartsSection(item.subEvents)
   window.addEventListener("resize", scheduleScopeSnapshotMiniMapSync, { passive: true });
   document.getElementById("openScopeSnapshot")?.addEventListener("keydown", handleOpenScopeSnapshotKeydown);
   document.getElementById("refreshStudyData")?.addEventListener("click", refreshStudyData);
-  document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
-  document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
-  document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic").catch((error) => showDiagnosticMessage(`Export failed: ${error.message}`)));
+  document.getElementById("copyCompactPanelSummary")?.addEventListener("click", () => handleExportAction("compact").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Export failed", error))));
+  document.getElementById("copyCurrentSection")?.addEventListener("click", () => handleExportAction("section").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Export failed", error))));
+  document.getElementById("copyDiagnosticSnapshot")?.addEventListener("click", () => handleExportAction("diagnostic").catch((error) => showDiagnosticMessage(diagnosticFailureMessage("Export failed", error))));
   document.addEventListener("toggle", handleLazyRecordDetailToggle, true);
   document.getElementById("closeSourceVerseDialog")?.addEventListener("click", () => document.getElementById("sourceVerseDialog")?.close());
   document.getElementById("sourceVerseDialog")?.addEventListener("click", (event) => {
@@ -32070,5 +32154,5 @@ createRevelationPartsSection(item.subEvents)
     if (Object.keys(changes).some((key) => watchedKeys.has(key))) {
       scheduleRefreshStudyData({ full: fullStudyDataLoaded });
     }
-  });  await refreshStudyData();
+  });  await refreshStudyData({ full: true });
 });
