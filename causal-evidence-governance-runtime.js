@@ -1,0 +1,5 @@
+"use strict";
+const crypto=require("crypto"),id=x=>crypto.createHash("sha256").update(JSON.stringify(x)).digest("hex").slice(0,20);
+function independence(a,b){if(!a?.sourceId||!b?.sourceId)return "UNKNOWN_INDEPENDENCE";if(a.sourceId===b.sourceId)return "SAME_SOURCE";if(a.lineage&&b.lineage&&a.lineage.some(x=>b.lineage.includes(x)))return "SHARED_UPSTREAM";return "INDEPENDENT"}
+function evaluate(claim,evidence=[]){const support=[],challenge=[],duplicate=[];for(const e of evidence){if(e.claimId===claim.claimId)duplicate.push(e);else if(e.polarity!==claim.polarity)challenge.push(e);else support.push(e)}const independent=support.filter(e=>independence(e,claim)==="INDEPENDENT");return {evaluationId:`causal-evidence-${id({claim:claim.claimId,evidence:evidence.map(x=>x.evidenceId)})}`,claimId:claim.claimId,support,challenge,duplicate,independentSupportCount:independent.length,sufficiency:independent.length?"SUPPORTED_CANDIDATE":"INSUFFICIENT_CAUSAL_EVIDENCE",objectiveCausation:false,causalProof:false,eventCreated:false,userBeliefMutated:false,authorityAssigned:false,network:0}}
+module.exports={independence,evaluate};
